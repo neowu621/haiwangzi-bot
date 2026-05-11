@@ -34,10 +34,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+# 先裝 Prisma CLI（含完整 transitive deps：@prisma/config / effect …）。
+# 必須在 COPY @prisma 之前，否則 npm 看到目錄已存在就不會解析它的 deps。
+RUN npm install --no-save --no-audit --no-fund prisma@6.19.3 @prisma/client@6.19.3
+# 把 builder 生成的 prisma client (含 query engines binary) 覆蓋上去
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-# Prisma CLI (entrypoint 需要 db push) — Next.js standalone 不會自動帶，獨立安裝最乾淨
-RUN npm install --no-save --no-audit --no-fund prisma@6.19.3
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
