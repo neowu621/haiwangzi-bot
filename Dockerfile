@@ -6,7 +6,8 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-RUN npm ci --no-audit --no-fund
+# --include=dev：強制裝 dev deps（避免 Zeabur 平台帶 NODE_ENV=production 進來導致 npm ci 跳過 dev 套件）
+RUN npm ci --include=dev --no-audit --no-fund
 
 # ─── Stage 2: build ───────────────────────────────────────
 FROM node:22-alpine AS builder
