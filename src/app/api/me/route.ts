@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { authFromRequest } from "@/lib/auth";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// GET /api/me - 取自己的 profile + 統計
+export async function GET(req: NextRequest) {
+  const auth = await authFromRequest(req);
+  if (!auth.ok)
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+
+  const totalBookings = await prisma.booking.count({
+    where: { userId: auth.user.lineUserId },
+  });
+  const completed = await prisma.booking.count({
+    where: { userId: auth.user.lineUserId, status: "completed" },
+  });
+
+  const u = auth.user;
+  return NextResponse.json({
+    lineUserId: u.lineUserId,
+    displayName: u.displayName,
+    realName: u.realName,
+    phone: u.phone,
+    cert: u.cert,
+    certNumber: u.certNumber,
+    logCount: u.logCount,
+    role: u.role,
+    notes: u.notes,
+    emergencyContact: u.emergencyContact,
+    companions: u.companions ?? [],
+    createdAt: u.createdAt,
+    stats: {
+      totalBookings,
+      completed,
+    },
+  });
+}
+
+const CompanionSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  phone: z.string().optional().default(""),
+  cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
+  certNumber: z.string().optional().default(""),
+  logCount: z.number().int().min(0).optional().default(0),
+  relationship: z.string().optional().default(""),
+});
+
+const PatchSchema = z.object({
+  realName: z.string().optional(),
+  phone: z.string().optional(),
+  cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
+  certNumber: z.string().nullable().optional(),
+  logCount: z.number().int().min(0).optional(),
+  notes: z.string().nullable().optional(),
+  emergencyContact: z
+    .object({
+      name: z.string(),
+      phone: z.string(),
+      relationship: z.string(),
+    })
+    .nullable()
+    .optional(),
+  companions: z.array(CompanionSchema).optional(),
+});
+
+export async function PATCH(req: NextRequest) {
+  const auth = await authFromRequest(req);
+  if (!auth.ok)
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+
+  const body = PatchSchema.parse(await req.json());
+  const data: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (v !== undefined) data[k] = v;
+  }
+  const updated = await prisma.user.update({
+    where: { lineUserId: auth.user.lineUserId },
+    data,
+  });
+  return NextResponse.json({ ok: true, user: updated });
+}

@@ -1,0 +1,14 @@
+{
+  "name": "haiwangzi-bot",
+  "build": {
+    "buildCommand": "npm run build",
+    "outputDirectory": ".next"
+  },
+  "start": {
+    "command": "node server.js"
+  },
+  "env": {
+    "NODE_ENV": "production",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  }
+}

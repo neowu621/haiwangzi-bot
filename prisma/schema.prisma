@@ -1,0 +1,249 @@
+// 對應 diving_bot_kit/docs/DIVING_BOT_SPEC.md §3.1 的 8 張表
+// 從 Drizzle schema 翻譯過來
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────
+enum UserRole {
+  customer
+  coach
+  admin
+}
+
+enum CertLevel {
+  OW
+  AOW
+  Rescue
+  DM
+  Instructor
+}
+
+enum CoachCert {
+  DM
+  Instructor
+  CourseDirector
+}
+
+enum Region {
+  northeast
+  green_island   @map("green-island")
+  lanyu
+  kenting
+  other
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum TripStatus {
+  open
+  full
+  cancelled
+  completed
+}
+
+enum CancelReason {
+  weather
+  insufficient
+  other
+}
+
+enum BookingType {
+  daily
+  tour
+}
+
+enum PaymentStatus {
+  pending
+  deposit_paid
+  fully_paid
+  refunding
+  refunded
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled_by_user
+  cancelled_by_weather
+  completed
+  no_show
+}
+
+enum PaymentProofType {
+  deposit
+  final
+  refund
+}
+
+enum ReminderChannel {
+  line
+  email
+}
+
+// ─── Tables ──────────────────────────────────────────────
+
+model User {
+  lineUserId       String    @id @map("line_user_id") @db.VarChar(64)
+  displayName      String    @map("display_name")
+  realName         String?   @map("real_name")
+  phone            String?   @db.VarChar(32)
+  emergencyContact Json?     @map("emergency_contact")
+  cert             CertLevel?
+  certNumber       String?   @map("cert_number") @db.VarChar(64)
+  logCount         Int       @default(0) @map("log_count")
+  role             UserRole  @default(customer)
+  notes            String?
+  // 同伴清單：[{ id, name, phone, cert, certNumber, logCount, relationship }]
+  companions       Json      @default("[]")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
+
+  bookings         Booking[]
+  coachProfile     Coach?
+  verifiedProofs   PaymentProof[]
+
+  @@map("users")
+}
+
+model DiveSite {
+  id          String     @id @db.VarChar(64)
+  name        String
+  region      Region
+  description String     @default("")
+  difficulty  Difficulty @default(medium)
+  maxDepth    Int        @default(0) @map("max_depth")
+  features    String[]   @default([])
+  images      String[]   @default([])
+  youtubeUrl  String?    @map("youtube_url")
+  cautions    String?
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("dive_sites")
+}
+
+model Coach {
+  id         String    @id @db.VarChar(32)
+  lineUserId String?   @unique @map("line_user_id") @db.VarChar(64)
+  realName   String    @map("real_name")
+  cert       CoachCert
+  specialty  String[]  @default([])
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user       User?     @relation(fields: [lineUserId], references: [lineUserId], onDelete: SetNull)
+
+  @@map("coaches")
+}
+
+model DivingTrip {
+  id           String       @id @default(uuid()) @db.Uuid
+  date         DateTime     @db.Date
+  startTime    String       @map("start_time") @db.VarChar(5)
+  isNightDive  Boolean      @default(false) @map("is_night_dive")
+  isScooter    Boolean      @default(false) @map("is_scooter")
+  diveSiteIds  String[]     @default([]) @map("dive_site_ids")
+  tankCount    Int          @default(1) @map("tank_count")
+  capacity     Int
+  coachIds     String[]     @default([]) @map("coach_ids")
+  pricing      Json
+  status       TripStatus   @default(open)
+  cancelReason CancelReason? @map("cancel_reason")
+  weatherNote  String?      @map("weather_note")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("diving_trips")
+}
+
+model TourPackage {
+  id              String     @id @default(uuid()) @db.Uuid
+  title           String
+  destination     Region
+  dateStart       DateTime   @map("date_start") @db.Date
+  dateEnd         DateTime   @map("date_end") @db.Date
+  itinerary       Json       @default("[]")
+  diveSiteIds     String[]   @default([]) @map("dive_site_ids")
+  basePrice       Int        @map("base_price")
+  deposit         Int
+  depositDeadline DateTime?  @map("deposit_deadline") @db.Timestamptz
+  finalDeadline   DateTime?  @map("final_deadline") @db.Timestamptz
+  capacity        Int
+  includes        String[]   @default([])
+  excludes        String[]   @default([])
+  addons          Json       @default("[]")
+  images          String[]   @default([])
+  youtubeUrl      String?    @map("youtube_url")
+  status          TripStatus @default(open)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("tour_packages")
+}
+
+model Booking {
+  id                 String         @id @default(uuid()) @db.Uuid
+  userId             String         @map("user_id") @db.VarChar(64)
+  type               BookingType
+  refId              String         @map("ref_id") @db.Uuid
+  participants       Int            @default(1)
+  // 本次參加者明細：[{ name, phone, cert, certNumber, logCount, relationship, isSelf }]
+  participantDetails Json           @default("[]") @map("participant_details")
+  selectedAddons     String[]       @default([]) @map("selected_addons")
+  rentalGear         Json           @default("[]") @map("rental_gear")
+  notes              String?
+  totalAmount        Int            @map("total_amount")
+  depositAmount      Int            @default(0) @map("deposit_amount")
+  paidAmount         Int            @default(0) @map("paid_amount")
+  paymentStatus      PaymentStatus  @default(pending) @map("payment_status")
+  status             BookingStatus  @default(pending)
+  cancellationReason String?        @map("cancellation_reason")
+  refundAmount       Int?           @map("refund_amount")
+  refundedAt         DateTime?      @map("refunded_at") @db.Timestamptz
+  agreedToTermsAt    DateTime       @map("agreed_to_terms_at") @db.Timestamptz
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user               User           @relation(fields: [userId], references: [lineUserId], onDelete: Restrict)
+  paymentProofs      PaymentProof[]
+  reminderLogs       ReminderLog[]
+
+  @@map("bookings")
+}
+
+model PaymentProof {
+  id         String           @id @default(uuid()) @db.Uuid
+  bookingId  String           @map("booking_id") @db.Uuid
+  type       PaymentProofType
+  amount     Int
+  imageKey   String           @map("image_key")
+  uploadedAt DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz
+  verifiedBy String?          @map("verified_by") @db.VarChar(64)
+  verifiedAt DateTime?        @map("verified_at") @db.Timestamptz
+
+  booking    Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  verifier   User?            @relation(fields: [verifiedBy], references: [lineUserId], onDelete: SetNull)
+
+  @@map("payment_proofs")
+}
+
+model ReminderLog {
+  id        Int             @id @default(autoincrement())
+  bookingId String?         @map("booking_id") @db.Uuid
+  type      String
+  sentAt    DateTime        @default(now()) @map("sent_at") @db.Timestamptz
+  channel   ReminderChannel @default(line)
+  error     String?
+
+  booking   Booking?        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("reminder_logs")
+}
