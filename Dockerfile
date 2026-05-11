@@ -36,6 +36,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Prisma CLI (entrypoint 需要 db push) — Next.js standalone 不會自動帶，獨立安裝最乾淨
+RUN npm install --no-save --no-audit --no-fund prisma@6.19.3
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
