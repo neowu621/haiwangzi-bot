@@ -2,6 +2,24 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_05 — 2026-05-13 (Wordmark 改名 + idToken 自動刷新 + 同伴選單突顯)
+
+### Wordmark / Header
+- 「海王子」→「東北角海王子潛水」（全名）
+- 「DIVING TEAM」→ 改顯示 `v<APP_VERSION>` 動態版本
+- LiffShell 不再額外顯示版本（避免重複）
+
+### LIFF idToken 修正
+- 修「確認預約 HTTP 401 missing idToken」bug
+- `fetchWithAuth` 每次都呼叫 `liff.getIDToken()` 抓最新 token
+- 沒有 idToken → 自動 `liff.login()` 重新導向授權
+- 解決使用者填很久表單後 idToken 過期送出失敗的情境
+
+### 同伴選單突顯
+- 預約表單同伴 #N 展開時，最上方顯示「從常用同伴選」的大型 chip group
+- 點 chip 一鍵帶入該同伴資料
+- 另有「+ 手動輸入」chip 回到空表單
+
 ## 20260513_04 — 2026-05-13 (個人資料頁折疊 + Header 版本顯示 + 對比修正)
 
 ### 個人資料頁全面折疊

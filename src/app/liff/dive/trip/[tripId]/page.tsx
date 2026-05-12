@@ -959,31 +959,53 @@ function CompanionSlotEditor({
     <div className="rounded-lg border-2 border-[var(--color-phosphor)]/40 bg-white p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-bold">同伴 #{idx}</span>
-        <div className="flex items-center gap-1.5">
-          {saved.length > 0 && (
-            <select
-              value={slot.id ?? ""}
-              onChange={(e) => pickSaved(e.target.value)}
-              className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-medium"
-            >
-              <option value="">— 手動輸入 —</option>
-              {saved.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.cert ?? "?"})
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded-full p-1 text-[var(--muted-foreground)] hover:bg-black/5"
-            aria-label="收起"
-          >
-            <ChevronDown className="h-4 w-4 rotate-180" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded-full p-1 text-[var(--muted-foreground)] hover:bg-black/5"
+          aria-label="收起"
+        >
+          <ChevronDown className="h-4 w-4 rotate-180" />
+        </button>
       </div>
+
+      {/* 已存同伴 — 大型 chip 一鍵帶入 */}
+      {saved.length > 0 && (
+        <div className="mb-3 rounded-md bg-[var(--muted)] p-2">
+          <div className="mb-1.5 text-[10px] font-semibold text-[var(--muted-foreground)]">
+            從常用同伴選 ({saved.length} 位) — 點一下自動帶入
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {saved.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => pickSaved(c.id ?? "")}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  slot.id === c.id
+                    ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                    : "border-[var(--border)] bg-white",
+                )}
+              >
+                {c.name}
+                {c.cert && (
+                  <span className="ml-1 text-[10px] opacity-70">
+                    ({c.cert})
+                  </span>
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => pickSaved("")}
+              className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted-foreground)]"
+            >
+              + 手動輸入
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <Input

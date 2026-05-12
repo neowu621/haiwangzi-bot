@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/brand/Logo";
 import { useLiff } from "@/lib/liff/LiffProvider";
-import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
 
 interface LiffShellProps {
@@ -53,16 +52,13 @@ export function LiffShell({
       )}
     >
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur">
-        {/* 左側：Logo + 版本，永遠在這，點按回首頁 */}
+        {/* 左側：Wordmark (含版本)，點按回首頁 */}
         <Link
           href="/liff/welcome"
           aria-label="回首頁"
-          className="flex flex-shrink-0 items-center gap-1.5 rounded-full active:scale-95"
+          className="flex-shrink-0 rounded-full active:scale-95"
         >
           <Wordmark />
-          <span className="text-[9px] tabular text-[var(--muted-foreground)] opacity-70">
-            v{APP_VERSION}
-          </span>
         </Link>
 
         {/* 右側：返回鈕 + 頁面標題 + 動作 slot */}

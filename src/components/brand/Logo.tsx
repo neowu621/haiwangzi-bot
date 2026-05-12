@@ -1,4 +1,5 @@
 import * as React from "react";
+import { APP_VERSION } from "@/lib/version";
 
 interface LogoProps {
   size?: number;
@@ -91,9 +92,11 @@ export function Wordmark({ className }: { className?: string }) {
       <div className="flex items-center gap-2">
         <Logo size={32} />
         <div className="flex flex-col leading-tight">
-          <span className="text-base font-bold tracking-wider">海王子</span>
-          <span className="text-[10px] tracking-[0.2em] text-[var(--muted-foreground)]">
-            DIVING TEAM
+          <span className="text-sm font-bold tracking-wider">
+            東北角海王子潛水
+          </span>
+          <span className="text-[10px] tabular tracking-[0.15em] text-[var(--muted-foreground)]">
+            v{APP_VERSION}
           </span>
         </div>
       </div>

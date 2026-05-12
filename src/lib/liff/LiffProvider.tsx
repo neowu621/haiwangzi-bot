@@ -123,8 +123,36 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
             u.searchParams.set("lineUserId", MOCK_PROFILE.userId);
           }
           url = u.pathname + u.search;
-        } else if (idToken) {
-          headers.set("authorization", `Bearer ${idToken}`);
+        } else {
+          // 真實 LIFF：每次都重抓最新 idToken（avoid stale token after long form fill）
+          let token = idToken;
+          try {
+            const liffMod = await import("@line/liff");
+            const fresh = liffMod.default.getIDToken();
+            if (fresh) {
+              token = fresh;
+              if (fresh !== idToken) setIdToken(fresh);
+            }
+          } catch {
+            /* fallback to cached idToken */
+          }
+          if (token) {
+            headers.set("authorization", `Bearer ${token}`);
+          } else {
+            // 沒有 idToken — 觸發 LIFF login (使用者會被導到 LINE 授權頁)
+            try {
+              const liffMod = await import("@line/liff");
+              const liff = liffMod.default;
+              if (!liff.isLoggedIn()) {
+                liff.login({ redirectUri: window.location.href });
+                throw new Error("LIFF login required, redirecting...");
+              }
+            } catch (e) {
+              if (e instanceof Error && e.message.includes("redirecting")) {
+                throw e;
+              }
+            }
+          }
         }
         if (init?.body && !headers.has("content-type")) {
           headers.set("content-type", "application/json");
