@@ -2,6 +2,16 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_06 — 2026-05-13 (Profile 統計卡可點 + 改名)
+
+### Profile 統計卡互動化
+- 「累計 Log」→「潛水次數」（更白話）
+- 「預約紀錄」可點 → 跳出 Dialog 顯示完整預約清單（按時間/狀態排）
+- 「已完成」可點 → 跳出 Dialog 只顯示 status=completed 的紀錄
+- Dialog 內每筆 booking：圖示（⚓ 日潛 / 📅 旅行團）、場次/旅行團名、日期時間、人數、狀態 badge、金額
+- 點選列表項目跳到 `/liff/my?just=<bookingId>` 看詳情
+- 0 次的數字不可點（disabled）
+
 ## 20260513_05 — 2026-05-13 (Wordmark 改名 + idToken 自動刷新 + 同伴選單突顯)
 
 ### Wordmark / Header

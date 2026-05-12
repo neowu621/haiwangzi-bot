@@ -1,22 +1,27 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Edit3,
   Phone,
   Award,
-  ListChecks,
-  Users,
   Plus,
   Trash2,
   Check,
   X,
+  Anchor,
+  Calendar,
 } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +42,24 @@ interface Companion {
   certNumber: string;
   logCount: number;
   relationship: string;
+}
+
+interface BookingHistoryItem {
+  id: string;
+  type: "daily" | "tour";
+  status: string;
+  paymentStatus: string;
+  totalAmount: number;
+  participants: number;
+  createdAt: string;
+  ref: {
+    date?: string;
+    dateStart?: string;
+    dateEnd?: string;
+    startTime?: string;
+    title?: string;
+    sites?: string[];
+  };
 }
 
 interface Me {
@@ -81,6 +104,28 @@ export default function ProfilePage() {
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [companionsOpen, setCompanionsOpen] = useState(false);
   const [autoExpanded, setAutoExpanded] = useState(false);
+
+  // 統計卡的點擊 dialog
+  const [statsDialog, setStatsDialog] = useState<
+    null | "bookings" | "completed"
+  >(null);
+  const [bookingHistory, setBookingHistory] = useState<BookingHistoryItem[]>([]);
+  const [bookingLoading, setBookingLoading] = useState(false);
+
+  async function openBookingDialog(filter: "bookings" | "completed") {
+    setStatsDialog(filter);
+    if (bookingHistory.length === 0) {
+      setBookingLoading(true);
+      try {
+        const res = await liff.fetchWithAuth<{ bookings: BookingHistoryItem[] }>(
+          "/api/bookings/my",
+        );
+        setBookingHistory(res.bookings || []);
+      } finally {
+        setBookingLoading(false);
+      }
+    }
+  }
 
   // 必填驗證
   const personalComplete =
@@ -270,30 +315,48 @@ export default function ProfilePage() {
           </CardContent>
           <Separator />
           <CardContent className="grid grid-cols-3 gap-2 p-3 text-center">
-            <div>
+            <div className="rounded-lg px-1 py-1">
               <div className="text-xl font-bold tabular text-[var(--color-phosphor)]">
                 {me.logCount}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                累計 Log
+                潛水次數
               </div>
             </div>
-            <div>
+            <button
+              type="button"
+              onClick={() => openBookingDialog("bookings")}
+              className={cn(
+                "rounded-lg px-1 py-1 transition-colors active:scale-[0.97]",
+                me.stats.totalBookings > 0 &&
+                  "hover:bg-[var(--muted)] cursor-pointer",
+              )}
+              disabled={me.stats.totalBookings === 0}
+            >
               <div className="text-xl font-bold tabular">
                 {me.stats.totalBookings}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                預約紀錄
+                預約紀錄{me.stats.totalBookings > 0 && " ▸"}
               </div>
-            </div>
-            <div>
+            </button>
+            <button
+              type="button"
+              onClick={() => openBookingDialog("completed")}
+              className={cn(
+                "rounded-lg px-1 py-1 transition-colors active:scale-[0.97]",
+                me.stats.completed > 0 &&
+                  "hover:bg-[var(--muted)] cursor-pointer",
+              )}
+              disabled={me.stats.completed === 0}
+            >
               <div className="text-xl font-bold tabular text-[var(--color-coral)]">
                 {me.stats.completed}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                已完成
+                已完成{me.stats.completed > 0 && " ▸"}
               </div>
-            </div>
+            </button>
           </CardContent>
         </Card>
 
@@ -474,7 +537,136 @@ export default function ProfilePage() {
           </div>
         </CollapsibleCard>
       </div>
+
+      {/* 預約紀錄 / 已完成 點擊跳出 Dialog */}
+      <Dialog
+        open={statsDialog !== null}
+        onOpenChange={(o) => !o && setStatsDialog(null)}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {statsDialog === "completed" ? "已完成紀錄" : "預約紀錄"}
+            </DialogTitle>
+          </DialogHeader>
+          {bookingLoading ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              載入中...
+            </div>
+          ) : (
+            <BookingHistoryList
+              bookings={bookingHistory}
+              filter={statsDialog}
+              onClose={() => setStatsDialog(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </LiffShell>
+  );
+}
+
+function statusLabel(status: string): { text: string; tone: "ok" | "warn" | "muted" } {
+  switch (status) {
+    case "pending":
+      return { text: "待確認", tone: "warn" };
+    case "confirmed":
+      return { text: "已確認", tone: "ok" };
+    case "completed":
+      return { text: "已完成", tone: "ok" };
+    case "cancelled_by_user":
+      return { text: "已取消", tone: "muted" };
+    case "cancelled_by_weather":
+      return { text: "天氣取消", tone: "muted" };
+    case "no_show":
+      return { text: "未到", tone: "warn" };
+    default:
+      return { text: status, tone: "muted" };
+  }
+}
+
+function BookingHistoryList({
+  bookings,
+  filter,
+  onClose,
+}: {
+  bookings: BookingHistoryItem[];
+  filter: "bookings" | "completed" | null;
+  onClose: () => void;
+}) {
+  const filtered = useMemo(() => {
+    if (filter === "completed") {
+      return bookings.filter((b) => b.status === "completed");
+    }
+    return bookings;
+  }, [bookings, filter]);
+
+  if (filtered.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+        {filter === "completed"
+          ? "尚未完成任何潛水紀錄"
+          : "尚無預約紀錄"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {filtered.map((b) => {
+        const date = b.ref.date || b.ref.dateStart || "—";
+        const title =
+          b.type === "tour"
+            ? b.ref.title || "旅行團"
+            : (b.ref.sites?.[0] ?? "東北角");
+        const sub =
+          b.type === "tour"
+            ? `${b.ref.dateStart?.slice(5)} → ${b.ref.dateEnd?.slice(5)}`
+            : `${b.ref.startTime ?? ""} · ${b.participants} 人`;
+        const status = statusLabel(b.status);
+        return (
+          <Link
+            key={b.id}
+            href={`/liff/my?just=${b.id}`}
+            onClick={onClose}
+            className="block rounded-lg border border-[var(--border)] p-3 transition-colors hover:bg-[var(--muted)]"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {b.type === "tour" ? (
+                    <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-[var(--color-coral)]" />
+                  ) : (
+                    <Anchor className="h-3.5 w-3.5 flex-shrink-0 text-[var(--color-phosphor)]" />
+                  )}
+                  <span className="truncate text-sm font-bold">{title}</span>
+                </div>
+                <div className="mt-1 text-[11px] tabular text-[var(--muted-foreground)]">
+                  {date} · {sub}
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <Badge
+                  variant={
+                    status.tone === "ok"
+                      ? "default"
+                      : status.tone === "warn"
+                      ? "coral"
+                      : "muted"
+                  }
+                  className="text-[10px]"
+                >
+                  {status.text}
+                </Badge>
+                <span className="text-[11px] tabular font-semibold text-[var(--color-coral)]">
+                  NT$ {b.totalAmount.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 
