@@ -219,12 +219,28 @@ export default function ProfilePage() {
   }
 
   async function persistCompanions(next: Companion[]) {
-    await liff.fetchWithAuth("/api/me", {
-      method: "PATCH",
-      body: JSON.stringify({ companions: next }),
-    });
+    // 取消任何 pending debounce 寫入，避免覆寫掉這次的明確操作
+    if (saveCompTimer) {
+      clearTimeout(saveCompTimer);
+      saveCompTimer = undefined;
+    }
+    // 樂觀更新：UI 立即響應
     setCompanions(next);
-    setSavedAt(Date.now());
+    try {
+      await liff.fetchWithAuth("/api/me", {
+        method: "PATCH",
+        body: JSON.stringify({ companions: next }),
+      });
+      setSavedAt(Date.now());
+    } catch (err) {
+      // 失敗時回滾並顯示錯誤
+      console.error("[persistCompanions]", err);
+      alert(
+        "儲存失敗：" + (err instanceof Error ? err.message : String(err)),
+      );
+      // 重新從伺服器拉回，避免狀態不一致
+      reloadMe();
+    }
   }
 
   function addCompanion() {
@@ -237,25 +253,34 @@ export default function ProfilePage() {
       logCount: 0,
       relationship: "",
     };
+    // 不立即 PATCH（避免送一個空白同伴到後端）；等使用者開始填寫才會 debounce 儲存
     setCompanions([...companions, c]);
     setCompanionsOpen(true);
   }
 
-  async function updateCompanion(id: string, patch: Partial<Companion>) {
-    const next = companions.map((c) =>
-      c.id === id ? { ...c, ...patch } : c,
-    );
-    setCompanions(next);
-    // 防抖儲存
-    if (saveCompTimer) clearTimeout(saveCompTimer);
-    saveCompTimer = setTimeout(() => {
-      persistCompanions(next);
-    }, 600);
+  function updateCompanion(id: string, patch: Partial<Companion>) {
+    setCompanions((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      // 防抖儲存（用最新 next，避免閉包陳舊）
+      if (saveCompTimer) clearTimeout(saveCompTimer);
+      saveCompTimer = setTimeout(() => {
+        persistCompanions(next);
+      }, 600);
+      return next;
+    });
   }
 
   async function removeCompanion(id: string) {
     if (!confirm("確定刪除這位同伴？")) return;
-    await persistCompanions(companions.filter((c) => c.id !== id));
+    // 用 functional update 拿最新陣列再過濾，避免陳舊閉包
+    let next: Companion[] = [];
+    setCompanions((prev) => {
+      next = prev.filter((c) => c.id !== id);
+      return next;
+    });
+    // 等 React commit 後再 PATCH
+    await new Promise((r) => setTimeout(r, 0));
+    await persistCompanions(next);
   }
 
   const completedCompanions = useMemo(

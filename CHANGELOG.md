@@ -2,6 +2,18 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_07 — 2026-05-13 (修同伴刪除 race condition)
+
+### 修「點刪除同伴沒反應」bug
+- `removeCompanion` 改用 React functional update 拿最新陣列
+- `persistCompanions` 一開始就 cancel pending debounce timer，避免覆寫
+- 樂觀更新：UI 先響應，PATCH 失敗才回滾並 alert + reload
+- `updateCompanion` 也改用 functional update，避免閉包陳舊 (stale closure)
+
+### 根本原因
+舊版的 debounce 寫入計時器，如果在使用者按刪除前 600ms 內有打字，
+刪除按下後 timer 還在排隊，刪除完之後 timer 觸發又把舊資料 PATCH 回去。
+
 ## 20260513_06 — 2026-05-13 (Profile 統計卡可點 + 改名)
 
 ### Profile 統計卡互動化
