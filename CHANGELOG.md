@@ -2,6 +2,43 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_04 — 2026-05-13 (個人資料頁折疊 + Header 版本顯示 + 對比修正)
+
+### 個人資料頁全面折疊
+- `/liff/profile` 改用同一個 `<CollapsibleCard>`
+- 個人資料、緊急聯絡人、常用同伴三大區塊都可獨立折疊
+- 自動展開：載入後若必填缺，自動展開該區
+- 自動儲存：欄位變動 600ms debounce 後自動 PATCH `/api/me`（不再有「儲存」按鈕）
+- 同伴卡片用 inline editor，每位都有完整欄位（姓名/手機/證照/編號/支數/關係）
+- 折疊摘要 → 完成顯示 ✓「姓名・證照・電話・關係」、未填顯示紅色「尚未填寫」
+
+### Header 顯示版本
+- LiffShell header 左側 Logo 旁邊加上 `v20260513_04` 小字
+- 移除右下角 footer 版本（避免重複）
+
+### 對比 / 可讀性修正
+- `/liff/dive/date/[date]` 移除整頁 midnight 主題（之前若任一場次是夜潛就會整頁變深）
+- 夜潛卡片自身保留深色主題（差異化展示），其他白色卡片回復清晰對比
+
+### 共用元件
+- 抽出 `src/components/ui/collapsible-card.tsx` 給 booking 頁、profile 頁共用
+
+## 20260513_03 — 2026-05-13 (預約 UX 重構 + Landing Page)
+
+### 預約表單可折疊重構
+- 「個人資料」拆出獨立 collapsible Card
+- 「緊急聯絡人」拆出獨立 collapsible Card（先前在同一張卡內）
+- 同伴 #N 每位都是 collapsible 卡
+- 折疊摘要：完成顯示「✓ 姓名・手機・證照・累計支數」、未填顯示「必填」紅色提示
+- 自動展開邏輯：載入 `/api/me` 後若必填欄位缺，自動展開該段；填齊自動收回
+- 新增 `<CollapsibleCard>` 共用元件
+
+### 根網址 Landing Page
+- `/` 不再直接 redirect 到 `/liff/welcome`
+- 改顯示行銷風格 landing：深海背景 + 品牌色漸層標題
+- 主 CTA 按鈕「開啟 LINE 預約」連向 `https://liff.line.me/<LIFF_ID>`
+- 處理「使用者在桌面瀏覽器分享連結點進來」的情境
+
 ## 20260512_02 — 2026-05-12 (Cron Bearer auth + Cronicle 整合)
 
 ### Cron / 排程

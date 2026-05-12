@@ -1,7 +1,16 @@
 "use client";
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Anchor, Moon, AlertTriangle, Check, Plus, X } from "lucide-react";
+import {
+  Anchor,
+  Moon,
+  AlertTriangle,
+  Check,
+  Plus,
+  X,
+  ChevronDown,
+  Pencil,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +129,10 @@ export default function TripBookingPage({
   const [signed, setSigned] = useState(false);
   const [signatureName, setSignatureName] = useState("");
 
+  // 折疊狀態：個人資料、緊急聯絡人預設折疊；缺資料時自動展開
+  const [personalOpen, setPersonalOpen] = useState(false);
+  const [emergencyOpen, setEmergencyOpen] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,6 +147,7 @@ export default function TripBookingPage({
   }, [tripId, liff]);
 
   // 載入本人資料 + 同伴清單，第一次預約後再進來會自動帶入
+  const [meLoaded, setMeLoaded] = useState(false);
   useEffect(() => {
     liff
       .fetchWithAuth<{
@@ -160,8 +175,28 @@ export default function TripBookingPage({
         }
         setSavedCompanions(me.companions ?? []);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setMeLoaded(true));
   }, [liff]);
+
+  // 必填欄位是否齊全（給折疊摘要 + 提交檢查用）
+  const personalComplete =
+    realName.trim().length >= 2 &&
+    phone.trim().length >= 8 &&
+    cert !== "";
+  const emergencyComplete =
+    emergencyName.trim().length >= 2 &&
+    emergencyPhone.trim().length >= 8 &&
+    emergencyRel.trim().length >= 1;
+
+  // 缺資料時自動展開：等 /api/me 載完後檢查一次
+  const [autoExpanded, setAutoExpanded] = useState(false);
+  useEffect(() => {
+    if (!meLoaded || autoExpanded) return;
+    if (!personalComplete) setPersonalOpen(true);
+    if (!emergencyComplete) setEmergencyOpen(true);
+    setAutoExpanded(true);
+  }, [meLoaded, personalComplete, emergencyComplete, autoExpanded]);
 
   // 人數變動時調整同伴 slot 數量
   useEffect(() => {
@@ -424,12 +459,20 @@ export default function TripBookingPage({
           </CardContent>
         </Card>
 
-        {/* 個人資料 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">個人資料</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        {/* 個人資料（可折疊） */}
+        <CollapsibleCard
+          title="個人資料"
+          required
+          complete={personalComplete}
+          open={personalOpen}
+          onToggle={() => setPersonalOpen(!personalOpen)}
+          summary={
+            personalComplete
+              ? `${realName}・${phone}・${cert}${logCount ? `・${logCount}支` : ""}`
+              : "尚未填寫（必填）"
+          }
+        >
+          <div className="space-y-3">
             {/* 姓名 + 手機 同排 */}
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -498,27 +541,6 @@ export default function TripBookingPage({
                 />
               </div>
             </div>
-            <Separator />
-            <div className="text-sm font-semibold">緊急聯絡人 *</div>
-            {/* 緊急聯絡人三欄並排 */}
-            <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
-              <Input
-                value={emergencyName}
-                onChange={(e) => setEmergencyName(e.target.value)}
-                placeholder="姓名"
-              />
-              <Input
-                value={emergencyRel}
-                onChange={(e) => setEmergencyRel(e.target.value)}
-                placeholder="關係"
-              />
-              <Input
-                type="tel"
-                value={emergencyPhone}
-                onChange={(e) => setEmergencyPhone(e.target.value)}
-                placeholder="電話"
-              />
-            </div>
             <div>
               <Label htmlFor="notes">備註 (教練可見)</Label>
               <Input
@@ -528,8 +550,41 @@ export default function TripBookingPage({
                 placeholder="耳壓不適 / 過敏 / 用藥..."
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CollapsibleCard>
+
+        {/* 緊急聯絡人（可折疊） */}
+        <CollapsibleCard
+          title="緊急聯絡人"
+          required
+          complete={emergencyComplete}
+          open={emergencyOpen}
+          onToggle={() => setEmergencyOpen(!emergencyOpen)}
+          summary={
+            emergencyComplete
+              ? `${emergencyName}・${emergencyRel}・${emergencyPhone}`
+              : "尚未填寫（必填）"
+          }
+        >
+          <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
+            <Input
+              value={emergencyName}
+              onChange={(e) => setEmergencyName(e.target.value)}
+              placeholder="姓名 *"
+            />
+            <Input
+              value={emergencyRel}
+              onChange={(e) => setEmergencyRel(e.target.value)}
+              placeholder="關係 *"
+            />
+            <Input
+              type="tel"
+              value={emergencyPhone}
+              onChange={(e) => setEmergencyPhone(e.target.value)}
+              placeholder="電話 *"
+            />
+          </div>
+        </CollapsibleCard>
 
         {/* 同伴清單 (人數 > 1 才出現) */}
         {companionSlots.length > 0 && (
@@ -842,6 +897,15 @@ function CompanionSlotEditor({
   saved: Companion[];
   onChange: (s: Companion) => void;
 }) {
+  const complete = slot.name.trim().length >= 2 && slot.cert !== null;
+  // 預設：已填齊就折疊，沒填齊就展開
+  const [open, setOpen] = useState(!complete);
+  // 名單第一次變動時，已填齊就自動收起
+  useEffect(() => {
+    if (complete) setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complete]);
+
   function pickSaved(id: string) {
     if (!id) {
       onChange(emptyCompanion());
@@ -851,24 +915,74 @@ function CompanionSlotEditor({
     if (c) onChange({ ...c });
   }
 
+  // 收合狀態：摘要列
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "flex w-full items-center justify-between rounded-lg border-2 px-3 py-3 text-left",
+          complete
+            ? "border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5"
+            : "border-dashed border-[var(--color-coral)] bg-[var(--color-coral)]/5",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {complete ? (
+            <Check className="h-4 w-4 text-[var(--color-phosphor)]" />
+          ) : (
+            <AlertTriangle className="h-4 w-4 text-[var(--color-coral)]" />
+          )}
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-bold">同伴 #{idx}</span>
+            <span
+              className={cn(
+                "text-xs",
+                complete
+                  ? "text-[var(--foreground)]"
+                  : "text-[var(--color-coral)]",
+              )}
+            >
+              {complete
+                ? `${slot.name}・${slot.cert}${slot.phone ? `・${slot.phone}` : ""}${slot.relationship ? `・${slot.relationship}` : ""}`
+                : "尚未填寫（必填）"}
+            </span>
+          </div>
+        </div>
+        <Pencil className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+      </button>
+    );
+  }
+
   return (
-    <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-3">
+    <div className="rounded-lg border-2 border-[var(--color-phosphor)]/40 bg-white p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-bold">同伴 #{idx}</span>
-        {saved.length > 0 && (
-          <select
-            value={slot.id ?? ""}
-            onChange={(e) => pickSaved(e.target.value)}
-            className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-medium"
+        <div className="flex items-center gap-1.5">
+          {saved.length > 0 && (
+            <select
+              value={slot.id ?? ""}
+              onChange={(e) => pickSaved(e.target.value)}
+              className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-medium"
+            >
+              <option value="">— 手動輸入 —</option>
+              {saved.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.cert ?? "?"})
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-full p-1 text-[var(--muted-foreground)] hover:bg-black/5"
+            aria-label="收起"
           >
-            <option value="">— 手動輸入 —</option>
-            {saved.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.cert ?? "?"})
-              </option>
-            ))}
-          </select>
-        )}
+            <ChevronDown className="h-4 w-4 rotate-180" />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -938,3 +1052,5 @@ function CompanionSlotEditor({
     </div>
   );
 }
+
+// CollapsibleCard 已搬到 @/components/ui/collapsible-card

@@ -1,7 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Save,
   Edit3,
   Phone,
   Award,
@@ -9,6 +8,8 @@ import {
   Users,
   Plus,
   Trash2,
+  Check,
+  X,
 } from "lucide-react";
 import {
   Card,
@@ -24,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -57,10 +59,10 @@ const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
 export default function ProfilePage() {
   const liff = useLiff();
   const [me, setMe] = useState<Me | null>(null);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
+  // 本人資料
   const [realName, setRealName] = useState("");
   const [phone, setPhone] = useState("");
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
@@ -71,10 +73,24 @@ export default function ProfilePage() {
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
 
-  // 同伴管理
+  // 同伴
   const [companions, setCompanions] = useState<Companion[]>([]);
-  const [companionDraft, setCompanionDraft] = useState<Companion | null>(null);
-  const [savingCompanions, setSavingCompanions] = useState(false);
+
+  // 折疊狀態
+  const [personalOpen, setPersonalOpen] = useState(false);
+  const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const [companionsOpen, setCompanionsOpen] = useState(false);
+  const [autoExpanded, setAutoExpanded] = useState(false);
+
+  // 必填驗證
+  const personalComplete =
+    realName.trim().length >= 2 &&
+    phone.trim().length >= 8 &&
+    cert !== "";
+  const emergencyComplete =
+    emergencyName.trim().length >= 2 &&
+    emergencyPhone.trim().length >= 8 &&
+    emergencyRel.trim().length >= 1;
 
   function reloadMe() {
     return liff
@@ -100,49 +116,36 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liff]);
 
-  async function persistCompanions(next: Companion[]) {
-    setSavingCompanions(true);
-    try {
-      await liff.fetchWithAuth("/api/me", {
-        method: "PATCH",
-        body: JSON.stringify({ companions: next }),
-      });
-      setCompanions(next);
-    } finally {
-      setSavingCompanions(false);
-    }
-  }
+  // 載完後自動展開未填齊全的卡
+  useEffect(() => {
+    if (!me || autoExpanded) return;
+    if (!personalComplete) setPersonalOpen(true);
+    if (!emergencyComplete) setEmergencyOpen(true);
+    setAutoExpanded(true);
+  }, [me, personalComplete, emergencyComplete, autoExpanded]);
 
-  function startNewCompanion() {
-    setCompanionDraft({
-      id: crypto.randomUUID(),
-      name: "",
-      phone: "",
-      cert: null,
-      certNumber: "",
-      logCount: 0,
-      relationship: "",
-    });
-  }
+  // 自動儲存個人資料（debounce 600ms）
+  useEffect(() => {
+    if (!me) return;
+    const t = setTimeout(() => {
+      saveSelf();
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    realName,
+    phone,
+    cert,
+    certNumber,
+    logCount,
+    notes,
+    emergencyName,
+    emergencyPhone,
+    emergencyRel,
+  ]);
 
-  async function commitDraft() {
-    if (!companionDraft) return;
-    if (companionDraft.name.trim().length < 1) return;
-    const existing = companions.findIndex((c) => c.id === companionDraft.id);
-    const next =
-      existing >= 0
-        ? companions.map((c, i) => (i === existing ? companionDraft : c))
-        : [...companions, companionDraft];
-    await persistCompanions(next);
-    setCompanionDraft(null);
-  }
-
-  async function removeCompanion(id: string) {
-    if (!confirm("確定刪除這位同伴？")) return;
-    await persistCompanions(companions.filter((c) => c.id !== id));
-  }
-
-  async function save() {
+  async function saveSelf() {
+    if (!me) return;
     setSaving(true);
     try {
       await liff.fetchWithAuth("/api/me", {
@@ -164,12 +167,59 @@ export default function ProfilePage() {
               : null,
         }),
       });
-      setEditing(false);
       setSavedAt(Date.now());
     } finally {
       setSaving(false);
     }
   }
+
+  async function persistCompanions(next: Companion[]) {
+    await liff.fetchWithAuth("/api/me", {
+      method: "PATCH",
+      body: JSON.stringify({ companions: next }),
+    });
+    setCompanions(next);
+    setSavedAt(Date.now());
+  }
+
+  function addCompanion() {
+    const c: Companion = {
+      id: crypto.randomUUID(),
+      name: "",
+      phone: "",
+      cert: null,
+      certNumber: "",
+      logCount: 0,
+      relationship: "",
+    };
+    setCompanions([...companions, c]);
+    setCompanionsOpen(true);
+  }
+
+  async function updateCompanion(id: string, patch: Partial<Companion>) {
+    const next = companions.map((c) =>
+      c.id === id ? { ...c, ...patch } : c,
+    );
+    setCompanions(next);
+    // 防抖儲存
+    if (saveCompTimer) clearTimeout(saveCompTimer);
+    saveCompTimer = setTimeout(() => {
+      persistCompanions(next);
+    }, 600);
+  }
+
+  async function removeCompanion(id: string) {
+    if (!confirm("確定刪除這位同伴？")) return;
+    await persistCompanions(companions.filter((c) => c.id !== id));
+  }
+
+  const completedCompanions = useMemo(
+    () =>
+      companions.filter(
+        (c) => c.name.trim().length >= 2 && c.cert !== null,
+      ),
+    [companions],
+  );
 
   if (!me) {
     return (
@@ -187,30 +237,27 @@ export default function ProfilePage() {
       backHref="/liff/welcome"
       bottomNav={<BottomNav />}
       rightSlot={
-        editing ? (
-          <Button size="sm" disabled={saving} onClick={save}>
-            <Save className="h-4 w-4" />
-            {saving ? "儲存..." : "儲存"}
-          </Button>
-        ) : (
-          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-            <Edit3 className="h-4 w-4" />
-            編輯
-          </Button>
-        )
+        saving ? (
+          <span className="text-[11px] text-[var(--muted-foreground)]">儲存中...</span>
+        ) : savedAt ? (
+          <span className="text-[11px] font-semibold text-[var(--color-phosphor)]">
+            ✓ 已儲存
+          </span>
+        ) : null
       }
     >
-      <div className="space-y-4 px-4 pt-4">
+      <div className="space-y-3 px-4 pt-3">
+        {/* 顯示卡（不可摺疊）*/}
         <Card>
-          <CardContent className="flex items-center gap-4 p-5">
-            <Avatar className="h-16 w-16">
+          <CardContent className="flex items-center gap-4 p-4">
+            <Avatar className="h-14 w-14">
               <AvatarImage src={liff.profile?.pictureUrl} />
               <AvatarFallback>
                 {(me.realName || me.displayName).slice(0, 1)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <div className="text-lg font-bold">
+              <div className="text-base font-bold">
                 {me.realName || me.displayName}
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--muted-foreground)] tabular">
@@ -222,9 +269,9 @@ export default function ProfilePage() {
             </div>
           </CardContent>
           <Separator />
-          <CardContent className="grid grid-cols-3 gap-2 p-4 text-center">
+          <CardContent className="grid grid-cols-3 gap-2 p-3 text-center">
             <div>
-              <div className="text-2xl font-bold tabular text-[var(--color-phosphor)]">
+              <div className="text-xl font-bold tabular text-[var(--color-phosphor)]">
                 {me.logCount}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
@@ -232,7 +279,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold tabular">
+              <div className="text-xl font-bold tabular">
                 {me.stats.totalBookings}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
@@ -240,7 +287,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
+              <div className="text-xl font-bold tabular text-[var(--color-coral)]">
                 {me.stats.completed}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
@@ -250,326 +297,347 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Phone className="h-4 w-4" />
-              聯絡資訊
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Field
-              label="姓名"
-              value={realName}
-              setValue={setRealName}
-              editing={editing}
-            />
-            <Field
-              label="手機"
-              type="tel"
-              value={phone}
-              setValue={setPhone}
-              editing={editing}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Award className="h-4 w-4" />
-              潛水經歷
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label>證照等級</Label>
-              {editing ? (
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {CERTS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCert(c)}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-xs font-medium",
-                        cert === c
-                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
-                          : "border-[var(--border)]",
-                      )}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-1 text-base font-semibold">
-                  {cert || "—"}
-                </div>
-              )}
-            </div>
-            <Field
-              label="證照編號"
-              value={certNumber}
-              setValue={setCertNumber}
-              editing={editing}
-            />
-            <Field
-              label="累計潛水次數"
-              type="numeric"
-              value={logCount}
-              setValue={setLogCount}
-              editing={editing}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ListChecks className="h-4 w-4" />
-              緊急聯絡人
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Field
-              label="姓名"
-              value={emergencyName}
-              setValue={setEmergencyName}
-              editing={editing}
-            />
-            <Field
-              label="關係"
-              value={emergencyRel}
-              setValue={setEmergencyRel}
-              editing={editing}
-            />
-            <Field
-              label="手機"
-              type="tel"
-              value={emergencyPhone}
-              setValue={setEmergencyPhone}
-              editing={editing}
-            />
-          </CardContent>
-        </Card>
-
-        {/* 同伴管理 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" />
-              常用同伴 ({companions.length})
-            </CardTitle>
-            <p className="-mt-1 text-[11px] text-[var(--muted-foreground)]">
-              下次多人預約時可直接挑選，省去重複輸入
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {companions.length === 0 && !companionDraft && (
-              <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-4 text-center text-xs text-[var(--muted-foreground)]">
-                還沒有儲存的同伴。預約時帶人會自動加入，或在這手動新增。
-              </div>
-            )}
-            {companions.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-2"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-semibold">
-                    {c.name}
-                    {c.cert && (
-                      <Badge variant="muted" className="ml-1.5 text-[10px]">
-                        {c.cert}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-[11px] tabular text-[var(--muted-foreground)]">
-                    {c.phone || "—"}
-                    {c.logCount > 0 && ` · ${c.logCount} logs`}
-                    {c.relationship && ` · ${c.relationship}`}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCompanionDraft({ ...c })}
-                  className="rounded-full p-1.5 hover:bg-[var(--muted)]"
-                  aria-label="編輯"
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeCompanion(c.id)}
-                  className="rounded-full p-1.5 hover:bg-[var(--color-coral)]/15 text-[var(--color-coral)]"
-                  aria-label="刪除"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-
-            {companionDraft ? (
-              <div className="rounded-lg border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/5 p-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    value={companionDraft.name}
-                    onChange={(e) =>
-                      setCompanionDraft({
-                        ...companionDraft,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="姓名 *"
-                  />
-                  <Input
-                    type="tel"
-                    value={companionDraft.phone}
-                    onChange={(e) =>
-                      setCompanionDraft({
-                        ...companionDraft,
-                        phone: e.target.value,
-                      })
-                    }
-                    placeholder="手機"
-                  />
-                  <select
-                    value={companionDraft.cert ?? ""}
-                    onChange={(e) =>
-                      setCompanionDraft({
-                        ...companionDraft,
-                        cert: (e.target.value ||
-                          null) as Companion["cert"],
-                      })
-                    }
-                    className="flex h-11 w-full rounded-[var(--radius-card)] border border-[var(--input)] bg-white pl-3 pr-2 text-sm"
-                  >
-                    <option value="">證照</option>
-                    {CERTS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    inputMode="numeric"
-                    value={companionDraft.logCount || ""}
-                    onChange={(e) =>
-                      setCompanionDraft({
-                        ...companionDraft,
-                        logCount: Number(
-                          e.target.value.replace(/\D/g, "") || 0,
-                        ),
-                      })
-                    }
-                    placeholder="累計潛水支數"
-                    className="text-center"
-                  />
-                </div>
+        {/* 個人資料（含證照、聯絡）— Collapsible，必填 */}
+        <CollapsibleCard
+          title="個人資料"
+          required
+          complete={personalComplete}
+          open={personalOpen}
+          onToggle={() => setPersonalOpen(!personalOpen)}
+          summary={
+            personalComplete
+              ? `${realName}・${phone}・${cert}${logCount ? `・${logCount}支` : ""}`
+              : "尚未填寫（預約時會強制填寫）"
+          }
+        >
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>姓名 *</Label>
                 <Input
-                  value={companionDraft.relationship}
-                  onChange={(e) =>
-                    setCompanionDraft({
-                      ...companionDraft,
-                      relationship: e.target.value,
-                    })
-                  }
-                  placeholder="關係（家人/朋友/配偶...）"
-                  className="mt-2"
+                  value={realName}
+                  onChange={(e) => setRealName(e.target.value)}
+                  placeholder="本名"
                 />
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCompanionDraft(null)}
-                    disabled={savingCompanions}
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    onClick={commitDraft}
-                    disabled={
-                      savingCompanions || companionDraft.name.trim() === ""
-                    }
-                  >
-                    {savingCompanions ? "..." : "儲存"}
-                  </Button>
-                </div>
               </div>
-            ) : (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={startNewCompanion}
-              >
-                <Plus className="h-4 w-4" />
-                新增同伴
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">備註 (教練可見)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {editing ? (
+              <div>
+                <Label>手機 *</Label>
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="09xx-xxx-xxx"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>
+                <Award className="mr-1 inline h-3.5 w-3.5" />
+                證照等級 *
+              </Label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {CERTS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCert(c)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium",
+                      cert === c
+                        ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                        : "border-[var(--border)]",
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>證照編號</Label>
+                <Input
+                  value={certNumber}
+                  onChange={(e) => setCertNumber(e.target.value)}
+                  placeholder="例: TW-AOW-12345"
+                />
+              </div>
+              <div>
+                <Label>累計潛水支數</Label>
+                <Input
+                  inputMode="numeric"
+                  value={logCount}
+                  onChange={(e) =>
+                    setLogCount(e.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="例: 25"
+                  className="text-center"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>
+                <Phone className="mr-1 inline h-3.5 w-3.5" />
+                備註 (教練可見)
+              </Label>
               <textarea
-                className="w-full rounded-[var(--radius-card)] border border-[var(--input)] bg-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                rows={3}
+                className="mt-1 w-full rounded-[var(--radius-card)] border border-[var(--input)] bg-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="耳壓平衡 / 過敏 / 慢性病 / 用藥 / 裝備偏好..."
+                placeholder="耳壓平衡 / 過敏 / 慢性病 / 用藥..."
               />
-            ) : (
-              <div className="whitespace-pre-wrap text-sm text-[var(--muted-foreground)]">
-                {notes || "—"}
+            </div>
+          </div>
+        </CollapsibleCard>
+
+        {/* 緊急聯絡人 — Collapsible，必填 */}
+        <CollapsibleCard
+          title="緊急聯絡人"
+          required
+          complete={emergencyComplete}
+          open={emergencyOpen}
+          onToggle={() => setEmergencyOpen(!emergencyOpen)}
+          summary={
+            emergencyComplete
+              ? `${emergencyName}・${emergencyRel}・${emergencyPhone}`
+              : "尚未填寫（預約時會強制填寫）"
+          }
+        >
+          <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
+            <Input
+              value={emergencyName}
+              onChange={(e) => setEmergencyName(e.target.value)}
+              placeholder="姓名 *"
+            />
+            <Input
+              value={emergencyRel}
+              onChange={(e) => setEmergencyRel(e.target.value)}
+              placeholder="關係 *"
+            />
+            <Input
+              type="tel"
+              value={emergencyPhone}
+              onChange={(e) => setEmergencyPhone(e.target.value)}
+              placeholder="電話 *"
+            />
+          </div>
+        </CollapsibleCard>
+
+        {/* 常用同伴 — Collapsible */}
+        <CollapsibleCard
+          title="常用同伴"
+          complete={completedCompanions.length > 0}
+          open={companionsOpen}
+          onToggle={() => setCompanionsOpen(!companionsOpen)}
+          rightHint={
+            companions.length > 0 ? (
+              <span>· {companions.length} 位</span>
+            ) : null
+          }
+          summary={
+            companions.length === 0
+              ? "尚未新增同伴（預約時可一鍵帶入）"
+              : companions
+                  .filter((c) => c.name.trim())
+                  .map((c) => c.name)
+                  .join("、") || "尚未填寫"
+          }
+        >
+          <div className="space-y-2">
+            <p className="text-[11px] text-[var(--muted-foreground)]">
+              預先把常一起下水的朋友資料填好，下次多人預約直接挑選。
+              預約時新填的同伴也會自動加進這裡。
+            </p>
+            {companions.length === 0 && (
+              <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-4 text-center text-xs text-[var(--muted-foreground)]">
+                還沒有同伴，點下方「新增同伴」開始
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {savedAt && (
-          <div className="rounded-lg bg-[var(--color-phosphor)]/15 p-3 text-center text-sm font-semibold text-[var(--color-ocean-deep)]">
-            ✓ 已儲存
+            {companions.map((c, idx) => (
+              <InlineCompanionEditor
+                key={c.id}
+                idx={idx + 1}
+                companion={c}
+                onChange={(patch) => updateCompanion(c.id, patch)}
+                onRemove={() => removeCompanion(c.id)}
+              />
+            ))}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={addCompanion}
+            >
+              <Plus className="h-4 w-4" />
+              新增同伴 #{companions.length + 1}
+            </Button>
           </div>
-        )}
+        </CollapsibleCard>
       </div>
     </LiffShell>
   );
 }
 
-function Field({
-  label,
-  value,
-  setValue,
-  editing,
-  type = "text",
+// 模組級 timer，跨 render 持有
+let saveCompTimer: NodeJS.Timeout | undefined;
+
+/**
+ * 同伴 #N 的「永遠展開」inline editor。
+ * 預約時用同一個版面，使用者一打開常用同伴就能直接填寫。
+ */
+function InlineCompanionEditor({
+  idx,
+  companion,
+  onChange,
+  onRemove,
 }: {
-  label: string;
-  value: string;
-  setValue: (v: string) => void;
-  editing: boolean;
-  type?: "text" | "tel" | "numeric";
+  idx: number;
+  companion: Companion;
+  onChange: (patch: Partial<Companion>) => void;
+  onRemove: () => void;
 }) {
+  const complete = companion.name.trim().length >= 2 && companion.cert !== null;
+  const [open, setOpen] = useState(!complete);
+  useEffect(() => {
+    if (complete) setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complete]);
+
+  // 收合：摘要列
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "flex w-full items-center justify-between rounded-lg border-2 px-3 py-2.5 text-left",
+          complete
+            ? "border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5"
+            : "border-dashed border-[var(--color-coral)] bg-[var(--color-coral)]/5",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {complete ? (
+            <Check className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
+          ) : (
+            <X className="h-3.5 w-3.5 text-[var(--color-coral)]" />
+          )}
+          <span className="text-xs font-bold">朋友 #{idx}</span>
+          <span
+            className={cn(
+              "text-xs",
+              complete
+                ? "text-[var(--foreground)]"
+                : "text-[var(--color-coral)]",
+            )}
+          >
+            {complete
+              ? `${companion.name}・${companion.cert}${companion.phone ? `・${companion.phone}` : ""}${companion.relationship ? `・${companion.relationship}` : ""}`
+              : "尚未填寫"}
+          </span>
+        </div>
+        <Edit3 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+      </button>
+    );
+  }
+
   return (
-    <div>
-      <Label>{label}</Label>
-      {editing ? (
-        <Input
-          type={type === "numeric" ? "text" : type}
-          inputMode={type === "numeric" ? "numeric" : undefined}
-          value={value}
-          onChange={(e) =>
-            setValue(
-              type === "numeric" ? e.target.value.replace(/\D/g, "") : e.target.value,
-            )
-          }
-        />
-      ) : (
-        <div className="mt-1 text-base">{value || "—"}</div>
-      )}
+    <div className="rounded-lg border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-bold">朋友 #{idx}</span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full p-1 text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10"
+            aria-label="刪除"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-full p-1 text-[var(--muted-foreground)] hover:bg-black/5"
+            aria-label="收起"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-[10px]">姓名 *</Label>
+            <Input
+              value={companion.name}
+              onChange={(e) => onChange({ name: e.target.value })}
+              placeholder="本名"
+            />
+          </div>
+          <div>
+            <Label className="text-[10px]">手機</Label>
+            <Input
+              type="tel"
+              value={companion.phone}
+              onChange={(e) => onChange({ phone: e.target.value })}
+              placeholder="09xx-xxx-xxx"
+            />
+          </div>
+        </div>
+        <div>
+          <Label className="text-[10px]">證照等級 *</Label>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {CERTS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onChange({ cert: c })}
+                className={cn(
+                  "rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+                  companion.cert === c
+                    ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                    : "border-[var(--border)]",
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-[10px]">證照編號</Label>
+            <Input
+              value={companion.certNumber}
+              onChange={(e) => onChange({ certNumber: e.target.value })}
+              placeholder="可選填"
+            />
+          </div>
+          <div>
+            <Label className="text-[10px]">累計潛水支數</Label>
+            <Input
+              inputMode="numeric"
+              value={companion.logCount || ""}
+              onChange={(e) =>
+                onChange({
+                  logCount: Number(e.target.value.replace(/\D/g, "") || 0),
+                })
+              }
+              placeholder="例: 25"
+              className="text-center"
+            />
+          </div>
+        </div>
+        <div>
+          <Label className="text-[10px]">關係</Label>
+          <Input
+            value={companion.relationship}
+            onChange={(e) => onChange({ relationship: e.target.value })}
+            placeholder="家人 / 朋友 / 配偶 / 同事..."
+          />
+        </div>
+      </div>
     </div>
   );
 }

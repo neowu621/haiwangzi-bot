@@ -40,13 +40,13 @@ export default function DiveDateListPage({
       .finally(() => setLoading(false));
   }, [date, liff]);
 
-  const hasNight = trips.some((t) => t.isNightDive);
-
+  // 注意：不對整個 shell 套 midnight，
+  //  否則白色卡片上的灰色字會被全域 text-white 覆寫導致對比不足。
+  //  夜潛 trip 的卡片本身已套深色主題（line 73）。
   return (
     <LiffShell
       title={`${date} 場次`}
       backHref="/liff/calendar"
-      midnight={hasNight}
     >
       <section className="space-y-3 px-4 pt-4">
         {loading && (

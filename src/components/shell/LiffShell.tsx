@@ -53,13 +53,16 @@ export function LiffShell({
       )}
     >
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur">
-        {/* 左側：Logo 永遠在這，點按回首頁 */}
+        {/* 左側：Logo + 版本，永遠在這，點按回首頁 */}
         <Link
           href="/liff/welcome"
           aria-label="回首頁"
-          className="flex-shrink-0 rounded-full active:scale-95"
+          className="flex flex-shrink-0 items-center gap-1.5 rounded-full active:scale-95"
         >
           <Wordmark />
+          <span className="text-[9px] tabular text-[var(--muted-foreground)] opacity-70">
+            v{APP_VERSION}
+          </span>
         </Link>
 
         {/* 右側：返回鈕 + 頁面標題 + 動作 slot */}
@@ -96,9 +99,7 @@ export function LiffShell({
 
       {bottomNav ? bottomNav : null}
 
-      <footer className="pointer-events-none fixed bottom-1 right-2 z-10 text-[10px] tabular text-[var(--muted-foreground)] opacity-60">
-        v{APP_VERSION}
-      </footer>
+      {/* 版本已搬到 header 左上，footer 留空（讓底部 nav 不被擋） */}
     </div>
   );
 }
