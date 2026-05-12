@@ -6,38 +6,82 @@ import { buildFlexByKey } from "@/lib/flex";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/cron/reminders
-// Zeabur cron 每天早上 09:00 與下午 18:00 觸發
-//   - 出發前一天 18:00 → 寄 D-1 行前提醒 (日潛 + 旅行團)
-//   - 旅行團尾款截止前 3 天 09:00 → 寄尾款提醒
-//   - 旅行團出發前 1 天 09:00 → 寄行前手冊
+// ─────────────────────────────────────────────────────────────
+// /api/cron/reminders
+// ─────────────────────────────────────────────────────────────
 //
-// 認證：簡單用 query string ?token=<CRON_TOKEN>，Zeabur 上設定為環境變數
+// 由 Cronicle (https://neowu-cron-hub.zeabur.app) 觸發。
+// 推薦頻率：每 15~30 分鐘一次（dedup 透過 ReminderLog 表保證不重發）。
+//
+// 認證：Authorization: Bearer <CRON_SECRET>  (header)
+//   - CRON_SECRET 設在 Zeabur haiwangzi-bot 環境變數
+//   - Cronicle 端設環境變數 HAIWANGZI_CRON_SECRET 並在 curl --header 帶入
+//
+// 參數：?pollWindowMinutes=30  (選填，預設 30)
+//   - 紀錄用，方便 log 對齊 cron 頻率
+//   - 真實 dedup 由 ReminderLog 表負責 (一筆 booking + type 只發一次)
+//
+// 邏輯：
+//   1. D-1 日潛行前提醒：明日所有 open 的 daily trip 之 confirmed bookings
+//   2. 旅行團尾款提醒：3 天後出發、deposit_paid 但尾款未清的 booking
+//   3. (未來可擴充：D-1 行前手冊、D-3 訂金到期...)
+//
+// 支援 GET (瀏覽器手動測試) 與 POST (Cronicle 標準呼叫)。
+//
+export async function POST(req: NextRequest) {
+  return handle(req);
+}
+
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token");
-  if (!process.env.CRON_TOKEN || token !== process.env.CRON_TOKEN) {
+  return handle(req);
+}
+
+async function handle(req: NextRequest) {
+  // ── 1. Bearer auth ──────────────────────────────────────────
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return NextResponse.json(
+      { error: "server_misconfigured: CRON_SECRET not set" },
+      { status: 500 },
+    );
+  }
+  const auth = req.headers.get("authorization") ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (token !== secret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // ── 2. parse params ─────────────────────────────────────────
+  const url = new URL(req.url);
+  const pollWindowMinutes = Math.max(
+    1,
+    Math.min(1440, Number(url.searchParams.get("pollWindowMinutes") ?? 30)),
+  );
+  const startedAt = new Date();
+
+  // ── 3. LINE client (dry-run if not configured) ──────────────
   if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
     return NextResponse.json({
       ok: true,
-      sent: 0,
-      note: "LINE_CHANNEL_ACCESS_TOKEN 未設定，僅 dry-run",
+      sent: [],
+      skipped: 0,
+      pollWindowMinutes,
+      note: "LINE_CHANNEL_ACCESS_TOKEN 未設定，dry-run",
+      tookMs: Date.now() - startedAt.getTime(),
     });
   }
 
   const client = getLineClient();
   const sent: Array<{ type: string; userId: string; bookingId: string }> = [];
+  const errors: Array<{ type: string; bookingId: string; error: string }> = [];
 
-  // 計算明日的 00:00 與 24:00
+  // ── 4. 計算明日 00:00 與 24:00 ───────────────────────────────
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
   const dayAfter = new Date(tomorrow.getTime() + 86400000);
 
-  // ─── D-1 日潛提醒 ─────────────────────────────────
+  // ── 5. D-1 日潛行前提醒 ─────────────────────────────────────
   const dailyTrips = await prisma.divingTrip.findMany({
     where: {
       date: { gte: tomorrow, lt: dayAfter },
@@ -80,19 +124,21 @@ export async function GET(req: NextRequest) {
         });
         sent.push({ type: "d1_reminder", userId: b.userId, bookingId: b.id });
       } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
         await prisma.reminderLog.create({
           data: {
             bookingId: b.id,
             type: "d1_reminder",
             channel: "line",
-            error: e instanceof Error ? e.message : String(e),
+            error: errMsg,
           },
         });
+        errors.push({ type: "d1_reminder", bookingId: b.id, error: errMsg });
       }
     }
   }
 
-  // ─── 尾款提醒 (旅行團出發前 3 天) ─────────────────
+  // ── 6. 旅行團尾款提醒 (出發前 3 天) ──────────────────────────
   const in3 = new Date();
   in3.setDate(in3.getDate() + 3);
   in3.setHours(0, 0, 0, 0);
@@ -145,17 +191,30 @@ export async function GET(req: NextRequest) {
           bookingId: b.id,
         });
       } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
         await prisma.reminderLog.create({
           data: {
             bookingId: b.id,
             type: "final_reminder",
             channel: "line",
-            error: e instanceof Error ? e.message : String(e),
+            error: errMsg,
           },
+        });
+        errors.push({
+          type: "final_reminder",
+          bookingId: b.id,
+          error: errMsg,
         });
       }
     }
   }
 
-  return NextResponse.json({ ok: true, sent });
+  return NextResponse.json({
+    ok: true,
+    pollWindowMinutes,
+    sent,
+    errors,
+    counts: { sent: sent.length, errors: errors.length },
+    tookMs: Date.now() - startedAt.getTime(),
+  });
 }

@@ -129,7 +129,7 @@ Mock user 是 `U_mock_dev_user_0001`，DB 中已設為 admin role，所以三種
 - [ ] Zeabur 填所有環境變數
 - [ ] LINE LIFF console endpoint URL 指向 Zeabur 網域
 - [ ] LINE Messaging webhook URL → `https://<zeabur>/api/webhook`
-- [ ] Zeabur 設 Cron：每天 09:00 + 18:00 GET `/api/cron/reminders?token=$CRON_TOKEN`
+- [ ] Cronicle (https://neowu-cron-hub.zeabur.app) 設 job：每 30 分鐘 POST `/api/cron/reminders?pollWindowMinutes=30` with `Authorization: Bearer $HAIWANGZI_CRON_SECRET`（詳見 `docs/CRON_SETUP.md`）
 - [ ] `npm run richmenu:build` → 上傳 `POST /api/admin/richmenu/sync?role=customer`（再跑 coach / admin）
 - [ ] 真機跑一輪：預約 → 上傳付款 → 教練核對 → 收 Flex
 

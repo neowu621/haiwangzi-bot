@@ -151,8 +151,8 @@ Admin 端 `/liff/admin/broadcast` 可直接挑模板群發。
 3. 更新 `CHANGELOG.md` 加一筆
 4. `git push` → Zeabur 自動 build
 5. Zeabur 開 Postgres add-on，把 `DATABASE_URL` 連到 service
-6. 設定所有環境變數（特別是 `LINE_CHANNEL_*`、`R2_*`、`CRON_TOKEN`、`NEXT_PUBLIC_BASE_URL`）
-7. 設定 Cron（每天 09:00 / 18:00 GET `/api/cron/reminders?token=...`）
+6. 設定所有環境變數（特別是 `LINE_CHANNEL_*`、`R2_*`、`CRON_SECRET`、`NEXT_PUBLIC_BASE_URL`）
+7. 設定 Cron（由 [Automation-Hub Cronicle](https://neowu-cron-hub.zeabur.app) 每 30 分鐘 POST `/api/cron/reminders` with `Authorization: Bearer $CRON_SECRET`，詳見 `docs/CRON_SETUP.md`）
 8. LIFF console endpoint URL 改成 Zeabur 網域
 
 詳見 [STATUS.md](./STATUS.md) 中的 deploy checklist。

@@ -28,7 +28,7 @@ NEXT_PUBLIC_LIFF_ID=2010006458-fyokMnVv
 
 # ─── JWT / Cron ───
 JWT_SECRET=MEoyJvXRD6a12AHkzqUsQPxhKYZnVTCe0G9I8N5d3figutcb
-CRON_TOKEN=8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS
+CRON_SECRET=8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS
 
 # ─── Database (用 Zeabur Postgres 的 reference) ───
 DATABASE_URL=${POSTGRES_CONNECTION_STRING}
@@ -181,8 +181,11 @@ LINE LIFF endpoint 必須是 HTTPS 且能載入頁面。確認：
 - HMAC 簽章驗證失敗 → 確認 LINE_CHANNEL_SECRET 正確
 
 ### Cron 沒觸發
-- 確認 URL 含 `?token=CRON_TOKEN_VALUE`
-- 訪問 URL 直接看回應，401 = token 錯、200 = 正常但 `sent: []` 是因為當下沒符合條件的提醒
+- 由 [Automation-Hub Cronicle](https://neowu-cron-hub.zeabur.app) 觸發，不是 Zeabur Cron
+- 確認 curl 含 `-H "Authorization: Bearer $HAIWANGZI_CRON_SECRET"`
+- Cronicle 端的 HAIWANGZI_CRON_SECRET 必須與 haiwangzi-bot 的 CRON_SECRET 同值
+- 401 = token 錯、500 = CRON_SECRET 未設、200 但 `sent: []` 代表當下沒符合條件的提醒（正常）
+- 詳見 `docs/CRON_SETUP.md`
 
 ---
 
