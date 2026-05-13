@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -7,6 +8,10 @@ import {
   User2,
   Camera,
   Users,
+  Anchor,
+  Sparkles,
+  Compass,
+  Waves,
   ChevronRight,
 } from "lucide-react";
 import { Trident } from "@/components/brand/Logo";
@@ -14,93 +19,69 @@ import { Button } from "@/components/ui/button";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
+import {
+  DEFAULT_SITE_CONFIG,
+  type SiteConfig,
+  type CardAccent,
+  type CardIconName,
+} from "@/lib/site-config";
 
-const FB_PAGE = "https://www.facebook.com/wang.cheng.ru.350053";
-
-type CardConfig = {
-  href: string;
-  external?: boolean;
-  label: string;
-  enLabel: string;
-  desc: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  /** 卡片漸層 (背景的深海主題 + 強調色) */
-  gradient: string;
-  iconColor: string;
+// icon 名稱 → lucide component
+const ICON_MAP: Record<CardIconName, React.ComponentType<{ className?: string }>> = {
+  CalendarDays,
+  Plane,
+  ListChecks,
+  User2,
+  Camera,
+  Users,
+  Anchor,
+  Sparkles,
+  Compass,
+  Waves,
 };
 
-const CARDS: CardConfig[] = [
-  {
-    href: "/liff/calendar",
-    label: "日潛水",
-    enLabel: "FUN DIVE",
-    desc: "今日出航",
-    Icon: CalendarDays,
-    gradient:
-      "linear-gradient(135deg, #0A2342 0%, #1B3A5C 60%, #00D9CB22 100%)",
+// accent → 漸層 + icon 色
+const ACCENT_STYLES: Record<
+  CardAccent,
+  { gradient: string; iconColor: string }
+> = {
+  phosphor: {
+    gradient: "linear-gradient(135deg, #0A2342 0%, #1B3A5C 60%, #00D9CB22 100%)",
     iconColor: "#00D9CB",
   },
-  {
-    href: "/liff/tour",
-    label: "潛水團",
-    enLabel: "DIVE TRIP",
-    desc: "國內外行程",
-    Icon: Plane,
-    gradient:
-      "linear-gradient(135deg, #0F1B2D 0%, #1B3A5C 60%, #FF7B5A22 100%)",
+  coral: {
+    gradient: "linear-gradient(135deg, #0F1B2D 0%, #1B3A5C 60%, #FF7B5A22 100%)",
     iconColor: "#FF7B5A",
   },
-  {
-    href: "/liff/media",
-    label: "最新動態",
-    enLabel: "DIVE MEDIA",
-    desc: "影像日誌",
-    Icon: Camera,
-    gradient:
-      "linear-gradient(135deg, #0A2342 0%, #1B3A5C 60%, #FFB80022 100%)",
+  gold: {
+    gradient: "linear-gradient(135deg, #0A2342 0%, #1B3A5C 60%, #FFB80022 100%)",
     iconColor: "#FFB800",
   },
-  {
-    href: "/liff/my",
-    label: "我的預約",
-    enLabel: "BOOKING",
-    desc: "課程紀錄",
-    Icon: ListChecks,
-    gradient:
-      "linear-gradient(135deg, #0F1B2D 0%, #0A2342 60%, #00D9CB22 100%)",
-    iconColor: "#00D9CB",
-  },
-  {
-    href: FB_PAGE,
-    external: true,
-    label: "FB 社群",
-    enLabel: "COMMUNITY",
-    desc: "Facebook 粉絲頁",
-    Icon: Users,
-    gradient:
-      "linear-gradient(135deg, #0A2342 0%, #1B3A5C 60%, #1877F222 100%)",
+  ocean: {
+    gradient: "linear-gradient(135deg, #0F1B2D 0%, #1B3A5C 60%, #1877F222 100%)",
     iconColor: "#1877F2",
   },
-  {
-    href: "/liff/profile",
-    label: "個人中心",
-    enLabel: "MY PROFILE",
-    desc: "潛水紀錄",
-    Icon: User2,
-    gradient:
-      "linear-gradient(135deg, #0F1B2D 0%, #1B3A5C 60%, #FF7B5A22 100%)",
-    iconColor: "#FF7B5A",
-  },
-];
+};
 
 export default function WelcomePage() {
   const liff = useLiff();
+  const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
+
+  useEffect(() => {
+    fetch("/api/site-config")
+      .then((r) => r.json())
+      .then((d) => setCfg((c) => ({ ...c, ...d })))
+      .catch(() => {});
+  }, []);
+
+  const cards = (cfg.cards ?? DEFAULT_SITE_CONFIG.cards)
+    .filter((c) => c.enabled)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <LiffShell bottomNav={<BottomNav />} midnight>
-      {/* 全頁深海背景 */}
       <div className="min-h-[calc(100dvh-3.5rem)] bg-[var(--color-midnight)] pb-24">
-        {/* Hero — 三叉戟 + 品牌 */}
+        {/* Hero */}
         <section
           className="relative overflow-hidden px-5 pt-8 pb-6 text-white"
           style={{
@@ -108,7 +89,6 @@ export default function WelcomePage() {
               "linear-gradient(180deg, #0A2342 0%, #1B3A5C 50%, #0F1B2D 100%)",
           }}
         >
-          {/* 海底光斑裝飾 */}
           <div
             className="pointer-events-none absolute inset-0 opacity-30"
             style={{
@@ -119,14 +99,14 @@ export default function WelcomePage() {
           <div className="relative flex flex-col items-center text-center">
             <Trident size={56} color="#00D9CB" />
             <h1 className="mt-3 text-2xl font-bold tracking-[0.15em]">
-              東 北 角 海 王 子
+              {cfg.heroTitle}
             </h1>
             <div className="mt-1 text-[10px] tracking-[0.35em] text-[var(--color-phosphor)]">
-              NEIL OCEAN PRINCE
+              {cfg.heroSubtitle}
             </div>
             {liff.profile?.displayName && (
               <div className="mt-3 text-xs opacity-70">
-                嗨，{liff.profile.displayName}
+                {cfg.heroGreeting}，{liff.profile.displayName}
               </div>
             )}
           </div>
@@ -145,35 +125,38 @@ export default function WelcomePage() {
           )}
         </section>
 
-        {/* 6 卡 grid */}
+        {/* Cards grid (動態) */}
         <section className="grid grid-cols-2 gap-3 px-5 pt-5">
-          {CARDS.map((c) => {
+          {cards.map((c) => {
+            const Icon = ICON_MAP[c.icon] ?? Anchor;
+            const style = ACCENT_STYLES[c.accent] ?? ACCENT_STYLES.phosphor;
             const inner = (
               <div
                 className="relative h-full overflow-hidden rounded-2xl border border-white/10 p-4 text-white shadow-lg backdrop-blur transition-transform active:scale-[0.97]"
-                style={{ background: c.gradient }}
+                style={{ background: style.gradient }}
               >
-                {/* 海底光斑 */}
                 <div
                   className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-30 blur-2xl"
-                  style={{ backgroundColor: c.iconColor }}
+                  style={{ backgroundColor: style.iconColor }}
                 />
                 <div className="relative">
                   <div
                     className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/5 backdrop-blur"
-                    style={{ color: c.iconColor }}
+                    style={{ color: style.iconColor }}
                   >
-                    <c.Icon className="h-6 w-6" />
+                    <Icon className="h-6 w-6" />
                   </div>
                   <div className="text-base font-bold leading-tight">
                     {c.label}
                   </div>
-                  <div
-                    className="text-[10px] font-semibold tracking-[0.2em]"
-                    style={{ color: c.iconColor }}
-                  >
-                    {c.enLabel}
-                  </div>
+                  {c.enLabel && (
+                    <div
+                      className="text-[10px] font-semibold tracking-[0.2em]"
+                      style={{ color: style.iconColor }}
+                    >
+                      {c.enLabel}
+                    </div>
+                  )}
                   <div className="mt-1 flex items-center justify-between gap-1">
                     <span className="text-xs opacity-70">{c.desc}</span>
                     <ChevronRight className="h-4 w-4 opacity-50" />
@@ -181,60 +164,62 @@ export default function WelcomePage() {
                 </div>
               </div>
             );
-            return c.external ? (
-              <a
-                key={c.href}
-                href={c.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {inner}
-              </a>
-            ) : (
-              <Link key={c.href} href={c.href}>
+            // External link → /liff/go?to=URL (splash + redirect)
+            if (c.external) {
+              const goUrl = `/liff/go?to=${encodeURIComponent(c.href)}`;
+              return (
+                <Link key={c.id} href={goUrl}>
+                  {inner}
+                </Link>
+              );
+            }
+            return (
+              <Link key={c.id} href={c.href}>
                 {inner}
               </Link>
             );
           })}
         </section>
 
-        {/* 海況卡 — 保留但融入暗色主題 */}
-        <section className="mt-5 px-5">
-          <div
-            className="overflow-hidden rounded-2xl border border-white/10 text-white"
-            style={{
-              background:
-                "linear-gradient(135deg, #0F1B2D 0%, #0A2342 100%)",
-            }}
-          >
-            <div className="p-5">
-              <div className="text-[10px] tracking-[0.25em] text-[var(--color-phosphor)]">
-                TODAY · 海況
+        {/* 海況卡 (動態) */}
+        {cfg.seaEnabled && (
+          <section className="mt-5 px-5">
+            <div
+              className="overflow-hidden rounded-2xl border border-white/10 text-white"
+              style={{
+                background:
+                  "linear-gradient(135deg, #0F1B2D 0%, #0A2342 100%)",
+              }}
+            >
+              <div className="p-5">
+                <div className="text-[10px] tracking-[0.25em] text-[var(--color-phosphor)]">
+                  TODAY · 海況
+                </div>
+                <div className="mt-1 text-xl font-bold">{cfg.seaTitle}</div>
+                <p className="mt-2 text-sm opacity-80">{cfg.seaInfo}</p>
+                {cfg.seaCtaHref && cfg.seaCtaLabel && (
+                  <Link href={cfg.seaCtaHref}>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="mt-4 bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] hover:bg-[var(--color-phosphor-soft)]"
+                    >
+                      {cfg.seaCtaLabel}
+                    </Button>
+                  </Link>
+                )}
               </div>
-              <div className="mt-1 text-xl font-bold">明日海況沉穩 · 適合下水</div>
-              <p className="mt-2 text-sm opacity-80">
-                北風 3 級｜浪高 1m｜水溫 24°C｜能見度 8-12m
-              </p>
-              <Link href="/liff/calendar">
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="mt-4 bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] hover:bg-[var(--color-phosphor-soft)]"
-                >
-                  查看明日場次
-                </Button>
-              </Link>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* footer slogan */}
+        {/* Footer slogan */}
         <section className="mt-6 px-5 pb-2 text-center">
           <div className="inline-flex items-center gap-2 text-[10px] tracking-[0.3em] text-[var(--color-phosphor)] opacity-70">
-            探索海洋 · 安全潛水 · 專業教學
+            {cfg.footerSloganZh}
           </div>
           <div className="mt-1 text-[9px] tracking-[0.2em] text-white/40">
-            EXPLORE THE OCEAN
+            {cfg.footerSloganEn}
           </div>
         </section>
       </div>

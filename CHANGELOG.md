@@ -2,6 +2,41 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_17 — 2026-05-13 (Admin 首頁設定 + Splash 1 小時冷卻 + 外連 Splash 路由)
+
+### 新增 Admin 首頁設定 `/liff/admin/site-config`
+Admin 可在後台改：
+- **Hero**：主標題（中）、副標（英）、問候語
+- **6 卡入口**：每張卡可改 label / 英文標 / 說明 / URL / icon / 主色 / 啟用開關 / 順序 / 內外連
+- **海況卡**：啟用、標題、資訊行、按鈕文字/連結
+- **頁尾 slogan**：中文、英文
+- **Splash**：啟用、秒數、冷卻
+
+新增卡片 + 拖動排序 + 一鍵還原預設 全支援。
+
+### Schema
+- 新表 `SiteConfig`（singleton id=default，所有設定一列）
+
+### API
+- `GET /api/site-config` 公開（給 Welcome / SplashOverlay 讀）
+- `GET/POST/DELETE /api/admin/site-config` admin 用
+
+### Splash 行為改變
+- **由「session 一次」→「每小時一次」**（localStorage 記時戳）
+- 秒數 + 冷卻時間可在後台調整
+- SplashOverlay 元件抓 `/api/site-config` 套用最新文字
+
+### 外連 Splash 路由
+- 新 `/liff/go?to=URL` 顯示 splash 3 秒後跳目標
+- Welcome FB 卡自動走 `/liff/go` 包裝（外連也有 splash）
+
+### Welcome 頁完全動態
+- 所有文字 / 卡片 / 海況 / footer 改讀 SiteConfig
+- 沒設定時 fallback 寫死預設
+
+### Admin Dashboard
+- 加「首頁設定」入口
+
 ## 20260513_16 — 2026-05-13 (Deep link 3 秒品牌 Splash)
 
 ### Splash Overlay

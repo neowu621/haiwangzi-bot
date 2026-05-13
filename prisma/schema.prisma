@@ -283,6 +283,42 @@ model TripMedia {
   @@map("trip_media")
 }
 
+// 首頁 / 全站設定 — Admin 在 /liff/admin/site-config 可改
+// 單列表（id 固定 "default"），方便 upsert
+model SiteConfig {
+  id String @id @default("default") @db.VarChar(32)
+
+  // Hero
+  heroTitle      String  @default("東 北 角 海 王 子") @map("hero_title")
+  heroSubtitle   String  @default("NEIL OCEAN PRINCE") @map("hero_subtitle")
+  heroGreeting   String  @default("嗨") @map("hero_greeting")
+
+  // 6 卡 — 整段 JSON array
+  // [{id, label, enLabel, desc, href, external, icon, accent, enabled, order}]
+  cards Json @default("[]")
+
+  // 海況卡
+  seaEnabled Boolean @default(true) @map("sea_enabled")
+  seaTitle   String  @default("明日海況沉穩 · 適合下水") @map("sea_title")
+  seaInfo    String  @default("北風 3 級｜浪高 1m｜水溫 24°C｜能見度 8-12m") @map("sea_info")
+  seaCtaLabel String? @default("查看明日場次") @map("sea_cta_label")
+  seaCtaHref  String? @default("/liff/calendar") @map("sea_cta_href")
+
+  // Footer slogan
+  footerSloganZh String @default("探索海洋 · 安全潛水 · 專業教學") @map("footer_slogan_zh")
+  footerSloganEn String @default("EXPLORE THE OCEAN") @map("footer_slogan_en")
+
+  // Splash
+  splashEnabled    Boolean @default(true) @map("splash_enabled")
+  splashDurationMs Int     @default(3000) @map("splash_duration_ms")
+  splashCooldownMs Int     @default(3600000) @map("splash_cooldown_ms") // 1 hour
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy String?  @map("updated_by") @db.VarChar(64)
+
+  @@map("site_config")
+}
+
 // 訊息模板覆寫 — admin 可在後台改各個 Flex 模板的標題/副標/按鈕文字
 // key 對應 src/lib/flex/index.ts 的 FLEX_TEMPLATE_LABELS
 model MessageTemplate {
