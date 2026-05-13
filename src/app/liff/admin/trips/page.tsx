@@ -582,35 +582,28 @@ export default function AdminTripsPage() {
                   <Label className="text-xs">時間 (HH:MM)</Label>
                   <Input
                     value={editingTrip.startTime ?? ""}
-                    onChange={(e) =>
-                      setEditingTrip({ ...editingTrip, startTime: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const startTime = e.target.value;
+                      // 自動判斷夜潛：16:00 之後算夜潛
+                      const isNightDive = startTime >= "16:00";
+                      setEditingTrip({
+                        ...editingTrip,
+                        startTime,
+                        isNightDive,
+                      });
+                    }}
                     placeholder="08:00"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <label className="flex items-center gap-1.5 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={editingTrip.isNightDive ?? false}
-                    onChange={(e) =>
-                      setEditingTrip({ ...editingTrip, isNightDive: e.target.checked })
-                    }
-                  />
-                  夜潛
-                </label>
-                <label className="flex items-center gap-1.5 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={editingTrip.isScooter ?? false}
-                    onChange={(e) =>
-                      setEditingTrip({ ...editingTrip, isScooter: e.target.checked })
-                    }
-                  />
-                  水推
-                </label>
+              <div className="rounded-md bg-[var(--muted)]/40 px-2 py-1.5 text-[11px] text-[var(--muted-foreground)]">
+                ⏰ 16:00 之後自動標記為「夜潛」
+                {editingTrip.isNightDive && (
+                  <span className="ml-1 font-bold text-[var(--color-phosphor)]">
+                    · 目前為夜潛場次 🌙
+                  </span>
+                )}
               </div>
 
               <div>
@@ -693,7 +686,7 @@ export default function AdminTripsPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="text-xs">潛次上限</Label>
+                  <Label className="text-xs">潛水支數</Label>
                   <Input
                     type="number"
                     value={editingTrip.tankCount ?? 3}
@@ -703,7 +696,7 @@ export default function AdminTripsPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">容量 (0 = 無上限)</Label>
+                  <Label className="text-xs">參加人數上限 (0 = 無上限)</Label>
                   <Input
                     type="number"
                     value={editingTrip.capacity ?? 0}
