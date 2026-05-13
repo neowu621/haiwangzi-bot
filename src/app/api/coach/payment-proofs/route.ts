@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { sendEmail } from "@/lib/email/send";
+import { paymentReceivedEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,5 +99,69 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
+  // 寄收款確認 email (fire-and-forget)
+  void sendPaymentReceivedEmail({
+    bookingId: proof.bookingId,
+    type: proof.type,
+    amount: proof.amount,
+    newPaid,
+    totalAmount: proof.booking.totalAmount,
+  }).catch((e) => console.error("[payment confirm email]", e));
+
   return NextResponse.json({ ok: true, action: "approved" });
+}
+
+async function sendPaymentReceivedEmail(args: {
+  bookingId: string;
+  type: string;
+  amount: number;
+  newPaid: number;
+  totalAmount: number;
+}) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: args.bookingId },
+    include: { user: true },
+  });
+  if (!booking) return;
+  if (!booking.user.notifyByEmail || !booking.user.email) return;
+
+  // 取 booking 對應的 title（trip date 或 tour title）
+  let bookingTitle = `預約 #${booking.id.slice(0, 8)}`;
+  if (booking.type === "daily") {
+    const trip = await prisma.divingTrip.findUnique({
+      where: { id: booking.refId },
+    });
+    if (trip) {
+      bookingTitle = `日潛 ${trip.date.toISOString().slice(0, 10)} ${trip.startTime}`;
+    }
+  } else if (booking.type === "tour") {
+    const tour = await prisma.tourPackage.findUnique({
+      where: { id: booking.refId },
+    });
+    if (tour) bookingTitle = tour.title;
+  }
+
+  const emailType =
+    args.type === "deposit"
+      ? "deposit"
+      : args.newPaid >= args.totalAmount
+        ? "full"
+        : "final";
+
+  const tpl = paymentReceivedEmail({
+    name: booking.user.realName ?? booking.user.displayName,
+    type: emailType,
+    amount: args.amount,
+    totalPaid: args.newPaid,
+    totalAmount: args.totalAmount,
+    bookingTitle,
+    bookingId: booking.id,
+  });
+
+  await sendEmail({
+    to: booking.user.email,
+    subject: tpl.subject,
+    text: tpl.text,
+    html: tpl.html,
+  });
 }

@@ -32,10 +32,13 @@ const AUDIENCES = [
 export default function BroadcastPage() {
   const liff = useLiff();
   const [audience, setAudience] = useState<(typeof AUDIENCES)[number]["key"]>("customers");
+  const [channel, setChannel] = useState<"line" | "email" | "both">("line");
   const [template, setTemplate] = useState<(typeof TEMPLATES)[number]["key"]>("text");
   const [altText, setAltText] = useState("海王子潛水團通知");
   const [text, setText] = useState("");
   const [paramsJson, setParamsJson] = useState("{}");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -54,22 +57,30 @@ export default function BroadcastPage() {
       const res = await liff.fetchWithAuth<{
         ok: boolean;
         delivered: number;
+        emailed: number;
         dryRun?: boolean;
         note?: string;
       }>("/api/admin/broadcast", {
         method: "POST",
         body: JSON.stringify({
           audience,
+          channel,
           template,
           altText,
           text,
           params,
+          emailSubject,
+          emailBody,
         }),
       });
+      const parts: string[] = [];
+      if (channel !== "email") parts.push(`LINE ${res.delivered} 人`);
+      if (channel !== "line") parts.push(`Email ${res.emailed} 人`);
+      const summary = parts.join(" · ");
       setResult(
         res.dryRun
-          ? `🧪 Dry-run（${res.note}）— 預估送達 ${res.delivered} 人`
-          : `✓ 已送達 ${res.delivered} 人`,
+          ? `🧪 Dry-run（${res.note}）— ${summary}`
+          : `✓ 已送達 ${summary}`,
       );
     } catch (e) {
       setResult(`失敗：${e instanceof Error ? e.message : String(e)}`);
@@ -105,9 +116,39 @@ export default function BroadcastPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">2. 訊息模板</CardTitle>
+            <CardTitle className="text-base">2. 通道</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {(
+              [
+                ["line", "LINE 推播"],
+                ["email", "Email"],
+                ["both", "兩者都送"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setChannel(k)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-sm font-medium",
+                  channel === k
+                    ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                    : "border-[var(--border)]",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">3. 訊息模板</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {(channel === "line" || channel === "both") && (
+              <>
             <div className="flex flex-wrap gap-2">
               {TEMPLATES.map((t) => (
                 <button
@@ -154,6 +195,34 @@ export default function BroadcastPage() {
                 />
                 <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
                   依模板需要的 key 填入；可參考 src/lib/flex/{template}.ts
+                </div>
+              </div>
+            )}
+              </>
+            )}
+
+            {(channel === "email" || channel === "both") && (
+              <div className="space-y-3 rounded-md border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3">
+                <div className="text-xs font-semibold text-[var(--color-phosphor)]">
+                  📧 Email 內容
+                </div>
+                <div>
+                  <Label>主旨</Label>
+                  <Input
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="預設用 altText 當主旨"
+                  />
+                </div>
+                <div>
+                  <Label>內文</Label>
+                  <textarea
+                    className="w-full rounded-[var(--radius-card)] border border-[var(--input)] bg-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    rows={6}
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    placeholder={`例：\n各位潛友好,\n\n5/20 (六) 龍洞 82.8 還剩 2 個名額...\n\n— 海王子潛水團`}
+                  />
                 </div>
               </div>
             )}

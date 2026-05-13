@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKey } from "@/lib/flex";
+import { sendEmail } from "@/lib/email/send";
+import { tripGuideEmail, finalReminderEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,42 +100,91 @@ async function handle(req: NextRequest) {
       include: { user: true },
     });
     for (const b of bookings) {
-      const dup = await prisma.reminderLog.findFirst({
-        where: { bookingId: b.id, type: "d1_reminder" },
+      const dateStr = trip.date.toISOString().slice(0, 10);
+      const siteName = "東北角";
+
+      // ── LINE 通道 ────────────────────────
+      // 每個 channel 自己用 reminderLog dedupe，所以兩通道可獨立送
+      const dupLine = await prisma.reminderLog.findFirst({
+        where: { bookingId: b.id, type: "d1_reminder", channel: "line" },
       });
-      if (dup) continue;
-      try {
-        const msg = buildFlexByKey(
-          "d1_reminder",
-          {
-            date: trip.date.toISOString().slice(0, 10),
-            time: trip.startTime,
-            site: "東北角",
-            weather: "晴",
-            wave: "1m",
-            water: "24°C",
-            vis: "8-12m",
-            gather: "集合時間：" + trip.startTime,
-          },
-          `明日 ${trip.startTime} 行前提醒`,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await client.pushMessage({ to: b.userId, messages: [msg as any] });
-        await prisma.reminderLog.create({
-          data: { bookingId: b.id, type: "d1_reminder", channel: "line" },
-        });
-        sent.push({ type: "d1_reminder", userId: b.userId, bookingId: b.id });
-      } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        await prisma.reminderLog.create({
-          data: {
+      if (!dupLine && b.user.notifyByLine) {
+        try {
+          const msg = buildFlexByKey(
+            "d1_reminder",
+            {
+              date: dateStr,
+              time: trip.startTime,
+              site: siteName,
+              weather: "晴",
+              wave: "1m",
+              water: "24°C",
+              vis: "8-12m",
+              gather: "集合時間：" + trip.startTime,
+            },
+            `明日 ${trip.startTime} 行前提醒`,
+          );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await client.pushMessage({ to: b.userId, messages: [msg as any] });
+          await prisma.reminderLog.create({
+            data: { bookingId: b.id, type: "d1_reminder", channel: "line" },
+          });
+          sent.push({ type: "d1_reminder", userId: b.userId, bookingId: b.id });
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : String(e);
+          await prisma.reminderLog.create({
+            data: {
+              bookingId: b.id,
+              type: "d1_reminder",
+              channel: "line",
+              error: errMsg,
+            },
+          });
+          errors.push({ type: "d1_reminder", bookingId: b.id, error: errMsg });
+        }
+      }
+
+      // ── Email 通道 ────────────────────────
+      if (b.user.notifyByEmail && b.user.email) {
+        const dupEmail = await prisma.reminderLog.findFirst({
+          where: {
             bookingId: b.id,
             type: "d1_reminder",
-            channel: "line",
-            error: errMsg,
+            channel: "email",
           },
         });
-        errors.push({ type: "d1_reminder", bookingId: b.id, error: errMsg });
+        if (!dupEmail) {
+          const tpl = tripGuideEmail({
+            name: b.user.realName ?? b.user.displayName,
+            date: dateStr,
+            time: trip.startTime,
+            site: siteName,
+            meetingPoint: trip.meetingPoint,
+            notes: trip.notes,
+            daysLeft: 1,
+          });
+          const r = await sendEmail({
+            to: b.user.email,
+            subject: tpl.subject,
+            text: tpl.text,
+            html: tpl.html,
+          });
+          await prisma.reminderLog.create({
+            data: {
+              bookingId: b.id,
+              type: "d1_reminder",
+              channel: "email",
+              error: r.ok ? null : r.error ?? r.reason ?? null,
+            },
+          });
+          if (r.ok) {
+            sent.push({
+              type: "d1_reminder_email",
+              userId: b.userId,
+              bookingId: b.id,
+            });
+          }
+        }
       }
     }
   }
@@ -161,56 +212,114 @@ async function handle(req: NextRequest) {
         status: "confirmed",
         paymentStatus: "deposit_paid",
       },
+      include: { user: true },
     });
     for (const b of bookings) {
-      const dup = await prisma.reminderLog.findFirst({
-        where: { bookingId: b.id, type: "final_reminder" },
-      });
-      if (dup) continue;
       const remaining = b.totalAmount - b.paidAmount;
       if (remaining <= 0) continue;
-      try {
-        const msg = buildFlexByKey(
-          "final_reminder",
-          {
+      const bookingUrl = process.env.NEXT_PUBLIC_BASE_URL
+        ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`
+        : "https://line.me/";
+      const daysLeft = tour.finalReminderDays ?? 30;
+      const deadline = tour.finalDeadline
+        ? tour.finalDeadline.toISOString().slice(0, 10)
+        : "—";
+
+      // ── LINE 通道 ────────────────────────
+      if (b.user.notifyByLine) {
+        const dupLine = await prisma.reminderLog.findFirst({
+          where: { bookingId: b.id, type: "final_reminder", channel: "line" },
+        });
+        if (!dupLine) {
+          try {
+            const msg = buildFlexByKey(
+              "final_reminder",
+              {
+                tourTitle: tour.title,
+                remaining,
+                deadline,
+                daysLeft,
+                bankAccount: process.env.BANK_ACCOUNT ?? "—",
+                url: bookingUrl,
+              },
+              `${tour.title} 尾款提醒`,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await client.pushMessage({ to: b.userId, messages: [msg as any] });
+            await prisma.reminderLog.create({
+              data: {
+                bookingId: b.id,
+                type: "final_reminder",
+                channel: "line",
+              },
+            });
+            sent.push({
+              type: "final_reminder",
+              userId: b.userId,
+              bookingId: b.id,
+            });
+          } catch (e) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            await prisma.reminderLog.create({
+              data: {
+                bookingId: b.id,
+                type: "final_reminder",
+                channel: "line",
+                error: errMsg,
+              },
+            });
+            errors.push({
+              type: "final_reminder",
+              bookingId: b.id,
+              error: errMsg,
+            });
+          }
+        }
+      }
+
+      // ── Email 通道 ────────────────────────
+      if (b.user.notifyByEmail && b.user.email) {
+        const dupEmail = await prisma.reminderLog.findFirst({
+          where: {
+            bookingId: b.id,
+            type: "final_reminder",
+            channel: "email",
+          },
+        });
+        if (!dupEmail) {
+          const tpl = finalReminderEmail({
+            name: b.user.realName ?? b.user.displayName,
             tourTitle: tour.title,
             remaining,
             deadline: tour.finalDeadline
               ? tour.finalDeadline.toISOString().slice(0, 10)
-              : "—",
-            daysLeft: tour.finalReminderDays ?? 3,
+              : null,
+            daysLeft,
             bankAccount: process.env.BANK_ACCOUNT ?? "—",
-            url: process.env.NEXT_PUBLIC_BASE_URL
-              ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`
-              : "https://line.me/",
-          },
-          `${tour.title} 尾款提醒`,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await client.pushMessage({ to: b.userId, messages: [msg as any] });
-        await prisma.reminderLog.create({
-          data: { bookingId: b.id, type: "final_reminder", channel: "line" },
-        });
-        sent.push({
-          type: "final_reminder",
-          userId: b.userId,
-          bookingId: b.id,
-        });
-      } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        await prisma.reminderLog.create({
-          data: {
-            bookingId: b.id,
-            type: "final_reminder",
-            channel: "line",
-            error: errMsg,
-          },
-        });
-        errors.push({
-          type: "final_reminder",
-          bookingId: b.id,
-          error: errMsg,
-        });
+            bookingUrl,
+          });
+          const r = await sendEmail({
+            to: b.user.email,
+            subject: tpl.subject,
+            text: tpl.text,
+            html: tpl.html,
+          });
+          await prisma.reminderLog.create({
+            data: {
+              bookingId: b.id,
+              type: "final_reminder",
+              channel: "email",
+              error: r.ok ? null : r.error ?? r.reason ?? null,
+            },
+          });
+          if (r.ok) {
+            sent.push({
+              type: "final_reminder_email",
+              userId: b.userId,
+              bookingId: b.id,
+            });
+          }
+        }
       }
     }
   }

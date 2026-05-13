@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKey } from "@/lib/flex";
+import { sendEmail } from "@/lib/email/send";
+import { bookingConfirmEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -204,7 +206,55 @@ export async function POST(req: NextRequest) {
     }).catch((e) => console.error("[overcap notify]", e));
   }
 
+  // 寄預約確認 email（fire-and-forget；失敗不影響預約建立）
+  void sendBookingConfirmEmail({
+    bookingId: booking.id,
+    userId: auth.user.lineUserId,
+  }).catch((e) => console.error("[booking confirm email]", e));
+
   return NextResponse.json({ ok: true, booking, overCapacity });
+}
+
+async function sendBookingConfirmEmail(args: {
+  bookingId: string;
+  userId: string;
+}) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: args.bookingId },
+    include: { user: true },
+  });
+  if (!booking) return;
+  if (!booking.user.notifyByEmail || !booking.user.email) return;
+
+  const trip = await prisma.divingTrip.findUnique({
+    where: { id: booking.refId },
+  });
+  if (!trip) return;
+
+  const sites = await prisma.diveSite.findMany({
+    where: { id: { in: trip.diveSiteIds } },
+  });
+
+  const tpl = bookingConfirmEmail({
+    name: booking.user.realName ?? booking.user.displayName,
+    type: "daily",
+    date: trip.date.toISOString().slice(0, 10),
+    startTime: trip.startTime,
+    sites: sites.map((s) => s.name),
+    participants: booking.participants,
+    totalAmount: booking.totalAmount,
+    paidAmount: booking.paidAmount,
+    bookingId: booking.id,
+    meetingPoint: trip.meetingPoint,
+    notes: trip.notes,
+  });
+
+  await sendEmail({
+    to: booking.user.email,
+    subject: tpl.subject,
+    text: tpl.text,
+    html: tpl.html,
+  });
 }
 
 async function notifyCoachesOvercap(args: {

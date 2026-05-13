@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKey } from "@/lib/flex";
+import { sendEmail } from "@/lib/email/send";
+import { weatherCancelEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -168,7 +170,7 @@ async function handle(req: NextRequest) {
     },
   });
 
-  const cancelled: Array<{ tripId: string; pushed: number }> = [];
+  const cancelled: Array<{ tripId: string; pushed: number; emailed?: number }> = [];
   const errors: Array<{ tripId: string; error: string }> = [];
 
   for (const trip of trips) {
@@ -185,6 +187,7 @@ async function handle(req: NextRequest) {
 
         const bookings = await prisma.booking.findMany({
           where: { refId: trip.id, type: "daily", status: "confirmed" },
+          include: { user: true },
         });
         for (const b of bookings) {
           await prisma.booking.update({
@@ -196,31 +199,37 @@ async function handle(req: NextRequest) {
           });
         }
 
-        // 推 Flex 通知客戶
+        // 推通知（LINE + Email 雙通道）
+        const sites = await prisma.diveSite.findMany({
+          where: { id: { in: trip.diveSiteIds } },
+        });
+        const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
+        const dateStr = trip.date.toISOString().slice(0, 10);
+        const reasonStr = `今日 ${maxStation} 風速 ${maxWind} m/s，超過下水安全閾值 ${threshold} m/s`;
+        const myUrl = process.env.NEXT_PUBLIC_BASE_URL
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/my`
+          : "https://line.me/";
+
+        let pushed = 0;
+        let emailed = 0;
+
+        // LINE 推 Flex
         if (process.env.LINE_CHANNEL_ACCESS_TOKEN && bookings.length > 0) {
           const client = getLineClient();
-          const sites = await prisma.diveSite.findMany({
-            where: { id: { in: trip.diveSiteIds } },
-          });
-          const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
-
           const msg = buildFlexByKey(
             "weather_cancel",
             {
-              date: trip.date.toISOString().slice(0, 10),
+              date: dateStr,
               time: trip.startTime,
               site: siteName,
-              reason: `今日 ${maxStation} 風速 ${maxWind} m/s，超過下水安全閾值 ${threshold} m/s`,
+              reason: reasonStr,
               options: "1. 改期至下次同類型場次\n2. 全額退費",
-              url: process.env.NEXT_PUBLIC_BASE_URL
-                ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/my`
-                : "https://line.me/",
+              url: myUrl,
             },
-            `${trip.date.toISOString().slice(0, 10)} 因海況取消`,
+            `${dateStr} 因海況取消`,
           );
-
-          let pushed = 0;
           for (const b of bookings) {
+            if (!b.user.notifyByLine) continue;
             try {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               await client.pushMessage({
@@ -232,10 +241,29 @@ async function handle(req: NextRequest) {
               console.error("[weather push]", b.userId, e);
             }
           }
-          cancelled.push({ tripId: trip.id, pushed });
-        } else {
-          cancelled.push({ tripId: trip.id, pushed: 0 });
         }
+
+        // Email 通道
+        for (const b of bookings) {
+          if (!b.user.notifyByEmail || !b.user.email) continue;
+          const tpl = weatherCancelEmail({
+            name: b.user.realName ?? b.user.displayName,
+            date: dateStr,
+            time: trip.startTime,
+            site: siteName,
+            reason: reasonStr,
+            url: myUrl,
+          });
+          const r = await sendEmail({
+            to: b.user.email,
+            subject: tpl.subject,
+            text: tpl.text,
+            html: tpl.html,
+          });
+          if (r.ok) emailed++;
+        }
+
+        cancelled.push({ tripId: trip.id, pushed, emailed });
       } else {
         cancelled.push({ tripId: trip.id, pushed: 0 }); // dry run
       }

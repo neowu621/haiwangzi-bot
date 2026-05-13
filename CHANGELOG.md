@@ -2,6 +2,38 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_30 — 2026-05-14 (Email 通道完整整合)
+
+### 新模板 (6 個)
+- `depositReminderEmail` — 訂金繳費提醒（7 天內）
+- `finalReminderEmail` — 尾款繳費提醒（D-N）
+- `tripGuideEmail` — D-2 / D-1 行前通知 + 裝備清單
+- `weatherCancelEmail` — 海況取消通知 + 後續處理選項
+- `paymentReceivedEmail` — 收款確認（deposit / final / full）
+- `broadcastEmail` — admin 自由格式廣播
+
+### Cron 雙通道
+- `/api/cron/reminders` D-1 / 尾款提醒：**LINE + Email 各自獨立 dedup**
+  - 客戶 `notifyByLine = false` 跳過 LINE，`notifyByEmail = false` 或無 email 跳過 Email
+  - 兩通道各自記 `ReminderLog`（channel="line" / channel="email"）
+- `/api/cron/weather-check` 海況取消：同時推 LINE Flex + Email
+
+### 觸發點
+- `POST /api/bookings/daily` 預約成功 → 客戶收 `bookingConfirmEmail`
+  - fire-and-forget，email 失敗不影響預約建立
+- `POST /api/coach/payment-proofs` (approve) → 客戶收 `paymentReceivedEmail`
+  - 自動判斷 deposit / final / full 三種情境
+
+### Broadcast 加入 channel 選擇
+- `/liff/admin/broadcast` 新增「通道」card：LINE / Email / 兩者
+- 選 email/both 時顯示 Email 主旨 + 內文輸入框
+- 後端 `/api/admin/broadcast` 接受 `channel` + `emailSubject` + `emailBody`
+- 結果顯示「LINE N 人 · Email M 人」
+
+### 用戶尊重
+- 所有通道都檢查 user.notifyByLine / notifyByEmail
+- 客戶可在 `/liff/profile` 自己關掉任一通道
+
 ## 20260514_29 — 2026-05-14 (Email 通道：Gmail SMTP core)
 
 ### 新依賴
