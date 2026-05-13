@@ -2,6 +2,21 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_18 — 2026-05-13 (Splash 暫停用，回到穩定狀態)
+
+### Splash rollback
+- LiffShell 內 `<SplashOverlay />` 暫時 comment 掉
+- `/liff/go` 改回簡單 redirect (移除 splash 動畫)
+- 元件檔保留，等後續修好 hydration race 再重啟
+
+原因：客戶反映多個 LIFF 頁面打開沒畫面，懷疑是 splash overlay 卡住。
+先取消 splash 確保所有頁面正常運作。
+
+### Admin 首頁設定保留（v17 內容）
+- `/liff/admin/site-config` 仍可用
+- 6 卡入口 / Hero / 海況 / Footer / Slogan 全部可改
+- Splash 設定欄位保留（雖然 LiffShell 暫時不渲染，未來修好再吃這設定）
+
 ## 20260513_17 — 2026-05-13 (Admin 首頁設定 + Splash 1 小時冷卻 + 外連 Splash 路由)
 
 ### 新增 Admin 首頁設定 `/liff/admin/site-config`
