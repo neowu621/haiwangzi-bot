@@ -87,6 +87,7 @@ const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
 export default function ProfilePage() {
   const liff = useLiff();
   const [me, setMe] = useState<Me | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -150,6 +151,7 @@ export default function ProfilePage() {
     emergencyRel.trim().length >= 1;
 
   function reloadMe() {
+    setLoadError(null);
     return liff
       .fetchWithAuth<Me>("/api/me")
       .then((u) => {
@@ -168,7 +170,15 @@ export default function ProfilePage() {
         setNotes(u.notes ?? "");
         setCompanions(u.companions ?? []);
       })
-      .catch(() => {});
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setLoadError(msg);
+        // 401 (idToken 過期) → 觸發 LIFF re-login，瀏覽器會跳轉
+        if (msg.includes("401") || msg.toLowerCase().includes("idtoken")) {
+          // 等 1 秒讓 user 看到錯誤訊息再 logout/login
+          setTimeout(() => liff.login(), 1000);
+        }
+      });
   }
 
   useEffect(() => {
@@ -323,8 +333,34 @@ export default function ProfilePage() {
   if (!me) {
     return (
       <LiffShell title="個人資料" backHref="/liff/welcome" bottomNav={<BottomNav />}>
-        <div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
-          載入中...
+        <div className="px-4 py-12 text-center text-sm">
+          {loadError ? (
+            <div className="space-y-3">
+              <div className="text-[var(--color-coral)] font-semibold">
+                載入失敗
+              </div>
+              <div className="rounded-md bg-[var(--color-coral)]/10 p-3 text-left text-xs font-mono break-all">
+                {loadError}
+              </div>
+              <Button
+                onClick={() => reloadMe()}
+                variant="outline"
+                size="sm"
+              >
+                重試
+              </Button>
+              <Button
+                onClick={() => liff.login()}
+                variant="outline"
+                size="sm"
+                className="ml-2"
+              >
+                重新登入 LINE
+              </Button>
+            </div>
+          ) : (
+            <span className="text-[var(--muted-foreground)]">載入中...</span>
+          )}
         </div>
       </LiffShell>
     );

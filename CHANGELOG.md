@@ -2,6 +2,17 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_31 — 2026-05-14 (修 /liff/profile 載入卡住問題)
+
+### Bug fix
+- `/liff/profile` 之前 `/api/me` 失敗會靜默吞錯，永遠卡在「載入中...」
+- 現在會顯示真正的錯誤訊息 + 「重試」「重新登入 LINE」按鈕
+- 偵測到 401 / idToken 過期 → 自動觸發 `liff.login()` 重新走 OAuth flow
+
+### 觸發原因
+LIFF idToken 有 1 小時 TTL，過期後 `/api/me` 回 401。
+原本 `.catch(() => {})` 完全沒顯示，user 只看到「載入中...」會覺得網站壞了。
+
 ## 20260514_30 — 2026-05-14 (Email 通道完整整合)
 
 ### 新模板 (6 個)
