@@ -58,6 +58,7 @@ const CreateSchema = z.object({
     nightDive: z.number().int().default(0),
     scooterRental: z.number().int().default(0),
   }),
+  notes: z.string().optional().or(z.literal("")),
 });
 
 // POST /api/admin/trips - 新增日潛場次
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
       capacity: data.capacity === 0 ? null : data.capacity,
       coachIds: data.coachIds,
       pricing: data.pricing,
+      notes: data.notes || null,
       status: "open",
     },
   });

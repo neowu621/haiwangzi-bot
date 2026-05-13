@@ -146,15 +146,19 @@ model DiveSite {
 }
 
 model Coach {
-  id         String    @id @db.VarChar(32)
-  lineUserId String?   @unique @map("line_user_id") @db.VarChar(64)
-  realName   String    @map("real_name")
-  cert       CoachCert
-  specialty  String[]  @default([])
-  active     Boolean   @default(true)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id          String    @id @db.VarChar(32)
+  lineUserId  String?   @unique @map("line_user_id") @db.VarChar(64)
+  realName    String    @map("real_name")
+  cert        CoachCert
+  specialty   String[]  @default([])
+  // 每一支潛水的教練成本 (NT$/dive)，admin 後台設定，每團排教練後系統可參考
+  // 沒有「基本費用」概念，全部都是 per-dive 計算
+  feePerDive  Int       @default(0) @map("fee_per_dive")
+  note        String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  user       User?     @relation(fields: [lineUserId], references: [lineUserId], onDelete: SetNull)
+  user        User?     @relation(fields: [lineUserId], references: [lineUserId], onDelete: SetNull)
 
   @@map("coaches")
 }
@@ -170,6 +174,8 @@ model DivingTrip {
   capacity     Int?         // null = 無上限
   coachIds     String[]     @default([]) @map("coach_ids")
   pricing      Json
+  // 場次備註說明（顯示在客戶端、教練端、admin 列表）
+  notes        String?
   status       TripStatus   @default(open)
   cancelReason CancelReason? @map("cancel_reason")
   weatherNote  String?      @map("weather_note")

@@ -44,6 +44,7 @@ interface Trip {
     nightDive: number;
     scooterRental: number;
   };
+  notes: string | null;
   status: string;
 }
 
@@ -72,6 +73,7 @@ interface Site {
 interface Coach {
   id: string;
   realName: string;
+  feePerDive?: number;
 }
 
 const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
@@ -133,6 +135,7 @@ export default function AdminTripsPage() {
       capacity: 8,
       coachIds: [],
       pricing: { baseTrip: 1500, extraTank: 500, nightDive: 500, scooterRental: 1500 },
+      notes: null,
       status: "open",
     };
   }
@@ -414,6 +417,11 @@ export default function AdminTripsPage() {
                         {t.booked}/{t.capacity ?? "∞"} ·{" "}
                         {t.coachIds.map(coachName).join("、") || "未指派教練"} · base NT$ {t.pricing.baseTrip}
                       </div>
+                      {t.notes && (
+                        <div className="mt-1 rounded-md bg-[var(--muted)]/50 px-2 py-1 text-[11px] leading-relaxed">
+                          📝 {t.notes}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
                       <Button
@@ -634,7 +642,9 @@ export default function AdminTripsPage() {
               </div>
 
               <div>
-                <Label className="text-xs">教練 (可多選)</Label>
+                <Label className="text-xs">
+                  教練 (可多選) — 旁邊括號是每支潛水費用
+                </Label>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {coaches.map((c) => {
                     const on = (editingTrip.coachIds ?? []).includes(c.id);
@@ -655,10 +665,30 @@ export default function AdminTripsPage() {
                         )}
                       >
                         {c.realName}
+                        {typeof c.feePerDive === "number" && c.feePerDive > 0 && (
+                          <span className="ml-1 opacity-70 tabular">
+                            (${c.feePerDive})
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+                {(editingTrip.coachIds ?? []).length > 0 &&
+                  (editingTrip.tankCount ?? 0) > 0 && (
+                    <div className="mt-1 text-[11px] text-[var(--muted-foreground)] tabular">
+                      預估教練成本：NT${" "}
+                      {(editingTrip.coachIds ?? [])
+                        .map(
+                          (id) =>
+                            coaches.find((c) => c.id === id)?.feePerDive ?? 0,
+                        )
+                        .reduce((a, b) => a + b, 0) *
+                        (editingTrip.tankCount ?? 0)}
+                      {" "}
+                      (Σ feePerDive × {editingTrip.tankCount} 潛)
+                    </div>
+                  )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -720,6 +750,22 @@ export default function AdminTripsPage() {
                     }
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">備註說明 (顯示給客戶 / 教練)</Label>
+                <textarea
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  rows={3}
+                  value={editingTrip.notes ?? ""}
+                  onChange={(e) =>
+                    setEditingTrip({
+                      ...editingTrip,
+                      notes: e.target.value || null,
+                    })
+                  }
+                  placeholder="例：本團安排潮境公園生態解說、自備防寒衣建議 5mm、集合地點海王子潛店..."
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2">

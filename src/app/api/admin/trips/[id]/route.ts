@@ -25,6 +25,7 @@ const PatchSchema = z.object({
     .optional(),
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
   weatherNote: z.string().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 // PATCH /api/admin/trips/[id] - 編輯場次
@@ -54,6 +55,7 @@ export async function PATCH(
   if (data.pricing) patch.pricing = data.pricing;
   if (data.status) patch.status = data.status;
   if (data.weatherNote !== undefined) patch.weatherNote = data.weatherNote;
+  if (data.notes !== undefined) patch.notes = data.notes === "" ? null : data.notes;
 
   const trip = await prisma.divingTrip.update({ where: { id }, data: patch });
   return NextResponse.json({ ok: true, trip });

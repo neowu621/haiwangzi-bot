@@ -2,6 +2,37 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_22 — 2026-05-14 (潛點管理 + 教練 per-dive 費用 + 場次備註)
+
+### 新 admin 頁面
+- `/liff/admin/sites` — **潛點管理**（新增/編輯/刪除）
+  - 欄位：id、名稱、區域、難度、最大深度、介紹、特色、注意事項、YouTube
+  - 安全：若被 trip/tour 引用會擋住刪除
+- `/liff/admin/coaches` — **教練管理**（新增/編輯/停用/永久刪除）
+  - **核心改動**：教練「沒有基本費用」概念，改為「每一支潛水的費用 (NT$/dive)」
+  - 停用 = soft delete (active=false 可復原)
+  - 永久刪除 = 雙重確認 + 有 trip ref 會擋
+
+### 開團頁 (`/liff/admin/trips`)
+- 「新增場次」對話框加 **備註說明** textarea
+  - 範例：本團安排潮境公園生態解說、自備防寒衣建議 5mm…
+  - 場次卡片會顯示 📝 備註
+- 教練選單旁顯示 `($1500)` 每支潛水費用
+- 即時試算 **預估教練成本** = Σ feePerDive × tankCount
+
+### Schema 變更（db push 自動 sync）
+- `Coach.feePerDive Int @default(0)` — 每支潛水費用
+- `Coach.note String?` — 教練備註
+- `DivingTrip.notes String?` — 場次備註說明
+
+### 新 API
+- `POST /api/admin/sites` `PATCH/DELETE /api/admin/sites/[id]`
+- `POST /api/admin/coaches` `PATCH/DELETE /api/admin/coaches/[id]`
+- `/api/admin/sites GET` 改為 admin 拿完整資料（含 description/cautions），coach 只拿基本欄位
+
+### 既存教練資料
+deploy 後既有教練 `feePerDive=0`，需要去 `/liff/admin/coaches` 一一補上。
+
 ## 20260513_21 — 2026-05-13 (開團管理：篩選 + 還原 + 永久刪除 + 修 admin 401 race)
 
 ### 「開團管理」UI 大改
