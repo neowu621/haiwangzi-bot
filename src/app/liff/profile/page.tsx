@@ -11,6 +11,8 @@ import {
   X,
   Anchor,
   Calendar,
+  ChevronUp,
+  Settings,
 } from "lucide-react";
 import {
   Card,
@@ -384,6 +386,36 @@ export default function ProfilePage() {
             </button>
           </CardContent>
         </Card>
+
+        {/* Admin / Coach 角色才看到的後台入口 */}
+        {(me.role === "admin" || me.role === "coach") && (
+          <Link
+            href={
+              me.role === "admin"
+                ? "/liff/admin/dashboard"
+                : "/liff/coach/today"
+            }
+          >
+            <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">
+                  <Settings className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold">
+                    {me.role === "admin" ? "Admin 主控台" : "教練後台"}
+                  </div>
+                  <div className="text-[11px] text-[var(--muted-foreground)]">
+                    {me.role === "admin"
+                      ? "開團 / 訂單 / 會員 / 訊息模板 / 群發推播"
+                      : "今日場次 / 收款核對 / 本期排班"}
+                  </div>
+                </div>
+                <span className="text-[var(--color-ocean-deep)]">▸</span>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {/* 個人資料（含證照、聯絡）— Collapsible，必填 */}
         <CollapsibleCard
@@ -760,26 +792,30 @@ function InlineCompanionEditor({
 
   return (
     <div className="rounded-lg border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-bold">朋友 #{idx}</span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded-full p-1 text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10"
-            aria-label="刪除"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded-full p-1 text-[var(--muted-foreground)] hover:bg-black/5"
-            aria-label="收起"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        {/* 整個標題列點下去就收合 */}
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="-m-1 flex flex-1 items-center gap-1.5 rounded p-1 text-left hover:bg-black/5"
+          aria-label="收起"
+        >
+          <span className="text-sm font-bold">朋友 #{idx}</span>
+          {complete && (
+            <span className="text-[11px] text-[var(--muted-foreground)]">
+              {companion.name}・{companion.cert}
+            </span>
+          )}
+          <ChevronUp className="ml-auto h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-full p-1 text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10 flex-shrink-0"
+          aria-label="刪除"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       <div className="space-y-2">

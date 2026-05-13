@@ -2,6 +2,22 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_12 — 2026-05-13 (Profile 加 Admin 入口 + 朋友 header 整排可收合)
+
+### 個人頁加 Admin/教練 後台入口
+- `role=admin` → 看到「Admin 主控台」卡片 → 連 `/liff/admin/dashboard`
+- `role=coach` → 看到「教練後台」卡片 → 連 `/liff/coach/today`
+- 一般客戶看不到（不會被誤導）
+
+### 朋友 #N 整排 header 可點收合
+- 之前只有 X 按鈕能收，現在整個「朋友 #1 李大華・AOW」標題列都能點
+- 加 ChevronUp 視覺指示
+- 刪除按鈕仍獨立可點，不會誤觸
+
+### LiffProvider 支援 NEXT_PUBLIC_MOCK_USER_ID
+- 本地 dev 連 production DB 時，可用此 env 以指定 lineUserId 登入
+- 預設仍為 U_mock_dev_user_0001 (向後相容)
+
 ## 20260513_11 — 2026-05-13 (訊息模板 admin 可編輯)
 
 ### `/liff/admin/templates` 新頁面

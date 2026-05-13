@@ -29,9 +29,15 @@ export interface LiffContextValue {
 
 const LiffContext = createContext<LiffContextValue | null>(null);
 
+// Mock 模式預設用「桌面測試員」假帳號；可用 NEXT_PUBLIC_MOCK_USER_ID 覆寫，
+// 例如本地連 production DB 想以真實 admin 身分操作時：
+//   NEXT_PUBLIC_MOCK_USER_ID=Ufe9a553a9149d9ef6e9401dfb2e94a65
 const MOCK_PROFILE: LiffProfile = {
-  userId: "U_mock_dev_user_0001",
-  displayName: "桌面測試員",
+  userId:
+    process.env.NEXT_PUBLIC_MOCK_USER_ID ?? "U_mock_dev_user_0001",
+  displayName: process.env.NEXT_PUBLIC_MOCK_USER_ID
+    ? "（local dev 以 admin 身分）"
+    : "桌面測試員",
   pictureUrl: undefined,
 };
 
