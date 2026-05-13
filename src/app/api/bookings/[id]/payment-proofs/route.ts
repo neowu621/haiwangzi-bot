@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
-import { publicUrl } from "@/lib/r2";
+import { publicUrl, isPrivate, type R2Prefix } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,14 +54,21 @@ export async function POST(
   // 若 booking 是 tour 類型，重新計算 paidAmount = sum(deposit/final 驗證過的)
   // 此處先不在客戶上傳時自動標 paid，等教練「滑動確認」才更新
 
+  // 只在 R2 key 屬於公開 bucket prefix 才回 publicUrl；
+  // private prefix (payments/...) 的應該走 /api/uploads/preview presigned GET
+  let pubUrl: string | null = null;
+  if (data.r2Key) {
+    const prefix = data.r2Key.split("/")[0] as R2Prefix;
+    pubUrl = isPrivate(prefix) ? null : publicUrl(data.r2Key);
+  }
+
   return NextResponse.json({
     ok: true,
     proof: {
       id: proof.id,
       type: proof.type,
       amount: proof.amount,
-      // 若 imageKey 看起來是 R2 key (非 data:url)，順便回傳 public URL 方便預覽
-      publicUrl: data.r2Key ? publicUrl(data.r2Key) : null,
+      publicUrl: pubUrl,
       uploadedAt: proof.uploadedAt,
     },
   });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { WebhookEvent } from "@line/bot-sdk";
 import { getLineClient, verifyLineSignature } from "@/lib/line";
 import { prisma } from "@/lib/prisma";
+import { buildFlexByKey } from "@/lib/flex";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,20 +80,20 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
     update: { displayName, lastActiveAt: new Date() },
   });
 
-  // 歡迎訊息
+  // 歡迎 Flex（取代純文字）
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+  const liffUrl = liffId
+    ? `https://liff.line.me/${liffId}`
+    : "https://haiwangzi.zeabur.app";
+  const welcomeMsg = buildFlexByKey(
+    "welcome",
+    { liffUrl, displayName },
+    "歡迎加入東北角海王子潛水",
+  );
   await client.replyMessage({
     replyToken,
-    messages: [
-      {
-        type: "text",
-        text:
-          `🤿 歡迎加入海王子潛水團！\n\n` +
-          `下方 Rich Menu 直接點選功能：\n` +
-          `📅 日潛預約 · 🏝️ 旅行團 · 📋 我的預約\n` +
-          `💰 價目 · 👤 我的資料 · 📞 聯絡教練\n\n` +
-          `或直接傳「日潛」「旅行團」「我的訂單」「教練」也可快速跳轉。`,
-      },
-    ],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    messages: [welcomeMsg as any],
   });
 }
 

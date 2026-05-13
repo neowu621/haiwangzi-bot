@@ -2,6 +2,63 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_08 — 2026-05-13 (大整修：開團 CRUD + 超賣 + 天氣 + LTV + 週報)
+
+### A. 開團設定 (Admin trips CRUD)
+- 新頁 `/liff/admin/trips` 兩個 tab：日潛場次 / 旅行團
+- 新增 / 編輯 / 取消 場次（可選潛點、教練、計價、容量）
+- 新增 / 編輯 / 停用 旅行團（總價、訂金、截止日、提醒天數）
+- 6 個新 admin API：`/api/admin/{trips,tours}` 與 `/[id]`、`/api/admin/{sites,coaches}`
+- Dashboard 新增「開團管理」入口
+
+### A. 超賣邏輯
+- `DivingTrip.capacity` 改為可選（null = 無上限）
+- `Booking.overCapacity Boolean` 新欄位
+- `/api/bookings/daily` 不再硬擋超賣，照樣接單 + 推 Flex 給教練處理
+- 新 Flex `overcap_alert` (推教練)
+- 教練端 today 顯示超賣 badge
+
+### A. 旅行團提醒天數可設定
+- `TourPackage` 新增 `depositReminderDays` `finalReminderDays` `guideReminderDays`
+- Cron `/api/cron/reminders` 改讀每團的設定動態計算 D-N
+
+### B. Bug fixes
+- B1: `/api/trips` booked 排除 cancelled / weather / no_show 三種狀態
+- B2: `/api/admin/bookings` 回傳 ref（trip 日期+時間/旅行團名）；前端顯示 trip date+time，不再用時區轉換把 08:00 顯示成 02:00
+- B3: LiffShell title `truncate whitespace-nowrap` 不再折行
+- B4: payment-proofs API 對 private bucket 回 `publicUrl: null`
+
+### C. Welcome Flex
+- 第一次加好友 → 推 Flex 卡片（不再是純文字訊息）
+- 新 Flex template `welcome`
+
+### D1. 天氣自動取消
+- 新 cron `/api/cron/weather-check`
+- 抓中央氣象局浪高（需要 `CWA_API_KEY` env）
+- 浪高 > `WEATHER_WAVE_THRESHOLD` (預設 1.5m) 自動把當日 open 場次標為 cancelled_by_weather
+- 自動推 Flex `weather_cancel` 給所有已預約客戶
+
+### D3. LTV / 黑名單
+- User schema 新增 `noShowCount`、`blacklisted`、`blacklistReason`、`vipLevel`
+- `/api/admin/users` 回傳每位客戶的 LTV stats (總預約 / 完成 / 取消 / no-show / revenue / potential)
+- `POST /api/admin/users` 可改 role / blacklist / vipLevel
+- 預約時擋黑名單 → 回 403
+
+### D6. Admin 週報
+- 新 cron `/api/cron/admin-weekly`
+- 每週一 09:00 (Asia/Taipei) → Cronicle 觸發
+- 計算上週新預約 / 完成 / 取消 / 收入 / 最熱門潛點
+- 推 Flex `admin_weekly` 給所有 role=admin 的 User
+
+### E4. 錯誤監控
+- 新 `src/lib/error-report.ts`
+- 後端 reportError(err, ctx) 寫 console + 推 LINE 給 admin（環境變數 `ADMIN_LINE_USER_IDS`）
+- 留位給 Sentry / Better Stack 接口
+
+### Cronicle 新增的 Job
+- `weather-check`: `0 22 * * *` (台北 06:00) POST `/api/cron/weather-check`
+- `admin-weekly`: `0 1 * * 1` (台北每週一 09:00) POST `/api/cron/admin-weekly`
+
 ## 20260513_07 — 2026-05-13 (修同伴刪除 race condition)
 
 ### 修「點刪除同伴沒反應」bug

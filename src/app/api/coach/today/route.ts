@@ -27,10 +27,22 @@ export async function GET(req: NextRequest) {
     where: {
       refId: { in: tripIds },
       type: "daily",
-      status: { not: "cancelled_by_user" },
+      status: {
+        notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
+      },
     },
     include: {
-      user: { select: { displayName: true, realName: true, phone: true, cert: true, logCount: true } },
+      user: {
+        select: {
+          displayName: true,
+          realName: true,
+          phone: true,
+          cert: true,
+          logCount: true,
+          blacklisted: true,
+          vipLevel: true,
+        },
+      },
     },
   });
 
@@ -60,6 +72,10 @@ export async function GET(req: NextRequest) {
           totalAmount: b.totalAmount,
           paidAmount: b.paidAmount,
           notes: b.notes,
+          participants: b.participants,
+          overCapacity: b.overCapacity,
+          blacklisted: b.user.blacklisted,
+          vipLevel: b.user.vipLevel,
         })),
     })),
   });

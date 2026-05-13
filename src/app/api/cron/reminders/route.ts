@@ -138,14 +138,19 @@ async function handle(req: NextRequest) {
     }
   }
 
-  // ── 6. 旅行團尾款提醒 (出發前 3 天) ──────────────────────────
-  const in3 = new Date();
-  in3.setDate(in3.getDate() + 3);
-  in3.setHours(0, 0, 0, 0);
-  const in3End = new Date(in3.getTime() + 86400000);
-
-  const toursIn3 = await prisma.tourPackage.findMany({
-    where: { dateStart: { gte: in3, lt: in3End } },
+  // ── 6. 旅行團尾款提醒（依各團 finalReminderDays 動態決定 D-N） ─────
+  // 把所有未過期的旅行團拿出來，根據 finalReminderDays 計算它應該在「今天」推
+  const allTours = await prisma.tourPackage.findMany({
+    where: { dateStart: { gte: tomorrow } },
+  });
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart.getTime() + 86400000);
+  const toursIn3 = allTours.filter((t) => {
+    const reminderDate = new Date(t.dateStart);
+    reminderDate.setDate(reminderDate.getDate() - t.finalReminderDays);
+    reminderDate.setHours(0, 0, 0, 0);
+    return reminderDate >= todayStart && reminderDate < todayEnd;
   });
   for (const tour of toursIn3) {
     const bookings = await prisma.booking.findMany({
@@ -172,7 +177,7 @@ async function handle(req: NextRequest) {
             deadline: tour.finalDeadline
               ? tour.finalDeadline.toISOString().slice(0, 10)
               : "—",
-            daysLeft: 3,
+            daysLeft: tour.finalReminderDays,
             bankAccount: process.env.BANK_ACCOUNT ?? "—",
             url: process.env.NEXT_PUBLIC_BASE_URL
               ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`

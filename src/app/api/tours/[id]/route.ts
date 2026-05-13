@@ -28,6 +28,9 @@ export async function GET(
     finalDeadline: tour.finalDeadline?.toISOString() ?? null,
     sites,
     booked: booked._sum.participants ?? 0,
-    available: tour.capacity - (booked._sum.participants ?? 0),
+    available:
+      tour.capacity == null
+        ? 999
+        : Math.max(0, tour.capacity - (booked._sum.participants ?? 0)),
   });
 }

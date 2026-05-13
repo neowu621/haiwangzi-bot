@@ -18,8 +18,17 @@ interface AdminBooking {
   totalAmount: number;
   paidAmount: number;
   participants: number;
+  overCapacity?: boolean;
   createdAt: string;
   user: { displayName: string; realName: string | null; phone: string | null };
+  ref: {
+    date?: string;
+    startTime?: string;
+    title?: string;
+    dateStart?: string;
+    dateEnd?: string;
+    sites?: string[];
+  };
 }
 
 export default function AdminBookingsPage() {
@@ -92,15 +101,25 @@ export default function AdminBookingsPage() {
                 <Card key={b.id}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-bold">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-sm font-bold">
                           {b.user.realName ?? b.user.displayName}
+                          {b.overCapacity && (
+                            <Badge variant="coral" className="text-[9px]">
+                              超賣
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-xs text-[var(--muted-foreground)] tabular">
-                          {b.user.phone ?? "—"} · {new Date(b.createdAt).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          {b.user.phone ?? "—"}
+                        </div>
+                        <div className="mt-0.5 text-xs tabular text-[var(--foreground)]">
+                          {b.type === "daily"
+                            ? `${b.ref.date ?? "—"} ${b.ref.startTime ?? ""} · ${(b.ref.sites ?? []).join("・")}`
+                            : `${b.ref.title ?? "旅行團"} · ${b.ref.dateStart ?? "—"}→${b.ref.dateEnd ?? "—"}`}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <Badge variant={b.type === "tour" ? "coral" : "muted"}>
                           {b.type === "tour" ? "旅行團" : "日潛"}
                         </Badge>

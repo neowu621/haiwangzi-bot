@@ -7,6 +7,8 @@ import { finalReminder } from "./final-reminder";
 import { tripGuide } from "./trip-guide";
 import { weatherCancel } from "./weather-cancel";
 import { adminWeekly } from "./admin-weekly";
+import { overcapAlert } from "./overcap-alert";
+import { welcome } from "./welcome";
 
 export type FlexMessage = messagingApi.FlexMessage;
 
@@ -19,6 +21,8 @@ export const FLEX_TEMPLATES = {
   trip_guide: tripGuide,
   weather_cancel: weatherCancel,
   admin_weekly: adminWeekly,
+  overcap_alert: overcapAlert,
+  welcome: welcome,
 } as const;
 
 export type FlexTemplateKey = keyof typeof FLEX_TEMPLATES;
@@ -42,4 +46,6 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   trip_guide: "行前手冊",
   weather_cancel: "天氣取消通知",
   admin_weekly: "Admin 週報摘要",
+  overcap_alert: "超賣警示",
+  welcome: "歡迎加入",
 };

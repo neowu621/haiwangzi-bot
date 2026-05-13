@@ -29,7 +29,10 @@ export async function GET(
     ...trip,
     date: trip.date.toISOString().slice(0, 10),
     booked: booked._sum.participants ?? 0,
-    available: trip.capacity - (booked._sum.participants ?? 0),
+    available:
+      trip.capacity == null
+        ? 999
+        : Math.max(0, trip.capacity - (booked._sum.participants ?? 0)),
     sites,
     coaches,
   });

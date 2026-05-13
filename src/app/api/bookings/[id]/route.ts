@@ -82,13 +82,12 @@ export async function PATCH(
         _sum: { participants: true },
       });
       const otherBooked = sum._sum.participants ?? 0;
-      if (otherBooked + newParticipants > trip.capacity) {
-        return NextResponse.json(
-          {
-            error: `available ${trip.capacity - otherBooked} < requested ${newParticipants}`,
-          },
-          { status: 400 },
-        );
+      if (trip.capacity != null && otherBooked + newParticipants > trip.capacity) {
+        // 超賣不擋（與 POST 一致），改記 overCapacity flag
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { overCapacity: true },
+        });
       }
     }
 
@@ -153,7 +152,7 @@ export async function PATCH(
         _sum: { participants: true },
       });
       const otherBooked = sum._sum.participants ?? 0;
-      if (otherBooked + newParticipants > tour.capacity) {
+      if (tour.capacity != null && otherBooked + newParticipants > tour.capacity) {
         return NextResponse.json(
           {
             error: `available ${tour.capacity - otherBooked} < requested ${newParticipants}`,

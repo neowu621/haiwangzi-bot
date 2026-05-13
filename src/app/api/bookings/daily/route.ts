@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
+import { getLineClient } from "@/lib/line";
+import { buildFlexByKey } from "@/lib/flex";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,17 +71,38 @@ export async function POST(req: NextRequest) {
   if (trip.status !== "open")
     return NextResponse.json({ error: `trip status: ${trip.status}` }, { status: 400 });
 
-  // 容量檢查
+  // 黑名單檢查
+  if (auth.user.blacklisted) {
+    return NextResponse.json(
+      {
+        error: "blacklisted",
+        message:
+          auth.user.blacklistReason ||
+          "您的帳號被標記為黑名單，請聯絡海王子潛水團處理",
+      },
+      { status: 403 },
+    );
+  }
+
+  // 計算目前已預約人數
   const booked = await prisma.booking.aggregate({
-    where: { refId: data.tripId, type: "daily", status: { not: "cancelled_by_user" } },
+    where: {
+      refId: data.tripId,
+      type: "daily",
+      status: {
+        notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
+      },
+    },
     _sum: { participants: true },
   });
-  const remaining = trip.capacity - (booked._sum.participants ?? 0);
-  if (remaining < data.participants) {
-    return NextResponse.json(
-      { error: `available ${remaining} < requested ${data.participants}` },
-      { status: 400 },
-    );
+  const currentBooked = booked._sum.participants ?? 0;
+
+  // 容量檢查：null = 無上限，不擋；有上限時超賣 → 不擋但標記 overCapacity 推給教練
+  let overCapacity = false;
+  if (trip.capacity != null) {
+    if (currentBooked + data.participants > trip.capacity) {
+      overCapacity = true;
+    }
   }
 
   // 算錢
@@ -162,8 +185,76 @@ export async function POST(req: NextRequest) {
       paymentStatus: "pending",
       status: "confirmed", // 日潛當天現場收費,直接 confirmed
       agreedToTermsAt: new Date(),
+      overCapacity,
     },
   });
 
-  return NextResponse.json({ ok: true, booking });
+  // 超賣警示 → 推 Flex 給該場次的教練（fire-and-forget；失敗不影響預約建立）
+  if (overCapacity && process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    void notifyCoachesOvercap({
+      coachIds: trip.coachIds,
+      tripDate: trip.date.toISOString().slice(0, 10),
+      tripTime: trip.startTime,
+      siteIds: trip.diveSiteIds,
+      customerName: data.realName || auth.user.realName || auth.user.displayName,
+      requestedCount: data.participants,
+      currentBooked,
+      capacity: trip.capacity ?? 0,
+      bookingId: booking.id,
+    }).catch((e) => console.error("[overcap notify]", e));
+  }
+
+  return NextResponse.json({ ok: true, booking, overCapacity });
+}
+
+async function notifyCoachesOvercap(args: {
+  coachIds: string[];
+  tripDate: string;
+  tripTime: string;
+  siteIds: string[];
+  customerName: string;
+  requestedCount: number;
+  currentBooked: number;
+  capacity: number;
+  bookingId: string;
+}) {
+  const coaches = await prisma.coach.findMany({
+    where: { id: { in: args.coachIds }, lineUserId: { not: null } },
+  });
+  if (coaches.length === 0) return;
+
+  const sites = await prisma.diveSite.findMany({
+    where: { id: { in: args.siteIds } },
+  });
+  const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
+
+  const msg = buildFlexByKey(
+    "overcap_alert",
+    {
+      tripDate: args.tripDate,
+      tripTime: args.tripTime,
+      site: siteName,
+      customerName: args.customerName,
+      requestedCount: args.requestedCount,
+      currentBooked: args.currentBooked,
+      capacity: args.capacity,
+      bookingId: args.bookingId,
+      url:
+        process.env.NEXT_PUBLIC_BASE_URL
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/coach/today`
+          : "https://haiwangzi.zeabur.app/liff/coach/today",
+    },
+    `${args.tripDate} ${args.tripTime} 超賣警示`,
+  );
+
+  const client = getLineClient();
+  for (const c of coaches) {
+    if (!c.lineUserId) continue;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await client.pushMessage({ to: c.lineUserId, messages: [msg as any] });
+    } catch (e) {
+      console.error("[overcap push to coach]", c.id, e);
+    }
+  }
 }

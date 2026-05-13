@@ -28,10 +28,17 @@ export async function GET(req: NextRequest) {
   const trips = await prisma.divingTrip.findMany(where);
 
   // 算每個 trip 的 booked count + site info
+  // 排除所有 cancelled / no_show（這些不應該佔位置）
   const tripIds = trips.map((t) => t.id);
   const bookings = await prisma.booking.groupBy({
     by: ["refId"],
-    where: { refId: { in: tripIds }, type: "daily", status: { not: "cancelled_by_user" } },
+    where: {
+      refId: { in: tripIds },
+      type: "daily",
+      status: {
+        notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
+      },
+    },
     _sum: { participants: true },
   });
   const bookingMap = new Map(bookings.map((b) => [b.refId, b._sum.participants ?? 0]));
@@ -41,20 +48,25 @@ export async function GET(req: NextRequest) {
   const siteMap = new Map(sites.map((s) => [s.id, s]));
 
   return NextResponse.json({
-    trips: trips.map((t) => ({
-      id: t.id,
-      date: t.date.toISOString().slice(0, 10),
-      startTime: t.startTime,
-      isNightDive: t.isNightDive,
-      isScooter: t.isScooter,
-      tankCount: t.tankCount,
-      capacity: t.capacity,
-      booked: bookingMap.get(t.id) ?? 0,
-      available: t.capacity - (bookingMap.get(t.id) ?? 0),
-      pricing: t.pricing,
-      sites: t.diveSiteIds.map((id) => siteMap.get(id)).filter(Boolean),
-      coachIds: t.coachIds,
-      status: t.status,
-    })),
+    trips: trips.map((t) => {
+      const booked = bookingMap.get(t.id) ?? 0;
+      // capacity null = 無上限
+      const available = t.capacity == null ? 999 : Math.max(0, t.capacity - booked);
+      return {
+        id: t.id,
+        date: t.date.toISOString().slice(0, 10),
+        startTime: t.startTime,
+        isNightDive: t.isNightDive,
+        isScooter: t.isScooter,
+        tankCount: t.tankCount,
+        capacity: t.capacity, // null = 無上限
+        booked,
+        available,
+        pricing: t.pricing,
+        sites: t.diveSiteIds.map((id) => siteMap.get(id)).filter(Boolean),
+        coachIds: t.coachIds,
+        status: t.status,
+      };
+    }),
   });
 }

@@ -31,7 +31,10 @@ export async function GET() {
       deposit: t.deposit,
       capacity: t.capacity,
       booked: bookedMap.get(t.id) ?? 0,
-      available: t.capacity - (bookedMap.get(t.id) ?? 0),
+      available:
+        t.capacity == null
+          ? 999
+          : Math.max(0, t.capacity - (bookedMap.get(t.id) ?? 0)),
       status: t.status,
     })),
   });

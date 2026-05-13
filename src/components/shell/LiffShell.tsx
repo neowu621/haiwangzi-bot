@@ -62,9 +62,11 @@ export function LiffShell({
         </Link>
 
         {/* 右側：返回鈕 + 頁面標題 + 動作 slot */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {title ? (
-            <h1 className="text-base font-bold tracking-tight">{title}</h1>
+            <h1 className="truncate whitespace-nowrap text-base font-bold tracking-tight">
+              {title}
+            </h1>
           ) : null}
           {showBack ? (
             <button

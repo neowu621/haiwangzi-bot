@@ -10,6 +10,7 @@ import {
   Settings,
   Send,
   FileText,
+  CalendarPlus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,7 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-base">管理工具</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2">
+            <AdminLink href="/liff/admin/trips" Icon={CalendarPlus} label="開團管理" />
             <AdminLink href="/liff/admin/bookings" Icon={FileText} label="訂單管理" />
             <AdminLink href="/liff/admin/users" Icon={Users} label="會員管理" />
             <AdminLink href="/liff/admin/broadcast" Icon={Send} label="群發推播" />

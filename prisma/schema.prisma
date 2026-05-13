@@ -106,6 +106,11 @@ model User {
   notes            String?
   // 同伴清單：[{ id, name, phone, cert, certNumber, logCount, relationship }]
   companions       Json      @default("[]")
+  // LTV / 黑名單
+  noShowCount      Int       @default(0) @map("no_show_count")
+  blacklisted      Boolean   @default(false)
+  blacklistReason  String?   @map("blacklist_reason")
+  vipLevel         Int       @default(0) @map("vip_level")  // 0=normal, 1=VIP, 2=Gold
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
 
@@ -154,7 +159,7 @@ model DivingTrip {
   isScooter    Boolean      @default(false) @map("is_scooter")
   diveSiteIds  String[]     @default([]) @map("dive_site_ids")
   tankCount    Int          @default(1) @map("tank_count")
-  capacity     Int
+  capacity     Int?         // null = 無上限
   coachIds     String[]     @default([]) @map("coach_ids")
   pricing      Json
   status       TripStatus   @default(open)
@@ -166,25 +171,29 @@ model DivingTrip {
 }
 
 model TourPackage {
-  id              String     @id @default(uuid()) @db.Uuid
-  title           String
-  destination     Region
-  dateStart       DateTime   @map("date_start") @db.Date
-  dateEnd         DateTime   @map("date_end") @db.Date
-  itinerary       Json       @default("[]")
-  diveSiteIds     String[]   @default([]) @map("dive_site_ids")
-  basePrice       Int        @map("base_price")
-  deposit         Int
-  depositDeadline DateTime?  @map("deposit_deadline") @db.Timestamptz
-  finalDeadline   DateTime?  @map("final_deadline") @db.Timestamptz
-  capacity        Int
-  includes        String[]   @default([])
-  excludes        String[]   @default([])
-  addons          Json       @default("[]")
-  images          String[]   @default([])
-  youtubeUrl      String?    @map("youtube_url")
-  status          TripStatus @default(open)
-  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  id                    String     @id @default(uuid()) @db.Uuid
+  title                 String
+  destination           Region
+  dateStart             DateTime   @map("date_start") @db.Date
+  dateEnd               DateTime   @map("date_end") @db.Date
+  itinerary             Json       @default("[]")
+  diveSiteIds           String[]   @default([]) @map("dive_site_ids")
+  basePrice             Int        @map("base_price")
+  deposit               Int
+  depositDeadline       DateTime?  @map("deposit_deadline") @db.Timestamptz
+  finalDeadline         DateTime?  @map("final_deadline") @db.Timestamptz
+  capacity              Int?       // null = 無上限
+  includes              String[]   @default([])
+  excludes              String[]   @default([])
+  addons                Json       @default("[]")
+  images                String[]   @default([])
+  youtubeUrl            String?    @map("youtube_url")
+  status                TripStatus @default(open)
+  // 提醒天數設定（開團時可調）
+  depositReminderDays   Int        @default(7) @map("deposit_reminder_days")  // 訂金截止前 N 天推
+  finalReminderDays     Int        @default(3) @map("final_reminder_days")    // 尾款截止前 N 天推
+  guideReminderDays     Int        @default(1) @map("guide_reminder_days")    // 出發前 N 天推手冊
+  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("tour_packages")
 }
@@ -209,6 +218,8 @@ model Booking {
   refundAmount       Int?           @map("refund_amount")
   refundedAt         DateTime?      @map("refunded_at") @db.Timestamptz
   agreedToTermsAt    DateTime       @map("agreed_to_terms_at") @db.Timestamptz
+  // 超賣標記：booking 接受但容量已滿，提醒教練處理
+  overCapacity       Boolean        @default(false) @map("over_capacity")
   createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

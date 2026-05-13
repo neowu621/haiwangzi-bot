@@ -34,17 +34,38 @@ export async function POST(req: NextRequest) {
   if (tour.status !== "open")
     return NextResponse.json({ error: `tour status: ${tour.status}` }, { status: 400 });
 
-  // 容量檢查
+  // 黑名單檢查
+  if (auth.user.blacklisted) {
+    return NextResponse.json(
+      {
+        error: "blacklisted",
+        message: auth.user.blacklistReason || "您的帳號被標記為黑名單",
+      },
+      { status: 403 },
+    );
+  }
+
+  // 容量檢查 (null = 無上限)
   const booked = await prisma.booking.aggregate({
-    where: { refId: data.tourId, type: "tour", status: { not: "cancelled_by_user" } },
+    where: {
+      refId: data.tourId,
+      type: "tour",
+      status: {
+        notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
+      },
+    },
     _sum: { participants: true },
   });
-  const remaining = tour.capacity - (booked._sum.participants ?? 0);
-  if (remaining < data.participants) {
-    return NextResponse.json(
-      { error: `available ${remaining} < requested ${data.participants}` },
-      { status: 400 },
-    );
+  const currentBooked = booked._sum.participants ?? 0;
+  if (tour.capacity != null) {
+    const remaining = tour.capacity - currentBooked;
+    if (remaining < data.participants) {
+      // 旅行團超量直接擋（與日潛不同；旅行團需提前規劃住宿/機票）
+      return NextResponse.json(
+        { error: `available ${remaining} < requested ${data.participants}` },
+        { status: 400 },
+      );
+    }
   }
 
   // 算錢: basePrice + addons 加總
