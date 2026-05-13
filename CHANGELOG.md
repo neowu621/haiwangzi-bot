@@ -2,6 +2,24 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_20 — 2026-05-13 (Welcome 橫向 layout + 修 midnight 文字色)
+
+### 修 LiffShell header 文字看不清楚
+`.midnight` CSS class 之前只改 --foreground 變數，但沒套 `color: var(--foreground)`，
+所以子元素還是繼承 body 的暗色 (light mode foreground)。加上 `color: var(--foreground)`
+強制讓 .midnight 內所有文字用 light 色 (#e6f0ff)。
+
+### Welcome Hero 橫向化（縮 Y 軸）
+- Logo（Trident）改放在「東北角海王子」**左邊**
+- 字體調小 (text-2xl → text-lg)、subtitle 從 [10px] → [9px]
+- 整體 Y 軸減半，手機一屏看到更多卡
+
+### 6 卡橫向化（縮 Y 軸）
+- icon 從上方改到**左側**
+- 標籤 / EN / desc 改在 icon **右側** 直排
+- 每卡 padding 從 p-4 → p-3
+- 整體高度減少 ~40%，手機一屏可看到 6 卡
+
 ## 20260513_19 — 2026-05-13 (修 LIFF deep-link 404)
 
 ### 修復根本原因

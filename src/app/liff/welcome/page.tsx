@@ -81,9 +81,9 @@ export default function WelcomePage() {
   return (
     <LiffShell bottomNav={<BottomNav />} midnight>
       <div className="min-h-[calc(100dvh-3.5rem)] bg-[var(--color-midnight)] pb-24">
-        {/* Hero */}
+        {/* Hero — Logo 左 + 標題右（橫向，省 Y 軸） */}
         <section
-          className="relative overflow-hidden px-5 pt-8 pb-6 text-white"
+          className="relative overflow-hidden px-5 pt-5 pb-5 text-white"
           style={{
             background:
               "linear-gradient(180deg, #0A2342 0%, #1B3A5C 50%, #0F1B2D 100%)",
@@ -96,19 +96,21 @@ export default function WelcomePage() {
                 "radial-gradient(circle at 20% 30%, #00D9CB55, transparent 40%), radial-gradient(circle at 80% 70%, #FF7B5A33, transparent 50%)",
             }}
           />
-          <div className="relative flex flex-col items-center text-center">
-            <Trident size={56} color="#00D9CB" />
-            <h1 className="mt-3 text-2xl font-bold tracking-[0.15em]">
-              {cfg.heroTitle}
-            </h1>
-            <div className="mt-1 text-[10px] tracking-[0.35em] text-[var(--color-phosphor)]">
-              {cfg.heroSubtitle}
-            </div>
-            {liff.profile?.displayName && (
-              <div className="mt-3 text-xs opacity-70">
-                {cfg.heroGreeting}，{liff.profile.displayName}
+          <div className="relative flex items-center gap-3">
+            <Trident size={48} color="#00D9CB" />
+            <div className="flex flex-1 flex-col">
+              <h1 className="text-lg font-bold tracking-[0.15em] leading-tight">
+                {cfg.heroTitle}
+              </h1>
+              <div className="mt-0.5 text-[9px] tracking-[0.35em] text-[var(--color-phosphor)]">
+                {cfg.heroSubtitle}
               </div>
-            )}
+              {liff.profile?.displayName && (
+                <div className="mt-1 text-[11px] opacity-70">
+                  {cfg.heroGreeting}，{liff.profile.displayName}
+                </div>
+              )}
+            </div>
           </div>
 
           {!liff.loggedIn && liff.mode === "real" && liff.ready && (
@@ -132,34 +134,38 @@ export default function WelcomePage() {
             const style = ACCENT_STYLES[c.accent] ?? ACCENT_STYLES.phosphor;
             const inner = (
               <div
-                className="relative h-full overflow-hidden rounded-2xl border border-white/10 p-4 text-white shadow-lg backdrop-blur transition-transform active:scale-[0.97]"
+                className="relative h-full overflow-hidden rounded-2xl border border-white/10 p-3 text-white shadow-lg backdrop-blur transition-transform active:scale-[0.97]"
                 style={{ background: style.gradient }}
               >
                 <div
                   className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-30 blur-2xl"
                   style={{ backgroundColor: style.iconColor }}
                 />
-                <div className="relative">
+                <div className="relative flex items-center gap-2.5">
                   <div
-                    className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/5 backdrop-blur"
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 backdrop-blur"
                     style={{ color: style.iconColor }}
                   >
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <div className="text-base font-bold leading-tight">
-                    {c.label}
-                  </div>
-                  {c.enLabel && (
-                    <div
-                      className="text-[10px] font-semibold tracking-[0.2em]"
-                      style={{ color: style.iconColor }}
-                    >
-                      {c.enLabel}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold leading-tight">
+                      {c.label}
                     </div>
-                  )}
-                  <div className="mt-1 flex items-center justify-between gap-1">
-                    <span className="text-xs opacity-70">{c.desc}</span>
-                    <ChevronRight className="h-4 w-4 opacity-50" />
+                    {c.enLabel && (
+                      <div
+                        className="text-[9px] font-semibold tracking-[0.18em]"
+                        style={{ color: style.iconColor }}
+                      >
+                        {c.enLabel}
+                      </div>
+                    )}
+                    <div className="mt-0.5 flex items-center gap-1">
+                      <span className="text-[11px] opacity-70 truncate">
+                        {c.desc}
+                      </span>
+                      <ChevronRight className="h-3 w-3 opacity-50 flex-shrink-0" />
+                    </div>
                   </div>
                 </div>
               </div>

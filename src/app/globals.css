@@ -74,6 +74,8 @@
     --muted: rgba(255, 255, 255, 0.08);
     --muted-foreground: rgba(230, 240, 255, 0.7);
     --border: rgba(255, 255, 255, 0.12);
+    /* 強制子元素繼承 light foreground，否則 .midnight 內的純文字會用到 body 的暗色 */
+    color: var(--foreground);
   }
 }
 
