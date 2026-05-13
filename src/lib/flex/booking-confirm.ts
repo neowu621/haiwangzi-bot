@@ -1,4 +1,4 @@
-import { COLORS, asString, asNumber, flex } from "./_common";
+import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 預約確認 Flex 卡
@@ -6,6 +6,7 @@ import type { FlexMessage } from "./index";
 export function bookingConfirm(
   params: Record<string, unknown>,
   altText: string,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -15,8 +16,8 @@ export function bookingConfirm(
       backgroundColor: COLORS.oceanDeep,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "✓ 預約成功", color: COLORS.phosphor, weight: "bold", size: "md" },
-        { type: "text", text: "海王子潛水團", color: "#ffffff", weight: "bold", size: "xl", margin: "sm" },
+        { type: "text", text: ovr(override, "title", "✓ 預約成功"), color: COLORS.phosphor, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "subtitle", "海王子潛水團"), color: "#ffffff", weight: "bold", size: "xl", margin: "sm" },
       ],
     },
     body: {
@@ -43,7 +44,7 @@ export function bookingConfirm(
           type: "button",
           style: "primary",
           color: COLORS.phosphor,
-          action: { type: "uri", label: "查看我的預約", uri: asString(params.url, "https://line.me/") },
+          action: { type: "uri", label: ovr(override, "buttonLabel", "查看我的預約"), uri: asString(params.url, "https://line.me/") },
         },
       ],
     },

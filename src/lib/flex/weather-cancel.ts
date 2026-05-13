@@ -1,4 +1,4 @@
-import { COLORS, asString, flex } from "./_common";
+import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 天氣取消通知
@@ -6,6 +6,7 @@ import type { FlexMessage } from "./index";
 export function weatherCancel(
   params: Record<string, unknown>,
   altText: string,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -15,7 +16,7 @@ export function weatherCancel(
       backgroundColor: COLORS.coral,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "🌊 場次取消通知", color: "#ffffff", weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "🌊 場次取消通知"), color: "#ffffff", weight: "bold", size: "md" },
         { type: "text", text: `${asString(params.date)} ${asString(params.time)}`, color: "#ffffff", size: "lg", weight: "bold", margin: "xs" },
         { type: "text", text: asString(params.site), color: "#ffffff", size: "sm", margin: "xs" },
       ],
@@ -43,7 +44,7 @@ export function weatherCancel(
           type: "button",
           style: "primary",
           color: COLORS.phosphor,
-          action: { type: "uri", label: "聯繫教練改期", uri: asString(params.url, "https://line.me/") },
+          action: { type: "uri", label: ovr(override, "buttonLabel", "聯繫教練改期"), uri: asString(params.url, "https://line.me/") },
         },
       ],
     },

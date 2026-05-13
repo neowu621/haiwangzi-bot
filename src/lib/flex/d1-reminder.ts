@@ -1,4 +1,4 @@
-import { COLORS, asString, flex } from "./_common";
+import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // D-1 行前提醒
@@ -6,6 +6,7 @@ import type { FlexMessage } from "./index";
 export function d1Reminder(
   params: Record<string, unknown>,
   altText: string,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -15,9 +16,10 @@ export function d1Reminder(
       backgroundColor: COLORS.oceanSurface,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "⏰ 明日行前提醒", color: COLORS.phosphor, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "🤿 明日行前提醒"), color: COLORS.phosphor, weight: "bold", size: "md" },
         { type: "text", text: `${asString(params.date)} ${asString(params.time)}`, color: "#ffffff", size: "lg", weight: "bold", margin: "xs" },
         { type: "text", text: asString(params.site), color: "#ffffff", size: "md", margin: "xs" },
+        ...(override?.subtitle ? [{ type: "text" as const, text: override.subtitle, color: "#ffffff", size: "xs", margin: "xs", wrap: true }] : []),
       ],
     },
     body: {

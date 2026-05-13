@@ -258,3 +258,18 @@ model ReminderLog {
 
   @@map("reminder_logs")
 }
+
+// 訊息模板覆寫 — admin 可在後台改各個 Flex 模板的標題/副標/按鈕文字
+// key 對應 src/lib/flex/index.ts 的 FLEX_TEMPLATE_LABELS
+model MessageTemplate {
+  key         String   @id @db.VarChar(64)
+  title       String?
+  subtitle    String?
+  bodyText    String?  @map("body_text")
+  buttonLabel String?  @map("button_label")
+  altText     String?  @map("alt_text")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy   String?  @map("updated_by") @db.VarChar(64)
+
+  @@map("message_templates")
+}

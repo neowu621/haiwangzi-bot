@@ -2,6 +2,28 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_11 — 2026-05-13 (訊息模板 admin 可編輯)
+
+### `/liff/admin/templates` 新頁面
+- 列出 10 個 Flex 模板（預約確認/D-1提醒/訂金通知/訂金確認/尾款提醒/行前手冊/天氣取消/週報/超賣警示/歡迎）
+- 每個模板可改：標題、副標、說明文字、按鈕文字、通知列文字
+- 「試送到我自己」按鈕 → 推到當前 admin 的 LINE 即時看效果
+- 「還原預設」一鍵移除覆寫
+- 動態資料（客戶名/日期/金額）仍由系統填，admin 只改文字描述
+
+### 新 DB 表
+- `MessageTemplate (key + title + subtitle + bodyText + buttonLabel + altText + updatedBy)`
+
+### 程式架構
+- `buildFlexByKey()` 同步（不讀 DB），舊呼叫位點保持效能
+- `buildFlexByKeyAsync()` 新非同步版（讀 DB override 套用）
+- 10 個 factory 改成接受 `override?: TemplateOverride` 參數
+- `_common.ts` 加 `ovr(override, field, defaultValue)` helper
+- `index.ts` 加 `FLEX_EDITABLE_FIELDS` 定義每個模板哪些欄位可改
+
+### Admin Dashboard
+- 加「訊息模板」入口
+
 ## 20260513_10 — 2026-05-13 (改用 CWA 即時測站 + 風速判斷)
 
 ### 天氣自動取消用對的資料源

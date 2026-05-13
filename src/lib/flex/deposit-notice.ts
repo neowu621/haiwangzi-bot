@@ -1,4 +1,4 @@
-import { COLORS, asString, asNumber, flex } from "./_common";
+import { COLORS, asString, asNumber, flex, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 訂金繳費通知
@@ -6,6 +6,8 @@ import type { FlexMessage } from "./index";
 export function depositNotice(
   params: Record<string, unknown>,
   altText: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",

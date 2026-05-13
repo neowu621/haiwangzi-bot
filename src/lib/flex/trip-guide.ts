@@ -1,4 +1,4 @@
-import { COLORS, asString, flex } from "./_common";
+import { COLORS, asString, flex, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 行前手冊 (旅行團 D-1)
@@ -6,6 +6,8 @@ import type { FlexMessage } from "./index";
 export function tripGuide(
   params: Record<string, unknown>,
   altText: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",

@@ -1,4 +1,4 @@
-import { COLORS, asString, flex } from "./_common";
+import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 /**
@@ -7,6 +7,7 @@ import type { FlexMessage } from "./index";
 export function welcome(
   params: Record<string, unknown>,
   altText: string,
+  override?: TemplateOverride,
 ): FlexMessage {
   const liffUrl = asString(
     params.liffUrl,
@@ -28,7 +29,7 @@ export function welcome(
         },
         {
           type: "text",
-          text: "歡迎潛入",
+          text: ovr(override, "title", "歡迎潛入"),
           color: "#ffffff",
           weight: "bold",
           size: "xl",
@@ -37,7 +38,7 @@ export function welcome(
         },
         {
           type: "text",
-          text: "東北角海王子潛水",
+          text: ovr(override, "subtitle", "東北角海王子潛水"),
           color: COLORS.phosphor,
           size: "md",
           align: "center",
@@ -97,11 +98,12 @@ export function welcome(
         { type: "separator", margin: "md" },
         {
           type: "text",
-          text: "安全．專業．陪你看見海",
+          text: ovr(override, "bodyText", "安全．專業．陪你看見海"),
           color: COLORS.mute,
           size: "xs",
           align: "center",
           margin: "md",
+          wrap: true,
         },
       ],
     },
@@ -117,7 +119,7 @@ export function welcome(
           color: COLORS.phosphor,
           action: {
             type: "uri",
-            label: "開啟預約 App",
+            label: ovr(override, "buttonLabel", "開啟預約 App"),
             uri: liffUrl,
           },
         },
