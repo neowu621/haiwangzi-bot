@@ -132,10 +132,10 @@ async function handleTextMessage(
     });
     return;
   }
-  if (text.includes("旅行團") || text.includes("旅遊")) {
+  if (text.includes("潛水團") || text.includes("旅遊")) {
     await client.replyMessage({
       replyToken,
-      messages: [{ type: "text", text: `🏝️ 旅行團列表\n${liffBase}/tour` }],
+      messages: [{ type: "text", text: `🏝️ 潛水團列表\n${liffBase}/tour` }],
     });
     return;
   }
@@ -168,7 +168,7 @@ async function handleTextMessage(
         type: "text",
         text:
           `您說: ${text}\n\n` +
-          `試試傳「日潛」「旅行團」「我的訂單」 或 「後台」`,
+          `試試傳「日潛」「潛水團」「我的訂單」 或 「後台」`,
       },
     ],
   });

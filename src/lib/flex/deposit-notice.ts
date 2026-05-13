@@ -18,7 +18,7 @@ export function depositNotice(
       paddingAll: "16px",
       contents: [
         { type: "text", text: "💳 請繳訂金", color: COLORS.oceanDeep, weight: "bold", size: "md" },
-        { type: "text", text: asString(params.tourTitle, "旅行團"), color: COLORS.oceanDeep, size: "lg", weight: "bold", margin: "xs", wrap: true },
+        { type: "text", text: asString(params.tourTitle, "潛水團"), color: COLORS.oceanDeep, size: "lg", weight: "bold", margin: "xs", wrap: true },
       ],
     },
     body: {

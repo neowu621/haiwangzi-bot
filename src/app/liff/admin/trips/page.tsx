@@ -207,7 +207,7 @@ export default function AdminTripsPage() {
   }
 
   async function cancelTour(id: string) {
-    if (!confirm("確定停用這個旅行團？")) return;
+    if (!confirm("確定停用這個潛水團？")) return;
     await liff.fetchWithAuth(`/api/admin/tours/${id}`, { method: "DELETE" });
     await reload();
   }
@@ -222,7 +222,7 @@ export default function AdminTripsPage() {
   }
 
   async function restoreTour(id: string) {
-    if (!confirm("確定還原這個旅行團為「啟用中」？")) return;
+    if (!confirm("確定還原這個潛水團為「啟用中」？")) return;
     await liff.fetchWithAuth(`/api/admin/tours/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ status: "open" }),
@@ -256,7 +256,7 @@ export default function AdminTripsPage() {
 
   async function permaDeleteTour(t: Tour) {
     const phase1 = confirm(
-      `⚠ 永久刪除旅行團「${t.title}」？\n\n這個動作無法復原，DB row 會直接消失。`,
+      `⚠ 永久刪除潛水團「${t.title}」？\n\n這個動作無法復原，DB row 會直接消失。`,
     );
     if (!phase1) return;
     const phase2 = prompt(`為了安全，請輸入「DELETE」確認永久刪除：`);
@@ -272,6 +272,41 @@ export default function AdminTripsPage() {
       await reload();
     } catch (e) {
       alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  // ⚠ 危險：清除所有開團資料（trips + tours + 相關 booking）
+  async function wipeAllTripsAndTours() {
+    const ok1 = confirm(
+      `⚠⚠ 警告：這會刪除所有日潛場次 + 潛水團 + 所有相關訂單！\n\n` +
+        `不會動：潛點 / 教練 / 會員 / 首頁設定 / 動態\n\n` +
+        `確定要繼續？`,
+    );
+    if (!ok1) return;
+    const ok2 = prompt(`為了安全，請輸入「WIPE-ALL」確認：`);
+    if (ok2 !== "WIPE-ALL") {
+      alert("取消（沒輸入 WIPE-ALL）");
+      return;
+    }
+    try {
+      const r = await liff.fetchWithAuth<{
+        ok: boolean;
+        tripsDeleted: number;
+        toursDeleted: number;
+        bookingsDeleted: number;
+      }>("/api/admin/trips/wipe-all", {
+        method: "POST",
+        body: JSON.stringify({ confirm: "WIPE-ALL-TRIPS-AND-TOURS" }),
+      });
+      alert(
+        `✓ 已清除\n` +
+          `- 日潛場次：${r.tripsDeleted}\n` +
+          `- 潛水團：${r.toursDeleted}\n` +
+          `- 相關訂單：${r.bookingsDeleted}`,
+      );
+      await reload();
+    } catch (e) {
+      alert("失敗：" + (e instanceof Error ? e.message : String(e)));
     }
   }
 
@@ -352,13 +387,38 @@ export default function AdminTripsPage() {
             </Button>
           )}
 
+        {/* ⚠ 危險區：清除所有開團資料 */}
+        {filter === "all" && (trips.length > 0 || tours.length > 0) && (
+          <div className="mt-2 rounded-lg border border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-2">
+            <div className="text-[11px] text-[var(--color-coral)] font-bold mb-1.5 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              危險區：一鍵清除所有開團資料
+            </div>
+            <div className="text-[10px] text-[var(--muted-foreground)] mb-1.5 leading-relaxed">
+              刪除全部 {trips.length} 個日潛場次 + {tours.length} 個潛水團 +
+              所有相關訂單。
+              <br />
+              不會動：潛點 / 教練 / 會員 / 首頁設定 / 動態
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-[var(--color-coral)] text-[var(--color-coral)]"
+              onClick={wipeAllTripsAndTours}
+            >
+              <AlertTriangle className="h-3 w-3" />
+              清除所有開團資料（雙重確認）
+            </Button>
+          </div>
+        )}
+
         <Tabs defaultValue="trips">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="trips">
               日潛場次 ({filteredTrips.length})
             </TabsTrigger>
             <TabsTrigger value="tours">
-              旅行團 ({filteredTours.length})
+              潛水團 ({filteredTours.length})
             </TabsTrigger>
           </TabsList>
 
@@ -474,11 +534,11 @@ export default function AdminTripsPage() {
               className="w-full"
               onClick={() => setEditingTour(newTourDraft())}
             >
-              <Plus className="h-4 w-4" /> 新增旅行團
+              <Plus className="h-4 w-4" /> 新增潛水團
             </Button>
             {filteredTours.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-6 text-center text-xs text-[var(--muted-foreground)]">
-                {filter === "cancelled" ? "沒有停用的旅行團" : filter === "all" ? "還沒有旅行團" : "沒有啟用中的旅行團"}
+                {filter === "cancelled" ? "沒有停用的潛水團" : filter === "all" ? "還沒有潛水團" : "沒有啟用中的潛水團"}
               </div>
             )}
             {filteredTours.map((t) => (
@@ -774,7 +834,7 @@ export default function AdminTripsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 編輯旅行團 Dialog */}
+      {/* 編輯潛水團 Dialog */}
       <Dialog
         open={editingTour !== null}
         onOpenChange={(o) => !o && setEditingTour(null)}
@@ -782,7 +842,7 @@ export default function AdminTripsPage() {
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingTour?.id ? "編輯旅行團" : "新增旅行團"}
+              {editingTour?.id ? "編輯潛水團" : "新增潛水團"}
             </DialogTitle>
           </DialogHeader>
           {editingTour && (

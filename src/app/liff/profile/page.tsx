@@ -677,7 +677,7 @@ function BookingHistoryList({
         const date = b.ref.date || b.ref.dateStart || "—";
         const title =
           b.type === "tour"
-            ? b.ref.title || "旅行團"
+            ? b.ref.title || "潛水團"
             : (b.ref.sites?.[0] ?? "東北角");
         const sub =
           b.type === "tour"

@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 //
 // 邏輯：
 //   1. D-1 日潛行前提醒：明日所有 open 的 daily trip 之 confirmed bookings
-//   2. 旅行團尾款提醒：3 天後出發、deposit_paid 但尾款未清的 booking
+//   2. 潛水團尾款提醒：3 天後出發、deposit_paid 但尾款未清的 booking
 //   3. (未來可擴充：D-1 行前手冊、D-3 訂金到期...)
 //
 // 支援 GET (瀏覽器手動測試) 與 POST (Cronicle 標準呼叫)。
@@ -138,8 +138,8 @@ async function handle(req: NextRequest) {
     }
   }
 
-  // ── 6. 旅行團尾款提醒（依各團 finalReminderDays 動態決定 D-N） ─────
-  // 把所有未過期的旅行團拿出來，根據 finalReminderDays 計算它應該在「今天」推
+  // ── 6. 潛水團尾款提醒（依各團 finalReminderDays 動態決定 D-N） ─────
+  // 把所有未過期的潛水團拿出來，根據 finalReminderDays 計算它應該在「今天」推
   const allTours = await prisma.tourPackage.findMany({
     where: { dateStart: { gte: tomorrow } },
   });

@@ -123,7 +123,7 @@ export default function TourDetailPage({
 
   if (!tour) {
     return (
-      <LiffShell title="旅行團" backHref="/liff/tour">
+      <LiffShell title="潛水團" backHref="/liff/tour">
         <div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
           {error ? `錯誤：${error}` : "載入中..."}
         </div>

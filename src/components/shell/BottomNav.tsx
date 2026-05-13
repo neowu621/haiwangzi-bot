@@ -12,7 +12,7 @@ const NAV: Array<{
   Icon: React.ComponentType<{ className?: string }>;
 }> = [
   { href: "/liff/calendar", label: "日潛", match: /^\/liff\/(calendar|dive)/, Icon: CalendarDays },
-  { href: "/liff/tour", label: "旅行團", match: /^\/liff\/tour/, Icon: Plane },
+  { href: "/liff/tour", label: "潛水團", match: /^\/liff\/tour/, Icon: Plane },
   { href: "/liff/my", label: "我的", match: /^\/liff\/my/, Icon: ListChecks },
   { href: "/liff/profile", label: "個人", match: /^\/liff\/profile/, Icon: User },
 ];

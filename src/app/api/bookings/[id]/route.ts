@@ -162,7 +162,7 @@ export async function PATCH(
       }
     }
 
-    // 簡化：旅行團不重算加購（addons 變更比較少），只改人數時等比例重算
+    // 簡化：潛水團不重算加購（addons 變更比較少），只改人數時等比例重算
     const perPerson = booking.totalAmount / booking.participants;
     const totalAmount = Math.round(perPerson * newParticipants);
     const depositAmount =

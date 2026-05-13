@@ -230,7 +230,7 @@ function EmptyState({ text = "尚無預約紀錄" }: { text?: string }) {
           href="/liff/tour"
           className="rounded-full border border-[var(--border)] px-4 py-2 text-xs font-bold"
         >
-          看旅行團
+          看潛水團
         </Link>
       </div>
     </Card>

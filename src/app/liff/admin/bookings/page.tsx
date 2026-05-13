@@ -116,12 +116,12 @@ export default function AdminBookingsPage() {
                         <div className="mt-0.5 text-xs tabular text-[var(--foreground)]">
                           {b.type === "daily"
                             ? `${b.ref.date ?? "—"} ${b.ref.startTime ?? ""} · ${(b.ref.sites ?? []).join("・")}`
-                            : `${b.ref.title ?? "旅行團"} · ${b.ref.dateStart ?? "—"}→${b.ref.dateEnd ?? "—"}`}
+                            : `${b.ref.title ?? "潛水團"} · ${b.ref.dateStart ?? "—"}→${b.ref.dateEnd ?? "—"}`}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <Badge variant={b.type === "tour" ? "coral" : "muted"}>
-                          {b.type === "tour" ? "旅行團" : "日潛"}
+                          {b.type === "tour" ? "潛水團" : "日潛"}
                         </Badge>
                         <div className="mt-1 text-xs tabular">
                           {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}

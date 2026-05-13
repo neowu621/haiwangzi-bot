@@ -5,7 +5,7 @@ import { authFromRequest } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/bookings/my - 我的所有訂單 (含展開的場次/旅行團詳情)
+// GET /api/bookings/my - 我的所有訂單 (含展開的場次/潛水團詳情)
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });

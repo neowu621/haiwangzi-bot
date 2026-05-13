@@ -94,7 +94,7 @@ export async function DELETE(
   if (usedInTours > 0) {
     return NextResponse.json(
       {
-        error: `這個潛點還被 ${usedInTours} 個旅行團引用，不能刪除。`,
+        error: `這個潛點還被 ${usedInTours} 個潛水團引用，不能刪除。`,
       },
       { status: 409 },
     );

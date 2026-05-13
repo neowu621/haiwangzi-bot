@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   if (tour.capacity != null) {
     const remaining = tour.capacity - currentBooked;
     if (remaining < data.participants) {
-      // 旅行團超量直接擋（與日潛不同；旅行團需提前規劃住宿/機票）
+      // 潛水團超量直接擋（與日潛不同；潛水團需提前規劃住宿/機票）
       return NextResponse.json(
         { error: `available ${remaining} < requested ${data.participants}` },
         { status: 400 },

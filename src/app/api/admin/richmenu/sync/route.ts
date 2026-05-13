@@ -19,7 +19,7 @@ function richMenuSpec(role: "customer" | "coach" | "admin") {
   const cells = {
     customer: [
       { path: "/calendar", text: "🤿 日潛預約" },
-      { path: "/tour", text: "🏝️ 旅行團" },
+      { path: "/tour", text: "🏝️ 潛水團" },
       { path: "/my", text: "📋 我的預約" },
       { path: "/welcome", text: "💰 價目" },
       { path: "/profile", text: "👤 我的資料" },

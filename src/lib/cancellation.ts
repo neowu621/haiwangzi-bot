@@ -7,7 +7,7 @@ export type CancellationContext = {
   daysUntil: number; // 距離出發/潛水日期的天數 (負數 = 已過)
   totalAmount: number;
   paidAmount: number;
-  depositAmount: number; // 旅行團才有
+  depositAmount: number; // 潛水團才有
   hasMedicalProof?: boolean; // 醫師證明 (日潛全退)
 };
 
@@ -38,7 +38,7 @@ export function calculateRefund(ctx: CancellationContext): CancellationResult {
     return { refundAmount: 0, rule: "當天/未到 → 不退款,可改期 1 次 (30 天內)" };
   }
 
-  // 旅行團
+  // 潛水團
   const deposit = ctx.depositAmount;
   const balance = Math.max(0, ctx.paidAmount - deposit); // 已繳尾款
 

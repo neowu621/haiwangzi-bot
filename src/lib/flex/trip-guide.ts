@@ -1,7 +1,7 @@
 import { COLORS, asString, flex, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
-// 行前手冊 (旅行團 D-1)
+// 行前手冊 (潛水團 D-1)
 // params: { tourTitle, gather, transport, hotel, leader, phone }
 export function tripGuide(
   params: Record<string, unknown>,

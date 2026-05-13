@@ -129,7 +129,7 @@ export default function CoachPaymentPage() {
                     {TYPE_LABEL[p.type]}
                   </Badge>
                   <Badge variant="muted" className="text-[10px]">
-                    {p.booking.type === "daily" ? "日潛" : "旅行團"}
+                    {p.booking.type === "daily" ? "日潛" : "潛水團"}
                   </Badge>
                 </div>
                 <div className="mt-0.5 text-lg font-bold tabular text-[var(--color-coral)]">

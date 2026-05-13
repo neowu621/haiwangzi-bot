@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ tours });
 }
 
-// POST /api/admin/tours - 新增旅行團
+// POST /api/admin/tours - 新增潛水團
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)

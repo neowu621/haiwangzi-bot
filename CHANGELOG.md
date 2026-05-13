@@ -2,6 +2,21 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_25 — 2026-05-14 (清除全部開團資料 + 旅行團 → 潛水團)
+
+### 文字統一改名
+- 全站 **「旅行團」→「潛水團」**（22 個 code 檔案、Flex 模板、UI、API 訊息）
+- 保留歷史 CHANGELOG / docs 原文不動
+
+### 新功能：一鍵清除所有開團資料
+- 在 `/liff/admin/trips` 「全部」tab 下方加 **危險區塊**
+- 雙重確認（confirm + prompt 輸入 `WIPE-ALL`）
+- 新 API：`POST /api/admin/trips/wipe-all`
+  - body: `{ confirm: "WIPE-ALL-TRIPS-AND-TOURS" }`
+  - 在 transaction 內依序刪：PaymentProof → ReminderLog → Booking → DivingTrip → TourPackage
+  - **不會動**：DiveSite / Coach / User / SiteConfig / TripMedia / MessageTemplate
+- 回傳實際刪除數量
+
 ## 20260514_24 — 2026-05-14 (旅行團表單橫向化 + 提醒新規則)
 
 ### 「新增 / 編輯旅行團」對話框

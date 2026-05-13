@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/tours - 列出開放中的旅行團
+// GET /api/tours - 列出開放中的潛水團
 export async function GET() {
   const tours = await prisma.tourPackage.findMany({
     where: { status: { in: ["open", "full"] } },

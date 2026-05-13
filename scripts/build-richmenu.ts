@@ -25,7 +25,7 @@ interface Cell {
 const MENUS: Record<"customer" | "coach" | "admin", Cell[]> = {
   customer: [
     { label: "日潛預約", sub: "Calendar", accent: "#00D9CB" },
-    { label: "旅行團", sub: "Tour Packages" },
+    { label: "潛水團", sub: "Tour Packages" },
     { label: "我的預約", sub: "My Bookings" },
     { label: "價目·證照", sub: "Pricing" },
     { label: "我的資料", sub: "Profile" },

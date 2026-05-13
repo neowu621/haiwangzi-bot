@@ -66,7 +66,7 @@ export default function ReportsPage() {
                 <Row label="總訂單" value={String(stats.bookings.total)} />
                 <Row label="待核轉帳" value={String(stats.pendingProofs)} />
                 <Row label="日潛場次" value={`${stats.trips.open}/${stats.trips.total}`} />
-                <Row label="旅行團" value={`${stats.tours.open}/${stats.tours.total}`} />
+                <Row label="潛水團" value={`${stats.tours.open}/${stats.tours.total}`} />
               </CardContent>
             </Card>
 

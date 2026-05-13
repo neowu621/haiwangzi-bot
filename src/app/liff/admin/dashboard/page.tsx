@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
               />
               <Mini
                 Icon={Plane}
-                label="旅行團"
+                label="潛水團"
                 value={stats.tours.total}
                 desc={`開放 ${stats.tours.open}`}
               />
