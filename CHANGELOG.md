@@ -2,6 +2,34 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_19 — 2026-05-13 (修 LIFF deep-link 404)
+
+### 修復根本原因
+LINE LIFF endpoint URL 設成 `https://haiwangzi.zeabur.app/liff/welcome`，
+當客戶打開 `liff.line.me/<ID>/calendar` 等深層連結時，LINE 會把 path
+附加到 endpoint，URL 變成 `/liff/welcome/calendar` → 404。
+
+### 修法
+`next.config.ts` 加 redirect rule：
+```
+/liff/welcome/:path+  →  /liff/:path+
+```
+
+讓 LINE 附加 path 後 server-side 自動 redirect 到正確位置：
+- `/liff/welcome/calendar` → `/liff/calendar`
+- `/liff/welcome/tour` → `/liff/tour`
+- `/liff/welcome/media` → `/liff/media`
+- `/liff/welcome/my` → `/liff/my`
+- `/liff/welcome/profile` → `/liff/profile`
+
+### 建議的永久解法（可選）
+將 LINE Console LIFF App Endpoint URL 改成：
+```
+https://haiwangzi.zeabur.app/liff/welcome → https://haiwangzi.zeabur.app/liff
+```
+（需另加 /liff redirect 到 /liff/welcome），這樣 path append 邏輯就直接對。
+目前用 redirect rule 已能解決，不急著改。
+
 ## 20260513_18 — 2026-05-13 (Splash 暫停用，回到穩定狀態)
 
 ### Splash rollback
