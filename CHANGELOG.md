@@ -2,6 +2,22 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_15 — 2026-05-13 (Welcome 改深海風格 — 對齊設計圖)
+
+### Welcome 頁完全重做為「深海主題」
+- 全頁 midnight bg (`#0F1B2D`)
+- Hero 區改成「三叉戟 logo + 東 北 角 海 王 子 + NEIL OCEAN PRINCE」字寬
+- 海底光斑裝飾（radial gradient blur）
+- 6 卡每張獨立漸層（深海藍 → 強調色淡邊）+ 圓形 icon + 中/英雙語 + 描述 + 箭頭
+- 海況卡保留但融入暗色
+- 底部 slogan「探索海洋 · 安全潛水 · 專業教學」+ EN
+
+### 新增 SVG
+- `<Trident>` 三叉戟元件（src/components/brand/Logo.tsx）
+
+### Shell
+- LiffShell `midnight` 模式應用到整頁（header 也變深色）
+
 ## 20260513_14 — 2026-05-13 (最新動態 + Welcome 6 卡)
 
 ### 最新動態 (DIVE MEDIA) 功能
