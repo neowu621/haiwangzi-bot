@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   Edit3,
@@ -84,6 +85,13 @@ const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
 
 export default function AdminTripsPage() {
   const liff = useLiff();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "tours" ? "tours" : "trips";
+  const initialFilter = (() => {
+    const f = searchParams.get("filter");
+    if (f === "cancelled" || f === "all" || f === "active") return f;
+    return "active";
+  })();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tours, setTours] = useState<Tour[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
@@ -92,7 +100,7 @@ export default function AdminTripsPage() {
   const [editingTour, setEditingTour] = useState<Partial<Tour> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<"active" | "cancelled" | "all">("active");
+  const [filter, setFilter] = useState<"active" | "cancelled" | "all">(initialFilter);
 
   const filteredTrips = useMemo(() => {
     if (filter === "active") return trips.filter((t) => t.status !== "cancelled");
@@ -419,7 +427,7 @@ export default function AdminTripsPage() {
           </div>
         )}
 
-        <Tabs defaultValue="trips">
+        <Tabs defaultValue={initialTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="trips">
               日潛場次 ({filteredTrips.length})

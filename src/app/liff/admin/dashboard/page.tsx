@@ -24,9 +24,9 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 
 interface Stats {
   users: { total: number; customers: number; coaches: number; admins: number };
-  trips: { total: number; open: number };
-  tours: { total: number; open: number };
-  bookings: { total: number };
+  trips: { total: number; open: number; bookable: number };
+  tours: { total: number; open: number; bookable: number };
+  bookings: { total: number; active: number };
   revenue: { paid: number; booked: number };
   pendingProofs: number;
 }
@@ -80,28 +80,32 @@ export default function AdminDashboardPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <Mini
+                href="/liff/admin/users"
                 Icon={Users}
                 label="會員"
                 value={stats.users.total}
                 desc={`客 ${stats.users.customers} · 教 ${stats.users.coaches}`}
               />
               <Mini
+                href="/liff/admin/trips?tab=trips&filter=active"
                 Icon={Calendar}
                 label="日潛場次"
-                value={stats.trips.total}
-                desc={`開放 ${stats.trips.open}`}
+                value={stats.trips.bookable}
+                desc={`可預約 · 總 ${stats.trips.total}`}
               />
               <Mini
+                href="/liff/admin/trips?tab=tours&filter=active"
                 Icon={Plane}
                 label="潛水團"
-                value={stats.tours.total}
-                desc={`開放 ${stats.tours.open}`}
+                value={stats.tours.bookable}
+                desc={`可預約 · 總 ${stats.tours.total}`}
               />
               <Mini
+                href="/liff/admin/bookings?filter=active"
                 Icon={TrendingUp}
                 label="總訂單"
-                value={stats.bookings.total}
-                desc="累計"
+                value={stats.bookings.active}
+                desc={`未執行 · 總 ${stats.bookings.total}`}
               />
             </div>
           </>
@@ -136,24 +140,28 @@ function Mini({
   label,
   value,
   desc,
+  href,
 }: {
   Icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number;
   desc: string;
+  href?: string;
 }) {
-  return (
-    <Card>
+  const inner = (
+    <Card className={href ? "transition-colors active:scale-[0.97] hover:bg-[var(--muted)]" : ""}>
       <CardContent className="p-4">
         <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
           <Icon className="h-3 w-3" />
           {label}
+          {href && <span className="ml-auto text-[10px]">▸</span>}
         </div>
         <div className="mt-1 text-2xl font-bold tabular">{value}</div>
         <div className="text-[10px] text-[var(--muted-foreground)]">{desc}</div>
       </CardContent>
     </Card>
   );
+  return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
 function AdminLink({

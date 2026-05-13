@@ -2,6 +2,31 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_32 — 2026-05-14 (主控台統計卡可點 + 數字改 operational 語意)
+
+### `/api/admin/stats` 改寫
+- `trips.bookable` — open + 未來日期（可預約場次）
+- `tours.bookable` — open + 未來出發日（可預約團）
+- `bookings.active` — status in (pending/confirmed) + 對應 event 未過
+
+### 主控台 Mini 卡
+- 4 張卡全部變成 Link，標題右邊有 `▸` 提示
+- **會員** → `/liff/admin/users`
+- **日潛場次** → `/liff/admin/trips?tab=trips&filter=active`
+  - 主數字改為 bookable，副標顯示「總 N」
+- **潛水團** → `/liff/admin/trips?tab=tours&filter=active`
+- **總訂單** → `/liff/admin/bookings?filter=active`
+  - 主數字改為「未執行」訂單數
+
+### URL param 支援
+- `/liff/admin/trips` 讀 `?tab=` (trips/tours) + `?filter=` (active/cancelled/all)
+- `/liff/admin/bookings` 讀 `?filter=active` → 預設 tab=進行中
+
+### 為什麼這樣改
+之前主數字是「歷史累計」（含 cancelled / completed / 過去場次），admin 想知道
+「現在可以預約的場次幾個？還沒執行的訂單幾筆？」是看不出來的。
+現在 operational 數字一目了然，點進去也直接導到對應 filter。
+
 ## 20260514_31 — 2026-05-14 (修 /liff/profile 載入卡住問題)
 
 ### Bug fix

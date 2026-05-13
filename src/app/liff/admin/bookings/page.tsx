@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -33,6 +34,9 @@ interface AdminBooking {
 
 export default function AdminBookingsPage() {
   const liff = useLiff();
+  const searchParams = useSearchParams();
+  // ?filter=active 從主控台「總訂單」卡進來時，預設選「進行中」tab
+  const initialTab = searchParams.get("filter") === "active" ? "up" : "all";
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
@@ -81,7 +85,7 @@ export default function AdminBookingsPage() {
         {err && (
           <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">{err}</Card>
         )}
-        <Tabs defaultValue="all">
+        <Tabs defaultValue={initialTab}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="all">全部 ({all.length})</TabsTrigger>
             <TabsTrigger value="up">進行中 ({upcoming.length})</TabsTrigger>
