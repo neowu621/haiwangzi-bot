@@ -98,7 +98,7 @@ export default function ProfilePage() {
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
 
-  // 同伴
+  // 潛伴 (companions)
   const [companions, setCompanions] = useState<Companion[]>([]);
 
   // 折疊狀態
@@ -228,10 +228,13 @@ export default function ProfilePage() {
     }
     // 樂觀更新：UI 立即響應
     setCompanions(next);
+    // 只把名字非空的潛伴送到後端（後端 zod 要求 name.min(1)）
+    // 新增但還沒填名字的潛伴會留在 local state，等使用者填完名字才存 DB
+    const toSave = next.filter((c) => c.name.trim().length >= 1);
     try {
       await liff.fetchWithAuth("/api/me", {
         method: "PATCH",
-        body: JSON.stringify({ companions: next }),
+        body: JSON.stringify({ companions: toSave }),
       });
       setSavedAt(Date.now());
     } catch (err) {
@@ -273,7 +276,7 @@ export default function ProfilePage() {
   }
 
   async function removeCompanion(id: string) {
-    if (!confirm("確定刪除這位同伴？")) return;
+    if (!confirm("確定刪除這位潛伴？")) return;
     // 用 functional update 拿最新陣列再過濾，避免陳舊閉包
     let next: Companion[] = [];
     setCompanions((prev) => {
@@ -544,9 +547,9 @@ export default function ProfilePage() {
           </div>
         </CollapsibleCard>
 
-        {/* 常用同伴 — Collapsible */}
+        {/* 常用潛伴 — Collapsible */}
         <CollapsibleCard
-          title="常用同伴"
+          title="常用潛伴"
           complete={completedCompanions.length > 0}
           open={companionsOpen}
           onToggle={() => setCompanionsOpen(!companionsOpen)}
@@ -557,7 +560,7 @@ export default function ProfilePage() {
           }
           summary={
             companions.length === 0
-              ? "尚未新增同伴（預約時可一鍵帶入）"
+              ? "尚未新增潛伴（預約時可一鍵帶入）"
               : companions
                   .filter((c) => c.name.trim())
                   .map((c) => c.name)
@@ -566,12 +569,12 @@ export default function ProfilePage() {
         >
           <div className="space-y-2">
             <p className="text-[11px] text-[var(--muted-foreground)]">
-              預先把常一起下水的朋友資料填好，下次多人預約直接挑選。
-              預約時新填的同伴也會自動加進這裡。
+              預先把常一起下水的潛伴資料填好，下次多人預約直接挑選。
+              預約時新填的潛伴也會自動加進這裡。
             </p>
             {companions.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-4 text-center text-xs text-[var(--muted-foreground)]">
-                還沒有同伴，點下方「新增同伴」開始
+                還沒有潛伴，點下方「新增潛伴」開始
               </div>
             )}
             {companions.map((c, idx) => (
@@ -589,7 +592,7 @@ export default function ProfilePage() {
               onClick={addCompanion}
             >
               <Plus className="h-4 w-4" />
-              新增同伴 #{companions.length + 1}
+              新增潛伴 #{companions.length + 1}
             </Button>
           </div>
         </CollapsibleCard>
@@ -771,7 +774,7 @@ function InlineCompanionEditor({
           ) : (
             <X className="h-3.5 w-3.5 text-[var(--color-coral)]" />
           )}
-          <span className="text-xs font-bold">朋友 #{idx}</span>
+          <span className="text-xs font-bold">潛伴 #{idx}</span>
           <span
             className={cn(
               "text-xs",
@@ -800,7 +803,7 @@ function InlineCompanionEditor({
           className="-m-1 flex flex-1 items-center gap-1.5 rounded p-1 text-left hover:bg-black/5"
           aria-label="收起"
         >
-          <span className="text-sm font-bold">朋友 #{idx}</span>
+          <span className="text-sm font-bold">潛伴 #{idx}</span>
           {complete && (
             <span className="text-[11px] text-[var(--muted-foreground)]">
               {companion.name}・{companion.cert}

@@ -586,15 +586,15 @@ export default function TripBookingPage({
           </div>
         </CollapsibleCard>
 
-        {/* 同伴清單 (人數 > 1 才出現) */}
+        {/* 潛伴清單 (人數 > 1 才出現) */}
         {companionSlots.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
-                同伴資料 ({companionSlots.length} 位)
+                潛伴資料 ({companionSlots.length} 位)
               </CardTitle>
               <p className="-mt-1 text-[11px] text-[var(--muted-foreground)]">
-                可從已存同伴選擇，或手動輸入。新填的同伴會自動存到您的會員資料。
+                可從常用潛伴選擇，或手動輸入。新填的潛伴會自動存到您的會員資料。
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -935,7 +935,7 @@ function CompanionSlotEditor({
             <AlertTriangle className="h-4 w-4 text-[var(--color-coral)]" />
           )}
           <div className="flex flex-col leading-tight">
-            <span className="text-xs font-bold">同伴 #{idx}</span>
+            <span className="text-xs font-bold">潛伴 #{idx}</span>
             <span
               className={cn(
                 "text-xs",
@@ -958,7 +958,7 @@ function CompanionSlotEditor({
   return (
     <div className="rounded-lg border-2 border-[var(--color-phosphor)]/40 bg-white p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-bold">同伴 #{idx}</span>
+        <span className="text-sm font-bold">潛伴 #{idx}</span>
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -969,11 +969,11 @@ function CompanionSlotEditor({
         </button>
       </div>
 
-      {/* 已存同伴 — 大型 chip 一鍵帶入 */}
+      {/* 常用潛伴 — 大型 chip 一鍵帶入 */}
       {saved.length > 0 && (
         <div className="mb-3 rounded-md bg-[var(--muted)] p-2">
           <div className="mb-1.5 text-[10px] font-semibold text-[var(--muted-foreground)]">
-            從常用同伴選 ({saved.length} 位) — 點一下自動帶入
+            從常用潛伴選 ({saved.length} 位) — 點一下自動帶入
           </div>
           <div className="flex flex-wrap gap-1.5">
             {saved.map((c) => (

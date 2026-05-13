@@ -2,6 +2,19 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_13 — 2026-05-13 (修潛伴儲存 500 bug + 改名 朋友/同伴 → 潛伴)
+
+### 修 HTTP 500 bug
+- 「新增潛伴」後立刻點 OW/AOW 按鈕（還沒填名字）→ debounce 觸發 PATCH /api/me → 後端 Zod 拒絕空 name → 500
+- 修法：`persistCompanions` 只把 `name.trim().length >= 1` 的潛伴送 API
+- 空名字的潛伴留在 local state（form 還在），等使用者填名字才存 DB
+
+### 統一用詞「潛伴」
+- 朋友 #N → 潛伴 #N
+- 同伴 / 朋友 → 潛伴
+- 常用同伴 → 常用潛伴
+- 新增同伴 → 新增潛伴
+
 ## 20260513_12 — 2026-05-13 (Profile 加 Admin 入口 + 朋友 header 整排可收合)
 
 ### 個人頁加 Admin/教練 後台入口
