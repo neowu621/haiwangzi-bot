@@ -2,6 +2,37 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_14 — 2026-05-13 (最新動態 + Welcome 6 卡)
+
+### 最新動態 (DIVE MEDIA) 功能
+為節省流量設計成「連結牆」：教練先把照片/影片發到 FB/IG/YouTube，
+再到 LIFF 後台貼連結 + 上傳一張小縮圖 + 一句說明，
+客戶在 `/liff/media` 看到 feed → 點縮圖外開到原平台看完整內容。
+
+新檔案：
+- Prisma: `TripMedia` model + `MediaPlatform` enum (fb/ig/yt/tiktok/other)
+- `/api/media` 公開 GET (feed, cursor 分頁)
+- `/api/coach/media` GET/POST (上傳)
+- `/api/coach/media/[id]` DELETE
+- `/liff/media` 客戶端 feed 頁
+- `/liff/coach/media` 教練上傳 + 自己管理頁
+- R2 presign 加 `media` prefix (public bucket)
+- 平台自動偵測：貼 FB/IG/YT URL 會自動選對 platform
+
+### Welcome 改 6 卡（依您提供的設計圖）
+從 4 卡（日潛/旅遊/我的/個人）→ 6 卡：
+- 日潛水 (FUN DIVE) · 今日出航
+- 潛水團 (DIVE TRIP) · 國內外行程
+- **最新動態 (DIVE MEDIA) · 影像日誌** (新)
+- 我的預約 (BOOKING) · 課程紀錄
+- **FB 社群 (COMMUNITY) · Facebook 粉絲頁** (外連 https://www.facebook.com/wang.cheng.ru.350053)
+- 個人中心 (MY PROFILE) · 潛水紀錄
+
+每卡加 English label (FUN DIVE / DIVE TRIP / ...) 視覺呼應您的設計
+
+### Admin Dashboard
+加「動態管理」連結到 `/liff/coach/media`
+
 ## 20260513_13 — 2026-05-13 (修潛伴儲存 500 bug + 改名 朋友/同伴 → 潛伴)
 
 ### 修 HTTP 500 bug

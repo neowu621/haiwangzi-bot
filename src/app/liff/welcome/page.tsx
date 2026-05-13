@@ -1,6 +1,13 @@
 "use client";
 import Link from "next/link";
-import { CalendarDays, Plane, ListChecks, User2 } from "lucide-react";
+import {
+  CalendarDays,
+  Plane,
+  ListChecks,
+  User2,
+  Camera,
+  Users,
+} from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,12 +15,69 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
 
-const QUICKLINKS = [
-  { href: "/liff/calendar", label: "日潛預約", desc: "東北角｜當日現場收費", Icon: CalendarDays, accent: "phosphor" },
-  { href: "/liff/tour", label: "旅遊潛水", desc: "蘭嶼·綠島·墾丁多日團", Icon: Plane, accent: "coral" },
-  { href: "/liff/my", label: "我的預約", desc: "即將前往 / 已完成", Icon: ListChecks, accent: "gold" },
-  { href: "/liff/profile", label: "個人資料", desc: "證照·緊急聯絡人", Icon: User2, accent: "ocean" },
-] as const;
+const FB_PAGE = "https://www.facebook.com/wang.cheng.ru.350053";
+
+type QuickLink = {
+  href: string;
+  external?: boolean;
+  label: string;
+  enLabel: string;
+  desc: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  accent: "phosphor" | "coral" | "gold" | "ocean";
+};
+
+const QUICKLINKS: QuickLink[] = [
+  {
+    href: "/liff/calendar",
+    label: "日潛水",
+    enLabel: "FUN DIVE",
+    desc: "今日出航",
+    Icon: CalendarDays,
+    accent: "phosphor",
+  },
+  {
+    href: "/liff/tour",
+    label: "潛水團",
+    enLabel: "DIVE TRIP",
+    desc: "國內外行程",
+    Icon: Plane,
+    accent: "coral",
+  },
+  {
+    href: "/liff/media",
+    label: "最新動態",
+    enLabel: "DIVE MEDIA",
+    desc: "影像日誌",
+    Icon: Camera,
+    accent: "gold",
+  },
+  {
+    href: "/liff/my",
+    label: "我的預約",
+    enLabel: "BOOKING",
+    desc: "課程紀錄",
+    Icon: ListChecks,
+    accent: "phosphor",
+  },
+  {
+    href: FB_PAGE,
+    external: true,
+    label: "FB 社群",
+    enLabel: "COMMUNITY",
+    desc: "Facebook 粉絲頁",
+    Icon: Users,
+    accent: "coral",
+  },
+  {
+    href: "/liff/profile",
+    label: "個人中心",
+    enLabel: "MY PROFILE",
+    desc: "潛水紀錄",
+    Icon: User2,
+    accent: "ocean",
+  },
+];
 
 const accentBg: Record<string, string> = {
   phosphor: "bg-[var(--color-phosphor)]/15 text-[var(--color-ocean-deep)]",
@@ -51,21 +115,38 @@ export default function WelcomePage() {
       </section>
 
       <section className="grid grid-cols-2 gap-3 px-5 pt-6">
-        {QUICKLINKS.map(({ href, label, desc, Icon, accent }) => (
-          <Link key={href} href={href}>
+        {QUICKLINKS.map((q) => {
+          const inner = (
             <Card className="h-full p-4 transition-transform active:scale-[0.97]">
               <div
-                className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${accentBg[accent]}`}
+                className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${accentBg[q.accent]}`}
               >
-                <Icon className="h-5 w-5" />
+                <q.Icon className="h-5 w-5" />
               </div>
-              <div className="text-base font-bold">{label}</div>
-              <div className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                {desc}
+              <div className="text-base font-bold leading-tight">{q.label}</div>
+              <div className="text-[9px] font-semibold tracking-[0.15em] text-[var(--muted-foreground)]">
+                {q.enLabel}
+              </div>
+              <div className="mt-1 text-xs text-[var(--muted-foreground)]">
+                {q.desc}
               </div>
             </Card>
-          </Link>
-        ))}
+          );
+          return q.external ? (
+            <a
+              key={q.href}
+              href={q.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {inner}
+            </a>
+          ) : (
+            <Link key={q.href} href={q.href}>
+              {inner}
+            </Link>
+          );
+        })}
       </section>
 
       <section className="mt-6 px-5">

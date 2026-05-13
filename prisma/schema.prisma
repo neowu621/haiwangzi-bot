@@ -91,6 +91,14 @@ enum ReminderChannel {
   email
 }
 
+enum MediaPlatform {
+  fb
+  ig
+  yt
+  tiktok
+  other
+}
+
 // ─── Tables ──────────────────────────────────────────────
 
 model User {
@@ -257,6 +265,22 @@ model ReminderLog {
   booking   Booking?        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("reminder_logs")
+}
+
+// 最新動態 / 影像日誌 — 教練在後台貼 FB/IG/YT 連結 + 縮圖，客戶在 /liff/media 看 feed
+// 不存實際影片（節流量），只存外部連結 + 小縮圖
+model TripMedia {
+  id           String        @id @default(uuid()) @db.Uuid
+  tripId       String?       @map("trip_id") @db.Uuid    // 可選綁定 DivingTrip
+  date         DateTime      @db.Date                     // 拍攝日期
+  platform     MediaPlatform
+  url          String                                     // FB/IG/YT 原始連結
+  thumbnailKey String?       @map("thumbnail_key")        // R2 public bucket key
+  caption      String?
+  createdBy    String?       @map("created_by") @db.VarChar(64)  // 教練 lineUserId
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("trip_media")
 }
 
 // 訊息模板覆寫 — admin 可在後台改各個 Flex 模板的標題/副標/按鈕文字

@@ -45,12 +45,17 @@ export function r2Configured(): boolean {
   return Boolean(accessKeyId && secretAccessKey && endpoint);
 }
 
-export type R2Prefix = "payments" | "sites" | "avatars" | "richmenu";
+export type R2Prefix =
+  | "payments"
+  | "sites"
+  | "avatars"
+  | "richmenu"
+  | "media"; // 最新動態縮圖 (public bucket)
 
 /** prefix → bucket 對應 */
 export function bucketFor(prefix: R2Prefix): string {
   if (prefix === "payments" || prefix === "avatars") return R2_PRIVATE_BUCKET;
-  return R2_PUBLIC_BUCKET; // sites, richmenu
+  return R2_PUBLIC_BUCKET; // sites, richmenu, media
 }
 
 export function isPrivate(prefix: R2Prefix): boolean {
