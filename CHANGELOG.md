@@ -2,6 +2,18 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_16 — 2026-05-13 (Deep link 3 秒品牌 Splash)
+
+### Splash Overlay
+- 第一次直接打開深層 LIFF link（calendar/tour/media/my/profile）時，先顯示 3 秒品牌 splash
+- Splash 內容：三叉戟 logo + 「東 北 角 海 王 子」+ NEIL OCEAN PRINCE + Loading 進度條
+- 同 session 後續導航不再重複顯示（sessionStorage 標記）
+- welcome 頁本身不顯示（它就是 splash 風格）
+
+### 程式
+- 新元件 `src/components/shell/SplashOverlay.tsx`
+- LiffShell 內建 splash overlay
+
 ## 20260513_15 — 2026-05-13 (Welcome 改深海風格 — 對齊設計圖)
 
 ### Welcome 頁完全重做為「深海主題」

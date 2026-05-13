@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/brand/Logo";
+import { SplashOverlay } from "@/components/shell/SplashOverlay";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,9 @@ export function LiffShell({
         midnight && "midnight bg-[var(--color-midnight)]",
       )}
     >
+      {/* Deep-link entry 第一次進來顯示 3 秒品牌 splash */}
+      <SplashOverlay />
+
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur">
         {/* 左側：Wordmark (含版本)，點按回首頁 */}
         <Link
