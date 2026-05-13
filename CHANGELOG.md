@@ -2,6 +2,13 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_35 — 2026-05-14 (修 v34 Zeabur build 失敗)
+
+### Bug fix
+- v32 引入 `useSearchParams()` 但 Next.js 16 預渲染 client component 要包 Suspense
+- 否則 `npm run build` 在 prerender `/liff/admin/bookings` + `/liff/admin/trips` 階段失敗
+- 修：兩頁都改為 `Page → <Suspense><Content/></Suspense>` 結構
+
 ## 20260514_34 — 2026-05-14 (多重身分 User.roles[])
 
 ### 核心需求

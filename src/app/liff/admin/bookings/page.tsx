@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -33,6 +33,15 @@ interface AdminBooking {
 }
 
 export default function AdminBookingsPage() {
+  // Next.js 預渲染 client component 用 useSearchParams 時要 Suspense 包
+  return (
+    <Suspense fallback={null}>
+      <AdminBookingsContent />
+    </Suspense>
+  );
+}
+
+function AdminBookingsContent() {
   const liff = useLiff();
   const searchParams = useSearchParams();
   // ?filter=active 從主控台「總訂單」卡進來時，預設選「進行中」tab

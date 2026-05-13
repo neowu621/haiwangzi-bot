@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Plus,
@@ -84,6 +84,15 @@ interface Coach {
 const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
 
 export default function AdminTripsPage() {
+  // Next.js 預渲染 client component 用 useSearchParams 時要 Suspense 包
+  return (
+    <Suspense fallback={null}>
+      <AdminTripsContent />
+    </Suspense>
+  );
+}
+
+function AdminTripsContent() {
   const liff = useLiff();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") === "tours" ? "tours" : "trips";
