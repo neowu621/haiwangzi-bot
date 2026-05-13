@@ -25,6 +25,7 @@ interface AdminUser {
   displayName: string;
   realName: string | null;
   phone: string | null;
+  email: string | null;
   role: Role;
   cert: Cert | null;
   certNumber: string | null;
@@ -87,6 +88,7 @@ export default function AdminUsersPage() {
           u.displayName,
           u.realName ?? "",
           u.phone ?? "",
+          u.email ?? "",
           u.certNumber ?? "",
           u.lineUserId,
         ]
@@ -111,6 +113,7 @@ export default function AdminUsersPage() {
             role: editing.role,
             realName: editing.realName,
             phone: editing.phone,
+            email: editing.email,
             cert: editing.cert,
             certNumber: editing.certNumber,
             logCount: editing.logCount,
@@ -239,8 +242,10 @@ export default function AdminUsersPage() {
                     </Badge>
                   )}
                 </div>
-                <div className="tabular text-[11px] text-[var(--muted-foreground)]">
-                  {u.phone ?? "—"} ·{" "}
+                <div className="tabular text-[11px] text-[var(--muted-foreground)] truncate">
+                  {u.phone ?? "—"} · {u.email ?? "—"}
+                </div>
+                <div className="tabular text-[10px] text-[var(--muted-foreground)]">
                   {u.certNumber ? `${u.certNumber} · ` : ""}
                   {u.logCount} logs
                 </div>
@@ -309,6 +314,18 @@ export default function AdminUsersPage() {
                     setEditing({ ...editing, phone: e.target.value || null })
                   }
                   placeholder="0912-345-678"
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">Email</Label>
+                <Input
+                  type="email"
+                  value={editing.email ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, email: e.target.value || null })
+                  }
+                  placeholder="you@example.com"
                 />
               </div>
 

@@ -2,6 +2,38 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_28 — 2026-05-14 (User.email + 首次登入提示)
+
+### Schema 變更
+- `User.email String?` (max 254 字 = RFC5321 上限)
+
+### API
+- `GET /api/me` 回傳 `email`
+- `PATCH /api/me` 接受 `email`，Zod 用 `.email()` 驗證格式
+- `POST /api/admin/users` admin 也可代填 email
+
+### 客戶端 `/liff/profile`
+- 個人資料卡加 **Email 欄位**（必填，跟姓名/手機/證照同層）
+- 格式不對紅框 + 提示
+- summary 加入 email 顯示
+- email 未填時顯示「🔔 首次登入請填 email」
+
+### Welcome 首次登入提示
+- 登入後若 `email == null` → Hero 區下方出現金色提示框
+- 點一下直接跳 `/liff/profile`
+
+### Admin 會員管理
+- 編輯 Dialog 加 Email 欄位
+- 列表卡片顯示 email
+- 搜尋框比對 email
+
+### 用途
+Email 比 SMS 便宜（SMS 約 NT$1/封；email 幾乎免費）：
+- 預約確認信
+- 行前通知（出發前 D-2）
+- 訂金/尾款收據
+- 統一發票（將來）
+
 ## 20260514_27 — 2026-05-14 (會員管理：完整編輯)
 
 ### `/liff/admin/users` 大改

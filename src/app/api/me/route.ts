@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     displayName: u.displayName,
     realName: u.realName,
     phone: u.phone,
+    email: u.email,
     cert: u.cert,
     certNumber: u.certNumber,
     logCount: u.logCount,
@@ -53,6 +54,13 @@ const CompanionSchema = z.object({
 const PatchSchema = z.object({
   realName: z.string().optional(),
   phone: z.string().optional(),
+  email: z
+    .string()
+    .email("email 格式不對")
+    .max(254)
+    .nullable()
+    .optional()
+    .or(z.literal("")),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
   certNumber: z.string().nullable().optional(),
   logCount: z.number().int().min(0).optional(),
@@ -76,7 +84,10 @@ export async function PATCH(req: NextRequest) {
   const body = PatchSchema.parse(await req.json());
   const data: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
-    if (v !== undefined) data[k] = v;
+    if (v !== undefined) {
+      // 空字串 → null（避免 DB 存空字串）
+      data[k] = v === "" ? null : v;
+    }
   }
   const updated = await prisma.user.update({
     where: { lineUserId: auth.user.lineUserId },

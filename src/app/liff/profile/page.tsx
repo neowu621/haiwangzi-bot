@@ -69,6 +69,7 @@ interface Me {
   displayName: string;
   realName: string | null;
   phone: string | null;
+  email: string | null;
   cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
   certNumber: string | null;
   logCount: number;
@@ -90,6 +91,7 @@ export default function ProfilePage() {
   // 本人資料
   const [realName, setRealName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
   const [certNumber, setCertNumber] = useState("");
   const [logCount, setLogCount] = useState("");
@@ -129,10 +131,14 @@ export default function ProfilePage() {
     }
   }
 
-  // 必填驗證
+  // 必填驗證 (email 用 simple regex 過濾)
+  const emailValid =
+    email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const personalComplete =
     realName.trim().length >= 2 &&
     phone.trim().length >= 8 &&
+    email.trim().length >= 5 &&
+    emailValid &&
     cert !== "";
   const emergencyComplete =
     emergencyName.trim().length >= 2 &&
@@ -146,6 +152,7 @@ export default function ProfilePage() {
         setMe(u);
         setRealName(u.realName ?? "");
         setPhone(u.phone ?? "");
+        setEmail(u.email ?? "");
         setCert(u.cert ?? "");
         setCertNumber(u.certNumber ?? "");
         setLogCount(String(u.logCount ?? 0));
@@ -182,6 +189,7 @@ export default function ProfilePage() {
   }, [
     realName,
     phone,
+    email,
     cert,
     certNumber,
     logCount,
@@ -193,6 +201,11 @@ export default function ProfilePage() {
 
   async function saveSelf() {
     if (!me) return;
+    // email 格式不對就不送（避免 server 500）
+    if (email.trim().length > 0 && !emailValid) {
+      setSaving(false);
+      return;
+    }
     setSaving(true);
     try {
       await liff.fetchWithAuth("/api/me", {
@@ -200,6 +213,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           realName: realName || null,
           phone: phone || null,
+          email: email.trim() || null,
           cert: cert || null,
           certNumber: certNumber || null,
           logCount: Number(logCount) || 0,
@@ -429,8 +443,10 @@ export default function ProfilePage() {
           onToggle={() => setPersonalOpen(!personalOpen)}
           summary={
             personalComplete
-              ? `${realName}・${phone}・${cert}${logCount ? `・${logCount}支` : ""}`
-              : "尚未填寫（預約時會強制填寫）"
+              ? `${realName}・${phone}・${email}・${cert}${logCount ? `・${logCount}支` : ""}`
+              : email.trim().length === 0
+                ? "🔔 首次登入請填 email（收通知信用）"
+                : "尚未填寫（預約時會強制填寫）"
           }
         >
           <div className="space-y-3">
@@ -452,6 +468,32 @@ export default function ProfilePage() {
                   placeholder="09xx-xxx-xxx"
                 />
               </div>
+            </div>
+            <div>
+              <Label>
+                Email *
+                <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
+                  （收預約確認 / 行前通知 / 發票，比 SMS 便宜）
+                </span>
+              </Label>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className={cn(
+                  email.trim().length > 0 &&
+                    !emailValid &&
+                    "border-[var(--color-coral)]",
+                )}
+              />
+              {email.trim().length > 0 && !emailValid && (
+                <div className="mt-0.5 text-[10px] text-[var(--color-coral)]">
+                  email 格式不對
+                </div>
+              )}
             </div>
             <div>
               <Label>

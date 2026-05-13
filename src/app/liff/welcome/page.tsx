@@ -66,6 +66,7 @@ const ACCENT_STYLES: Record<
 export default function WelcomePage() {
   const liff = useLiff();
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
+  const [emailMissing, setEmailMissing] = useState(false);
 
   useEffect(() => {
     fetch("/api/site-config")
@@ -73,6 +74,17 @@ export default function WelcomePage() {
       .then((d) => setCfg((c) => ({ ...c, ...d })))
       .catch(() => {});
   }, []);
+
+  // 首次登入：拉 /api/me 看有沒有 email；沒有就提示去填
+  useEffect(() => {
+    if (!liff.ready || !liff.loggedIn) return;
+    liff
+      .fetchWithAuth<{ email: string | null }>("/api/me")
+      .then((u) => {
+        if (!u.email) setEmailMissing(true);
+      })
+      .catch(() => {});
+  }, [liff, liff.ready, liff.loggedIn]);
 
   const cards = (cfg.cards ?? DEFAULT_SITE_CONFIG.cards)
     .filter((c) => c.enabled)
@@ -124,6 +136,24 @@ export default function WelcomePage() {
                 使用 LINE 登入
               </Button>
             </div>
+          )}
+
+          {/* 首次登入提示填 email */}
+          {emailMissing && (
+            <Link href="/liff/profile">
+              <div className="relative mt-4 rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/15 p-3 backdrop-blur transition-colors hover:bg-[var(--color-gold)]/25">
+                <div className="flex items-center gap-2">
+                  <div className="text-xl">✉️</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold">請填寫 Email</div>
+                    <div className="text-[11px] opacity-80">
+                      用來收預約確認 / 行前通知 / 發票
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 opacity-70" />
+                </div>
+              </div>
+            </Link>
           )}
         </section>
 

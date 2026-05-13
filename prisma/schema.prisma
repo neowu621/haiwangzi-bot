@@ -106,6 +106,8 @@ model User {
   displayName      String    @map("display_name")
   realName         String?   @map("real_name")
   phone            String?   @db.VarChar(32)
+  // 註冊 email — 用於通知信、發票、e-card；比 SMS 便宜，首次登入強制要填
+  email            String?   @db.VarChar(254)
   emergencyContact Json?     @map("emergency_contact")
   cert             CertLevel?
   certNumber       String?   @map("cert_number") @db.VarChar(64)

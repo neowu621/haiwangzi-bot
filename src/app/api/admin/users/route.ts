@@ -78,6 +78,13 @@ const PatchSchema = z.object({
   role: z.enum(["customer", "coach", "admin"]).optional(),
   realName: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
+  email: z
+    .string()
+    .email("email 格式不對")
+    .max(254)
+    .nullable()
+    .optional()
+    .or(z.literal("")),
   cert: z
     .enum(["OW", "AOW", "Rescue", "DM", "Instructor"])
     .nullable()
@@ -108,6 +115,8 @@ export async function POST(req: NextRequest) {
     patch.realName = data.realName === "" ? null : data.realName;
   if (data.phone !== undefined)
     patch.phone = data.phone === "" ? null : data.phone;
+  if (data.email !== undefined)
+    patch.email = data.email === "" ? null : data.email;
   if (data.cert !== undefined) patch.cert = data.cert;
   if (data.certNumber !== undefined)
     patch.certNumber = data.certNumber === "" ? null : data.certNumber;
