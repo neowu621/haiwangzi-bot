@@ -47,3 +47,6 @@ next-env.d.ts
 # preview/work artefacts
 *.zip
 /npm-build.log
+
+# Claude Code 本機工具設定（preview launch / scheduled tasks lock）
+.claude/
