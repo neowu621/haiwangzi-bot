@@ -204,9 +204,10 @@ model TourPackage {
   youtubeUrl            String?    @map("youtube_url")
   status                TripStatus @default(open)
   // 提醒天數設定（開團時可調）
+  // 規則：訂金確認後 7 天內付款保留名額；尾款出發前 30 天繳清；行前 2 天再次通知
   depositReminderDays   Int        @default(7) @map("deposit_reminder_days")  // 訂金截止前 N 天推
-  finalReminderDays     Int        @default(3) @map("final_reminder_days")    // 尾款截止前 N 天推
-  guideReminderDays     Int        @default(1) @map("guide_reminder_days")    // 出發前 N 天推手冊
+  finalReminderDays     Int        @default(30) @map("final_reminder_days")   // 尾款截止前 N 天推
+  guideReminderDays     Int        @default(2) @map("guide_reminder_days")    // 出發前 N 天推手冊
   createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("tour_packages")

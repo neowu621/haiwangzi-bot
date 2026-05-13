@@ -151,9 +151,9 @@ export default function AdminTripsPage() {
       basePrice: 15000,
       deposit: 5000,
       capacity: 10,
-      depositReminderDays: 7,
-      finalReminderDays: 3,
-      guideReminderDays: 1,
+      depositReminderDays: 7,   // 確認訂單後 1 週內付訂金保留名額
+      finalReminderDays: 30,    // 尾款出發前 1 個月繳清
+      guideReminderDays: 2,     // 出發前 2 天再次通知
       status: "open",
     };
   }
@@ -786,8 +786,9 @@ export default function AdminTripsPage() {
             </DialogTitle>
           </DialogHeader>
           {editingTour && (
-            <div className="space-y-3">
-              <div>
+            <div className="space-y-2.5">
+              {/* 團名 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">團名</Label>
                 <Input
                   value={editingTour.title ?? ""}
@@ -797,58 +798,64 @@ export default function AdminTripsPage() {
                   placeholder="例：蘭嶼四天三夜潛旅 (中秋)"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">出發日</Label>
-                  <Input
-                    type="date"
-                    value={editingTour.dateStart ?? ""}
-                    onChange={(e) =>
-                      setEditingTour({ ...editingTour, dateStart: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">回程日</Label>
-                  <Input
-                    type="date"
-                    value={editingTour.dateEnd ?? ""}
-                    onChange={(e) =>
-                      setEditingTour({ ...editingTour, dateEnd: e.target.value })
-                    }
-                  />
-                </div>
+
+              {/* 出發日 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">出發日</Label>
+                <Input
+                  type="date"
+                  value={editingTour.dateStart ?? ""}
+                  onChange={(e) =>
+                    setEditingTour({ ...editingTour, dateStart: e.target.value })
+                  }
+                />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">總價</Label>
-                  <Input
-                    type="number"
-                    value={editingTour.basePrice ?? 0}
-                    onChange={(e) =>
-                      setEditingTour({
-                        ...editingTour,
-                        basePrice: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">訂金</Label>
-                  <Input
-                    type="number"
-                    value={editingTour.deposit ?? 0}
-                    onChange={(e) =>
-                      setEditingTour({
-                        ...editingTour,
-                        deposit: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
+
+              {/* 回程日 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">回程日</Label>
+                <Input
+                  type="date"
+                  value={editingTour.dateEnd ?? ""}
+                  onChange={(e) =>
+                    setEditingTour({ ...editingTour, dateEnd: e.target.value })
+                  }
+                />
               </div>
-              <div>
-                <Label className="text-xs">容量 (0 = 無上限)</Label>
+
+              {/* 團費 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">團費</Label>
+                <Input
+                  type="number"
+                  value={editingTour.basePrice ?? 0}
+                  onChange={(e) =>
+                    setEditingTour({
+                      ...editingTour,
+                      basePrice: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+
+              {/* 訂金 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">訂金</Label>
+                <Input
+                  type="number"
+                  value={editingTour.deposit ?? 0}
+                  onChange={(e) =>
+                    setEditingTour({
+                      ...editingTour,
+                      deposit: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+
+              {/* 預計團員人數 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">預計團員人數</Label>
                 <Input
                   type="number"
                   value={editingTour.capacity ?? 0}
@@ -858,43 +865,49 @@ export default function AdminTripsPage() {
                       capacity: Number(e.target.value) || null,
                     })
                   }
+                  placeholder="0 = 無上限"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">訂金截止日</Label>
-                  <Input
-                    type="date"
-                    value={(editingTour.depositDeadline ?? "").slice(0, 10)}
-                    onChange={(e) =>
-                      setEditingTour({
-                        ...editingTour,
-                        depositDeadline: e.target.value || null,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">尾款截止日</Label>
-                  <Input
-                    type="date"
-                    value={(editingTour.finalDeadline ?? "").slice(0, 10)}
-                    onChange={(e) =>
-                      setEditingTour({
-                        ...editingTour,
-                        finalDeadline: e.target.value || null,
-                      })
-                    }
-                  />
-                </div>
+
+              {/* 訂金截止日 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">訂金截止日</Label>
+                <Input
+                  type="date"
+                  value={(editingTour.depositDeadline ?? "").slice(0, 10)}
+                  onChange={(e) =>
+                    setEditingTour({
+                      ...editingTour,
+                      depositDeadline: e.target.value || null,
+                    })
+                  }
+                />
               </div>
-              <div className="rounded-md bg-[var(--muted)] p-2">
-                <div className="mb-1.5 text-[10px] font-semibold text-[var(--muted-foreground)]">
-                  自動推播提醒（出發/截止前 N 天）
+
+              {/* 尾款截止日 */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">尾款截止日</Label>
+                <Input
+                  type="date"
+                  value={(editingTour.finalDeadline ?? "").slice(0, 10)}
+                  onChange={(e) =>
+                    setEditingTour({
+                      ...editingTour,
+                      finalDeadline: e.target.value || null,
+                    })
+                  }
+                />
+              </div>
+
+              {/* 自動推播提醒 */}
+              <div className="rounded-md bg-[var(--muted)] p-2 space-y-1.5">
+                <div className="text-[10px] font-semibold text-[var(--muted-foreground)]">
+                  自動推播提醒
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-[10px]">訂金 D-</Label>
+
+                <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                  <Label className="text-[11px]">訂金 D-</Label>
+                  <div className="flex items-center gap-1.5">
                     <Input
                       type="number"
                       value={editingTour.depositReminderDays ?? 7}
@@ -904,41 +917,56 @@ export default function AdminTripsPage() {
                           depositReminderDays: Number(e.target.value),
                         })
                       }
-                      className="text-center"
+                      className="w-16 text-center"
                     />
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                      天前推（確認訂單後 7 天內未付即釋出名額）
+                    </span>
                   </div>
-                  <div>
-                    <Label className="text-[10px]">尾款 D-</Label>
+                </div>
+
+                <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                  <Label className="text-[11px]">尾款 D-</Label>
+                  <div className="flex items-center gap-1.5">
                     <Input
                       type="number"
-                      value={editingTour.finalReminderDays ?? 3}
+                      value={editingTour.finalReminderDays ?? 30}
                       onChange={(e) =>
                         setEditingTour({
                           ...editingTour,
                           finalReminderDays: Number(e.target.value),
                         })
                       }
-                      className="text-center"
+                      className="w-16 text-center"
                     />
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                      天前推（出發前 30 天繳清）
+                    </span>
                   </div>
-                  <div>
-                    <Label className="text-[10px]">行前 D-</Label>
+                </div>
+
+                <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                  <Label className="text-[11px]">行前 D-</Label>
+                  <div className="flex items-center gap-1.5">
                     <Input
                       type="number"
-                      value={editingTour.guideReminderDays ?? 1}
+                      value={editingTour.guideReminderDays ?? 2}
                       onChange={(e) =>
                         setEditingTour({
                           ...editingTour,
                           guideReminderDays: Number(e.target.value),
                         })
                       }
-                      className="text-center"
+                      className="w-16 text-center"
                     />
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                      天前推（出發前 2 天再次通知）
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditingTour(null)}>
                   取消
                 </Button>
