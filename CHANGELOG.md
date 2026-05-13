@@ -2,6 +2,11 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_09 — 2026-05-13 (修 cron null 防呆)
+
+- 既有 tour rows 升級後 `*ReminderDays` 為 null，補 `?? 3` 防呆預設
+- 使用者編輯該團時可在 `/liff/admin/trips` 設定實際天數
+
 ## 20260513_08 — 2026-05-13 (大整修：開團 CRUD + 超賣 + 天氣 + LTV + 週報)
 
 ### A. 開團設定 (Admin trips CRUD)

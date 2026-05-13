@@ -147,8 +147,9 @@ async function handle(req: NextRequest) {
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(todayStart.getTime() + 86400000);
   const toursIn3 = allTours.filter((t) => {
+    const days = t.finalReminderDays ?? 3; // null 視為預設 3
     const reminderDate = new Date(t.dateStart);
-    reminderDate.setDate(reminderDate.getDate() - t.finalReminderDays);
+    reminderDate.setDate(reminderDate.getDate() - days);
     reminderDate.setHours(0, 0, 0, 0);
     return reminderDate >= todayStart && reminderDate < todayEnd;
   });
@@ -177,7 +178,7 @@ async function handle(req: NextRequest) {
             deadline: tour.finalDeadline
               ? tour.finalDeadline.toISOString().slice(0, 10)
               : "—",
-            daysLeft: tour.finalReminderDays,
+            daysLeft: tour.finalReminderDays ?? 3,
             bankAccount: process.env.BANK_ACCOUNT ?? "—",
             url: process.env.NEXT_PUBLIC_BASE_URL
               ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`
