@@ -129,13 +129,45 @@ export default function AdminSitesPage() {
   }
 
   async function remove(s: Site) {
-    if (!confirm(`確定刪除潛點「${s.name}」？\n若已被場次引用會被阻擋。`))
+    if (!confirm(`確定刪除潛點「${s.name}」？\n若已被場次/團引用會詢問是否強制刪除。`))
       return;
     try {
       await liff.fetchWithAuth(`/api/admin/sites/${s.id}`, { method: "DELETE" });
       await reload();
     } catch (e) {
-      alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      // 409 表示有引用，問是否強制刪除
+      if (msg.includes("HTTP 409")) {
+        // 試著從錯誤訊息抓出引用數量（後端有回 usedInTrips / usedInTours）
+        const m = msg.match(/(\d+)\s*個場次.*?(\d+)\s*個潛水團/);
+        const summary = m
+          ? `（${m[1]} 個場次 + ${m[2]} 個潛水團）`
+          : "";
+        if (
+          confirm(
+            `「${s.name}」還被引用 ${summary}。\n\n` +
+              `強制刪除會：\n` +
+              `  1. 自動從那些場次/團的潛點清單拉掉此潛點\n` +
+              `  2. 然後刪除這個潛點\n\n` +
+              `確定要強制刪除？`,
+          )
+        ) {
+          try {
+            await liff.fetchWithAuth(
+              `/api/admin/sites/${s.id}?force=true`,
+              { method: "DELETE" },
+            );
+            await reload();
+          } catch (e2) {
+            alert(
+              "強制刪除失敗：" +
+                (e2 instanceof Error ? e2.message : String(e2)),
+            );
+          }
+        }
+      } else {
+        alert("刪除失敗：" + msg);
+      }
     }
   }
 

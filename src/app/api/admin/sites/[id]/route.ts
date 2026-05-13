@@ -63,8 +63,9 @@ export async function PATCH(
   return NextResponse.json({ ok: true, site });
 }
 
-// DELETE /api/admin/sites/[id] - 刪除
-// 安全檢查：若已有 trip 引用此潛點，禁止刪除
+// DELETE /api/admin/sites/[id]
+//   預設：安全檢查，被 trip/tour 引用會擋 (409)
+//   ?force=true：先把引用的 trip/tour 的 diveSiteIds 陣列裡的此 id 拉掉，再刪 site
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -77,27 +78,54 @@ export async function DELETE(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await params;
-  const usedInTrips = await prisma.divingTrip.count({
+  const force = new URL(req.url).searchParams.get("force") === "true";
+
+  const tripsUsing = await prisma.divingTrip.findMany({
     where: { diveSiteIds: { has: id } },
+    select: { id: true, diveSiteIds: true, date: true, startTime: true },
   });
-  if (usedInTrips > 0) {
+  const toursUsing = await prisma.tourPackage.findMany({
+    where: { diveSiteIds: { has: id } },
+    select: { id: true, diveSiteIds: true, title: true },
+  });
+
+  if (!force && (tripsUsing.length > 0 || toursUsing.length > 0)) {
     return NextResponse.json(
       {
-        error: `這個潛點還被 ${usedInTrips} 個場次引用，不能刪除。請先把那些場次的潛點改掉，或永久刪除那些場次。`,
+        error:
+          `這個潛點還被 ${tripsUsing.length} 個場次 + ${toursUsing.length} 個潛水團引用。` +
+          `若要強制刪除，會自動從引用的場次/團移除此潛點。`,
+        usedInTrips: tripsUsing.length,
+        usedInTours: toursUsing.length,
+        canForce: true,
       },
       { status: 409 },
     );
   }
-  const usedInTours = await prisma.tourPackage.count({
-    where: { diveSiteIds: { has: id } },
-  });
-  if (usedInTours > 0) {
-    return NextResponse.json(
-      {
-        error: `這個潛點還被 ${usedInTours} 個潛水團引用，不能刪除。`,
-      },
-      { status: 409 },
-    );
+
+  // 強制刪除：先從引用陣列拉掉
+  if (force) {
+    await prisma.$transaction(async (tx) => {
+      for (const t of tripsUsing) {
+        await tx.divingTrip.update({
+          where: { id: t.id },
+          data: { diveSiteIds: t.diveSiteIds.filter((x) => x !== id) },
+        });
+      }
+      for (const t of toursUsing) {
+        await tx.tourPackage.update({
+          where: { id: t.id },
+          data: { diveSiteIds: t.diveSiteIds.filter((x) => x !== id) },
+        });
+      }
+      await tx.diveSite.delete({ where: { id } });
+    });
+    return NextResponse.json({
+      ok: true,
+      forced: true,
+      tripsUpdated: tripsUsing.length,
+      toursUpdated: toursUsing.length,
+    });
   }
 
   await prisma.diveSite.delete({ where: { id } });

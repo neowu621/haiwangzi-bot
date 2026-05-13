@@ -2,6 +2,20 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_33 — 2026-05-14 (潛點強制刪除 cascade)
+
+### `DELETE /api/admin/sites/[id]?force=true`
+- 預設仍會擋（被 trip/tour 引用時回 409）
+- 加 `?force=true`：在 transaction 內
+  1. 把該 site id 從引用的 trip/tour 的 `diveSiteIds` 陣列拉掉
+  2. 再刪除 site
+- 409 回應加 `canForce: true` + 引用數量
+
+### UI
+- `/liff/admin/sites` 點刪除遇到 409 時
+- 跳出第二次確認：「強制刪除會自動從 N 個場次 + M 個潛水團拉掉此潛點」
+- 確認後自動帶 `?force=true` 重試
+
 ## 20260514_32 — 2026-05-14 (主控台統計卡可點 + 數字改 operational 語意)
 
 ### `/api/admin/stats` 改寫
