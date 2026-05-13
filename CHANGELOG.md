@@ -2,6 +2,26 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260513_21 — 2026-05-13 (開團管理：篩選 + 還原 + 永久刪除 + 修 admin 401 race)
+
+### 「開團管理」UI 大改
+- 頂部加 **篩選 tabs**：啟用中 / 已取消 / 全部
+- 預設只看「啟用中」，已取消的不會干擾日常使用
+- 已取消場次 / 旅行團現在多 2 個動作按鈕：
+  - 🔄 **還原**：status cancelled → open（單擊還原）
+  - ⚠ **永久刪除**：雙重確認（先 confirm，再 prompt 輸入 `DELETE` 字串）
+- 「已取消」tab 上方一鍵「**還原全部**」（修復誤取消的場次很方便）
+
+### 新 API
+- `POST /api/admin/trips/bulk-restore`  body `{tripIds:[...]}` 批次還原
+- `DELETE /api/admin/trips/[id]?permanent=true`  硬刪除（有 booking ref 會擋）
+- `DELETE /api/admin/tours/[id]?permanent=true`  硬刪除
+
+### 修「admin 401 race」
+- 之前：頁面 useEffect 比 LIFF init 早跑，第一次 API call 沒帶 idToken → 401
+- 現在：`fetchWithAuth` 在沒 idToken 時 poll LIFF SDK 最多 3 秒等 init 完
+- 直接 poll SDK 而不是 React state，避免閉包 stale 問題
+
 ## 20260513_20 — 2026-05-13 (Welcome 橫向 layout + 修 midnight 文字色)
 
 ### 修 LiffShell header 文字看不清楚

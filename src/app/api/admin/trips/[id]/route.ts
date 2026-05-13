@@ -59,7 +59,8 @@ export async function PATCH(
   return NextResponse.json({ ok: true, trip });
 }
 
-// DELETE /api/admin/trips/[id] - 取消場次
+// DELETE /api/admin/trips/[id]              → 軟取消 (status=cancelled, row 留著)
+// DELETE /api/admin/trips/[id]?permanent=true → 硬刪除 (從 DB 移除)
 export async function DELETE(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
@@ -72,11 +73,34 @@ export async function DELETE(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await ctx.params;
+  const url = new URL(req.url);
+  const permanent = url.searchParams.get("permanent") === "true";
 
-  // 軟取消（不刪 row，改 status=cancelled）
+  if (permanent) {
+    // 安全檢查：若有 confirmed booking 不讓刪
+    const hasBookings = await prisma.booking.count({
+      where: {
+        refId: id,
+        type: "daily",
+        status: { notIn: ["cancelled_by_user", "cancelled_by_weather"] },
+      },
+    });
+    if (hasBookings > 0) {
+      return NextResponse.json(
+        {
+          error: `cannot permanently delete: ${hasBookings} active bookings still reference this trip. Cancel bookings first.`,
+        },
+        { status: 400 },
+      );
+    }
+    await prisma.divingTrip.delete({ where: { id } });
+    return NextResponse.json({ ok: true, action: "hard_deleted" });
+  }
+
+  // 軟取消
   const trip = await prisma.divingTrip.update({
     where: { id },
     data: { status: "cancelled" },
   });
-  return NextResponse.json({ ok: true, trip });
+  return NextResponse.json({ ok: true, action: "soft_cancelled", trip });
 }

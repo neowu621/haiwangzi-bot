@@ -1,6 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Plus, Edit3, Trash2, X, Anchor, Moon, Calendar } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Plus,
+  Edit3,
+  Trash2,
+  X,
+  Anchor,
+  Moon,
+  Calendar,
+  RotateCcw,
+  AlertTriangle,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +86,19 @@ export default function AdminTripsPage() {
   const [editingTour, setEditingTour] = useState<Partial<Tour> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState<"active" | "cancelled" | "all">("active");
+
+  const filteredTrips = useMemo(() => {
+    if (filter === "active") return trips.filter((t) => t.status !== "cancelled");
+    if (filter === "cancelled") return trips.filter((t) => t.status === "cancelled");
+    return trips;
+  }, [trips, filter]);
+
+  const filteredTours = useMemo(() => {
+    if (filter === "active") return tours.filter((t) => t.status !== "cancelled");
+    if (filter === "cancelled") return tours.filter((t) => t.status === "cancelled");
+    return tours;
+  }, [tours, filter]);
 
   async function reload() {
     try {
@@ -186,6 +209,97 @@ export default function AdminTripsPage() {
     await reload();
   }
 
+  async function restoreTrip(id: string) {
+    if (!confirm("確定還原這個場次為「啟用中」？")) return;
+    await liff.fetchWithAuth(`/api/admin/trips/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "open" }),
+    });
+    await reload();
+  }
+
+  async function restoreTour(id: string) {
+    if (!confirm("確定還原這個旅行團為「啟用中」？")) return;
+    await liff.fetchWithAuth(`/api/admin/tours/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "open" }),
+    });
+    await reload();
+  }
+
+  // 雙重確認的「永久刪除」
+  async function permaDeleteTrip(t: Trip) {
+    const phase1 = confirm(
+      `⚠ 永久刪除場次「${t.date} ${t.startTime}」？\n\n這個動作無法復原，DB row 會直接消失。`,
+    );
+    if (!phase1) return;
+    const phase2 = prompt(
+      `為了安全，請輸入「DELETE」確認永久刪除：`,
+    );
+    if (phase2 !== "DELETE") {
+      alert("取消刪除（沒輸入 DELETE）");
+      return;
+    }
+    try {
+      await liff.fetchWithAuth(
+        `/api/admin/trips/${t.id}?permanent=true`,
+        { method: "DELETE" },
+      );
+      await reload();
+    } catch (e) {
+      alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function permaDeleteTour(t: Tour) {
+    const phase1 = confirm(
+      `⚠ 永久刪除旅行團「${t.title}」？\n\n這個動作無法復原，DB row 會直接消失。`,
+    );
+    if (!phase1) return;
+    const phase2 = prompt(`為了安全，請輸入「DELETE」確認永久刪除：`);
+    if (phase2 !== "DELETE") {
+      alert("取消刪除（沒輸入 DELETE）");
+      return;
+    }
+    try {
+      await liff.fetchWithAuth(
+        `/api/admin/tours/${t.id}?permanent=true`,
+        { method: "DELETE" },
+      );
+      await reload();
+    } catch (e) {
+      alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function bulkRestoreAllCancelled() {
+    const cancelled = trips.filter((t) => t.status === "cancelled");
+    if (cancelled.length === 0) {
+      alert("沒有已取消的場次");
+      return;
+    }
+    if (
+      !confirm(
+        `把所有 ${cancelled.length} 個已取消場次還原為「啟用中」？\n（同時把因為這些場次取消的客戶 booking 還原成 confirmed）`,
+      )
+    )
+      return;
+    try {
+      const r = await liff.fetchWithAuth<{
+        ok: boolean;
+        tripsRestored: number;
+        bookingsRestored: number;
+      }>("/api/admin/trips/bulk-restore", {
+        method: "POST",
+        body: JSON.stringify({ tripIds: cancelled.map((t) => t.id) }),
+      });
+      alert(`✓ 還原 ${r.tripsRestored} 個場次, ${r.bookingsRestored} 筆 booking`);
+      await reload();
+    } catch (e) {
+      alert("還原失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   const siteName = (id: string) => sites.find((s) => s.id === id)?.name || id;
   const coachName = (id: string) => coaches.find((c) => c.id === id)?.realName || id;
 
@@ -197,13 +311,51 @@ export default function AdminTripsPage() {
             {error}
           </Card>
         )}
+        {/* 篩選 tabs */}
+        <div className="flex gap-1.5 rounded-full bg-[var(--muted)] p-0.5 text-xs">
+          {(
+            [
+              ["active", `啟用中 (${trips.filter((t) => t.status !== "cancelled").length + tours.filter((t) => t.status !== "cancelled").length})`],
+              ["cancelled", `已取消 (${trips.filter((t) => t.status === "cancelled").length + tours.filter((t) => t.status === "cancelled").length})`],
+              ["all", `全部 (${trips.length + tours.length})`],
+            ] as const
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setFilter(v)}
+              className={cn(
+                "flex-1 rounded-full px-3 py-1.5 font-medium transition-colors",
+                filter === v
+                  ? "bg-[var(--background)] text-[var(--foreground)] shadow"
+                  : "text-[var(--muted-foreground)]",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* 在 cancelled tab 顯示「一鍵還原全部」按鈕 */}
+        {filter === "cancelled" &&
+          trips.filter((t) => t.status === "cancelled").length > 0 && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={bulkRestoreAllCancelled}
+            >
+              <RotateCcw className="h-4 w-4" />
+              一鍵還原全部 {trips.filter((t) => t.status === "cancelled").length} 個取消場次
+            </Button>
+          )}
+
         <Tabs defaultValue="trips">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="trips">
-              日潛場次 ({trips.filter((t) => t.status === "open").length})
+              日潛場次 ({filteredTrips.length})
             </TabsTrigger>
             <TabsTrigger value="tours">
-              旅行團 ({tours.filter((t) => t.status === "open").length})
+              旅行團 ({filteredTours.length})
             </TabsTrigger>
           </TabsList>
 
@@ -214,12 +366,12 @@ export default function AdminTripsPage() {
             >
               <Plus className="h-4 w-4" /> 新增場次
             </Button>
-            {trips.length === 0 && (
+            {filteredTrips.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-6 text-center text-xs text-[var(--muted-foreground)]">
-                還沒有場次
+                {filter === "cancelled" ? "沒有取消的場次" : filter === "all" ? "還沒有場次" : "沒有啟用中的場次"}
               </div>
             )}
-            {trips.map((t) => (
+            {filteredTrips.map((t) => (
               <Card
                 key={t.id}
                 className={cn(
@@ -268,18 +420,40 @@ export default function AdminTripsPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => setEditingTrip({ ...t })}
+                        title="編輯"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                       </Button>
-                      {t.status === "open" && (
+                      {t.status === "open" ? (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => cancelTrip(t.id)}
+                          title="取消（可還原）"
                         >
                           <Trash2 className="h-3.5 w-3.5 text-[var(--color-coral)]" />
                         </Button>
-                      )}
+                      ) : t.status === "cancelled" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => restoreTrip(t.id)}
+                            title="還原為啟用中"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => permaDeleteTrip(t)}
+                            title="永久刪除（雙重確認）"
+                            className="border-[var(--color-coral)]"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 text-[var(--color-coral)]" />
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </CardContent>
@@ -294,12 +468,12 @@ export default function AdminTripsPage() {
             >
               <Plus className="h-4 w-4" /> 新增旅行團
             </Button>
-            {tours.length === 0 && (
+            {filteredTours.length === 0 && (
               <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-6 text-center text-xs text-[var(--muted-foreground)]">
-                還沒有旅行團
+                {filter === "cancelled" ? "沒有停用的旅行團" : filter === "all" ? "還沒有旅行團" : "沒有啟用中的旅行團"}
               </div>
             )}
-            {tours.map((t) => (
+            {filteredTours.map((t) => (
               <Card
                 key={t.id}
                 className={t.status === "cancelled" ? "opacity-50" : ""}
@@ -329,18 +503,40 @@ export default function AdminTripsPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => setEditingTour({ ...t })}
+                        title="編輯"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                       </Button>
-                      {t.status === "open" && (
+                      {t.status === "open" ? (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => cancelTour(t.id)}
+                          title="停用（可還原）"
                         >
                           <Trash2 className="h-3.5 w-3.5 text-[var(--color-coral)]" />
                         </Button>
-                      )}
+                      ) : t.status === "cancelled" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => restoreTour(t.id)}
+                            title="還原為啟用中"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => permaDeleteTour(t)}
+                            title="永久刪除（雙重確認）"
+                            className="border-[var(--color-coral)]"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 text-[var(--color-coral)]" />
+                          </Button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </CardContent>

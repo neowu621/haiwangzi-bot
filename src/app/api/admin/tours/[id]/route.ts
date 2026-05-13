@@ -71,7 +71,8 @@ export async function PATCH(
   return NextResponse.json({ ok: true, tour });
 }
 
-// DELETE /api/admin/tours/[id] - 軟取消
+// DELETE /api/admin/tours/[id]              → 軟取消
+// DELETE /api/admin/tours/[id]?permanent=true → 硬刪除
 export async function DELETE(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
@@ -84,9 +85,32 @@ export async function DELETE(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await ctx.params;
+  const url = new URL(req.url);
+  const permanent = url.searchParams.get("permanent") === "true";
+
+  if (permanent) {
+    const hasBookings = await prisma.booking.count({
+      where: {
+        refId: id,
+        type: "tour",
+        status: { notIn: ["cancelled_by_user", "cancelled_by_weather"] },
+      },
+    });
+    if (hasBookings > 0) {
+      return NextResponse.json(
+        {
+          error: `cannot permanently delete: ${hasBookings} active bookings still reference this tour`,
+        },
+        { status: 400 },
+      );
+    }
+    await prisma.tourPackage.delete({ where: { id } });
+    return NextResponse.json({ ok: true, action: "hard_deleted" });
+  }
+
   const tour = await prisma.tourPackage.update({
     where: { id },
     data: { status: "cancelled" },
   });
-  return NextResponse.json({ ok: true, tour });
+  return NextResponse.json({ ok: true, action: "soft_cancelled", tour });
 }

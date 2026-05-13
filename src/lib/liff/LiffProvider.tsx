@@ -132,15 +132,26 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         } else {
           // 真實 LIFF：每次都重抓最新 idToken（avoid stale token after long form fill）
           let token = idToken;
-          try {
-            const liffMod = await import("@line/liff");
-            const fresh = liffMod.default.getIDToken();
-            if (fresh) {
-              token = fresh;
-              if (fresh !== idToken) setIdToken(fresh);
+
+          // 修 admin 401 race: 頁面 useEffect 比 LIFF init 早跑時，等最多 3 秒讓 LIFF ready
+          // 直接 poll liff SDK 而不是 React state，避免閉包 stale issue
+          const liffMod = await import("@line/liff");
+          let waited = 0;
+          while (waited < 3000) {
+            try {
+              const t = liffMod.default.getIDToken();
+              if (t) {
+                token = t;
+                if (t !== idToken) setIdToken(t);
+                break;
+              }
+              // getIDToken 返回 null 但不丟錯 → LIFF 已 init 但沒登入，跳出
+              if (liffMod.default.isLoggedIn?.() === false) break;
+            } catch {
+              /* LIFF SDK 還沒 init，繼續等 */
             }
-          } catch {
-            /* fallback to cached idToken */
+            await new Promise((r) => setTimeout(r, 100));
+            waited += 100;
           }
           if (token) {
             headers.set("authorization", `Bearer ${token}`);
