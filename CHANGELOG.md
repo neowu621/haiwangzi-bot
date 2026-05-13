@@ -2,6 +2,41 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_36 — 2026-05-14 (刪除會員 / 刪除訂單 / 批次取消)
+
+### 新 API
+- `DELETE /api/admin/users/[lineUserId]`
+  - 預設：有訂單 → 409，可附 `?force=true` 強制刪
+  - 禁止刪除自己
+  - cascade: paymentProof + reminderLog + booking + user
+- `DELETE /api/admin/bookings/[id]`
+  - 預設：軟取消（status=cancelled_by_user）
+  - `?permanent=true`：硬刪 booking + proofs + logs
+- `POST /api/admin/bookings/cancel-all` body `{confirm:"CANCEL-ALL-BOOKINGS"}`
+  - 一鍵把所有 pending/confirmed 訂單改為 cancelled_by_user
+
+### `POST /api/admin/trips` 改強 error
+- Zod 失敗回 400 + issues 列表
+- Prisma 失敗回 500 + detail + hint
+- 之前直接 throw → 看到 generic "HTTP 500" 完全不知道哪裡錯
+
+### UI
+- `/liff/admin/users` 每張卡多「🗑 刪除會員」按鈕
+  - 雙重確認（confirm + prompt "DELETE"）
+  - 有訂單時跳第二次對話框問是否強制刪
+- `/liff/admin/bookings`：
+  - 每張卡多「取消」+「⚠ 永久刪除」按鈕
+  - 標題右側多「全部取消 (N)」紅色按鈕（雙重確認 "CANCEL-ALL"）
+
+### 仍待處理：R2 圖片上傳 503
+需在 Zeabur 補 env：
+```
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+```
+（admin 已自設 R2_ACCOUNT_ID / R2_ENDPOINT / R2_PUBLIC_BUCKET / R2_PRIVATE_BUCKET，
+但缺 access key + secret，所以 r2Configured()=false）
+
 ## 20260514_35 — 2026-05-14 (修 v34 Zeabur build 失敗)
 
 ### Bug fix

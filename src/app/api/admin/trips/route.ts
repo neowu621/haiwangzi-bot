@@ -72,23 +72,57 @@ export async function POST(req: NextRequest) {
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
-  const data = CreateSchema.parse(await req.json());
-  const trip = await prisma.divingTrip.create({
-    data: {
-      date: new Date(data.date),
-      startTime: data.startTime,
-      isNightDive: data.isNightDive,
-      isScooter: data.isScooter,
-      diveSiteIds: data.diveSiteIds,
-      tankCount: data.tankCount,
-      capacity: data.capacity === 0 ? null : data.capacity,
-      coachIds: data.coachIds,
-      pricing: data.pricing,
-      notes: data.notes || null,
-      meetingPoint: data.meetingPoint || null,
-      images: data.images ?? [],
-      status: "open",
-    },
-  });
-  return NextResponse.json({ ok: true, trip });
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch (e) {
+    return NextResponse.json(
+      { error: "invalid JSON", detail: String(e) },
+      { status: 400 },
+    );
+  }
+
+  const parsed = CreateSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    console.error("[POST /admin/trips] zod error", parsed.error.issues);
+    return NextResponse.json(
+      {
+        error: "validation failed",
+        issues: parsed.error.issues,
+      },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
+
+  try {
+    const trip = await prisma.divingTrip.create({
+      data: {
+        date: new Date(data.date),
+        startTime: data.startTime,
+        isNightDive: data.isNightDive,
+        isScooter: data.isScooter,
+        diveSiteIds: data.diveSiteIds,
+        tankCount: data.tankCount,
+        capacity: data.capacity === 0 ? null : data.capacity,
+        coachIds: data.coachIds,
+        pricing: data.pricing,
+        notes: data.notes || null,
+        meetingPoint: data.meetingPoint || null,
+        images: data.images ?? [],
+        status: "open",
+      },
+    });
+    return NextResponse.json({ ok: true, trip });
+  } catch (e) {
+    console.error("[POST /admin/trips] prisma error", e);
+    return NextResponse.json(
+      {
+        error: "DB insert failed",
+        detail: e instanceof Error ? e.message : String(e),
+        hint: "若包含 column does not exist，代表 prisma db push 沒成功，請去 Zeabur 重 deploy 或檢查 DATABASE_URL",
+      },
+      { status: 500 },
+    );
+  }
 }

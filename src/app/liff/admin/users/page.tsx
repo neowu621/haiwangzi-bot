@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, Ban, Crown, Search } from "lucide-react";
+import { Edit3, Ban, Crown, Search, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -104,6 +104,54 @@ export default function AdminUsersPage() {
       return true;
     });
   }, [users, keyword, filter]);
+
+  async function removeUser(u: AdminUser) {
+    const hasBookings = (u.stats?.totalBookings ?? 0) > 0;
+    const ok1 = confirm(
+      `⚠ 刪除會員「${u.realName ?? u.displayName}」？\n\n` +
+        (hasBookings
+          ? `此會員有 ${u.stats?.totalBookings} 筆訂單，預設不允許刪除。\n會詢問是否強制刪除（連訂單一起清掉）。`
+          : `此會員沒有訂單，可直接刪除。`),
+    );
+    if (!ok1) return;
+    const ok2 = prompt(`為了安全，請輸入「DELETE」確認：`);
+    if (ok2 !== "DELETE") {
+      alert("取消（未輸入 DELETE）");
+      return;
+    }
+    try {
+      await liff.fetchWithAuth(
+        `/api/admin/users/${encodeURIComponent(u.lineUserId)}`,
+        { method: "DELETE" },
+      );
+      setUsers((arr) => arr.filter((x) => x.lineUserId !== u.lineUserId));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("HTTP 409")) {
+        // 有 booking 引用，問是否強制
+        if (
+          confirm(
+            `此會員有訂單，是否「強制刪除」（連訂單 / 轉帳截圖 / 提醒記錄一併刪掉）？`,
+          )
+        ) {
+          try {
+            await liff.fetchWithAuth(
+              `/api/admin/users/${encodeURIComponent(u.lineUserId)}?force=true`,
+              { method: "DELETE" },
+            );
+            setUsers((arr) => arr.filter((x) => x.lineUserId !== u.lineUserId));
+          } catch (e2) {
+            alert(
+              "強制刪除失敗：" +
+                (e2 instanceof Error ? e2.message : String(e2)),
+            );
+          }
+        }
+      } else {
+        alert("刪除失敗：" + msg);
+      }
+    }
+  }
 
   async function save() {
     if (!editing) return;
@@ -267,14 +315,25 @@ export default function AdminUsersPage() {
                   </div>
                 )}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEditing({ ...u })}
-                title="編輯"
-              >
-                <Edit3 className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex flex-col gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditing({ ...u })}
+                  title="編輯"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => removeUser(u)}
+                  title="刪除會員"
+                  className="border-[var(--color-coral)]"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-[var(--color-coral)]" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}

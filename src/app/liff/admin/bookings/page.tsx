@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { X, AlertTriangle } from "lucide-react";
 
 interface AdminBooking {
   id: string;
@@ -63,6 +64,84 @@ function AdminBookingsContent() {
   const completed = bookings.filter((b) => b.status === "completed");
   const cancelled = bookings.filter((b) => b.status.startsWith("cancelled"));
 
+  async function cancelBooking(b: AdminBooking) {
+    if (!confirm(`取消訂單「${b.user.realName ?? b.user.displayName}」？`))
+      return;
+    try {
+      await liff.fetchWithAuth(`/api/admin/bookings/${b.id}`, {
+        method: "DELETE",
+      });
+      setBookings((arr) =>
+        arr.map((x) =>
+          x.id === b.id ? { ...x, status: "cancelled_by_user" } : x,
+        ),
+      );
+    } catch (e) {
+      alert("失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function deleteBooking(b: AdminBooking) {
+    const ok1 = confirm(
+      `⚠ 永久刪除訂單？\n\n` +
+        `會員：${b.user.realName ?? b.user.displayName}\n` +
+        `類型：${b.type === "daily" ? "日潛" : "潛水團"}\n\n` +
+        `會一併刪除轉帳截圖 + 提醒記錄。無法復原。`,
+    );
+    if (!ok1) return;
+    const ok2 = prompt(`輸入「DELETE」確認永久刪除：`);
+    if (ok2 !== "DELETE") {
+      alert("取消");
+      return;
+    }
+    try {
+      await liff.fetchWithAuth(
+        `/api/admin/bookings/${b.id}?permanent=true`,
+        { method: "DELETE" },
+      );
+      setBookings((arr) => arr.filter((x) => x.id !== b.id));
+    } catch (e) {
+      alert("失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function cancelAllBookings() {
+    const activeCount = upcoming.length;
+    if (activeCount === 0) {
+      alert("沒有進行中的訂單");
+      return;
+    }
+    if (
+      !confirm(
+        `⚠ 取消全部 ${activeCount} 筆進行中訂單？\n\n` +
+          `所有 pending / confirmed 訂單會被設成 cancelled_by_user。\n` +
+          `不會刪 row，可在「取消」tab 看到歷史紀錄。`,
+      )
+    )
+      return;
+    const ok2 = prompt(`輸入「CANCEL-ALL」確認：`);
+    if (ok2 !== "CANCEL-ALL") {
+      alert("取消");
+      return;
+    }
+    try {
+      const r = await liff.fetchWithAuth<{
+        ok: boolean;
+        cancelled: number;
+      }>("/api/admin/bookings/cancel-all", {
+        method: "POST",
+        body: JSON.stringify({ confirm: "CANCEL-ALL-BOOKINGS" }),
+      });
+      alert(`✓ 已取消 ${r.cancelled} 筆訂單`);
+      // 重新拉資料
+      liff
+        .fetchWithAuth<{ bookings: AdminBooking[] }>("/api/admin/bookings")
+        .then((d) => setBookings(d.bookings));
+    } catch (e) {
+      alert("失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   async function exportCsv() {
     const res = await fetch("/api/admin/bookings/csv?lineUserId=" + (liff.profile?.userId ?? ""));
     if (!res.ok) {
@@ -85,9 +164,21 @@ function AdminBookingsContent() {
       title="訂單管理"
       backHref="/liff/admin/dashboard"
       rightSlot={
-        <Button size="sm" variant="outline" onClick={exportCsv}>
-          匯出 CSV
-        </Button>
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" onClick={exportCsv}>
+            匯出 CSV
+          </Button>
+          {upcoming.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={cancelAllBookings}
+              className="border-[var(--color-coral)] text-[var(--color-coral)]"
+            >
+              全部取消 ({upcoming.length})
+            </Button>
+          )}
+        </div>
       }
     >
       <div className="px-4 pt-4">
@@ -141,10 +232,33 @@ function AdminBookingsContent() {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
                       <Badge variant="ocean">{b.status}</Badge>
                       <Badge variant="muted">{b.paymentStatus}</Badge>
                       <span className="text-[10px] text-[var(--muted-foreground)] tabular">×{b.participants}人</span>
+                      <div className="ml-auto flex gap-1">
+                        {(b.status === "pending" ||
+                          b.status === "confirmed") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => cancelBooking(b)}
+                            title="取消訂單"
+                          >
+                            <X className="h-3 w-3" />
+                            取消
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteBooking(b)}
+                          title="永久刪除"
+                          className="border-[var(--color-coral)]"
+                        >
+                          <AlertTriangle className="h-3 w-3 text-[var(--color-coral)]" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
