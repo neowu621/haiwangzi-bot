@@ -1,31 +1,63 @@
 "use client";
-import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { useEffect, useMemo, useState } from "react";
+import { Edit3, Ban, Crown, Search } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
+
+type Role = "customer" | "coach" | "admin";
+type Cert = "OW" | "AOW" | "Rescue" | "DM" | "Instructor";
 
 interface AdminUser {
   lineUserId: string;
   displayName: string;
   realName: string | null;
   phone: string | null;
-  role: "customer" | "coach" | "admin";
-  cert: string | null;
+  role: Role;
+  cert: Cert | null;
+  certNumber: string | null;
   logCount: number;
+  notes: string | null;
+  blacklisted: boolean;
+  blacklistReason: string | null;
+  vipLevel: number;
   lastActiveAt: string;
+  createdAt: string;
+  stats?: {
+    totalBookings: number;
+    completed: number;
+    cancelled: number;
+    noShow: number;
+    revenue: number;
+    potential: number;
+  };
 }
+
+const CERTS: Cert[] = ["OW", "AOW", "Rescue", "DM", "Instructor"];
+const ROLES: Role[] = ["customer", "coach", "admin"];
 
 export default function AdminUsersPage() {
   const liff = useLiff();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<string | null>(null);
+  const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [filter, setFilter] = useState<"all" | Role | "blacklist" | "vip">(
+    "all",
+  );
 
   async function load() {
     try {
@@ -39,23 +71,71 @@ export default function AdminUsersPage() {
   }
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liff]);
 
-  async function setRole(u: AdminUser, role: AdminUser["role"]) {
-    setUpdating(u.lineUserId);
+  const filtered = useMemo(() => {
+    const k = keyword.trim().toLowerCase();
+    return users.filter((u) => {
+      if (filter === "blacklist" && !u.blacklisted) return false;
+      if (filter === "vip" && u.vipLevel === 0) return false;
+      if (filter !== "all" && filter !== "blacklist" && filter !== "vip") {
+        if (u.role !== filter) return false;
+      }
+      if (k) {
+        const haystack = [
+          u.displayName,
+          u.realName ?? "",
+          u.phone ?? "",
+          u.certNumber ?? "",
+          u.lineUserId,
+        ]
+          .join("|")
+          .toLowerCase();
+        if (!haystack.includes(k)) return false;
+      }
+      return true;
+    });
+  }, [users, keyword, filter]);
+
+  async function save() {
+    if (!editing) return;
+    setSaving(true);
     try {
-      await liff.fetchWithAuth("/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify({ lineUserId: u.lineUserId, role }),
-      });
-      setUsers((arr) =>
-        arr.map((x) => (x.lineUserId === u.lineUserId ? { ...x, role } : x)),
+      const r = await liff.fetchWithAuth<{ ok: boolean; user: AdminUser }>(
+        "/api/admin/users",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            lineUserId: editing.lineUserId,
+            role: editing.role,
+            realName: editing.realName,
+            phone: editing.phone,
+            cert: editing.cert,
+            certNumber: editing.certNumber,
+            logCount: editing.logCount,
+            notes: editing.notes,
+            blacklisted: editing.blacklisted,
+            blacklistReason: editing.blacklistReason,
+            vipLevel: editing.vipLevel,
+          }),
+        },
       );
+      setUsers((arr) =>
+        arr.map((x) =>
+          x.lineUserId === editing.lineUserId ? { ...x, ...r.user } : x,
+        ),
+      );
+      setEditing(null);
     } catch (e) {
-      alert("失敗: " + (e instanceof Error ? e.message : String(e)));
+      alert("失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
-      setUpdating(null);
+      setSaving(false);
     }
+  }
+
+  function vipLabel(lv: number) {
+    return lv === 2 ? "Gold" : lv === 1 ? "VIP" : "—";
   }
 
   return (
@@ -64,8 +144,57 @@ export default function AdminUsersPage() {
         {err && (
           <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">{err}</Card>
         )}
-        {users.map((u) => (
-          <Card key={u.lineUserId}>
+
+        {/* 搜尋 + 篩選 */}
+        <div className="space-y-1.5">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted-foreground)]" />
+            <Input
+              placeholder="搜尋姓名 / 電話 / 證號 / LINE userId"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="pl-7 text-xs"
+            />
+          </div>
+          <div className="flex gap-1 overflow-x-auto rounded-full bg-[var(--muted)] p-0.5 text-[11px]">
+            {(
+              [
+                ["all", `全部 (${users.length})`],
+                ["customer", `客戶 (${users.filter((u) => u.role === "customer").length})`],
+                ["coach", `教練 (${users.filter((u) => u.role === "coach").length})`],
+                ["admin", `Admin (${users.filter((u) => u.role === "admin").length})`],
+                ["vip", `VIP (${users.filter((u) => u.vipLevel > 0).length})`],
+                ["blacklist", `黑名單 (${users.filter((u) => u.blacklisted).length})`],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setFilter(v)}
+                className={cn(
+                  "flex-shrink-0 rounded-full px-2.5 py-1 font-medium transition-colors",
+                  filter === v
+                    ? "bg-[var(--background)] text-[var(--foreground)] shadow"
+                    : "text-[var(--muted-foreground)]",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 && (
+          <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-6 text-center text-xs text-[var(--muted-foreground)]">
+            沒有符合條件的會員
+          </div>
+        )}
+
+        {filtered.map((u) => (
+          <Card
+            key={u.lineUserId}
+            className={cn(u.blacklisted && "opacity-60")}
+          >
             <CardContent className="flex items-center gap-3 p-3">
               <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarFallback className="text-xs">
@@ -73,41 +202,284 @@ export default function AdminUsersPage() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-sm font-bold">
                     {u.realName ?? u.displayName}
                   </span>
+                  {u.realName && (
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                      ({u.displayName})
+                    </span>
+                  )}
+                  <Badge
+                    variant={
+                      u.role === "admin"
+                        ? "coral"
+                        : u.role === "coach"
+                          ? "ocean"
+                          : "muted"
+                    }
+                    className="text-[9px]"
+                  >
+                    {u.role}
+                  </Badge>
                   {u.cert && (
-                    <Badge variant="muted" className="text-[10px]">
+                    <Badge variant="muted" className="text-[9px]">
                       {u.cert}
+                    </Badge>
+                  )}
+                  {u.vipLevel > 0 && (
+                    <Badge variant="gold" className="gap-0.5 text-[9px]">
+                      <Crown className="h-2.5 w-2.5" /> {vipLabel(u.vipLevel)}
+                    </Badge>
+                  )}
+                  {u.blacklisted && (
+                    <Badge variant="coral" className="gap-0.5 text-[9px]">
+                      <Ban className="h-2.5 w-2.5" /> 黑名單
                     </Badge>
                   )}
                 </div>
                 <div className="tabular text-[11px] text-[var(--muted-foreground)]">
-                  {u.phone ?? "—"} · {u.logCount} logs · 最近 {new Date(u.lastActiveAt).toLocaleDateString("zh-TW")}
+                  {u.phone ?? "—"} ·{" "}
+                  {u.certNumber ? `${u.certNumber} · ` : ""}
+                  {u.logCount} logs
                 </div>
+                {u.stats && u.stats.totalBookings > 0 && (
+                  <div className="tabular text-[10px] text-[var(--muted-foreground)]">
+                    訂單 {u.stats.totalBookings} · 完成 {u.stats.completed} ·
+                    no-show {u.stats.noShow} · 已付 NT$
+                    {u.stats.revenue.toLocaleString()}
+                  </div>
+                )}
+                {u.notes && (
+                  <div className="mt-0.5 rounded bg-[var(--muted)]/50 px-1.5 py-0.5 text-[10px]">
+                    📝 {u.notes}
+                  </div>
+                )}
               </div>
-              <div className="flex gap-1">
-                {(["customer", "coach", "admin"] as const).map((r) => (
-                  <button
-                    key={r}
-                    disabled={updating === u.lineUserId}
-                    onClick={() => setRole(u, r)}
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                      u.role === r
-                        ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
-                        : "bg-[var(--muted)] text-[var(--muted-foreground)]",
-                    )}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing({ ...u })}
+                title="編輯"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </Button>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* 編輯 Dialog */}
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(o) => !o && setEditing(null)}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>編輯會員</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-2.5">
+              <div className="rounded-md bg-[var(--muted)]/40 p-2 text-[10px] font-mono break-all text-[var(--muted-foreground)]">
+                LINE userId: {editing.lineUserId}
+                <br />
+                LINE 顯示名稱: {editing.displayName}
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">真實姓名</Label>
+                <Input
+                  value={editing.realName ?? ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      realName: e.target.value || null,
+                    })
+                  }
+                  placeholder="例：王小明"
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">電話</Label>
+                <Input
+                  value={editing.phone ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, phone: e.target.value || null })
+                  }
+                  placeholder="0912-345-678"
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">角色</Label>
+                <div className="flex gap-1">
+                  {ROLES.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setEditing({ ...editing, role: r })}
+                      className={cn(
+                        "flex-1 rounded-full px-2 py-1 text-[11px] font-semibold",
+                        editing.role === r
+                          ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                          : "bg-[var(--muted)] text-[var(--muted-foreground)]",
+                      )}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">證照等級</Label>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditing({ ...editing, cert: null })}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px]",
+                      editing.cert === null
+                        ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                        : "border-[var(--border)]",
+                    )}
+                  >
+                    無
+                  </button>
+                  {CERTS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setEditing({ ...editing, cert: c })}
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[10px]",
+                        editing.cert === c
+                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                          : "border-[var(--border)]",
+                      )}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">證照號碼</Label>
+                <Input
+                  value={editing.certNumber ?? ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      certNumber: e.target.value || null,
+                    })
+                  }
+                  placeholder="例：PADI #1234567"
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">潛水紀錄數</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editing.logCount}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      logCount: Math.max(0, Number(e.target.value)),
+                    })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">VIP 等級</Label>
+                <div className="flex gap-1">
+                  {[
+                    [0, "—"],
+                    [1, "VIP"],
+                    [2, "Gold"],
+                  ].map(([lv, label]) => (
+                    <button
+                      key={lv}
+                      type="button"
+                      onClick={() =>
+                        setEditing({ ...editing, vipLevel: lv as number })
+                      }
+                      className={cn(
+                        "flex-1 rounded-full px-2 py-1 text-[11px] font-semibold",
+                        editing.vipLevel === lv
+                          ? "bg-[var(--color-gold)] text-[var(--color-ocean-deep)]"
+                          : "bg-[var(--muted)] text-[var(--muted-foreground)]",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                <Label className="text-xs pt-1">Admin 備註</Label>
+                <textarea
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  rows={2}
+                  value={editing.notes ?? ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      notes: e.target.value || null,
+                    })
+                  }
+                  placeholder="只有 admin 看得到，例：VIP 客 / 注意暈船 / 與某教練熟..."
+                />
+              </div>
+
+              <div className="rounded-md border border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-2 space-y-1.5">
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-[var(--color-coral)]">
+                  <input
+                    type="checkbox"
+                    checked={editing.blacklisted}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        blacklisted: e.target.checked,
+                      })
+                    }
+                  />
+                  加入黑名單
+                </label>
+                {editing.blacklisted && (
+                  <textarea
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs"
+                    rows={2}
+                    value={editing.blacklistReason ?? ""}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        blacklistReason: e.target.value || null,
+                      })
+                    }
+                    placeholder="加黑原因（內部記錄）"
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button variant="outline" onClick={() => setEditing(null)}>
+                  取消
+                </Button>
+                <Button onClick={save} disabled={saving}>
+                  {saving ? "儲存中..." : "儲存"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </LiffShell>
   );
 }

@@ -76,12 +76,23 @@ export async function GET(req: NextRequest) {
 const PatchSchema = z.object({
   lineUserId: z.string(),
   role: z.enum(["customer", "coach", "admin"]).optional(),
+  realName: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  cert: z
+    .enum(["OW", "AOW", "Rescue", "DM", "Instructor"])
+    .nullable()
+    .optional(),
+  certNumber: z.string().nullable().optional(),
+  logCount: z.number().int().min(0).optional(),
+  notes: z.string().nullable().optional(),
   blacklisted: z.boolean().optional(),
   blacklistReason: z.string().nullable().optional(),
   vipLevel: z.number().int().min(0).max(2).optional(),
 });
 
-// POST /api/admin/users  ─── 改 role / 加入或解除黑名單 / 設 VIP
+// POST /api/admin/users
+//   - 改 role / 加入或解除黑名單 / 設 VIP
+//   - 改個人資料：realName / phone / cert / certNumber / logCount / notes
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)
@@ -93,9 +104,20 @@ export async function POST(req: NextRequest) {
   const data = PatchSchema.parse(await req.json());
   const patch: Record<string, unknown> = {};
   if (data.role !== undefined) patch.role = data.role;
+  if (data.realName !== undefined)
+    patch.realName = data.realName === "" ? null : data.realName;
+  if (data.phone !== undefined)
+    patch.phone = data.phone === "" ? null : data.phone;
+  if (data.cert !== undefined) patch.cert = data.cert;
+  if (data.certNumber !== undefined)
+    patch.certNumber = data.certNumber === "" ? null : data.certNumber;
+  if (data.logCount !== undefined) patch.logCount = data.logCount;
+  if (data.notes !== undefined)
+    patch.notes = data.notes === "" ? null : data.notes;
   if (data.blacklisted !== undefined) patch.blacklisted = data.blacklisted;
   if (data.blacklistReason !== undefined)
-    patch.blacklistReason = data.blacklistReason;
+    patch.blacklistReason =
+      data.blacklistReason === "" ? null : data.blacklistReason;
   if (data.vipLevel !== undefined) patch.vipLevel = data.vipLevel;
 
   const updated = await prisma.user.update({

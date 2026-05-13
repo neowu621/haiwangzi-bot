@@ -2,6 +2,27 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_27 — 2026-05-14 (會員管理：完整編輯)
+
+### `/liff/admin/users` 大改
+- 新增「編輯」按鈕 + Dialog，admin 可以改：
+  - 真實姓名 / 電話
+  - 角色 (customer/coach/admin)
+  - 證照等級 (OW/AOW/Rescue/DM/Instructor/無)
+  - 證照號碼
+  - 潛水紀錄數 (logCount)
+  - VIP 等級 (— / VIP / Gold)
+  - Admin 備註（只有 admin 看得到）
+  - 黑名單 + 加黑原因
+- LINE userId / displayName 不能改（系統識別用，唯讀顯示）
+- 列表加 **搜尋框**（姓名/電話/證號/userId 模糊比對）
+- 列表加 **篩選 tabs**：全部 / 客戶 / 教練 / Admin / VIP / 黑名單
+- 卡片顯示更完整：角色 / 證照 / VIP / 黑名單 badge、訂單統計、Admin 備註
+
+### API
+- `POST /api/admin/users` schema 擴充支援所有可編輯欄位
+- 空字串 → null 處理（避免 DB 存空字串）
+
 ## 20260514_26 — 2026-05-14 (場次/團 上傳照片 + 集合地點)
 
 ### 新元件
