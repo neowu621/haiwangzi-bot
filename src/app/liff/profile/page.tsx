@@ -76,6 +76,8 @@ interface Me {
   certNumber: string | null;
   logCount: number;
   role: string;
+  // 多重身分
+  roles: Array<"customer" | "coach" | "admin">;
   notes: string | null;
   emergencyContact: { name: string; phone: string; relationship: string } | null;
   companions: Companion[];
@@ -395,11 +397,15 @@ export default function ProfilePage() {
               <div className="text-base font-bold">
                 {me.realName || me.displayName}
               </div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--muted-foreground)] tabular">
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--muted-foreground)] tabular flex-wrap">
                 <span>ID: {me.lineUserId.slice(0, 10)}...</span>
-                {me.role !== "customer" && (
-                  <Badge variant="ocean">{me.role}</Badge>
-                )}
+                {(me.roles ?? [me.role])
+                  .filter((r) => r !== "customer")
+                  .map((r) => (
+                    <Badge key={r} variant={r === "admin" ? "coral" : "ocean"}>
+                      {r}
+                    </Badge>
+                  ))}
               </div>
             </div>
           </CardContent>
@@ -450,28 +456,36 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Admin / Coach 角色才看到的後台入口 */}
-        {(me.role === "admin" || me.role === "coach") && (
-          <Link
-            href={
-              me.role === "admin"
-                ? "/liff/admin/dashboard"
-                : "/liff/coach/today"
-            }
-          >
+        {/* Admin / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
+        {(me.roles ?? [me.role]).includes("admin") && (
+          <Link href="/liff/admin/dashboard">
             <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">
                   <Settings className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-bold">
-                    {me.role === "admin" ? "Admin 主控台" : "教練後台"}
-                  </div>
+                  <div className="text-sm font-bold">Admin 主控台</div>
                   <div className="text-[11px] text-[var(--muted-foreground)]">
-                    {me.role === "admin"
-                      ? "開團 / 訂單 / 會員 / 訊息模板 / 群發推播"
-                      : "今日場次 / 收款核對 / 本期排班"}
+                    開團 / 訂單 / 會員 / 訊息模板 / 群發推播
+                  </div>
+                </div>
+                <span className="text-[var(--color-ocean-deep)]">▸</span>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+        {(me.roles ?? [me.role]).includes("coach") && (
+          <Link href="/liff/coach/today">
+            <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">
+                  <Settings className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold">教練後台</div>
+                  <div className="text-[11px] text-[var(--muted-foreground)]">
+                    今日場次 / 收款核對 / 本期排班
                   </div>
                 </div>
                 <span className="text-[var(--color-ocean-deep)]">▸</span>

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import { prisma } from "./prisma";
-import type { User } from "@prisma/client";
+import type { User, UserRole } from "@prisma/client";
 
 // LINE 的 JWKS 公開金鑰,用來驗 idToken 的簽章
 const JWKS = createRemoteJWKSet(
@@ -72,16 +72,28 @@ async function getOrCreateUser(
   });
 }
 
-/** 檢查角色,不夠就回 403 */
+/**
+ * 取一個 user 的有效角色清單。
+ * 新欄位 `roles[]` 為主；若為空陣列（尚未遷移）就 fallback 到舊的單一 `role`
+ */
+export function getUserRoles(user: User): UserRole[] {
+  if (user.roles && user.roles.length > 0) return user.roles;
+  return [user.role];
+}
+
+/** 檢查角色,不夠就回 403 — 支援多重身分：只要有任何一個 role 在 allowed 內就過 */
 export function requireRole<T extends User>(
   user: T,
   allowed: Array<"customer" | "coach" | "admin">,
 ): { ok: true } | { ok: false; status: number; message: string } {
-  if (!allowed.includes(user.role)) {
+  const effectiveRoles = getUserRoles(user);
+  const allowedSet = new Set(allowed);
+  const matched = effectiveRoles.some((r) => allowedSet.has(r));
+  if (!matched) {
     return {
       ok: false,
       status: 403,
-      message: `requires role: ${allowed.join("|")}, got: ${user.role}`,
+      message: `requires role: ${allowed.join("|")}, got: ${effectiveRoles.join(",")}`,
     };
   }
   return { ok: true };

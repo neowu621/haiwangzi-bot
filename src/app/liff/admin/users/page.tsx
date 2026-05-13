@@ -26,7 +26,11 @@ interface AdminUser {
   realName: string | null;
   phone: string | null;
   email: string | null;
+  // legacy primary role
   role: Role;
+  // 新版多重身分 — 後端 GET 一定會 fallback 為 [role]，不會是空陣列
+  effectiveRoles: Role[];
+  roles?: Role[];
   cert: Cert | null;
   certNumber: string | null;
   logCount: number;
@@ -81,7 +85,8 @@ export default function AdminUsersPage() {
       if (filter === "blacklist" && !u.blacklisted) return false;
       if (filter === "vip" && u.vipLevel === 0) return false;
       if (filter !== "all" && filter !== "blacklist" && filter !== "vip") {
-        if (u.role !== filter) return false;
+        // 多重身分：只要 user 有該角色就算入這個 tab
+        if (!u.effectiveRoles?.includes(filter)) return false;
       }
       if (k) {
         const haystack = [
@@ -110,7 +115,8 @@ export default function AdminUsersPage() {
           method: "POST",
           body: JSON.stringify({
             lineUserId: editing.lineUserId,
-            role: editing.role,
+            // 改傳多重身分；後端會自動同步 primary role
+            roles: editing.effectiveRoles ?? [editing.role],
             realName: editing.realName,
             phone: editing.phone,
             email: editing.email,
@@ -163,9 +169,9 @@ export default function AdminUsersPage() {
             {(
               [
                 ["all", `全部 (${users.length})`],
-                ["customer", `客戶 (${users.filter((u) => u.role === "customer").length})`],
-                ["coach", `教練 (${users.filter((u) => u.role === "coach").length})`],
-                ["admin", `Admin (${users.filter((u) => u.role === "admin").length})`],
+                ["customer", `客戶 (${users.filter((u) => u.effectiveRoles?.includes("customer")).length})`],
+                ["coach", `教練 (${users.filter((u) => u.effectiveRoles?.includes("coach")).length})`],
+                ["admin", `Admin (${users.filter((u) => u.effectiveRoles?.includes("admin")).length})`],
                 ["vip", `VIP (${users.filter((u) => u.vipLevel > 0).length})`],
                 ["blacklist", `黑名單 (${users.filter((u) => u.blacklisted).length})`],
               ] as const
@@ -214,18 +220,17 @@ export default function AdminUsersPage() {
                       ({u.displayName})
                     </span>
                   )}
-                  <Badge
-                    variant={
-                      u.role === "admin"
-                        ? "coral"
-                        : u.role === "coach"
-                          ? "ocean"
-                          : "muted"
-                    }
-                    className="text-[9px]"
-                  >
-                    {u.role}
-                  </Badge>
+                  {u.effectiveRoles?.map((r) => (
+                    <Badge
+                      key={r}
+                      variant={
+                        r === "admin" ? "coral" : r === "coach" ? "ocean" : "muted"
+                      }
+                      className="text-[9px]"
+                    >
+                      {r}
+                    </Badge>
+                  ))}
                   {u.cert && (
                     <Badge variant="muted" className="text-[9px]">
                       {u.cert}
@@ -329,24 +334,48 @@ export default function AdminUsersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">角色</Label>
-                <div className="flex gap-1">
-                  {ROLES.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setEditing({ ...editing, role: r })}
-                      className={cn(
-                        "flex-1 rounded-full px-2 py-1 text-[11px] font-semibold",
-                        editing.role === r
-                          ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
-                          : "bg-[var(--muted)] text-[var(--muted-foreground)]",
-                      )}
-                    >
-                      {r}
-                    </button>
-                  ))}
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                <Label className="text-xs pt-1">角色（可複選）</Label>
+                <div>
+                  <div className="flex gap-1">
+                    {ROLES.map((r) => {
+                      const cur = editing.effectiveRoles ?? [editing.role];
+                      const on = cur.includes(r);
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            const next = on
+                              ? cur.filter((x) => x !== r)
+                              : [...cur, r];
+                            // 至少要保留一個角色
+                            if (next.length === 0) return;
+                            setEditing({
+                              ...editing,
+                              effectiveRoles: next,
+                              // role primary 取優先順序：admin > coach > customer
+                              role:
+                                (["admin", "coach", "customer"] as const).find(
+                                  (x) => next.includes(x),
+                                ) ?? "customer",
+                            });
+                          }}
+                          className={cn(
+                            "flex-1 rounded-full px-2 py-1 text-[11px] font-semibold",
+                            on
+                              ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                              : "bg-[var(--muted)] text-[var(--muted-foreground)]",
+                          )}
+                        >
+                          {r}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                    一個 user 可同時是 customer + coach + admin，至少要選一個
+                  </div>
                 </div>
               </div>
 

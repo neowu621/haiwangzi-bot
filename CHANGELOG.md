@@ -2,6 +2,37 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_34 — 2026-05-14 (多重身分 User.roles[])
+
+### 核心需求
+一個 user 可以同時是 customer + coach + admin。
+例：店長本身是 admin 也是教練；常客升等成 VIP 教練。
+
+### Schema
+- `User.roles UserRole[] @default([])` 新欄位 — primary 多重角色
+- `User.role` 保留為 legacy 兼容欄位（admin > coach > customer 優先）
+- 空陣列自動 fallback 為 `[role]`，舊資料無痛遷移
+
+### `lib/auth.ts`
+- 新 helper `getUserRoles(user)`：roles 空就 fallback 為 `[role]`
+- `requireRole()` 改為「user 的角色清單 ∩ allowed 非空就過」
+- 所有現有 API 不用改 — 自動支援多重身分
+
+### API
+- `GET /api/admin/users` 回傳每筆 `effectiveRoles: Role[]`
+- `POST /api/admin/users` 接受 `roles: Role[]`（推薦）或 `role`（legacy）
+  - 帶 `roles` 時自動同步 `role` 為優先順序的第一個
+  - 至少要選一個角色，空陣列回 400
+- `GET /api/me` 回傳 `roles: Role[]`（fallback `[role]`）
+
+### UI
+- `/liff/admin/users` 編輯對話框「角色」改為 **複選 chips**
+  - 至少要保留一個（按鈕不會讓最後一個被取消）
+  - 卡片每個角色都顯示一個 badge
+  - 篩選 tabs 改用 `effectiveRoles.includes()`
+- `/liff/profile` 個人資料卡：所有非-customer 角色都顯示 badge
+- `/liff/profile` 後台入口：admin / coach **兩個都看得到**（如果都有的話）
+
 ## 20260514_33 — 2026-05-14 (潛點強制刪除 cascade)
 
 ### `DELETE /api/admin/sites/[id]?force=true`

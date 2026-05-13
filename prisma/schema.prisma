@@ -115,7 +115,11 @@ model User {
   cert             CertLevel?
   certNumber       String?   @map("cert_number") @db.VarChar(64)
   logCount         Int       @default(0) @map("log_count")
+  // legacy 單一角色（保留以相容舊資料；新版改用 roles[] 陣列支援多重身分）
   role             UserRole  @default(customer)
+  // 多重角色：一個 user 可同時是 customer + coach + admin
+  // 若為空陣列代表還沒遷移，讀的時候會自動 backfill 成 [role]
+  roles            UserRole[] @default([])
   notes            String?
   // 同伴清單：[{ id, name, phone, cert, certNumber, logCount, relationship }]
   companions       Json      @default("[]")

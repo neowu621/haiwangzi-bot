@@ -61,6 +61,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     users: users.map((u) => ({
       ...u,
+      // 若 roles 為空，視為 [role]，前端用這個欄位畫 chips
+      effectiveRoles: u.roles && u.roles.length > 0 ? u.roles : [u.role],
       stats: stats.get(u.lineUserId) ?? {
         totalBookings: 0,
         completed: 0,
@@ -76,6 +78,8 @@ export async function GET(req: NextRequest) {
 const PatchSchema = z.object({
   lineUserId: z.string(),
   role: z.enum(["customer", "coach", "admin"]).optional(),
+  // 多重身分（推薦）；若帶這個會同步把 role 設為第一個元素以保持向後相容
+  roles: z.array(z.enum(["customer", "coach", "admin"])).optional(),
   realName: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z
@@ -110,7 +114,24 @@ export async function POST(req: NextRequest) {
 
   const data = PatchSchema.parse(await req.json());
   const patch: Record<string, unknown> = {};
-  if (data.role !== undefined) patch.role = data.role;
+  if (data.roles !== undefined) {
+    // 去重 + 至少要有一個角色
+    const uniq = Array.from(new Set(data.roles));
+    if (uniq.length === 0) {
+      return NextResponse.json(
+        { error: "roles 至少要有一個角色（customer / coach / admin）" },
+        { status: 400 },
+      );
+    }
+    patch.roles = uniq;
+    // 同步 primary role (backwards compat)：admin > coach > customer 優先順序
+    const priority = ["admin", "coach", "customer"] as const;
+    patch.role = priority.find((r) => uniq.includes(r)) ?? "customer";
+  } else if (data.role !== undefined) {
+    // 沒帶 roles 但有帶 role：當作單一角色處理，並同步 roles
+    patch.role = data.role;
+    patch.roles = [data.role];
+  }
   if (data.realName !== undefined)
     patch.realName = data.realName === "" ? null : data.realName;
   if (data.phone !== undefined)
