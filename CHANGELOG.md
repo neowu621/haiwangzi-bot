@@ -2,6 +2,34 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_26 — 2026-05-14 (場次/團 上傳照片 + 集合地點)
+
+### 新元件
+- `src/components/admin/ImageUploader.tsx` — 共用上傳元件
+  - 直接 PUT R2 (presign + 8MB / 張上限 / max 8 張)
+  - 顯示縮圖 grid + 移除按鈕
+  - 支援 prefix: `sites` / `trips` / `tours` / `media`
+
+### 日潛場次表單
+- 新欄位：**集合地點說明** (textarea)
+  - 例：「海王子潛店 / 龍洞 4 號港停車場 / 潮境公園售票口 07:30 集合」
+- 新欄位：**場次照片**（最多 8 張）
+- 卡片列表顯示 📍 集合地點 + 縮圖 row（顯示前 4 張）
+
+### 潛水團表單
+- 新欄位：**團照片**（schema 一直有 images，這次補上 UI）
+- 卡片列表顯示縮圖 row
+
+### Schema 變更
+- `DivingTrip.meetingPoint String?`
+- `DivingTrip.images String[] @default([])`
+- `TourPackage.finalReminderDays @default(30)` (從 3)
+- `TourPackage.guideReminderDays @default(2)` (從 1)
+
+### R2 prefix 新增
+- `trips/` 日潛場次照（public bucket）
+- `tours/` 潛水團照（public bucket）
+
 ## 20260514_25 — 2026-05-14 (清除全部開團資料 + 旅行團 → 潛水團)
 
 ### 文字統一改名

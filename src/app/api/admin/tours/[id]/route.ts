@@ -24,6 +24,7 @@ const PatchSchema = z.object({
   itinerary: z.array(z.unknown()).optional(),
   includes: z.array(z.string()).optional(),
   excludes: z.array(z.string()).optional(),
+  images: z.array(z.string()).optional(),
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
 });
 
@@ -65,6 +66,7 @@ export async function PATCH(
   if (data.itinerary) patch.itinerary = data.itinerary;
   if (data.includes) patch.includes = data.includes;
   if (data.excludes) patch.excludes = data.excludes;
+  if (data.images) patch.images = data.images;
   if (data.status) patch.status = data.status;
 
   const tour = await prisma.tourPackage.update({ where: { id }, data: patch });

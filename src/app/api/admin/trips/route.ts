@@ -59,6 +59,8 @@ const CreateSchema = z.object({
     scooterRental: z.number().int().default(0),
   }),
   notes: z.string().optional().or(z.literal("")),
+  meetingPoint: z.string().optional().or(z.literal("")),
+  images: z.array(z.string()).default([]),
 });
 
 // POST /api/admin/trips - 新增日潛場次
@@ -83,6 +85,8 @@ export async function POST(req: NextRequest) {
       coachIds: data.coachIds,
       pricing: data.pricing,
       notes: data.notes || null,
+      meetingPoint: data.meetingPoint || null,
+      images: data.images ?? [],
       status: "open",
     },
   });

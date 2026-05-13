@@ -15,7 +15,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
-  prefix: z.enum(["payments", "sites", "avatars", "richmenu", "media"]),
+  prefix: z.enum([
+    "payments",
+    "sites",
+    "avatars",
+    "richmenu",
+    "media",
+    "trips",
+    "tours",
+  ]),
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1).max(64),
   scope: z.string().optional(),

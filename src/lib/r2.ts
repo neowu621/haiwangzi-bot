@@ -50,12 +50,14 @@ export type R2Prefix =
   | "sites"
   | "avatars"
   | "richmenu"
-  | "media"; // 最新動態縮圖 (public bucket)
+  | "media"  // 最新動態縮圖 (public bucket)
+  | "trips"  // 日潛場次照片 (public)
+  | "tours"; // 潛水團照片 (public)
 
 /** prefix → bucket 對應 */
 export function bucketFor(prefix: R2Prefix): string {
   if (prefix === "payments" || prefix === "avatars") return R2_PRIVATE_BUCKET;
-  return R2_PUBLIC_BUCKET; // sites, richmenu, media
+  return R2_PUBLIC_BUCKET; // sites, richmenu, media, trips, tours
 }
 
 export function isPrivate(prefix: R2Prefix): boolean {

@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { ImageUploader } from "@/components/admin/ImageUploader";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,8 @@ interface Trip {
     scooterRental: number;
   };
   notes: string | null;
+  meetingPoint: string | null;
+  images: string[];
   status: string;
 }
 
@@ -62,6 +65,7 @@ interface Tour {
   depositReminderDays: number;
   finalReminderDays: number;
   guideReminderDays: number;
+  images: string[];
   status: string;
 }
 
@@ -136,6 +140,8 @@ export default function AdminTripsPage() {
       coachIds: [],
       pricing: { baseTrip: 1500, extraTank: 500, nightDive: 500, scooterRental: 1500 },
       notes: null,
+      meetingPoint: null,
+      images: [],
       status: "open",
     };
   }
@@ -154,6 +160,7 @@ export default function AdminTripsPage() {
       depositReminderDays: 7,   // 確認訂單後 1 週內付訂金保留名額
       finalReminderDays: 30,    // 尾款出發前 1 個月繳清
       guideReminderDays: 2,     // 出發前 2 天再次通知
+      images: [],
       status: "open",
     };
   }
@@ -477,9 +484,39 @@ export default function AdminTripsPage() {
                         {t.booked}/{t.capacity ?? "∞"} ·{" "}
                         {t.coachIds.map(coachName).join("、") || "未指派教練"} · base NT$ {t.pricing.baseTrip}
                       </div>
+                      {t.meetingPoint && (
+                        <div className="mt-1 text-[11px] leading-relaxed">
+                          📍 <span className="opacity-80">{t.meetingPoint}</span>
+                        </div>
+                      )}
                       {t.notes && (
                         <div className="mt-1 rounded-md bg-[var(--muted)]/50 px-2 py-1 text-[11px] leading-relaxed">
                           📝 {t.notes}
+                        </div>
+                      )}
+                      {t.images && t.images.length > 0 && (
+                        <div className="mt-1 flex gap-1 overflow-x-auto">
+                          {t.images.slice(0, 4).map((k) => {
+                            const base =
+                              process.env.NEXT_PUBLIC_R2_PUBLIC_BASE ?? "";
+                            const src = base
+                              ? `${base.replace(/\/$/, "")}/${k}`
+                              : k;
+                            return (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={k}
+                                src={src}
+                                alt=""
+                                className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
+                              />
+                            );
+                          })}
+                          {t.images.length > 4 && (
+                            <span className="self-center text-[10px] text-[var(--muted-foreground)]">
+                              +{t.images.length - 4}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -565,6 +602,31 @@ export default function AdminTripsPage() {
                       <div className="text-[10px] tabular text-[var(--muted-foreground)]">
                         提醒：訂金 D-{t.depositReminderDays} · 尾款 D-{t.finalReminderDays} · 行前 D-{t.guideReminderDays}
                       </div>
+                      {t.images && t.images.length > 0 && (
+                        <div className="mt-1 flex gap-1 overflow-x-auto">
+                          {t.images.slice(0, 4).map((k) => {
+                            const base =
+                              process.env.NEXT_PUBLIC_R2_PUBLIC_BASE ?? "";
+                            const src = base
+                              ? `${base.replace(/\/$/, "")}/${k}`
+                              : k;
+                            return (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={k}
+                                src={src}
+                                alt=""
+                                className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
+                              />
+                            );
+                          })}
+                          {t.images.length > 4 && (
+                            <span className="self-center text-[10px] text-[var(--muted-foreground)]">
+                              +{t.images.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
                       <Button
@@ -806,6 +868,34 @@ export default function AdminTripsPage() {
               </div>
 
               <div>
+                <Label className="text-xs">集合地點說明</Label>
+                <textarea
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  rows={2}
+                  value={editingTrip.meetingPoint ?? ""}
+                  onChange={(e) =>
+                    setEditingTrip({
+                      ...editingTrip,
+                      meetingPoint: e.target.value || null,
+                    })
+                  }
+                  placeholder="例：海王子潛店 / 龍洞 4 號港停車場 / 潮境公園售票口 07:30 集合..."
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs">場次照片（最多 8 張）</Label>
+                <ImageUploader
+                  prefix="trips"
+                  value={editingTrip.images ?? []}
+                  onChange={(images) =>
+                    setEditingTrip({ ...editingTrip, images })
+                  }
+                  hint="拍攝海況、潛點實景、集合處等，幫助客戶辨認"
+                />
+              </div>
+
+              <div>
                 <Label className="text-xs">備註說明 (顯示給客戶 / 教練)</Label>
                 <textarea
                   className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
@@ -817,7 +907,7 @@ export default function AdminTripsPage() {
                       notes: e.target.value || null,
                     })
                   }
-                  placeholder="例：本團安排潮境公園生態解說、自備防寒衣建議 5mm、集合地點海王子潛店..."
+                  placeholder="例：本團安排潮境公園生態解說、自備防寒衣建議 5mm..."
                 />
               </div>
 
@@ -956,6 +1046,19 @@ export default function AdminTripsPage() {
                       finalDeadline: e.target.value || null,
                     })
                   }
+                />
+              </div>
+
+              {/* 潛水團照片 */}
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                <Label className="text-xs pt-1">團照片</Label>
+                <ImageUploader
+                  prefix="tours"
+                  value={editingTour.images ?? []}
+                  onChange={(images) =>
+                    setEditingTour({ ...editingTour, images })
+                  }
+                  hint="客戶在潛水團列表會看到第一張縮圖"
                 />
               </div>
 

@@ -176,6 +176,10 @@ model DivingTrip {
   pricing      Json
   // 場次備註說明（顯示在客戶端、教練端、admin 列表）
   notes        String?
+  // 集合地點說明（例：海王子潛店 / 龍洞 4 號港 / 潮境停車場...）
+  meetingPoint String?      @map("meeting_point")
+  // 場次照片 R2 keys（public bucket，prefix=trips/）
+  images       String[]     @default([])
   status       TripStatus   @default(open)
   cancelReason CancelReason? @map("cancel_reason")
   weatherNote  String?      @map("weather_note")
