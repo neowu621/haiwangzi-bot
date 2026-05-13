@@ -2,6 +2,53 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_29 — 2026-05-14 (Email 通道：Gmail SMTP core)
+
+### 新依賴
+- `nodemailer@8` + `@types/nodemailer`
+
+### lib/email/
+- `send.ts` — Gmail SMTP wrapper
+  - 沒設 env 自動 no-op（不 throw，回 `{ ok:false, skipped:true }`）
+  - 收件人沒 email 直接 skip（容錯 cron 場景）
+  - 支援 App Password 兩種格式：`abcd efgh ijkl mnop` 或 `abcdefghijklmnop`
+- `templates.ts` — 純函式回傳 `{ subject, text, html }`
+  - 目前 2 個：`testEmail` / `bookingConfirmEmail`
+  - 統一 shell：品牌色 header + 灰底卡片，inline-style 對應大部分 email client
+
+### Schema
+- `User.notifyByLine Boolean @default(true)`
+- `User.notifyByEmail Boolean @default(true)`
+
+### API
+- `POST /api/admin/email/test` — 寄測試信
+  - body 可選 `{to}`，預設寄 admin 自己 email
+  - 沒設 env 回 503 + hint
+- `/api/me` GET/PATCH 支援 `notifyByLine` / `notifyByEmail`
+
+### UI
+- `/liff/profile` 新增「**通知偏好**」卡：LINE / Email toggle
+  - Email toggle 在沒填 email 時 disabled + 紅標提示
+- `/liff/admin/settings` 新增「**Email 通道測試**」區塊
+  - 可指定收件人或留空寄給自己
+  - 顯示結果（成功/略過/失敗 reasons）
+
+### .env.example
+- 新增 `GMAIL_USER` / `GMAIL_APP_PASSWORD` 區塊 + 申請步驟說明
+- 提醒：Gmail 個人額度 500 封/天，量大要換 SendGrid/Resend/SES
+
+### Deploy 設定
+admin 需在 Zeabur dashboard 加環境變數：
+```
+GMAIL_USER=neowu62@gmail.com
+GMAIL_APP_PASSWORD=（自己的 App Password，16 字）
+```
+
+### 下一版預定
+- 6 個 email 模板（deposit-reminder / final-reminder / trip-guide / weather-cancel / payment-received / admin-broadcast）
+- cron/reminders 雙通道（LINE + Email）
+- /liff/admin/broadcast 加 channel select
+
 ## 20260514_28 — 2026-05-14 (User.email + 首次登入提示)
 
 ### Schema 變更

@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
     realName: u.realName,
     phone: u.phone,
     email: u.email,
+    notifyByLine: u.notifyByLine,
+    notifyByEmail: u.notifyByEmail,
     cert: u.cert,
     certNumber: u.certNumber,
     logCount: u.logCount,
@@ -61,6 +63,8 @@ const PatchSchema = z.object({
     .nullable()
     .optional()
     .or(z.literal("")),
+  notifyByLine: z.boolean().optional(),
+  notifyByEmail: z.boolean().optional(),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
   certNumber: z.string().nullable().optional(),
   logCount: z.number().int().min(0).optional(),

@@ -70,6 +70,8 @@ interface Me {
   realName: string | null;
   phone: string | null;
   email: string | null;
+  notifyByLine: boolean;
+  notifyByEmail: boolean;
   cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
   certNumber: string | null;
   logCount: number;
@@ -92,6 +94,8 @@ export default function ProfilePage() {
   const [realName, setRealName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [notifyByLine, setNotifyByLine] = useState(true);
+  const [notifyByEmail, setNotifyByEmail] = useState(true);
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
   const [certNumber, setCertNumber] = useState("");
   const [logCount, setLogCount] = useState("");
@@ -153,6 +157,8 @@ export default function ProfilePage() {
         setRealName(u.realName ?? "");
         setPhone(u.phone ?? "");
         setEmail(u.email ?? "");
+        setNotifyByLine(u.notifyByLine ?? true);
+        setNotifyByEmail(u.notifyByEmail ?? true);
         setCert(u.cert ?? "");
         setCertNumber(u.certNumber ?? "");
         setLogCount(String(u.logCount ?? 0));
@@ -190,6 +196,8 @@ export default function ProfilePage() {
     realName,
     phone,
     email,
+    notifyByLine,
+    notifyByEmail,
     cert,
     certNumber,
     logCount,
@@ -214,6 +222,8 @@ export default function ProfilePage() {
           realName: realName || null,
           phone: phone || null,
           email: email.trim() || null,
+          notifyByLine,
+          notifyByEmail,
           cert: cert || null,
           certNumber: certNumber || null,
           logCount: Number(logCount) || 0,
@@ -555,6 +565,62 @@ export default function ProfilePage() {
             </div>
           </div>
         </CollapsibleCard>
+
+        {/* 通知偏好 */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold">通知偏好</div>
+                <div className="text-[11px] text-[var(--muted-foreground)]">
+                  選擇你想接收通知的管道（兩個都可以開）
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
+                <div>
+                  <div className="text-sm font-semibold">LINE 推播</div>
+                  <div className="text-[11px] text-[var(--muted-foreground)]">
+                    透過 LINE 官方帳號收 Flex 卡片
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={notifyByLine}
+                  onChange={(e) => setNotifyByLine(e.target.checked)}
+                  className="h-5 w-5"
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
+                <div>
+                  <div className="text-sm font-semibold">
+                    Email{" "}
+                    {!email && (
+                      <span className="ml-1 rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
+                        請先填 email
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-[var(--muted-foreground)]">
+                    {email
+                      ? `收到 ${email}`
+                      : "需先填 email 才會生效"}
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={notifyByEmail}
+                  disabled={!email}
+                  onChange={(e) => setNotifyByEmail(e.target.checked)}
+                  className="h-5 w-5"
+                />
+              </label>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 緊急聯絡人 — Collapsible，必填 */}
         <CollapsibleCard

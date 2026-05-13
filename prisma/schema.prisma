@@ -108,6 +108,9 @@ model User {
   phone            String?   @db.VarChar(32)
   // 註冊 email — 用於通知信、發票、e-card；比 SMS 便宜，首次登入強制要填
   email            String?   @db.VarChar(254)
+  // 通知偏好：客戶可在 /liff/profile 自己關掉。預設都開
+  notifyByLine     Boolean   @default(true) @map("notify_by_line")
+  notifyByEmail    Boolean   @default(true) @map("notify_by_email")
   emergencyContact Json?     @map("emergency_contact")
   cert             CertLevel?
   certNumber       String?   @map("cert_number") @db.VarChar(64)
