@@ -60,10 +60,11 @@ export default function DiveDateListPage({
           </Card>
         )}
         {trips.map((t) => {
-          // v46 計價公式：extraTank × tankCount + baseTrip + 夜潛/水推
+          // v48：每人預估費（1 人 × 滿支數），baseTrip 是整單共享所以這只是 lower-bound
+          // 公式：baseTrip + extraTank × tanks (此處 1 人) + 夜潛/水推
           const base =
-            t.pricing.extraTank * t.tankCount +
             t.pricing.baseTrip +
+            t.pricing.extraTank * t.tankCount +
             (t.isNightDive ? t.pricing.nightDive : 0) +
             (t.isScooter ? t.pricing.scooterRental : 0);
           return (

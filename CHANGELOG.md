@@ -2,6 +2,46 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_48 — 2026-05-14 (計價公式重定 + 訂單編輯 UI 重設計)
+
+### 計價公式 v48（最終版）
+```
+總額 = baseTrip (整單一次性平收)
+     + extraTank × 支數 × 人數    ← 隨人數、支數放大
+     + nightDive (若夜潛)
+     + scooterRental (若水推)
+     + 裝備 (各裝備 price × qty)
+```
+
+跟 v47 的差別：**baseTrip 不再 × 人數**，是整單共享的基本費（船費分攤、教練包船費等）。
+night/scooter 也改為整單平收（更直觀）。
+
+### 範例
+baseTrip=500、extraTank=600、tanks=2、people=2、gear=300
+- 總額 = 500 + 600×2×2 + 300 = **3,200**
+
+### 更新範圍
+- `POST /api/bookings/daily`
+- `PATCH /api/bookings/[id]`
+- `/liff/dive/trip/[tripId]` client 預覽
+- `/liff/dive/date/[date]` 列表預估
+- `/liff/my` 修改訂單 Dialog
+
+### `/liff/my` 修改預約 Dialog 重設計
+- **兩個折疊區塊**（預設都收起）：
+  1. **潛水內容**：點開可改「潛水支數 + 人數」，旁邊即時顯示小計
+  2. **租賃裝備**：點開可改每樣裝備數量
+- 每個區塊 header 顯示 summary：`2 支 × 2 人 · NT$ 2400`
+- Dialog 底部固定**總結費用框**（深藍邊框）：
+  - 基本費（若 > 0）
+  - 潛水 600 × 2 支 × 2 人 = 2400
+  - 夜潛/水推（若有）
+  - 裝備（若有）
+  - **總計**：紅色大字
+
+### Server 也更新 PATCH 計算
+之前 `baseAmount × newParticipants` 會把 baseTrip 也乘人數，現在正確了。
+
 ## 20260514_47 — 2026-05-14 (日潛計價 client/server 一致化)
 
 ### Bug fix

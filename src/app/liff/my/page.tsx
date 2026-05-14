@@ -506,6 +506,46 @@ function gearLabel(itemType: GearItemType): string {
   return item?.label ?? itemType;
 }
 
+// 簡單的折疊區塊（給編輯預約 Dialog 用）
+function SectionCard({
+  open,
+  onToggle,
+  title,
+  summary,
+  children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  title: string;
+  summary?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--border)]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2 text-left"
+      >
+        <div className="flex-1">
+          <div className="text-sm font-semibold">{title}</div>
+          {summary && (
+            <div className="text-[10px] text-[var(--muted-foreground)] tabular">
+              {summary}
+            </div>
+          )}
+        </div>
+        <span className="text-xs text-[var(--muted-foreground)]">
+          {open ? "▲" : "▼"}
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-[var(--border)] p-3">{children}</div>
+      )}
+    </div>
+  );
+}
+
 // ─── Edit Dialog ────────────────────────────────────────
 function EditBookingDialog({
   booking,
@@ -518,15 +558,30 @@ function EditBookingDialog({
 }) {
   const liff = useLiff();
   const [participants, setParticipants] = useState(1);
+  const [tankCount, setTankCount] = useState(1);
   const [gearQty, setGearQty] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  // 兩個區塊預設都折疊
+  const [openDive, setOpenDive] = useState(false);
+  const [openGear, setOpenGear] = useState(false);
+  // 場次定價（為了預覽小計）
+  const [tripPricing, setTripPricing] = useState<{
+    baseTrip: number;
+    extraTank: number;
+    nightDive: number;
+    scooterRental: number;
+    tankCount: number;
+    isNightDive: boolean;
+    isScooter: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (!booking) return;
     setParticipants(booking.participants);
+    // 嘗試從 booking.rentalGear 反推目前 tankCount（無法直接得到，預設 trip.tankCount）
     setGearQty(
       booking.rentalGear.reduce<Record<string, number>>((acc, g) => {
         acc[g.itemType] = g.qty ?? 1;
@@ -536,7 +591,36 @@ function EditBookingDialog({
     setNotes(booking.notes ?? "");
     setError(null);
     setCancelConfirm(false);
-  }, [booking]);
+    setOpenDive(false);
+    setOpenGear(false);
+
+    // 若為日潛，撈場次定價（API 直接回 trip 欄位平鋪在 top level）
+    if (booking.type === "daily" && booking.refId) {
+      liff
+        .fetchWithAuth<{
+          pricing: {
+            baseTrip: number;
+            extraTank: number;
+            nightDive: number;
+            scooterRental: number;
+          };
+          tankCount: number;
+          isNightDive: boolean;
+          isScooter: boolean;
+        }>(`/api/trips/${booking.refId}`)
+        .then((r) => {
+          setTripPricing({
+            ...r.pricing,
+            tankCount: r.tankCount,
+            isNightDive: r.isNightDive,
+            isScooter: r.isScooter,
+          });
+          // 先用 tripPricing.tankCount 預設；之後可能要從 booking 反推
+          setTankCount(r.tankCount);
+        })
+        .catch(() => {});
+    }
+  }, [booking, liff]);
 
   if (!booking) return null;
 
@@ -556,6 +640,7 @@ function EditBookingDialog({
         notes: notes || null,
       };
       if (isDaily) {
+        body.tankCount = tankCount;
         body.rentalGear = selectedGear.map((g) => ({
           itemType: g.itemType,
           price: g.price,
@@ -596,39 +681,145 @@ function EditBookingDialog({
         <DialogHeader>
           <DialogTitle>修改預約</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          {/* 人數 */}
-          <div className="flex items-center justify-between">
-            <Label>人數</Label>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                disabled={participants <= 1}
-                onClick={() => setParticipants(Math.max(1, participants - 1))}
-              >
-                −
-              </Button>
-              <span className="w-8 text-center text-lg font-bold tabular">
-                {participants}
-              </span>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                onClick={() => setParticipants(participants + 1)}
-              >
-                +
-              </Button>
-            </div>
-          </div>
+        <div className="space-y-2">
+          {/* ── Section 1: 潛水內容 (折疊) ── */}
+          {isDaily ? (
+            <SectionCard
+              open={openDive}
+              onToggle={() => setOpenDive((v) => !v)}
+              title="潛水內容"
+              summary={
+                tripPricing
+                  ? `${tankCount} 支 × ${participants} 人 · NT$ ${(tripPricing.extraTank * tankCount * participants).toLocaleString()}`
+                  : `${participants} 人`
+              }
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>潛水支數</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      disabled={tankCount <= 1}
+                      onClick={() => setTankCount(Math.max(1, tankCount - 1))}
+                    >
+                      −
+                    </Button>
+                    <span className="w-10 text-center text-base font-bold tabular">
+                      {tankCount} 支
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      disabled={
+                        tripPricing
+                          ? tankCount >= tripPricing.tankCount
+                          : tankCount >= 4
+                      }
+                      onClick={() => setTankCount(tankCount + 1)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
 
-          {/* 裝備（僅日潛） */}
+                <div className="flex items-center justify-between">
+                  <Label>人數</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      disabled={participants <= 1}
+                      onClick={() =>
+                        setParticipants(Math.max(1, participants - 1))
+                      }
+                    >
+                      −
+                    </Button>
+                    <span className="w-10 text-center text-base font-bold tabular">
+                      {participants} 人
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setParticipants(participants + 1)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+
+                {tripPricing && (
+                  <div className="rounded-md bg-[var(--muted)]/40 p-2 text-[11px] tabular text-[var(--muted-foreground)]">
+                    <div className="flex justify-between">
+                      <span>
+                        每支潛水 NT$ {tripPricing.extraTank.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-[var(--foreground)]">
+                      <span>小計</span>
+                      <span>
+                        NT${" "}
+                        {(
+                          tripPricing.extraTank *
+                          tankCount *
+                          participants
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+          ) : (
+            // 潛水團不能改支數，只能改人數
+            <div className="flex items-center justify-between rounded-md border border-[var(--border)] p-3">
+              <Label>人數</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  disabled={participants <= 1}
+                  onClick={() =>
+                    setParticipants(Math.max(1, participants - 1))
+                  }
+                >
+                  −
+                </Button>
+                <span className="w-10 text-center text-base font-bold tabular">
+                  {participants}
+                </span>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setParticipants(participants + 1)}
+                >
+                  +
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Section 2: 租賃裝備 (折疊) ── */}
           {isDaily && (
-            <div>
-              <Label>租賃裝備（按 + 加數量）</Label>
-              <div className="mt-1 space-y-1.5">
+            <SectionCard
+              open={openGear}
+              onToggle={() => setOpenGear((v) => !v)}
+              title="租賃裝備"
+              summary={
+                selectedGear.length === 0
+                  ? "未選"
+                  : `${selectedGear.length} 項 · NT$ ${selectedGear.reduce((s, g) => s + g.price * g.qty, 0).toLocaleString()}`
+              }
+            >
+              <div className="space-y-1.5">
                 {GEAR_OPTIONS.map((g) => {
                   const qty = gearQty[g.itemType] ?? 0;
                   const active = qty > 0;
@@ -687,7 +878,7 @@ function EditBookingDialog({
                   );
                 })}
               </div>
-            </div>
+            </SectionCard>
           )}
 
           {/* 備註 */}
@@ -700,6 +891,67 @@ function EditBookingDialog({
               placeholder="教練可見"
             />
           </div>
+
+          {/* ── 總結費用 ── */}
+          {isDaily && tripPricing && (
+            <div className="rounded-md border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-2.5 text-xs tabular space-y-0.5">
+              {tripPricing.baseTrip > 0 && (
+                <div className="flex justify-between text-[var(--muted-foreground)]">
+                  <span>基本費（整單）</span>
+                  <span>NT$ {tripPricing.baseTrip.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-[var(--muted-foreground)]">
+                <span>
+                  潛水 {tripPricing.extraTank} × {tankCount} 支 × {participants} 人
+                </span>
+                <span>
+                  NT${" "}
+                  {(
+                    tripPricing.extraTank *
+                    tankCount *
+                    participants
+                  ).toLocaleString()}
+                </span>
+              </div>
+              {tripPricing.isNightDive && (
+                <div className="flex justify-between text-[var(--muted-foreground)]">
+                  <span>· 夜潛</span>
+                  <span>+ NT$ {tripPricing.nightDive.toLocaleString()}</span>
+                </div>
+              )}
+              {tripPricing.isScooter && (
+                <div className="flex justify-between text-[var(--muted-foreground)]">
+                  <span>· 水推</span>
+                  <span>+ NT$ {tripPricing.scooterRental.toLocaleString()}</span>
+                </div>
+              )}
+              {selectedGear.length > 0 && (
+                <div className="flex justify-between text-[var(--muted-foreground)]">
+                  <span>裝備 ({selectedGear.length} 項)</span>
+                  <span>
+                    + NT${" "}
+                    {selectedGear
+                      .reduce((s, g) => s + g.price * g.qty, 0)
+                      .toLocaleString()}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-[var(--border)] pt-1 mt-1 font-bold">
+                <span>總計</span>
+                <span className="text-[var(--color-coral)] text-sm">
+                  NT${" "}
+                  {(
+                    tripPricing.baseTrip +
+                    tripPricing.extraTank * tankCount * participants +
+                    (tripPricing.isNightDive ? tripPricing.nightDive : 0) +
+                    (tripPricing.isScooter ? tripPricing.scooterRental : 0) +
+                    selectedGear.reduce((s, g) => s + g.price * g.qty, 0)
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg bg-[var(--color-coral)]/15 p-2 text-xs text-[var(--color-coral)]">

@@ -101,11 +101,12 @@ export async function PATCH(
       trip.tankCount,
       Math.max(1, data.tankCount ?? trip.tankCount),
     );
-    // v46 計價公式：每一次潛水 × 支數 + 基本費（與 POST /api/bookings/daily 一致）
-    let baseAmount =
-      pricing.extraTank * effectiveTanks + pricing.baseTrip;
-    if (trip.isNightDive) baseAmount += pricing.nightDive;
-    if (trip.isScooter) baseAmount += pricing.scooterRental;
+    // v48 計價公式（與 POST /api/bookings/daily 一致）
+    // 總額 = baseTrip + extraTank × 支數 × 人數 + 夜潛/水推 + 裝備
+    const divesAmount = pricing.extraTank * effectiveTanks * newParticipants;
+    let extraAmount = pricing.baseTrip;
+    if (trip.isNightDive) extraAmount += pricing.nightDive;
+    if (trip.isScooter) extraAmount += pricing.scooterRental;
 
     const gear =
       data.rentalGear ??
@@ -118,7 +119,7 @@ export async function PATCH(
       (s, g) => s + g.price * (g.qty ?? 1),
       0,
     );
-    const totalAmount = baseAmount * newParticipants + gearAmount;
+    const totalAmount = divesAmount + extraAmount + gearAmount;
 
     const updated = await prisma.booking.update({
       where: { id },

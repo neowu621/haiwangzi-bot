@@ -122,16 +122,20 @@ export async function POST(req: NextRequest) {
     trip.tankCount,
     Math.max(1, data.tankCount ?? trip.tankCount),
   );
-  // 計價公式 (v42+)：每一次潛水費 × 支數 + 基本費 + 夜潛/水推附加
-  //   pricing.extraTank = 「每一次潛水（含空氣瓶）」單價
-  //   pricing.baseTrip  = 額外的場次基本費 (船費分攤等)，預設 0
-  let baseAmount = pricing.extraTank * effectiveTanks + pricing.baseTrip;
-  if (trip.isNightDive) baseAmount += pricing.nightDive;
-  if (trip.isScooter) baseAmount += pricing.scooterRental;
-  // 裝備改為各自獨立數量 (不再 ×人數)
+  // v48 計價公式：
+  //   總額 = baseTrip (整單平收) + extraTank × 支數 × 人數 + 夜潛/水推附加 + 裝備
+  //   pricing.baseTrip   = 整單一次性基本費（船費分攤等），預設 0，不 ×人數
+  //   pricing.extraTank  = 每一次潛水（含空氣瓶）單價，× 支數 × 人數
+  //   pricing.nightDive  = 夜潛附加費（整單平收）
+  //   pricing.scooterRental = 水推附加費（整單平收）
+  const divesAmount =
+    pricing.extraTank * effectiveTanks * data.participants;
+  let extraAmount = pricing.baseTrip;
+  if (trip.isNightDive) extraAmount += pricing.nightDive;
+  if (trip.isScooter) extraAmount += pricing.scooterRental;
+  // 裝備：各自獨立數量
   const gearAmount = data.rentalGear.reduce((s, g) => s + g.price * g.qty, 0);
-  // 總金額 = baseAmount × 人數 + 裝備
-  const totalAmount = baseAmount * data.participants + gearAmount;
+  const totalAmount = divesAmount + extraAmount + gearAmount;
   // 二次保護：理論上 schema 已擋負數，但 baseAmount 也可能因 admin 設負 pricing 出狀況
   if (totalAmount < 0) {
     return NextResponse.json(

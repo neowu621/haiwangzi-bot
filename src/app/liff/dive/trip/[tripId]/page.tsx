@@ -230,20 +230,22 @@ export default function TripBookingPage({
     [selectedGearList],
   );
 
-  const base = useMemo(() => {
+  // v48 計價（與 server 一致）：
+  //   總額 = baseTrip (整單平收) + extraTank × 支數 × 人數 + 夜潛/水推 + 裝備
+  //   baseTrip 是「整單共享」基本費（船費分攤），不 ×人數
+  //   extraTank 是「每一次潛水（含空氣瓶）」單價，× 支數 × 人數
+  const divesAmount = useMemo(
+    () => (trip ? trip.pricing.extraTank * tankCount * participants : 0),
+    [trip, tankCount, participants],
+  );
+  const extraAmount = useMemo(() => {
     if (!trip) return 0;
-    // v46 計價公式（與 server 一致）:
-    //   baseAmount = extraTank × 潛水支數 + baseTrip
-    //   pricing.extraTank = 「每一次潛水（含空氣瓶）」單價
-    //   pricing.baseTrip = 額外的場次基本費（預設 0）
-    let amt = trip.pricing.extraTank * tankCount + trip.pricing.baseTrip;
+    let amt = trip.pricing.baseTrip;
     if (trip.isNightDive) amt += trip.pricing.nightDive;
     if (trip.isScooter) amt += trip.pricing.scooterRental;
     return amt;
-  }, [trip, tankCount]);
-
-  // 總金額 = baseAmount × 人數 + 裝備 (各自獨立數量)
-  const total = base * participants + gearTotal;
+  }, [trip]);
+  const total = divesAmount + extraAmount + gearTotal;
 
   const companionsValid = companionSlots.every(
     (c) => c.name.trim().length >= 2 && c.cert !== null,
@@ -735,18 +737,31 @@ export default function TripBookingPage({
         <Card className="sticky bottom-20 z-10 border-2 border-[var(--color-phosphor)]/30">
           <CardContent className="p-4">
             <div className="space-y-1 text-xs tabular text-[var(--muted-foreground)]">
+              {trip.pricing.baseTrip > 0 && (
+                <div className="flex justify-between">
+                  <span>基本費（整單）</span>
+                  <span>NT$ {trip.pricing.baseTrip.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>
                   潛水 {trip.pricing.extraTank.toLocaleString()} × {tankCount}{" "}
                   支 × {participants} 人
-                  {trip.isNightDive ? " ·夜" : ""}
-                  {trip.isScooter ? " ·水推" : ""}
                 </span>
-                <span>NT$ {(base * participants).toLocaleString()}</span>
+                <span>NT$ {divesAmount.toLocaleString()}</span>
               </div>
-              {trip.pricing.baseTrip > 0 && (
+              {trip.isNightDive && (
                 <div className="flex justify-between text-[10px]">
-                  <span>（已含基本費 {trip.pricing.baseTrip.toLocaleString()}/人）</span>
+                  <span>· 夜潛附加</span>
+                  <span>+ NT$ {trip.pricing.nightDive.toLocaleString()}</span>
+                </div>
+              )}
+              {trip.isScooter && (
+                <div className="flex justify-between text-[10px]">
+                  <span>· 水推附加</span>
+                  <span>
+                    + NT$ {trip.pricing.scooterRental.toLocaleString()}
+                  </span>
                 </div>
               )}
               {gearTotal > 0 && (
