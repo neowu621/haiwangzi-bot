@@ -99,7 +99,25 @@ R2_SECRET_ACCESS_KEY=（剛剛複製的）
 ✅ TypeScript 0 errors（每次 push 前都跑）
 ✅ Next.js production build 通過（每次 push 前都跑）
 ✅ 4 個版本都成功 push 到 GitHub
-✅ Zeabur deploy 進度 polling（v40 仍在 build 中）
+✅ Zeabur deploy 完成 **v20260514_40 已 LIVE**
+
+**最終 regression test 結果**：
+```
+[200] /api/healthz        ← v40
+[200] /api/dbcheck        ← DB OK，3 users / 7 trips / 2 tours / 2 bookings (歷史)
+[200] /api/config
+[200] /api/site-config
+[200] /api/media
+[200] /api/trips          ← public（只回未來 open），空陣列正常
+[200] /api/tours          ← 同上
+
+401 webhook (no sig)      ← HMAC 簽章驗證有效
+401 presign (no auth)     ← idToken 驗證有效
+401 admin/trips           ← admin 權限有效
+401 admin/users           ← admin 權限有效
+401 coach/today           ← coach 權限有效
+401 bookings/daily POST   ← 預約需登入
+```
 
 ❌ 無法測試：所有需要 LIFF 登入的功能
 - 安全規則禁止我用您的 LINE 密碼登入
