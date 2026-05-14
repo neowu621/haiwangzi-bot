@@ -34,6 +34,7 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
 interface Companion {
@@ -159,7 +160,7 @@ export default function ProfilePage() {
       .then((u) => {
         setMe(u);
         setRealName(u.realName ?? "");
-        setPhone(u.phone ?? "");
+        setPhone(formatPhoneTW(u.phone ?? ""));
         setEmail(u.email ?? "");
         setNotifyByLine(u.notifyByLine ?? true);
         setNotifyByEmail(u.notifyByEmail ?? true);
@@ -167,7 +168,7 @@ export default function ProfilePage() {
         setCertNumber(u.certNumber ?? "");
         setLogCount(String(u.logCount ?? 0));
         setEmergencyName(u.emergencyContact?.name ?? "");
-        setEmergencyPhone(u.emergencyContact?.phone ?? "");
+        setEmergencyPhone(formatPhoneTW(u.emergencyContact?.phone ?? ""));
         setEmergencyRel(u.emergencyContact?.relationship ?? "");
         setNotes(u.notes ?? "");
         setCompanions(u.companions ?? []);
@@ -523,9 +524,11 @@ export default function ProfilePage() {
                 <Label>手機 *</Label>
                 <Input
                   type="tel"
+                  inputMode="numeric"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="09xx-xxx-xxx"
+                  onChange={(e) => setPhone(formatPhoneTW(e.target.value))}
+                  maxLength={11}
+                  placeholder="0912-345678"
                 />
               </div>
             </div>
@@ -698,9 +701,13 @@ export default function ProfilePage() {
             />
             <Input
               type="tel"
+              inputMode="numeric"
               value={emergencyPhone}
-              onChange={(e) => setEmergencyPhone(e.target.value)}
-              placeholder="電話 *"
+              onChange={(e) =>
+                setEmergencyPhone(formatPhoneTW(e.target.value))
+              }
+              maxLength={11}
+              placeholder="0912-345678"
             />
           </div>
         </CollapsibleCard>
@@ -993,9 +1000,13 @@ function InlineCompanionEditor({
             <Label className="text-[10px]">手機</Label>
             <Input
               type="tel"
+              inputMode="numeric"
               value={companion.phone}
-              onChange={(e) => onChange({ phone: e.target.value })}
-              placeholder="09xx-xxx-xxx"
+              onChange={(e) =>
+                onChange({ phone: formatPhoneTW(e.target.value) })
+              }
+              maxLength={11}
+              placeholder="0912-345678"
             />
           </div>
         </div>

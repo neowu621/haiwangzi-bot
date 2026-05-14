@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "coach" | "admin";
@@ -373,11 +374,17 @@ export default function AdminUsersPage() {
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">電話</Label>
                 <Input
-                  value={editing.phone ?? ""}
+                  type="tel"
+                  inputMode="numeric"
+                  value={formatPhoneTW(editing.phone ?? "")}
                   onChange={(e) =>
-                    setEditing({ ...editing, phone: e.target.value || null })
+                    setEditing({
+                      ...editing,
+                      phone: formatPhoneTW(e.target.value) || null,
+                    })
                   }
-                  placeholder="0912-345-678"
+                  maxLength={11}
+                  placeholder="0912-345678"
                 />
               </div>
 

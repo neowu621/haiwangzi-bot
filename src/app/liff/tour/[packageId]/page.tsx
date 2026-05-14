@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
 interface TourDetail {
@@ -303,8 +304,11 @@ export default function TourDetailPage({
               <Input
                 id="phone"
                 type="tel"
+                inputMode="numeric"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(formatPhoneTW(e.target.value))}
+                maxLength={11}
+                placeholder="0912-345678"
               />
             </div>
             <div>
@@ -332,9 +336,13 @@ export default function TourDetailPage({
             </div>
             <Input
               type="tel"
+              inputMode="numeric"
               value={emergencyPhone}
-              onChange={(e) => setEmergencyPhone(e.target.value)}
-              placeholder="緊急聯絡電話"
+              onChange={(e) =>
+                setEmergencyPhone(formatPhoneTW(e.target.value))
+              }
+              maxLength={11}
+              placeholder="0912-345678"
             />
             <Input
               value={notes}

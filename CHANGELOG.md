@@ -2,6 +2,31 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_49 — 2026-05-14 (手機輸入自動 0912-345678 格式)
+
+### 新 helper
+- `src/lib/phone.ts`：
+  - `formatPhoneTW(input)`：strip 非數字 → 限 10 碼 → 4 碼後自動插 `-`
+    - "0912345678" → "0912-345678"
+    - 使用者打字過程中即時格式化
+  - `unformatPhone(formatted)`：反向
+  - `isValidPhoneTW(input)`：驗 09XX-XXXXXX 格式
+
+### 套用範圍（全部 phone input）
+- `/liff/profile` 個人手機 + 緊急聯絡電話 + 潛伴電話
+- `/liff/dive/trip/[tripId]` 預約手機 + 緊急聯絡電話 + 多人預約 phone
+- `/liff/tour/[packageId]` 預約手機 + 緊急聯絡電話
+- `/liff/admin/users` admin 編輯會員電話
+
+### 屬性統一
+全部 phone input 加：
+- `type="tel"` (iOS 數字鍵盤)
+- `inputMode="numeric"` (Android 純數字鍵盤)
+- `maxLength={11}` (10 碼 + 1 個 `-`)
+- 統一 placeholder：`0912-345678`
+
+讀 DB 既有資料時也會 reformat（如果原本存的是 09xx-xxx-xxx 或 09xxxxxxxx 都會轉成 0912-345678）
+
 ## 20260514_48 — 2026-05-14 (計價公式重定 + 訂單編輯 UI 重設計)
 
 ### 計價公式 v48（最終版）

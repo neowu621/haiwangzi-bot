@@ -26,6 +26,7 @@ import {
 import { LiffShell } from "@/components/shell/LiffShell";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
 interface TripDetail {
@@ -168,12 +169,12 @@ export default function TripBookingPage({
       }>("/api/me")
       .then((me) => {
         if (me.realName) setRealName(me.realName);
-        if (me.phone) setPhone(me.phone);
+        if (me.phone) setPhone(formatPhoneTW(me.phone));
         if (me.cert) setCert(me.cert);
         if (me.logCount) setLogCount(String(me.logCount));
         if (me.emergencyContact) {
           setEmergencyName(me.emergencyContact.name);
-          setEmergencyPhone(me.emergencyContact.phone);
+          setEmergencyPhone(formatPhoneTW(me.emergencyContact.phone));
           setEmergencyRel(me.emergencyContact.relationship);
         }
         setSavedCompanions(me.companions ?? []);
@@ -498,9 +499,11 @@ export default function TripBookingPage({
                 <Input
                   id="phone"
                   type="tel"
+                  inputMode="numeric"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="09xx-xxx-xxx"
+                  onChange={(e) => setPhone(formatPhoneTW(e.target.value))}
+                  maxLength={11}
+                  placeholder="0912-345678"
                 />
               </div>
             </div>
@@ -620,9 +623,13 @@ export default function TripBookingPage({
             />
             <Input
               type="tel"
+              inputMode="numeric"
               value={emergencyPhone}
-              onChange={(e) => setEmergencyPhone(e.target.value)}
-              placeholder="電話 *"
+              onChange={(e) =>
+                setEmergencyPhone(formatPhoneTW(e.target.value))
+              }
+              maxLength={11}
+              placeholder="0912-345678"
             />
           </div>
         </CollapsibleCard>
@@ -1076,9 +1083,13 @@ function CompanionSlotEditor({
         />
         <Input
           type="tel"
+          inputMode="numeric"
           value={slot.phone}
-          onChange={(e) => onChange({ ...slot, phone: e.target.value })}
-          placeholder="手機"
+          onChange={(e) =>
+            onChange({ ...slot, phone: formatPhoneTW(e.target.value) })
+          }
+          maxLength={11}
+          placeholder="0912-345678"
         />
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
