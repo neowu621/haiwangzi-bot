@@ -41,7 +41,14 @@ export async function PATCH(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await ctx.params;
-  const data = PatchSchema.parse(await req.json());
+  const parsed = PatchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
   const patch: Record<string, unknown> = {};
   if (data.title !== undefined) patch.title = data.title;
   if (data.destination !== undefined) patch.destination = data.destination;
@@ -69,8 +76,16 @@ export async function PATCH(
   if (data.images) patch.images = data.images;
   if (data.status) patch.status = data.status;
 
-  const tour = await prisma.tourPackage.update({ where: { id }, data: patch });
-  return NextResponse.json({ ok: true, tour });
+  try {
+    const tour = await prisma.tourPackage.update({ where: { id }, data: patch });
+    return NextResponse.json({ ok: true, tour });
+  } catch (e) {
+    console.error("[PATCH /admin/tours]", e);
+    return NextResponse.json(
+      { error: "update failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 }
 
 // DELETE /api/admin/tours/[id]              → 軟取消

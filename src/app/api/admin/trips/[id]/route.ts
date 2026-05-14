@@ -43,7 +43,14 @@ export async function PATCH(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await ctx.params;
-  const data = PatchSchema.parse(await req.json());
+  const parsed = PatchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
 
   const patch: Record<string, unknown> = {};
   if (data.date) patch.date = new Date(data.date);
@@ -62,8 +69,19 @@ export async function PATCH(
     patch.meetingPoint = data.meetingPoint === "" ? null : data.meetingPoint;
   if (data.images !== undefined) patch.images = data.images;
 
-  const trip = await prisma.divingTrip.update({ where: { id }, data: patch });
-  return NextResponse.json({ ok: true, trip });
+  try {
+    const trip = await prisma.divingTrip.update({ where: { id }, data: patch });
+    return NextResponse.json({ ok: true, trip });
+  } catch (e) {
+    console.error("[PATCH /admin/trips]", e);
+    return NextResponse.json(
+      {
+        error: "update failed",
+        detail: e instanceof Error ? e.message : String(e),
+      },
+      { status: 500 },
+    );
+  }
 }
 
 // DELETE /api/admin/trips/[id]              → 軟取消 (status=cancelled, row 留著)
@@ -100,14 +118,36 @@ export async function DELETE(
         { status: 400 },
       );
     }
-    await prisma.divingTrip.delete({ where: { id } });
-    return NextResponse.json({ ok: true, action: "hard_deleted" });
+    try {
+      await prisma.divingTrip.delete({ where: { id } });
+      return NextResponse.json({ ok: true, action: "hard_deleted" });
+    } catch (e) {
+      console.error("[DELETE /admin/trips permanent]", e);
+      return NextResponse.json(
+        {
+          error: "permanent delete failed",
+          detail: e instanceof Error ? e.message : String(e),
+        },
+        { status: 500 },
+      );
+    }
   }
 
   // 軟取消
-  const trip = await prisma.divingTrip.update({
-    where: { id },
-    data: { status: "cancelled" },
-  });
-  return NextResponse.json({ ok: true, action: "soft_cancelled", trip });
+  try {
+    const trip = await prisma.divingTrip.update({
+      where: { id },
+      data: { status: "cancelled" },
+    });
+    return NextResponse.json({ ok: true, action: "soft_cancelled", trip });
+  } catch (e) {
+    console.error("[DELETE /admin/trips soft]", e);
+    return NextResponse.json(
+      {
+        error: "cancel failed",
+        detail: e instanceof Error ? e.message : String(e),
+      },
+      { status: 500 },
+    );
+  }
 }

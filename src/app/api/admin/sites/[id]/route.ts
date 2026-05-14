@@ -49,18 +49,33 @@ export async function PATCH(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await params;
-  const data = PatchSchema.parse(await req.json());
-  const site = await prisma.diveSite.update({
-    where: { id },
-    data: {
-      ...data,
-      youtubeUrl:
-        data.youtubeUrl === "" ? null : (data.youtubeUrl ?? undefined),
-      cautions:
-        data.cautions === "" ? null : (data.cautions ?? undefined),
-    },
-  });
-  return NextResponse.json({ ok: true, site });
+  const parsed = PatchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
+  try {
+    const site = await prisma.diveSite.update({
+      where: { id },
+      data: {
+        ...data,
+        youtubeUrl:
+          data.youtubeUrl === "" ? null : (data.youtubeUrl ?? undefined),
+        cautions:
+          data.cautions === "" ? null : (data.cautions ?? undefined),
+      },
+    });
+    return NextResponse.json({ ok: true, site });
+  } catch (e) {
+    console.error("[PATCH /admin/sites]", e);
+    return NextResponse.json(
+      { error: "update failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 }
 
 // DELETE /api/admin/sites/[id]

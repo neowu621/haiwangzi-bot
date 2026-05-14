@@ -2,6 +2,32 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_38 — 2026-05-14 (Bug hunt：error handling 全面強化)
+
+### Background
+過夜自主 audit 找到 10 個 production safety 問題，本版修 1 critical + 5 high。
+
+### Critical fix
+- `src/app/api/webhook/route.ts` `handleFollow()` 的 `prisma.user.upsert()`
+  - 之前無 try/catch → DB 失敗整個 webhook 5xx，LINE 不會 retry
+  - 現在 catch + log + 繼續送歡迎訊息
+
+### High priority fixes (write endpoints 加 try/catch + 詳細 error 回傳)
+- `PATCH /api/admin/trips/[id]` — Zod safeParse + try/catch
+- `DELETE /api/admin/trips/[id]` — 軟取消 + 硬刪除兩段都包 try/catch
+- `PATCH /api/admin/coaches/[id]` — Zod safeParse + try/catch
+- `PATCH /api/admin/sites/[id]` — Zod safeParse + try/catch
+- `POST /api/admin/tours` — Zod safeParse + try/catch
+- `PATCH /api/admin/tours/[id]` — Zod safeParse + try/catch
+
+### 影響
+之前所有上面這些 endpoint 失敗 → 前端只看到 `HTTP 500:` 完全沒上下文。
+現在會回 `{error, detail, hint}` JSON，前端 alert 顯示真正原因（例：column does not exist / unique violation / FK constraint）
+
+### Medium (留待 v39+)
+- cron/weather-check + cron/reminders 內的 for-loop 應該批次 update 而非個別
+- 影響低（cron 每 30 分鐘一次，每次處理量小），不急
+
 ## 20260514_37 — 2026-05-14 (新增場次 form 改 select + 訂單編輯 + coach 訂單權限)
 
 ### 新增/編輯場次 form

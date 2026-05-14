@@ -29,17 +29,32 @@ export async function PATCH(
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const { id } = await params;
-  const data = PatchSchema.parse(await req.json());
-  const coach = await prisma.coach.update({
-    where: { id },
-    data: {
-      ...data,
-      note: data.note === "" ? null : (data.note ?? undefined),
-      lineUserId:
-        data.lineUserId === "" ? null : (data.lineUserId ?? undefined),
-    },
-  });
-  return NextResponse.json({ ok: true, coach });
+  const parsed = PatchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
+  try {
+    const coach = await prisma.coach.update({
+      where: { id },
+      data: {
+        ...data,
+        note: data.note === "" ? null : (data.note ?? undefined),
+        lineUserId:
+          data.lineUserId === "" ? null : (data.lineUserId ?? undefined),
+      },
+    });
+    return NextResponse.json({ ok: true, coach });
+  } catch (e) {
+    console.error("[PATCH /admin/coaches]", e);
+    return NextResponse.json(
+      { error: "update failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 }
 
 // DELETE /api/admin/coaches/[id]

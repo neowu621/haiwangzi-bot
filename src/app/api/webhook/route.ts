@@ -73,12 +73,16 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
     console.warn("[webhook] getProfile failed", err);
   }
 
-  // upsert User
-  await prisma.user.upsert({
-    where: { lineUserId: userId },
-    create: { lineUserId: userId, displayName },
-    update: { displayName, lastActiveAt: new Date() },
-  });
+  // upsert User (容錯：DB 失敗也不擋歡迎訊息)
+  try {
+    await prisma.user.upsert({
+      where: { lineUserId: userId },
+      create: { lineUserId: userId, displayName },
+      update: { displayName, lastActiveAt: new Date() },
+    });
+  } catch (err) {
+    console.error("[webhook handleFollow] upsert failed", err);
+  }
 
   // 歡迎 Flex（取代純文字）
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? "";

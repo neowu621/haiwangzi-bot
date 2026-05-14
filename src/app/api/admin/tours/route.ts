@@ -49,29 +49,44 @@ export async function POST(req: NextRequest) {
   const role = requireRole(auth.user, ["admin"]);
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
-  const data = CreateSchema.parse(await req.json());
-  const tour = await prisma.tourPackage.create({
-    data: {
-      title: data.title,
-      destination: data.destination,
-      dateStart: new Date(data.dateStart),
-      dateEnd: new Date(data.dateEnd),
-      basePrice: data.basePrice,
-      deposit: data.deposit,
-      capacity: data.capacity === 0 ? null : data.capacity,
-      depositDeadline: data.depositDeadline ? new Date(data.depositDeadline) : null,
-      finalDeadline: data.finalDeadline ? new Date(data.finalDeadline) : null,
-      depositReminderDays: data.depositReminderDays,
-      finalReminderDays: data.finalReminderDays,
-      guideReminderDays: data.guideReminderDays,
-      itinerary: data.itinerary as never,
-      diveSiteIds: data.diveSiteIds,
-      includes: data.includes,
-      excludes: data.excludes,
-      addons: data.addons as never,
-      images: data.images,
-      status: "open",
-    },
-  });
-  return NextResponse.json({ ok: true, tour });
+  const parsed = CreateSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
+  try {
+    const tour = await prisma.tourPackage.create({
+      data: {
+        title: data.title,
+        destination: data.destination,
+        dateStart: new Date(data.dateStart),
+        dateEnd: new Date(data.dateEnd),
+        basePrice: data.basePrice,
+        deposit: data.deposit,
+        capacity: data.capacity === 0 ? null : data.capacity,
+        depositDeadline: data.depositDeadline ? new Date(data.depositDeadline) : null,
+        finalDeadline: data.finalDeadline ? new Date(data.finalDeadline) : null,
+        depositReminderDays: data.depositReminderDays,
+        finalReminderDays: data.finalReminderDays,
+        guideReminderDays: data.guideReminderDays,
+        itinerary: data.itinerary as never,
+        diveSiteIds: data.diveSiteIds,
+        includes: data.includes,
+        excludes: data.excludes,
+        addons: data.addons as never,
+        images: data.images,
+        status: "open",
+      },
+    });
+    return NextResponse.json({ ok: true, tour });
+  } catch (e) {
+    console.error("[POST /admin/tours]", e);
+    return NextResponse.json(
+      { error: "create failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 }
