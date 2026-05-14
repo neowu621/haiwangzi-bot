@@ -2,6 +2,18 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260515_52 — 2026-05-15 (修 profile 預約紀錄 crash + 錯誤回報)
+
+### Bug fix
+- `/liff/profile` 點「預約紀錄 ▸」會把 LIFF 整個頁面 crash
+- 根因：`BookingHistoryList` 假設 `b.ref` 永遠存在，但如果某筆 booking 對應的 trip/tour 被刪了 (孤兒訂單)，`b.ref` 為 null → `b.ref.date` throw TypeError → 整個 React tree 炸掉 → LIFF in-app browser 顯示「This page couldn't load」
+
+### 修
+- `BookingHistoryItem.ref` 型別改為 `| null`
+- `BookingHistoryList` 用 `ref ?? {}` 預設值防呆
+- `openBookingDialog` 加 catch handler 顯示錯誤訊息（不再讓 throw 冒到 React boundary）
+- Dialog 加 `bookingError` 狀態 + 紅框錯誤顯示
+
 ## 20260514_51 — 2026-05-14 (修改訂單：標題明確 + 多人潛伴編輯)
 
 ### `/liff/my` 修改訂單 Dialog

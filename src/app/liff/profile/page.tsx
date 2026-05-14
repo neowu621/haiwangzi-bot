@@ -55,6 +55,7 @@ interface BookingHistoryItem {
   totalAmount: number;
   participants: number;
   createdAt: string;
+  // ref 可能為 null（對應的 trip/tour 被刪掉的孤兒訂單）
   ref: {
     date?: string;
     dateStart?: string;
@@ -62,7 +63,7 @@ interface BookingHistoryItem {
     startTime?: string;
     title?: string;
     sites?: string[];
-  };
+  } | null;
 }
 
 interface Me {
@@ -123,9 +124,11 @@ export default function ProfilePage() {
   >(null);
   const [bookingHistory, setBookingHistory] = useState<BookingHistoryItem[]>([]);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   async function openBookingDialog(filter: "bookings" | "completed") {
     setStatsDialog(filter);
+    setBookingError(null);
     if (bookingHistory.length === 0) {
       setBookingLoading(true);
       try {
@@ -133,6 +136,8 @@ export default function ProfilePage() {
           "/api/bookings/my",
         );
         setBookingHistory(res.bookings || []);
+      } catch (e) {
+        setBookingError(e instanceof Error ? e.message : String(e));
       } finally {
         setBookingLoading(false);
       }
@@ -778,6 +783,13 @@ export default function ProfilePage() {
             <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
               載入中...
             </div>
+          ) : bookingError ? (
+            <div className="py-8 px-3 text-sm text-[var(--color-coral)]">
+              <div className="font-semibold mb-2">載入失敗</div>
+              <div className="rounded-md bg-[var(--color-coral)]/10 p-2 text-xs font-mono break-all">
+                {bookingError}
+              </div>
+            </div>
           ) : (
             <BookingHistoryList
               bookings={bookingHistory}
@@ -839,15 +851,17 @@ function BookingHistoryList({
   return (
     <div className="space-y-2">
       {filtered.map((b) => {
-        const date = b.ref.date || b.ref.dateStart || "—";
+        // 防呆：ref 可能為 null（trip/tour 被刪了 → 變成孤兒訂單）
+        const ref = b.ref ?? {};
+        const date = ref.date || ref.dateStart || "—";
         const title =
           b.type === "tour"
-            ? b.ref.title || "潛水團"
-            : (b.ref.sites?.[0] ?? "東北角");
+            ? ref.title || "潛水團"
+            : (ref.sites?.[0] ?? "東北角");
         const sub =
           b.type === "tour"
-            ? `${b.ref.dateStart?.slice(5)} → ${b.ref.dateEnd?.slice(5)}`
-            : `${b.ref.startTime ?? ""} · ${b.participants} 人`;
+            ? `${ref.dateStart?.slice(5) ?? "—"} → ${ref.dateEnd?.slice(5) ?? "—"}`
+            : `${ref.startTime ?? ""} · ${b.participants} 人`;
         const status = statusLabel(b.status);
         return (
           <Link
