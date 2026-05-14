@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
         paidAmount: b.paidAmount,
         participants: b.participants,
         rentalGear: b.rentalGear,
+        participantDetails: b.participantDetails,
         notes: b.notes,
         createdAt: b.createdAt,
         ref: ref

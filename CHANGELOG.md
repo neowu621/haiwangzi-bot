@@ -2,6 +2,24 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_51 — 2026-05-14 (修改訂單：標題明確 + 多人潛伴編輯)
+
+### `/liff/my` 修改訂單 Dialog
+- **標題改為**「修改預約日潛訂單」（日潛）/「修改預約潛水團」（潛水團）
+- **人數 > 1 時自動展示「潛伴資料」section**（介於潛水內容/裝備中間）
+  - 自動 resize：人數變動時 slot 數量自動跟著加減
+  - 每個 slot 可手動填或從常用潛伴下拉一鍵帶入
+  - 含姓名 / 電話 / 證照等級 chips / 關係
+  - 手機輸入用 formatPhoneTW 自動格式化
+- 摘要列：「全部填齊 → 顯示名字列表」/「還未填齊 → 紅字提示」
+
+### `/api/bookings/[id]` PATCH
+- schema 新增 `participantDetails: Array<{...}>`
+- 更新時把本人 (isSelf=true) + 新潛伴 slot 一起存
+
+### `/api/bookings/my` GET
+- 回傳新增 `participantDetails` 給 client
+
 ## 20260514_50 — 2026-05-14 (潛伴 #N 摘要列 quick-pick 下拉)
 
 ### `/liff/dive/trip/[tripId]` 多人預約潛伴 slot

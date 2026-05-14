@@ -27,6 +27,24 @@ const PatchSchema = z.object({
     )
     .optional(),
   notes: z.string().nullable().optional(),
+  // 多人預約時各潛伴明細 (除本人外)
+  participantDetails: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        name: z.string(),
+        phone: z.string().optional().default(""),
+        cert: z
+          .enum(["OW", "AOW", "Rescue", "DM", "Instructor"])
+          .nullable()
+          .optional(),
+        certNumber: z.string().optional().default(""),
+        logCount: z.number().int().min(0).optional().default(0),
+        relationship: z.string().optional().default(""),
+        isSelf: z.boolean().optional().default(false),
+      }),
+    )
+    .optional(),
 });
 
 // PATCH /api/bookings/:id — 修改尚未完成 / 取消的訂單
@@ -127,6 +145,10 @@ export async function PATCH(
         participants: newParticipants,
         rentalGear: data.rentalGear ?? undefined,
         notes: data.notes === undefined ? undefined : data.notes,
+        participantDetails:
+          data.participantDetails === undefined
+            ? undefined
+            : (data.participantDetails as never),
         totalAmount,
       },
     });

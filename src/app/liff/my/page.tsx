@@ -27,6 +27,7 @@ import { BottomNav } from "@/components/shell/BottomNav";
 import { Lightbox } from "@/components/ui/lightbox";
 import { TripPhotoGallery } from "@/components/admin/TripPhotoGallery";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
 type GearItemType =
@@ -80,6 +81,17 @@ interface MyBooking {
   }>;
   // 後端：daily booking 額外加 refId 給 photo gallery 用（daily only）
   refId?: string;
+  // 多人預約：本人以外的潛伴明細
+  participantDetails?: Array<{
+    id?: string;
+    name: string;
+    phone: string;
+    cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
+    certNumber: string;
+    logCount: number;
+    relationship: string;
+    isSelf?: boolean;
+  }>;
   createdAt: string;
 }
 
@@ -564,9 +576,23 @@ function EditBookingDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
-  // 兩個區塊預設都折疊
+  // 三個區塊預設都折疊
   const [openDive, setOpenDive] = useState(false);
   const [openGear, setOpenGear] = useState(false);
+  const [openCompanions, setOpenCompanions] = useState(false);
+  // 潛伴 slots (本人除外，所以陣列長度 = participants - 1)
+  type CompanionSlot = {
+    id?: string;
+    name: string;
+    phone: string;
+    cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
+    certNumber: string;
+    logCount: number;
+    relationship: string;
+  };
+  const [companionSlots, setCompanionSlots] = useState<CompanionSlot[]>([]);
+  // 從 user profile 拿的常用潛伴清單（給快速選用）
+  const [savedCompanions, setSavedCompanions] = useState<CompanionSlot[]>([]);
   // 場次定價（為了預覽小計）
   const [tripPricing, setTripPricing] = useState<{
     baseTrip: number;
@@ -593,6 +619,29 @@ function EditBookingDialog({
     setCancelConfirm(false);
     setOpenDive(false);
     setOpenGear(false);
+    setOpenCompanions(false);
+
+    // 反推潛伴 slots (本人不算)
+    const details = booking.participantDetails ?? [];
+    const nonSelf = details.filter((d) => !d.isSelf);
+    setCompanionSlots(
+      nonSelf.map((d) => ({
+        id: d.id,
+        name: d.name,
+        phone: d.phone,
+        cert: d.cert,
+        certNumber: d.certNumber,
+        logCount: d.logCount,
+        relationship: d.relationship,
+      })),
+    );
+
+    // 抓 user 個人資料的常用潛伴
+    liff
+      .fetchWithAuth<{ companions: CompanionSlot[] }>("/api/me")
+      .then((u) => setSavedCompanions(u.companions ?? []))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 
     // 若為日潛，撈場次定價（API 直接回 trip 欄位平鋪在 top level）
     if (booking.type === "daily" && booking.refId) {
@@ -622,6 +671,27 @@ function EditBookingDialog({
     }
   }, [booking, liff]);
 
+  // 自動調整潛伴 slot 數量 = participants - 1 (本人不算)
+  useEffect(() => {
+    const need = Math.max(0, participants - 1);
+    setCompanionSlots((prev) => {
+      if (prev.length === need) return prev;
+      if (prev.length < need) {
+        // 補空 slot
+        const empty: CompanionSlot = {
+          name: "",
+          phone: "",
+          cert: null,
+          certNumber: "",
+          logCount: 0,
+          relationship: "",
+        };
+        return [...prev, ...Array(need - prev.length).fill(empty)];
+      }
+      return prev.slice(0, need);
+    });
+  }, [participants]);
+
   if (!booking) return null;
 
   const isDaily = booking.type === "daily";
@@ -646,6 +716,27 @@ function EditBookingDialog({
           price: g.price,
           qty: g.qty,
         }));
+        // 多人預約：把本人 + 潛伴 slots 包成 participantDetails
+        if (participants > 1) {
+          body.participantDetails = [
+            // 本人（從目前 booking.participantDetails 找出 isSelf 那個保留，不在就略過）
+            ...((booking.participantDetails ?? []).filter((d) => d.isSelf)),
+            ...companionSlots.map((c) => ({
+              id: c.id,
+              name: c.name,
+              phone: c.phone,
+              cert: c.cert,
+              certNumber: c.certNumber,
+              logCount: c.logCount,
+              relationship: c.relationship,
+              isSelf: false,
+            })),
+          ];
+        } else {
+          body.participantDetails = (booking.participantDetails ?? []).filter(
+            (d) => d.isSelf,
+          );
+        }
       }
       await liff.fetchWithAuth(`/api/bookings/${booking.id}`, {
         method: "PATCH",
@@ -679,7 +770,9 @@ function EditBookingDialog({
     <Dialog open={!!booking} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>修改預約</DialogTitle>
+          <DialogTitle>
+            {isDaily ? "修改預約日潛訂單" : "修改預約潛水團"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           {/* ── Section 1: 潛水內容 (折疊) ── */}
@@ -805,6 +898,139 @@ function EditBookingDialog({
                 </Button>
               </div>
             </div>
+          )}
+
+          {/* ── Section 1.5: 潛伴資料（人數 > 1 才顯示） ── */}
+          {isDaily && participants > 1 && (
+            <SectionCard
+              open={openCompanions}
+              onToggle={() => setOpenCompanions((v) => !v)}
+              title={`潛伴資料 (${participants - 1} 位)`}
+              summary={
+                companionSlots.every(
+                  (c) => c.name.trim().length >= 2 && c.cert !== null,
+                )
+                  ? companionSlots
+                      .map((c) => `${c.name}${c.cert ? `(${c.cert})` : ""}`)
+                      .join("、")
+                  : `⚠ 還有 ${companionSlots.filter((c) => !c.name.trim() || c.cert === null).length} 位未填`
+              }
+            >
+              <div className="space-y-2">
+                {companionSlots.map((slot, i) => (
+                  <div
+                    key={i}
+                    className="rounded-md border border-[var(--border)] p-2"
+                  >
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-xs font-bold">潛伴 #{i + 2}</span>
+                      {savedCompanions.length > 0 && (
+                        <select
+                          value={slot.id ?? ""}
+                          onChange={(e) => {
+                            const picked = savedCompanions.find(
+                              (c) => c.id === e.target.value,
+                            );
+                            const next = picked
+                              ? { ...picked }
+                              : {
+                                  name: "",
+                                  phone: "",
+                                  cert: null,
+                                  certNumber: "",
+                                  logCount: 0,
+                                  relationship: "",
+                                };
+                            setCompanionSlots((arr) => {
+                              const copy = [...arr];
+                              copy[i] = next;
+                              return copy;
+                            });
+                          }}
+                          className="rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[10px] max-w-[8rem]"
+                        >
+                          <option value="">— 選潛伴 —</option>
+                          {savedCompanions.map((c) => (
+                            <option key={c.id} value={c.id ?? ""}>
+                              {c.name}（{c.cert ?? "未填證照"}）
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Input
+                        value={slot.name}
+                        onChange={(e) =>
+                          setCompanionSlots((arr) => {
+                            const copy = [...arr];
+                            copy[i] = { ...copy[i], name: e.target.value };
+                            return copy;
+                          })
+                        }
+                        placeholder="姓名 *"
+                        className="text-xs"
+                      />
+                      <Input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={11}
+                        value={slot.phone}
+                        onChange={(e) =>
+                          setCompanionSlots((arr) => {
+                            const copy = [...arr];
+                            copy[i] = {
+                              ...copy[i],
+                              phone: formatPhoneTW(e.target.value),
+                            };
+                            return copy;
+                          })
+                        }
+                        placeholder="0912-345678"
+                        className="text-xs"
+                      />
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(["OW", "AOW", "Rescue", "DM", "Instructor"] as const).map(
+                        (c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() =>
+                              setCompanionSlots((arr) => {
+                                const copy = [...arr];
+                                copy[i] = { ...copy[i], cert: c };
+                                return copy;
+                              })
+                            }
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[10px]",
+                              slot.cert === c
+                                ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
+                                : "border-[var(--border)]",
+                            )}
+                          >
+                            {c}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    <Input
+                      value={slot.relationship}
+                      onChange={(e) =>
+                        setCompanionSlots((arr) => {
+                          const copy = [...arr];
+                          copy[i] = { ...copy[i], relationship: e.target.value };
+                          return copy;
+                        })
+                      }
+                      placeholder="關係（朋友 / 同學 / 家人...）"
+                      className="mt-1.5 text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
           )}
 
           {/* ── Section 2: 租賃裝備 (折疊) ── */}
