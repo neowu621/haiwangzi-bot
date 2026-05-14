@@ -7,10 +7,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, Edit3 } from "lucide-react";
 
 interface AdminBooking {
   id: string;
@@ -49,6 +57,8 @@ function AdminBookingsContent() {
   const initialTab = searchParams.get("filter") === "active" ? "up" : "all";
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [editing, setEditing] = useState<AdminBooking | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     liff
@@ -63,6 +73,34 @@ function AdminBookingsContent() {
   );
   const completed = bookings.filter((b) => b.status === "completed");
   const cancelled = bookings.filter((b) => b.status.startsWith("cancelled"));
+
+  async function saveEdit() {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const r = await liff.fetchWithAuth<{
+        ok: boolean;
+        booking: AdminBooking;
+      }>(`/api/admin/bookings/${editing.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          participants: editing.participants,
+          totalAmount: editing.totalAmount,
+          paidAmount: editing.paidAmount,
+          paymentStatus: editing.paymentStatus,
+          status: editing.status,
+        }),
+      });
+      setBookings((arr) =>
+        arr.map((x) => (x.id === editing.id ? { ...x, ...r.booking } : x)),
+      );
+      setEditing(null);
+    } catch (e) {
+      alert("失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function cancelBooking(b: AdminBooking) {
     if (!confirm(`取消訂單「${b.user.realName ?? b.user.displayName}」？`))
@@ -237,6 +275,14 @@ function AdminBookingsContent() {
                       <Badge variant="muted">{b.paymentStatus}</Badge>
                       <span className="text-[10px] text-[var(--muted-foreground)] tabular">×{b.participants}人</span>
                       <div className="ml-auto flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditing({ ...b })}
+                          title="編輯"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
                         {(b.status === "pending" ||
                           b.status === "confirmed") && (
                           <Button
@@ -272,6 +318,137 @@ function AdminBookingsContent() {
           ))}
         </Tabs>
       </div>
+
+      {/* 編輯訂單 Dialog */}
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(o) => !o && setEditing(null)}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>編輯訂單</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-2.5">
+              <div className="rounded-md bg-[var(--muted)]/40 p-2 text-[11px] text-[var(--muted-foreground)]">
+                <div className="font-bold text-[var(--foreground)]">
+                  {editing.user.realName ?? editing.user.displayName}
+                </div>
+                <div>
+                  {editing.type === "daily"
+                    ? `日潛 ${editing.ref.date} ${editing.ref.startTime ?? ""}`
+                    : `潛水團 ${editing.ref.title ?? ""}`}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">參加人數</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={editing.participants}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      participants: Math.max(1, Number(e.target.value)),
+                    })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">總金額</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editing.totalAmount}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      totalAmount: Math.max(0, Number(e.target.value)),
+                    })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">已付金額</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editing.paidAmount}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      paidAmount: Math.max(0, Number(e.target.value)),
+                    })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">付款狀態</Label>
+                <select
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  value={editing.paymentStatus}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      paymentStatus: e.target.value,
+                    })
+                  }
+                >
+                  {[
+                    "pending",
+                    "deposit_paid",
+                    "fully_paid",
+                    "refunding",
+                    "refunded",
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">訂單狀態</Label>
+                <select
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  value={editing.status}
+                  onChange={(e) =>
+                    setEditing({ ...editing, status: e.target.value })
+                  }
+                >
+                  {[
+                    "pending",
+                    "confirmed",
+                    "cancelled_by_user",
+                    "cancelled_by_weather",
+                    "completed",
+                    "no_show",
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button variant="outline" onClick={() => setEditing(null)}>
+                  取消
+                </Button>
+                <Button onClick={saveEdit} disabled={saving}>
+                  {saving ? "儲存中..." : "儲存"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </LiffShell>
   );
 }

@@ -152,10 +152,10 @@ function AdminTripsContent() {
       isNightDive: false,
       isScooter: false,
       diveSiteIds: [],
-      tankCount: 3,
-      capacity: 8,
+      tankCount: 2, // default 2 支
+      capacity: null, // null = 無上限 (UI 顯示 0)
       coachIds: [],
-      pricing: { baseTrip: 1500, extraTank: 500, nightDive: 500, scooterRental: 1500 },
+      pricing: { baseTrip: 0, extraTank: 500, nightDive: 500, scooterRental: 1500 },
       notes: null,
       meetingPoint: null,
       images: [],
@@ -826,18 +826,27 @@ function AdminTripsContent() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs">潛水支數</Label>
-                  <Input
-                    type="number"
-                    value={editingTrip.tankCount ?? 3}
+                  <select
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    value={editingTrip.tankCount ?? 2}
                     onChange={(e) =>
-                      setEditingTrip({ ...editingTrip, tankCount: Number(e.target.value) })
+                      setEditingTrip({
+                        ...editingTrip,
+                        tankCount: Number(e.target.value),
+                      })
                     }
-                  />
+                  >
+                    {[1, 2, 3, 4].map((n) => (
+                      <option key={n} value={n}>
+                        {n} 支
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <Label className="text-xs">參加人數上限 (0 = 無上限)</Label>
-                  <Input
-                    type="number"
+                  <select
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                     value={editingTrip.capacity ?? 0}
                     onChange={(e) =>
                       setEditingTrip({
@@ -845,7 +854,13 @@ function AdminTripsContent() {
                         capacity: Number(e.target.value) || null,
                       })
                     }
-                  />
+                  >
+                    {Array.from({ length: 21 }, (_, i) => i).map((n) => (
+                      <option key={n} value={n}>
+                        {n === 0 ? "0 (無上限)" : `${n} 人`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -854,7 +869,7 @@ function AdminTripsContent() {
                   <Label className="text-xs">基本價</Label>
                   <Input
                     type="number"
-                    value={editingTrip.pricing?.baseTrip ?? 1500}
+                    value={editingTrip.pricing?.baseTrip ?? 0}
                     onChange={(e) =>
                       setEditingTrip({
                         ...editingTrip,
@@ -867,7 +882,7 @@ function AdminTripsContent() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">加潛/支</Label>
+                  <Label className="text-xs">每一次潛水（含空氣瓶）</Label>
                   <Input
                     type="number"
                     value={editingTrip.pricing?.extraTank ?? 500}

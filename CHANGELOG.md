@@ -2,6 +2,25 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_37 — 2026-05-14 (新增場次 form 改 select + 訂單編輯 + coach 訂單權限)
+
+### 新增/編輯場次 form
+- **潛水支數**：input → select（選單 1 / 2 / 3 / 4，default 2）
+- **參加人數上限**：input → select（0-20，default 0 = 無上限）
+- **加潛/支** label 改為 **「每一次潛水（含空氣瓶）」** default 500
+- **基本價** default 0（不再預設 1500）
+
+### 訂單管理：新增編輯 Dialog
+- 每張訂單卡多「✏️ 編輯」按鈕
+- Dialog 可改：參加人數、總金額、已付金額、付款狀態、訂單狀態
+- 新 API：`PATCH /api/admin/bookings/[id]`
+  - admin + coach 都可呼叫（教練可在現場改 paidAmount / status）
+  - Zod 驗證 + Prisma error 完整回報
+
+### 教練權限調整
+- `DELETE /api/admin/bookings/[id]` 軟取消開放給 **coach**
+- `?permanent=true` 硬刪除仍只限 admin
+
 ## 20260514_36 — 2026-05-14 (刪除會員 / 刪除訂單 / 批次取消)
 
 ### 新 API
