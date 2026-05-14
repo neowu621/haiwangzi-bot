@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// v46 計價：(extraTank × tanks + baseTrip + addon) × 人數 + 裝備
 const PRICING_DEFAULT = {
-  baseTrip: 1500,
-  extraTank: 500,
+  baseTrip: 0,
+  extraTank: 600,
   nightDive: 500,
   scooterRental: 1500,
 };

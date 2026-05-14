@@ -232,14 +232,17 @@ export default function TripBookingPage({
 
   const base = useMemo(() => {
     if (!trip) return 0;
-    let amt =
-      trip.pricing.baseTrip + (tankCount - 1) * trip.pricing.extraTank;
+    // v46 計價公式（與 server 一致）:
+    //   baseAmount = extraTank × 潛水支數 + baseTrip
+    //   pricing.extraTank = 「每一次潛水（含空氣瓶）」單價
+    //   pricing.baseTrip = 額外的場次基本費（預設 0）
+    let amt = trip.pricing.extraTank * tankCount + trip.pricing.baseTrip;
     if (trip.isNightDive) amt += trip.pricing.nightDive;
     if (trip.isScooter) amt += trip.pricing.scooterRental;
     return amt;
   }, [trip, tankCount]);
 
-  // 新規則：場次 × 人數 + 裝備 (各自獨立數量)
+  // 總金額 = baseAmount × 人數 + 裝備 (各自獨立數量)
   const total = base * participants + gearTotal;
 
   const companionsValid = companionSlots.every(
@@ -400,7 +403,7 @@ export default function TripBookingPage({
               <div>
                 <Label className="text-sm">潛次</Label>
                 <div className="text-[10px] text-[var(--muted-foreground)]">
-                  最多 {trip.tankCount} 潛 · 第二潛起每支 +{trip.pricing.extraTank.toLocaleString()}
+                  最多 {trip.tankCount} 潛 · 每支 NT$ {trip.pricing.extraTank.toLocaleString()}（含空氣瓶）
                 </div>
               </div>
               <Stepper
@@ -734,11 +737,18 @@ export default function TripBookingPage({
             <div className="space-y-1 text-xs tabular text-[var(--muted-foreground)]">
               <div className="flex justify-between">
                 <span>
-                  場次 ({tankCount}潛{trip.isNightDive ? "·夜" : ""}
-                  {trip.isScooter ? "·水推" : ""}) × {participants}人
+                  潛水 {trip.pricing.extraTank.toLocaleString()} × {tankCount}{" "}
+                  支 × {participants} 人
+                  {trip.isNightDive ? " ·夜" : ""}
+                  {trip.isScooter ? " ·水推" : ""}
                 </span>
                 <span>NT$ {(base * participants).toLocaleString()}</span>
               </div>
+              {trip.pricing.baseTrip > 0 && (
+                <div className="flex justify-between text-[10px]">
+                  <span>（已含基本費 {trip.pricing.baseTrip.toLocaleString()}/人）</span>
+                </div>
+              )}
               {gearTotal > 0 && (
                 <div className="flex justify-between">
                   <span>

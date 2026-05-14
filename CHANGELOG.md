@@ -2,6 +2,25 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_47 — 2026-05-14 (日潛計價 client/server 一致化)
+
+### Bug fix
+v42 改了 server 計價公式但 client 還是舊的，導致顯示金額跟實收不符：
+- 舊公式 (client 顯示)：`baseTrip + (tanks-1) × extraTank` → 2 支顯示 500
+- 新公式 (server 收費)：`extraTank × tanks + baseTrip` → 2 支實收 1000
+
+### 全面更新
+- `src/app/liff/dive/trip/[tripId]/page.tsx` 計價公式跟 server 對齊
+- `src/app/liff/dive/date/[date]/page.tsx` 列表頁預估價格修正
+- `src/app/api/bookings/[id]/route.ts` PATCH 重算 totalAmount 也用新公式
+- 場次卡顯示文字：「第二潛起每支 +500」→「每支 NT$500（含空氣瓶）」
+- 費用明細顯示「潛水 500 × 2 支 × 1 人」清楚算式
+
+### Seed defaults
+- `baseTrip: 1500 → 0`（基本費預設不收，全靠每支潛水費）
+- `extraTank: 500 → 600`（業界常見每支 600）
+- Admin 開團時依需求調整
+
 ## 20260514_46 — 2026-05-14 (圖片放大 + 場次當日照片 + 轉帳截圖回顯)
 
 ### 1️⃣ 客戶可看自己上傳的轉帳截圖

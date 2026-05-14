@@ -6,9 +6,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// v46 計價語意：
+//   extraTank = 每一次潛水（含空氣瓶）單價
+//   baseTrip  = 額外場次基本費（船費分攤等，預設 0）
+//   nightDive / scooterRental = 額外加價
+// 公式：(extraTank × tanks + baseTrip + 額外項) × 人數 + 裝備
 const PRICING_DEFAULT = {
-  baseTrip: 1500,
-  extraTank: 500,
+  baseTrip: 0,
+  extraTank: 600, // 預設每支 600（業界常見）
   nightDive: 500,
   scooterRental: 1500,
 };

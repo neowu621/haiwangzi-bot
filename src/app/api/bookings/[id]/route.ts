@@ -101,8 +101,9 @@ export async function PATCH(
       trip.tankCount,
       Math.max(1, data.tankCount ?? trip.tankCount),
     );
+    // v46 計價公式：每一次潛水 × 支數 + 基本費（與 POST /api/bookings/daily 一致）
     let baseAmount =
-      pricing.baseTrip + (effectiveTanks - 1) * pricing.extraTank;
+      pricing.extraTank * effectiveTanks + pricing.baseTrip;
     if (trip.isNightDive) baseAmount += pricing.nightDive;
     if (trip.isScooter) baseAmount += pricing.scooterRental;
 

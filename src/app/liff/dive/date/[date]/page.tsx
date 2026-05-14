@@ -60,9 +60,10 @@ export default function DiveDateListPage({
           </Card>
         )}
         {trips.map((t) => {
+          // v46 計價公式：extraTank × tankCount + baseTrip + 夜潛/水推
           const base =
+            t.pricing.extraTank * t.tankCount +
             t.pricing.baseTrip +
-            (t.tankCount - 1) * t.pricing.extraTank +
             (t.isNightDive ? t.pricing.nightDive : 0) +
             (t.isScooter ? t.pricing.scooterRental : 0);
           return (
