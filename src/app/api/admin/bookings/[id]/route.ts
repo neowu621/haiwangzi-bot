@@ -14,6 +14,7 @@ const PatchSchema = z.object({
   paymentStatus: z
     .enum(["pending", "deposit_paid", "fully_paid", "refunding", "refunded"])
     .optional(),
+  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).optional(),
   status: z
     .enum([
       "pending",

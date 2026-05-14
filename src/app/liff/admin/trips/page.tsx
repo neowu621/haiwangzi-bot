@@ -11,6 +11,9 @@ import {
   Calendar,
   RotateCcw,
   AlertTriangle,
+  Copy,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -503,7 +506,21 @@ function AdminTripsContent() {
                       </div>
                       {t.meetingPoint && (
                         <div className="mt-1 text-[11px] leading-relaxed">
-                          📍 <span className="opacity-80">{t.meetingPoint}</span>
+                          📍{" "}
+                          {/\bhttps?:\/\/\S+/i.test(t.meetingPoint) ? (
+                            <a
+                              href={
+                                t.meetingPoint.match(/\bhttps?:\/\/\S+/i)?.[0]
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline text-[var(--color-ocean-deep)] opacity-80"
+                            >
+                              {t.meetingPoint}
+                            </a>
+                          ) : (
+                            <span className="opacity-80">{t.meetingPoint}</span>
+                          )}
                         </div>
                       )}
                       {t.notes && (
@@ -545,6 +562,25 @@ function AdminTripsContent() {
                         title="編輯"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          // 複製：去掉 id 變成新場次草稿，日期 +1 天
+                          const tomorrow = new Date(t.date);
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                          const { id, booked, status, ...rest } = t;
+                          setEditingTrip({
+                            ...rest,
+                            date: tomorrow.toISOString().slice(0, 10),
+                            status: "open",
+                          } as Partial<Trip>);
+                        }}
+                        title="複製場次（同設定不同日期）"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
                       </Button>
                       {t.status === "open" ? (
                         <Button
@@ -718,21 +754,54 @@ function AdminTripsContent() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">時間 (HH:MM)</Label>
-                  <Input
-                    value={editingTrip.startTime ?? ""}
-                    onChange={(e) => {
-                      const startTime = e.target.value;
-                      // 自動判斷夜潛：16:00 之後算夜潛
-                      const isNightDive = startTime >= "16:00";
-                      setEditingTrip({
-                        ...editingTrip,
-                        startTime,
-                        isNightDive,
-                      });
-                    }}
-                    placeholder="08:00"
-                  />
+                  <Label className="text-xs">時間</Label>
+                  <div className="flex gap-1 items-center">
+                    <select
+                      className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm flex-1"
+                      value={(editingTrip.startTime ?? "08:00").slice(0, 2)}
+                      onChange={(e) => {
+                        const hh = e.target.value;
+                        const mm = (editingTrip.startTime ?? "08:00").slice(3, 5);
+                        const startTime = `${hh}:${mm}`;
+                        const isNightDive = startTime >= "16:00";
+                        setEditingTrip({
+                          ...editingTrip,
+                          startTime,
+                          isNightDive,
+                        });
+                      }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) =>
+                        String(i).padStart(2, "0"),
+                      ).map((h) => (
+                        <option key={h} value={h}>
+                          {h} 點
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-sm">:</span>
+                    <select
+                      className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm flex-1"
+                      value={(editingTrip.startTime ?? "08:00").slice(3, 5)}
+                      onChange={(e) => {
+                        const hh = (editingTrip.startTime ?? "08:00").slice(0, 2);
+                        const mm = e.target.value;
+                        const startTime = `${hh}:${mm}`;
+                        const isNightDive = startTime >= "16:00";
+                        setEditingTrip({
+                          ...editingTrip,
+                          startTime,
+                          isNightDive,
+                        });
+                      }}
+                    >
+                      {["00", "15", "30", "45"].map((m) => (
+                        <option key={m} value={m}>
+                          {m} 分
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -900,7 +969,19 @@ function AdminTripsContent() {
               </div>
 
               <div>
-                <Label className="text-xs">集合地點說明</Label>
+                <Label className="text-xs flex items-center justify-between">
+                  <span>集合地點說明</span>
+                  <a
+                    href="https://www.google.com/maps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-phosphor)]/15 px-2 py-0.5 text-[10px] text-[var(--color-ocean-deep)] hover:bg-[var(--color-phosphor)]/30"
+                  >
+                    <MapPin className="h-3 w-3" />
+                    開 Google Maps 找地點
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                </Label>
                 <textarea
                   className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                   rows={2}
@@ -911,8 +992,11 @@ function AdminTripsContent() {
                       meetingPoint: e.target.value || null,
                     })
                   }
-                  placeholder="例：海王子潛店 / 龍洞 4 號港停車場 / 潮境公園售票口 07:30 集合..."
+                  placeholder="例：海王子潛店 / 龍洞 4 號港停車場 / 潮境公園售票口 07:30 集合... 或直接貼 Google Maps URL"
                 />
+                <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+                  💡 上方按鈕開 Google Maps 找到地點 → 點「分享」→ 複製連結貼到上面
+                </div>
               </div>
 
               <div>

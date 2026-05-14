@@ -71,6 +71,13 @@ enum PaymentStatus {
   refunded
 }
 
+enum PaymentMethod {
+  cash      // 現場支付
+  bank      // 銀行轉帳
+  linepay   // LINE Pay
+  other
+}
+
 enum BookingStatus {
   pending
   confirmed
@@ -241,6 +248,8 @@ model Booking {
   depositAmount      Int            @default(0) @map("deposit_amount")
   paidAmount         Int            @default(0) @map("paid_amount")
   paymentStatus      PaymentStatus  @default(pending) @map("payment_status")
+  // 客戶選擇的付款方式（現場 / 轉帳 / LINE Pay）；預設現場支付
+  paymentMethod      PaymentMethod  @default(cash) @map("payment_method")
   status             BookingStatus  @default(pending)
   cancellationReason String?        @map("cancellation_reason")
   refundAmount       Int?           @map("refund_amount")

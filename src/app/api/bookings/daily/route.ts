@@ -28,6 +28,8 @@ const BodySchema = z.object({
     )
     .default([]),
   notes: z.string().optional(),
+  // 付款方式：cash 現場 / bank 轉帳 / linepay / other
+  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).default("cash"),
   agreedToTerms: z.literal(true),
   // 客戶資料補完
   realName: z.string().optional(),
@@ -120,11 +122,15 @@ export async function POST(req: NextRequest) {
     trip.tankCount,
     Math.max(1, data.tankCount ?? trip.tankCount),
   );
-  let baseAmount = pricing.baseTrip + (effectiveTanks - 1) * pricing.extraTank;
+  // 計價公式 (v42+)：每一次潛水費 × 支數 + 基本費 + 夜潛/水推附加
+  //   pricing.extraTank = 「每一次潛水（含空氣瓶）」單價
+  //   pricing.baseTrip  = 額外的場次基本費 (船費分攤等)，預設 0
+  let baseAmount = pricing.extraTank * effectiveTanks + pricing.baseTrip;
   if (trip.isNightDive) baseAmount += pricing.nightDive;
   if (trip.isScooter) baseAmount += pricing.scooterRental;
   // 裝備改為各自獨立數量 (不再 ×人數)
   const gearAmount = data.rentalGear.reduce((s, g) => s + g.price * g.qty, 0);
+  // 總金額 = baseAmount × 人數 + 裝備
   const totalAmount = baseAmount * data.participants + gearAmount;
   // 二次保護：理論上 schema 已擋負數，但 baseAmount 也可能因 admin 設負 pricing 出狀況
   if (totalAmount < 0) {
@@ -194,6 +200,7 @@ export async function POST(req: NextRequest) {
       depositAmount: 0,
       paidAmount: 0,
       paymentStatus: "pending",
+      paymentMethod: data.paymentMethod,
       status: "confirmed", // 日潛當天現場收費,直接 confirmed
       agreedToTermsAt: new Date(),
       overCapacity,

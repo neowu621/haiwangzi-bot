@@ -24,7 +24,8 @@ const PatchSchema = z.object({
     })
     .optional(),
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
-  weatherNote: z.string().optional(),
+  // 接受 null（client 載入既有資料時欄位可能是 null）
+  weatherNote: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   meetingPoint: z.string().nullable().optional(),
   images: z.array(z.string()).optional(),

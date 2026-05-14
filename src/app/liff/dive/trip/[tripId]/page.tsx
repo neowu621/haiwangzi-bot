@@ -118,6 +118,9 @@ export default function TripBookingPage({
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
+  // 付款方式：cash 現場 / bank 轉帳 / linepay LINE Pay / other 其他
+  // 日潛預設「現場」(當天結算)；客戶可改成轉帳
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | "linepay" | "other">("cash");
 
   // 同伴
   const [savedCompanions, setSavedCompanions] = useState<Companion[]>([]);
@@ -293,6 +296,7 @@ export default function TripBookingPage({
           qty: g.qty,
         })),
         notes: notes || undefined,
+        paymentMethod, // 客戶選的付款方式
         agreedToTerms: true as const,
         realName,
         phone,
@@ -549,6 +553,38 @@ export default function TripBookingPage({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="耳壓不適 / 過敏 / 用藥..."
               />
+            </div>
+
+            {/* 付款方式 */}
+            <div>
+              <Label>付款方式</Label>
+              <div className="mt-1 grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    ["cash", "💵 現場"],
+                    ["bank", "🏦 轉帳"],
+                    ["linepay", "💚 LINE Pay"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setPaymentMethod(k)}
+                    className={
+                      paymentMethod === k
+                        ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
+                        : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                {paymentMethod === "cash" && "出航當天現場結算"}
+                {paymentMethod === "bank" && "預約後 7 天內匯款保留名額"}
+                {paymentMethod === "linepay" && "（即將開放）目前先選現場或轉帳"}
+              </div>
             </div>
           </div>
         </CollapsibleCard>

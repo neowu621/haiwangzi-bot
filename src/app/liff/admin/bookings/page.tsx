@@ -18,13 +18,14 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
-import { X, AlertTriangle, Edit3 } from "lucide-react";
+import { X, AlertTriangle, Edit3, Users, Anchor, ChevronDown, ChevronUp } from "lucide-react";
 
 interface AdminBooking {
   id: string;
   type: "daily" | "tour";
   status: string;
   paymentStatus: string;
+  paymentMethod?: string;
   totalAmount: number;
   paidAmount: number;
   participants: number;
@@ -41,6 +42,44 @@ interface AdminBooking {
   };
 }
 
+interface ByTripGroup {
+  kind: "daily" | "tour";
+  id: string;
+  title: string;
+  sites?: string[];
+  tankCount?: number;
+  dateStart?: string;
+  dateEnd?: string;
+  capacity: number | null;
+  status: string;
+  bookingCount: number;
+  participantSum: number;
+  tankSum?: number;
+  paidSum: number;
+  totalSum: number;
+  bookings: Array<{
+    id: string;
+    userName: string;
+    phone: string | null;
+    participants: number;
+    totalAmount: number;
+    paidAmount: number;
+    paymentStatus: string;
+    paymentMethod: string;
+    status: string;
+  }>;
+}
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cash: "💵 現場",
+  bank: "🏦 轉帳",
+  linepay: "💚 LINE Pay",
+  other: "其他",
+};
+function paymentMethodLabel(m: string | undefined | null) {
+  return PAYMENT_METHOD_LABEL[m ?? "cash"] ?? "—";
+}
+
 export default function AdminBookingsPage() {
   // Next.js 預渲染 client component 用 useSearchParams 時要 Suspense 包
   return (
@@ -54,16 +93,27 @@ function AdminBookingsContent() {
   const liff = useLiff();
   const searchParams = useSearchParams();
   // ?filter=active 從主控台「總訂單」卡進來時，預設選「進行中」tab
-  const initialTab = searchParams.get("filter") === "active" ? "up" : "all";
+  const initialTab = searchParams.get("filter") === "active" ? "up" : "by-trip";
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [byTrip, setByTrip] = useState<{ daily: ByTripGroup[]; tour: ByTripGroup[] }>({ daily: [], tour: [] });
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    liff
-      .fetchWithAuth<{ bookings: AdminBooking[] }>("/api/admin/bookings")
-      .then((d) => setBookings(d.bookings))
+    Promise.all([
+      liff.fetchWithAuth<{ bookings: AdminBooking[] }>("/api/admin/bookings"),
+      liff
+        .fetchWithAuth<{ daily: ByTripGroup[]; tour: ByTripGroup[] }>(
+          "/api/admin/bookings/by-trip",
+        )
+        .catch(() => ({ daily: [], tour: [] })),
+    ])
+      .then(([b, g]) => {
+        setBookings(b.bookings);
+        setByTrip(g);
+      })
       .catch((e) => setErr(e.message));
   }, [liff]);
 
@@ -88,6 +138,7 @@ function AdminBookingsContent() {
           totalAmount: editing.totalAmount,
           paidAmount: editing.paidAmount,
           paymentStatus: editing.paymentStatus,
+          paymentMethod: editing.paymentMethod,
           status: editing.status,
         }),
       });
@@ -224,12 +275,115 @@ function AdminBookingsContent() {
           <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">{err}</Card>
         )}
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="by-trip">按場次</TabsTrigger>
             <TabsTrigger value="all">全部 ({all.length})</TabsTrigger>
             <TabsTrigger value="up">進行中 ({upcoming.length})</TabsTrigger>
             <TabsTrigger value="done">完成 ({completed.length})</TabsTrigger>
             <TabsTrigger value="cancel">取消 ({cancelled.length})</TabsTrigger>
           </TabsList>
+
+          {/* 按場次 group view */}
+          <TabsContent value="by-trip" className="space-y-2">
+            {byTrip.daily.length === 0 && byTrip.tour.length === 0 && (
+              <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                沒有開團或還沒有訂單
+              </div>
+            )}
+            {[...byTrip.daily, ...byTrip.tour].map((g) => {
+              const key = `${g.kind}-${g.id}`;
+              const expanded = expandedGroup === key;
+              return (
+                <Card key={key}>
+                  <CardContent className="p-3">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 text-left"
+                      onClick={() => setExpandedGroup(expanded ? null : key)}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-sm font-bold">
+                          <Anchor className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
+                          {g.title}
+                          <Badge
+                            variant={g.kind === "tour" ? "coral" : "muted"}
+                            className="text-[9px]"
+                          >
+                            {g.kind === "tour" ? "潛水團" : "日潛"}
+                          </Badge>
+                        </div>
+                        {g.kind === "daily" && g.sites && (
+                          <div className="text-[10px] text-[var(--muted-foreground)]">
+                            {g.sites.join(" · ")}
+                          </div>
+                        )}
+                        <div className="mt-1 flex items-center gap-2 text-[11px] tabular">
+                          <Users className="h-3 w-3" />
+                          <span>
+                            {g.bookingCount} 筆訂單 · {g.participantSum} 人
+                          </span>
+                          {g.kind === "daily" && (
+                            <span className="text-[var(--color-phosphor)]">
+                              · 共 {g.tankSum} 支潛水
+                            </span>
+                          )}
+                          <span className="ml-auto text-[var(--muted-foreground)]">
+                            {g.paidSum.toLocaleString()}/{g.totalSum.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      {expanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    {expanded && (
+                      <div className="mt-2 space-y-1.5 border-t border-[var(--border)] pt-2">
+                        {g.bookings.length === 0 ? (
+                          <div className="text-[11px] text-[var(--muted-foreground)] text-center py-2">
+                            沒有訂單
+                          </div>
+                        ) : (
+                          g.bookings.map((b) => (
+                            <div
+                              key={b.id}
+                              className="flex items-center justify-between gap-2 rounded-md bg-[var(--muted)]/30 p-2 text-[11px]"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold">{b.userName}</div>
+                                <div className="text-[10px] text-[var(--muted-foreground)]">
+                                  {b.phone ?? "—"} · ×{b.participants}人 ·{" "}
+                                  {paymentMethodLabel(b.paymentMethod)}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="tabular">
+                                  {b.paidAmount.toLocaleString()}/
+                                  {b.totalAmount.toLocaleString()}
+                                </div>
+                                <Badge
+                                  variant={
+                                    b.paymentStatus === "fully_paid"
+                                      ? "ocean"
+                                      : "muted"
+                                  }
+                                  className="text-[9px]"
+                                >
+                                  {b.paymentStatus}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </TabsContent>
           {(
             [
               ["all", all],
@@ -385,6 +539,22 @@ function AdminBookingsContent() {
                     })
                   }
                 />
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">付款方式</Label>
+                <select
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  value={editing.paymentMethod ?? "cash"}
+                  onChange={(e) =>
+                    setEditing({ ...editing, paymentMethod: e.target.value })
+                  }
+                >
+                  <option value="cash">💵 現場支付</option>
+                  <option value="bank">🏦 銀行轉帳</option>
+                  <option value="linepay">💚 LINE Pay</option>
+                  <option value="other">其他</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">

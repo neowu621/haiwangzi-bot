@@ -2,6 +2,38 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_42 — 2026-05-14 (大幅功能 + 計價邏輯重構)
+
+### Bug fix
+- `PATCH /api/admin/trips/[id]` weatherNote 接受 null（修「儲存失敗 HTTP 400 weatherNote expected string received null」）
+
+### 計價邏輯重構（#7, #8）
+**之前**：`baseAmount = baseTrip + (tanks-1) × extraTank`，總額 = baseAmount × 人數
+**現在**：`baseAmount = extraTank × tanks + baseTrip`，總額 = baseAmount × 人數 + 裝備
+- `pricing.extraTank` 語意改為「每一次潛水（含空氣瓶）單價」
+- 例：500/支、2 支、2 人 → 2000
+
+### 開團 form 改進
+- **#6 時間選單化**：時 (00-23) × 分 (00/15/30/45) 兩個 select
+- **#5 複製場次**：每張開團卡多「📋 複製」按鈕，自動帶入隔天日期
+- **#4 集合地點 Maps 助手**：旁邊有按鈕直接開 Google Maps；卡片內若是 URL 自動變連結
+
+### 付款方式（#10）
+- Schema 加 `PaymentMethod` enum + `Booking.paymentMethod`
+- 客戶日潛預約頁加付款方式選單（💵 現場 / 🏦 轉帳 / 💚 LINE Pay）
+- 客戶潛水團預約頁支援同 API
+- Admin 訂單編輯 Dialog 可改 paymentMethod
+
+### 訂單管理「按場次」總覽（#11）
+- 新 API `GET /api/admin/bookings/by-trip`
+- 每個 trip/tour 顯示：訂單數、總人數、總潛水支數（人數×支數）、已付/總額
+- 可展開看單筆訂單明細
+- 預設打開「按場次」tab（從統計卡進來仍是「進行中」）
+
+### Schema 變更（Zeabur db push 自動同步）
+- 新 enum `PaymentMethod (cash/bank/linepay/other)`
+- `Booking.paymentMethod` 預設 `cash`
+
 ## 20260514_41 — 2026-05-14 (calendar useEffect dep null safety)
 
 ### Bug fix
