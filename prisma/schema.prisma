@@ -296,6 +296,23 @@ model ReminderLog {
   @@map("reminder_logs")
 }
 
+// 場次當日照片 — 日潛結束後教練/admin 上傳當天潛水照給客戶下載
+// 7 天後 cron 自動刪除（R2 + DB row）
+model TripPhoto {
+  id            String    @id @default(uuid()) @db.Uuid
+  tripId        String    @map("trip_id") @db.Uuid   // 對應 DivingTrip
+  r2Key         String    @map("r2_key")              // R2 public bucket key (prefix=trips/)
+  caption       String?
+  uploadedBy    String    @map("uploaded_by") @db.VarChar(64)  // 教練/admin lineUserId
+  uploadedAt    DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz   // uploadedAt + 7 天，cron 到期清
+  downloadCount Int       @default(0) @map("download_count")
+
+  @@index([tripId])
+  @@index([expiresAt])
+  @@map("trip_photos")
+}
+
 // 最新動態 / 影像日誌 — 教練在後台貼 FB/IG/YT 連結 + 縮圖，客戶在 /liff/media 看 feed
 // 不存實際影片（節流量），只存外部連結 + 小縮圖
 model TripMedia {

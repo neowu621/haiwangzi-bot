@@ -14,6 +14,7 @@ import {
   Copy,
   MapPin,
   ExternalLink,
+  Camera,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { TripPhotoGallery } from "@/components/admin/TripPhotoGallery";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -113,6 +115,8 @@ function AdminTripsContent() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<"active" | "cancelled" | "all">(initialFilter);
+  // 哪個 trip 展開「今日照片」區塊
+  const [expandedPhotos, setExpandedPhotos] = useState<string | null>(null);
 
   const filteredTrips = useMemo(() => {
     if (filter === "active") return trips.filter((t) => t.status !== "cancelled");
@@ -582,6 +586,18 @@ function AdminTripsContent() {
                       >
                         <Copy className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setExpandedPhotos(
+                            expandedPhotos === t.id ? null : t.id,
+                          )
+                        }
+                        title="今日照片（7 天有效）"
+                      >
+                        <Camera className="h-3.5 w-3.5 text-[var(--color-gold)]" />
+                      </Button>
                       {t.status === "open" ? (
                         <Button
                           size="sm"
@@ -614,6 +630,21 @@ function AdminTripsContent() {
                       ) : null}
                     </div>
                   </div>
+
+                  {/* 今日照片 panel（展開時顯示） */}
+                  {expandedPhotos === t.id && (
+                    <div className="mt-3 border-t border-[var(--border)] pt-2">
+                      <div className="mb-1.5 text-[11px] font-semibold text-[var(--muted-foreground)] flex items-center gap-1">
+                        <Camera className="h-3 w-3" />
+                        今日照片（客戶可下載，7 天後自動刪除）
+                      </div>
+                      <TripPhotoGallery
+                        tripId={t.id}
+                        canManage
+                        downloadable
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

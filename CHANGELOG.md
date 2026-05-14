@@ -2,6 +2,41 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_46 — 2026-05-14 (圖片放大 + 場次當日照片 + 轉帳截圖回顯)
+
+### 1️⃣ 客戶可看自己上傳的轉帳截圖
+- `/api/bookings/my` 為每張 `paymentProof` 加 presigned GET URL (10 分鐘 TTL)
+- `/liff/my` 每張預約卡下方多「我上傳的轉帳截圖」區塊
+- 縮圖點下去 → Lightbox 全螢幕放大 + 下載按鈕
+- 已核可截圖右下角綠色勾標示
+
+### 2️⃣ 全站 Lightbox 圖片放大
+- 新 `src/components/ui/lightbox.tsx`
+- 點背景或 ESC 關閉
+- 可下載原圖（含 Cloudflare R2 圖片）
+- 顯示 caption（金額、type、過期天數等）
+
+### 3️⃣ 日潛當日照片功能
+- 新 schema `TripPhoto` (id, tripId, r2Key, expiresAt = uploadedAt+7天, downloadCount)
+- 新 API:
+  - `POST /api/coach/trip-photos` coach/admin 上傳 (帶 tripId + r2Key)
+  - `DELETE /api/coach/trip-photos/[id]` 刪除（同步刪 R2 物件）
+  - `GET /api/trips/[id]/photos` 列照片
+    - 權限：該場次的 booking 持有人，或 coach/admin
+    - 只回未過期的
+- 新 component `TripPhotoGallery` (上傳/刪除/縮圖 + Lightbox)
+- Admin 端：`/liff/admin/trips` 每張場次卡多 📸 Camera 按鈕 → 展開照片管理
+- 客戶端：`/liff/my` 日潛結束後（completed 或日期過了）多「📸 今日潛水照片」區塊
+
+### 4️⃣ 自動過期清理
+- 新 cron `/api/cron/expire-trip-photos`
+  - Auth: Bearer CRON_SECRET
+  - 每天跑：找 `expiresAt < now` 的 photo → 刪 R2 物件 + DB row
+  - 建議在 Cronicle 設每天 02:00 觸發
+
+### Schema 變更（Zeabur db push 自動同步）
+- 新 model `TripPhoto`
+
 ## 20260514_45 — 2026-05-14 (天氣取消改為手動確認模式)
 
 ### 新功能

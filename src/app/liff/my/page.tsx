@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
+import { Lightbox } from "@/components/ui/lightbox";
+import { TripPhotoGallery } from "@/components/admin/TripPhotoGallery";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +75,11 @@ interface MyBooking {
     type: "deposit" | "final" | "refund";
     amount: number;
     verifiedAt: string | null;
+    url: string | null;
+    uploadedAt: string;
   }>;
+  // 後端：daily booking 額外加 refId 給 photo gallery 用（daily only）
+  refId?: string;
   createdAt: string;
 }
 
@@ -255,6 +261,17 @@ function BookingCard({
       ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100))
       : 0;
   const editable = isEditable(b);
+  const [proofLightbox, setProofLightbox] = useState<{
+    url: string;
+    caption?: string;
+  } | null>(null);
+  const [showPhotos, setShowPhotos] = useState(false);
+  // 日潛已結束（completed 或日期過了）→ 顯示「今日照片」入口
+  const showPhotoEntry =
+    isDaily &&
+    b.refId &&
+    (b.status === "completed" ||
+      (ref && "date" in ref && ref.date < new Date().toISOString().slice(0, 10)));
 
   return (
     <Card className={cn(b.type === "tour" && "border-l-4 border-l-[var(--color-coral)]")}>
@@ -400,7 +417,86 @@ function BookingCard({
             )}
           </div>
         </div>
+
+        {/* 我上傳的轉帳截圖 — 點縮圖放大 */}
+        {b.paymentProofs.length > 0 && (
+          <div className="mt-3 border-t border-[var(--border)] pt-2">
+            <div className="text-[11px] text-[var(--muted-foreground)] mb-1">
+              我上傳的轉帳截圖（{b.paymentProofs.length} 張）
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {b.paymentProofs.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() =>
+                    p.url &&
+                    setProofLightbox({
+                      url: p.url,
+                      caption: `${p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"} NT$ ${p.amount.toLocaleString()}${p.verifiedAt ? " ✓已核可" : " ⏳待核可"}`,
+                    })
+                  }
+                  className="relative h-14 w-14 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--muted)]"
+                >
+                  {p.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.url}
+                      alt={p.type}
+                      className="h-full w-full object-cover hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[9px] text-[var(--muted-foreground)]">
+                      無預覽
+                    </div>
+                  )}
+                  {p.verifiedAt && (
+                    <div className="absolute bottom-0 right-0 flex h-4 w-4 items-center justify-center rounded-tl-md bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">
+                      <Check className="h-2.5 w-2.5" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 日潛結束後：今日照片 */}
+        {showPhotoEntry && b.refId && (
+          <div className="mt-3 border-t border-[var(--border)] pt-2">
+            <button
+              type="button"
+              onClick={() => setShowPhotos(!showPhotos)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <div className="text-xs font-semibold text-[var(--color-coral)]">
+                📸 今日潛水照片（7 天有效期）
+              </div>
+              <span className="text-[10px] text-[var(--muted-foreground)]">
+                {showPhotos ? "▲ 收起" : "▼ 展開"}
+              </span>
+            </button>
+            {showPhotos && (
+              <div className="mt-2">
+                <TripPhotoGallery
+                  tripId={b.refId}
+                  canManage={false}
+                  downloadable
+                />
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
+
+      {/* Payment proof lightbox */}
+      <Lightbox
+        open={proofLightbox !== null}
+        src={proofLightbox?.url ?? null}
+        caption={proofLightbox?.caption}
+        downloadable
+        onClose={() => setProofLightbox(null)}
+      />
     </Card>
   );
 }
