@@ -2,6 +2,13 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_41 — 2026-05-14 (calendar useEffect dep null safety)
+
+### Bug fix
+- `src/app/liff/calendar/page.tsx:111` useEffect 依賴陣列改用雙層 optional chain
+- 之前：`range?.from.getTime()` — 若 `range` 存在但 `from` 為 undefined 會 throw
+- 之後：`range?.from?.getTime()` — 全程 safe
+
 ## 20260514_40 — 2026-05-14 (Critical 安全修補：price tampering)
 
 ### Critical

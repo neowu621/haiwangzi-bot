@@ -108,7 +108,8 @@ export default function CalendarPage() {
       .then((d) => setTrips(d.trips))
       .catch(() => setTrips([]))
       .finally(() => setLoading(false));
-  }, [range?.from.getTime(), range?.to.getTime(), liff]);
+    // 用 optional chain 保護 from/to 可能 undefined（防止 .getTime() throw）
+  }, [range?.from?.getTime(), range?.to?.getTime(), liff]);
 
   const tripsByDate = useMemo(() => {
     const m = new Map<string, Trip[]>();
