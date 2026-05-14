@@ -2,6 +2,25 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_39 — 2026-05-14 (深度 audit 第二批 fix)
+
+### 修
+- `PATCH /api/me` Zod safeParse + try/catch
+- `POST /api/bookings/[id]/payment-proofs`:
+  - safeParse + try/catch
+  - **金額上限驗證**：上傳金額不能超過應付餘額（+100 NT$ 容差）
+  - 避免客戶端送假金額干擾教練核對
+
+### 已知保留問題 (Out-of-scope，留待下次審查)
+- `POST /api/bookings/daily` rentalGear price 由 client 控制
+  - 風險：可能被竄改為 0 或負數
+  - 緩解：教練核對轉帳金額時會抓到不對
+  - 修法：要建立 server 端 gear 價目表，較大改動
+- `POST /api/bookings/daily` capacity check 不是 atomic
+  - 風險：同時多人預約可能超賣
+  - 緩解：目前已有 `overCapacity` 標記提醒教練
+  - 修法：要用 SELECT FOR UPDATE 或 DB-level constraint
+
 ## 20260514_38 — 2026-05-14 (Bug hunt：error handling 全面強化)
 
 ### Background

@@ -37,19 +37,48 @@ export async function POST(
     return NextResponse.json({ error: "not your booking" }, { status: 403 });
   }
 
-  const data = BodySchema.parse(await req.json());
+  const parsed = BodySchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
+
+  // 防止 client 上傳金額超過 booking 應付金額（避免「假裝多付」干擾 admin）
+  const remaining = booking.totalAmount - booking.paidAmount;
+  if (data.amount > remaining + 100) {
+    // 給 100 NT$ 容差（避免四捨五入問題）
+    return NextResponse.json(
+      {
+        error: `上傳金額 ${data.amount} 超過應付餘額 ${remaining}`,
+        hint: "若實際多付，請聯絡客服處理",
+      },
+      { status: 400 },
+    );
+  }
 
   // 寫入 imageKey 欄位。優先用 r2Key，fallback 用 base64 data URL。
   const imageKey = data.r2Key ?? data.imageDataUrl!;
 
-  const proof = await prisma.paymentProof.create({
-    data: {
-      bookingId: id,
-      type: data.type,
-      amount: data.amount,
-      imageKey,
-    },
-  });
+  let proof;
+  try {
+    proof = await prisma.paymentProof.create({
+      data: {
+        bookingId: id,
+        type: data.type,
+        amount: data.amount,
+        imageKey,
+      },
+    });
+  } catch (e) {
+    console.error("[POST payment-proofs]", e);
+    return NextResponse.json(
+      { error: "create failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 
   // 若 booking 是 tour 類型，重新計算 paidAmount = sum(deposit/final 驗證過的)
   // 此處先不在客戶上傳時自動標 paid，等教練「滑動確認」才更新

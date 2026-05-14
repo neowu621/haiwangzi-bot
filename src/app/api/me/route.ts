@@ -87,7 +87,14 @@ export async function PATCH(req: NextRequest) {
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
 
-  const body = PatchSchema.parse(await req.json());
+  const parsed = PatchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "validation failed", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
   const data: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
     if (v !== undefined) {
@@ -95,9 +102,17 @@ export async function PATCH(req: NextRequest) {
       data[k] = v === "" ? null : v;
     }
   }
-  const updated = await prisma.user.update({
-    where: { lineUserId: auth.user.lineUserId },
-    data,
-  });
-  return NextResponse.json({ ok: true, user: updated });
+  try {
+    const updated = await prisma.user.update({
+      where: { lineUserId: auth.user.lineUserId },
+      data,
+    });
+    return NextResponse.json({ ok: true, user: updated });
+  } catch (e) {
+    console.error("[PATCH /api/me]", e);
+    return NextResponse.json(
+      { error: "update failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 }
