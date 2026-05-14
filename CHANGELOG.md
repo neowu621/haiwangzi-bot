@@ -2,6 +2,14 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_44 — 2026-05-14 (test-r2 cron endpoint for autonomous R2 verify)
+
+### 新增
+- `POST /api/cron/test-r2` 全自動驗證 R2 配置
+- 流程：上傳 1x1 PNG 到 public + private 兩 bucket → fetch 驗證 → 清理
+- 回傳每一步 ok/error，無法到達哪一步立刻明確
+- 可看 R2_PUBLIC_URL / bucket 名稱等 env state（不洩漏 secret）
+
 ## 20260514_43 — 2026-05-14 (test-email cron endpoint for autonomous email verify)
 
 ### 新增
