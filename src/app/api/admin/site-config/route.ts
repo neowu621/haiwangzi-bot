@@ -39,6 +39,7 @@ const PatchSchema = z.object({
   splashEnabled: z.boolean().optional(),
   splashDurationMs: z.number().int().min(0).max(60000).optional(),
   splashCooldownMs: z.number().int().min(0).max(86400000).optional(),
+  weatherAutoCancel: z.boolean().optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -70,6 +71,7 @@ export async function GET(req: NextRequest) {
       splashEnabled: row.splashEnabled,
       splashDurationMs: row.splashDurationMs,
       splashCooldownMs: row.splashCooldownMs,
+      weatherAutoCancel: row.weatherAutoCancel,
     },
     isDefault: false,
     updatedAt: row.updatedAt,

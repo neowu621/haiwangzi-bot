@@ -68,6 +68,9 @@ export interface SiteConfig {
   splashEnabled: boolean;
   splashDurationMs: number;
   splashCooldownMs: number;
+
+  // 天氣自動取消開關（false = 安全模式：cron 只推警告給教練，不動 DB）
+  weatherAutoCancel: boolean;
 }
 
 export const DEFAULT_CARDS: SiteCard[] = [
@@ -160,4 +163,5 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   splashEnabled: true,
   splashDurationMs: 3000,
   splashCooldownMs: 3600000, // 1 hour
+  weatherAutoCancel: false, // 預設安全：cron 只警告教練，不自動 cancel
 };

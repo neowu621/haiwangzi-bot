@@ -342,6 +342,11 @@ model SiteConfig {
   splashDurationMs Int     @default(3000) @map("splash_duration_ms")
   splashCooldownMs Int     @default(3600000) @map("splash_cooldown_ms") // 1 hour
 
+  // 天氣自動取消開關
+  // false (預設安全)：cron 偵測風速超標 → 只推警告給教練 LINE，不動 DB，等教練手動確認
+  // true：cron 直接 cancel + 推通知給所有客戶（舊行為）
+  weatherAutoCancel Boolean @default(false) @map("weather_auto_cancel")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

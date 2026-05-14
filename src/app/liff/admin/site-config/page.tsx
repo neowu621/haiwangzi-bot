@@ -487,6 +487,56 @@ export default function AdminSiteConfigPage() {
           </div>
         </CollapsibleCard>
 
+        {/* 天氣自動取消 */}
+        <CollapsibleCard
+          title="🌬 天氣自動取消"
+          complete
+          open={openMap.splash}
+          onToggle={() => setOpenMap((m) => ({ ...m, splash: m.splash }))}
+          summary={
+            cfg.weatherAutoCancel
+              ? "⚠ 開：cron 偵測風速超標自動取消所有客戶 + 推通知"
+              : "✓ 關（推薦）：cron 只推警告給教練/admin，等手動決定"
+          }
+        >
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={cfg.weatherAutoCancel}
+                onChange={(e) =>
+                  setCfg((c) => ({ ...c, weatherAutoCancel: e.target.checked }))
+                }
+              />
+              啟用全自動取消（不需教練確認）
+            </label>
+            <div className="rounded-md bg-[var(--muted)]/40 p-2 text-[10px] leading-relaxed text-[var(--muted-foreground)]">
+              <div className="font-bold text-[var(--foreground)] mb-1">
+                {cfg.weatherAutoCancel ? "🔴 開啟模式" : "🟢 關閉模式（推薦）"}
+              </div>
+              {cfg.weatherAutoCancel ? (
+                <>
+                  cron 每天 06:00 抓 CWA 海況：若風速 &gt; 閾值，
+                  <b className="text-[var(--color-coral)]">
+                    自動把當日所有 open 場次設為 cancelled
+                  </b>
+                  ，並推 Flex + Email 通知客戶。
+                  <br />
+                  風險：cron 抓的是「凌晨」風速，跟出航時段可能差很多，可能誤殺。
+                </>
+              ) : (
+                <>
+                  cron 同樣抓 CWA 海況，但
+                  <b className="text-[var(--color-phosphor)]">
+                    只推 LINE 文字警告給場次教練 + admin
+                  </b>
+                  ，不動 DB、不通知客戶。教練/admin 決定後手動到「開團管理」取消場次。
+                </>
+              )}
+            </div>
+          </div>
+        </CollapsibleCard>
+
         {/* 還原預設 */}
         <Button
           variant="outline"

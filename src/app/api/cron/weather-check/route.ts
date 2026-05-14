@@ -158,6 +158,14 @@ async function handle(req: NextRequest) {
     });
   }
 
+  // ── 讀 SiteConfig：weatherAutoCancel 開關 ─────────────
+  // false (預設安全)：cron 只推警告給教練 LINE，不動 DB 不通知客戶
+  // true：cron 自動 cancel + 通知所有客戶（舊行為）
+  const siteConfig = await prisma.siteConfig
+    .findUnique({ where: { id: "default" } })
+    .catch(() => null);
+  const autoCancel = siteConfig?.weatherAutoCancel ?? false;
+
   // ── 風速超過閾值 → 取消今天的 open 場次 ─────────────
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -170,6 +178,75 @@ async function handle(req: NextRequest) {
     },
   });
 
+  // 教練只看警告模式（autoCancel=false）：推 LINE 給場次教練 + admin，請手動決定
+  if (!autoCancel && !dryRun) {
+    const coachWarnings: Array<{ tripId: string; coachPushed: number }> = [];
+    if (trips.length > 0 && process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+      const client = getLineClient();
+      // 收集所有相關教練 + admin
+      const allCoachIds = Array.from(new Set(trips.flatMap((t) => t.coachIds)));
+      const coachUsers = await prisma.coach.findMany({
+        where: { id: { in: allCoachIds }, lineUserId: { not: null } },
+        select: { lineUserId: true, realName: true },
+      });
+      const admins = await prisma.user.findMany({
+        where: { role: "admin" },
+        select: { lineUserId: true, displayName: true },
+      });
+      const recipients = [
+        ...coachUsers.map((c) => c.lineUserId).filter(Boolean),
+        ...admins.map((a) => a.lineUserId),
+      ] as string[];
+
+      for (const trip of trips) {
+        const sites = await prisma.diveSite.findMany({
+          where: { id: { in: trip.diveSiteIds } },
+        });
+        const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
+        const dateStr = trip.date.toISOString().slice(0, 10);
+
+        const adminUrl = process.env.NEXT_PUBLIC_BASE_URL
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/admin/trips`
+          : "https://liff.line.me/";
+
+        const text =
+          `⚠ 海況警告（自動取消已關閉，需手動處理）\n\n` +
+          `場次：${dateStr} ${trip.startTime}\n` +
+          `潛點：${siteName}\n` +
+          `${maxStation} 風速 ${maxWind} m/s > 安全閾值 ${threshold} m/s\n\n` +
+          `若決定取消，請到開團管理頁面手動取消：\n${adminUrl}`;
+
+        let pushed = 0;
+        for (const r of recipients) {
+          try {
+            await client.pushMessage({
+              to: r,
+              messages: [{ type: "text", text }],
+            });
+            pushed++;
+          } catch (e) {
+            console.error("[weather warn]", r, e);
+          }
+        }
+        coachWarnings.push({ tripId: trip.id, coachPushed: pushed });
+      }
+    }
+    return NextResponse.json({
+      ok: true,
+      action: "warned_coaches_only",
+      autoCancel: false,
+      maxWind,
+      maxStation,
+      stationReadings,
+      threshold,
+      waveSource,
+      coachWarnings,
+      counts: { warned: coachWarnings.length },
+      tookMs: Date.now() - startedAt.getTime(),
+    });
+  }
+
+  // autoCancel=true (或 dryRun)：執行舊邏輯
   const cancelled: Array<{ tripId: string; pushed: number; emailed?: number }> = [];
   const errors: Array<{ tripId: string; error: string }> = [];
 
@@ -278,6 +355,7 @@ async function handle(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     action: dryRun ? "dry_run_would_cancel" : "weather_cancel",
+    autoCancel,
     maxWind,
     maxStation,
     stationReadings,

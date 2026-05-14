@@ -2,6 +2,30 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_45 — 2026-05-14 (天氣取消改為手動確認模式)
+
+### 新功能
+- `SiteConfig.weatherAutoCancel: Boolean @default(false)` 全新開關
+- **預設關閉**（安全模式）：
+  - cron/weather-check 偵測風速超標時，**只推 LINE 文字警告**給場次教練 + 全部 admin
+  - 不動 DB、不通知客戶
+  - 教練/admin 收到警告後，自行決定是否手動到 `/liff/admin/trips` 取消
+- **開啟時**（舊行為）：
+  - cron 自動把所有 open 場次設為 cancelled
+  - 自動推 Flex + Email 給所有客戶（雙通道）
+
+### 為什麼預設關
+cron 凌晨 06:00 抓的風速跟實際出航時段（08:00 / 13:00 / 17:00）可能差很多，
+全自動取消有誤殺風險。預設關掉，讓教練看當下海況再決定。
+
+### Admin UI
+- `/liff/admin/site-config` 加「🌬 天氣自動取消」card
+- Toggle 旁有完整解釋兩種模式差異
+
+### `/api/admin/site-config` API
+- GET 回傳新增 `weatherAutoCancel`
+- POST 接受 `weatherAutoCancel: boolean`
+
 ## 20260514_44 — 2026-05-14 (test-r2 cron endpoint for autonomous R2 verify)
 
 ### 新增
