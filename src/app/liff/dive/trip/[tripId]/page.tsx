@@ -983,30 +983,32 @@ function CompanionSlotEditor({
     if (c) onChange({ ...c });
   }
 
-  // 收合狀態：摘要列
+  // 收合狀態：摘要列 + 旁邊 quick-pick 下拉選單
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
+      <div
         className={cn(
-          "flex w-full items-center justify-between rounded-lg border-2 px-3 py-3 text-left",
+          "flex w-full items-center justify-between gap-2 rounded-lg border-2 px-3 py-3",
           complete
             ? "border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5"
             : "border-dashed border-[var(--color-coral)] bg-[var(--color-coral)]/5",
         )}
       >
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex flex-1 items-center gap-2 text-left min-w-0"
+        >
           {complete ? (
-            <Check className="h-4 w-4 text-[var(--color-phosphor)]" />
+            <Check className="h-4 w-4 flex-shrink-0 text-[var(--color-phosphor)]" />
           ) : (
-            <AlertTriangle className="h-4 w-4 text-[var(--color-coral)]" />
+            <AlertTriangle className="h-4 w-4 flex-shrink-0 text-[var(--color-coral)]" />
           )}
-          <div className="flex flex-col leading-tight">
+          <div className="flex flex-col leading-tight min-w-0">
             <span className="text-xs font-bold">潛伴 #{idx}</span>
             <span
               className={cn(
-                "text-xs",
+                "text-xs truncate",
                 complete
                   ? "text-[var(--foreground)]"
                   : "text-[var(--color-coral)]",
@@ -1017,9 +1019,35 @@ function CompanionSlotEditor({
                 : "尚未填寫（必填）"}
             </span>
           </div>
-        </div>
-        <Pencil className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-      </button>
+        </button>
+
+        {/* 快速從常用潛伴選 — 收合狀態也能用 */}
+        {saved.length > 0 && (
+          <select
+            value={slot.id ?? ""}
+            onChange={(e) => pickSaved(e.target.value)}
+            className="rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-1 text-[10px] max-w-[8rem]"
+            title="從常用潛伴選"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <option value="">— 選潛伴 —</option>
+            {saved.map((c) => (
+              <option key={c.id} value={c.id ?? ""}>
+                {c.name}（{c.cert ?? "未填證照"}）
+              </option>
+            ))}
+          </select>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="p-1 text-[var(--muted-foreground)] hover:bg-black/5 rounded"
+          aria-label="編輯"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </div>
     );
   }
 

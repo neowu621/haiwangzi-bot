@@ -2,6 +2,18 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_50 — 2026-05-14 (潛伴 #N 摘要列 quick-pick 下拉)
+
+### `/liff/dive/trip/[tripId]` 多人預約潛伴 slot
+- 摘要列（收合狀態）右側新增「**— 選潛伴 —**」下拉選單
+- 顯示使用者個人資料的常用潛伴清單（含姓名 + 證照）
+- 選一個自動帶入該 slot 的 name / phone / cert / certNumber / logCount / relationship
+- 不需要先點開 slot 就能快速選
+
+### Before / After
+**Before**: 點開 slot → 看到大型 chip → 點 chip 選潛伴
+**After**:  收合狀態旁邊就有下拉 → 直接選 → 摘要列即時更新
+
 ## 20260514_49 — 2026-05-14 (手機輸入自動 0912-345678 格式)
 
 ### 新 helper
