@@ -2,6 +2,24 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260515_53 — 2026-05-15 (admin 開團 編輯日期 + 顯示優化)
+
+### Bug fix #1：編輯場次日期欄位空白
+- 根因：API 回的是 ISO `2026-05-16T00:00:00.000Z`，`<input type="date">` 認不得，顯示空白
+- 修：點編輯時把 `t.date.slice(0, 10)` 切成 `YYYY-MM-DD` 再塞給 dialog
+
+### Bug fix #2：儲存當住
+- 根因：日期空白送 server → `new Date("")` 變 Invalid Date → Prisma throw → 前端永遠等不到 200
+- 修：
+  - saveTrip 前端 validation：日期/時間沒填擋下來不送
+  - payload 強制 `date.slice(0, 10)` 保證乾淨
+
+### 顯示優化
+- **「base NT$ 0」改為「每支 NT$ 600」**（更清楚 + baseTrip > 0 才顯示 + 基本費 N$）
+- 場次卡 + 潛水團卡 日期顯示切掉 ISO 後綴：
+  - `2026-05-16T00:00:00.000Z 08:00` → `2026-05-16 08:00`
+- 潛水團編輯點開時把 4 個日期欄位都切乾淨：dateStart / dateEnd / depositDeadline / finalDeadline
+
 ## 20260515_52 — 2026-05-15 (修 profile 預約紀錄 crash + 錯誤回報)
 
 ### Bug fix

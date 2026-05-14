@@ -191,15 +191,29 @@ function AdminTripsContent() {
 
   async function saveTrip() {
     if (!editingTrip) return;
+    // 前端 validation：避免空白日期 / 時間 / 教練未指派 等 server 才能擋的問題
+    if (!editingTrip.date || editingTrip.date.length < 10) {
+      alert("請選擇日期");
+      return;
+    }
+    if (!editingTrip.startTime || editingTrip.startTime.length < 4) {
+      alert("請選擇時間");
+      return;
+    }
     setSaving(true);
     try {
+      // 確保 date 是 YYYY-MM-DD（防 ISO 字串混進來）
+      const payload = {
+        ...editingTrip,
+        date: editingTrip.date.slice(0, 10),
+      };
       const url = editingTrip.id
         ? `/api/admin/trips/${editingTrip.id}`
         : "/api/admin/trips";
       const method = editingTrip.id ? "PATCH" : "POST";
       await liff.fetchWithAuth(url, {
         method,
-        body: JSON.stringify(editingTrip),
+        body: JSON.stringify(payload),
       });
       setEditingTrip(null);
       await reload();
@@ -478,7 +492,7 @@ function AdminTripsContent() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold tabular">
-                          {t.date} {t.startTime}
+                          {t.date?.slice(0, 10)} {t.startTime}
                         </span>
                         <Badge variant="muted" className="text-[10px]">
                           {t.tankCount} 潛
@@ -506,7 +520,10 @@ function AdminTripsContent() {
                         )}
                       >
                         {t.booked}/{t.capacity ?? "∞"} ·{" "}
-                        {t.coachIds.map(coachName).join("、") || "未指派教練"} · base NT$ {t.pricing.baseTrip}
+                        {t.coachIds.map(coachName).join("、") || "未指派教練"} ·{" "}
+                        每支 NT$ {t.pricing.extraTank}
+                        {t.pricing.baseTrip > 0 &&
+                          ` + 基本費 NT$ ${t.pricing.baseTrip}`}
                       </div>
                       {t.meetingPoint && (
                         <div className="mt-1 text-[11px] leading-relaxed">
@@ -562,7 +579,13 @@ function AdminTripsContent() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setEditingTrip({ ...t })}
+                        onClick={() =>
+                          setEditingTrip({
+                            ...t,
+                            // 把 ISO date string (2026-05-16T00:00:00.000Z) 切成 YYYY-MM-DD 給 <input type="date">
+                            date: t.date?.slice(0, 10) ?? "",
+                          })
+                        }
                         title="編輯"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
@@ -680,7 +703,7 @@ function AdminTripsContent() {
                         )}
                       </div>
                       <div className="mt-1 text-[11px] tabular text-[var(--muted-foreground)]">
-                        {t.dateStart} → {t.dateEnd} ·
+                        {t.dateStart?.slice(0, 10)} → {t.dateEnd?.slice(0, 10)} ·
                         NT$ {t.basePrice.toLocaleString()} / 訂金 {t.deposit.toLocaleString()}
                       </div>
                       <div className="text-[10px] tabular text-[var(--muted-foreground)]">
@@ -716,7 +739,16 @@ function AdminTripsContent() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setEditingTour({ ...t })}
+                        onClick={() =>
+                          setEditingTour({
+                            ...t,
+                            // 切 ISO date 字串為 YYYY-MM-DD
+                            dateStart: t.dateStart?.slice(0, 10) ?? "",
+                            dateEnd: t.dateEnd?.slice(0, 10) ?? "",
+                            depositDeadline: t.depositDeadline?.slice(0, 10) ?? null,
+                            finalDeadline: t.finalDeadline?.slice(0, 10) ?? null,
+                          })
+                        }
                         title="編輯"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
