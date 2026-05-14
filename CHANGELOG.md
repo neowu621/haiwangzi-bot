@@ -2,6 +2,14 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_43 — 2026-05-14 (test-email cron endpoint for autonomous email verify)
+
+### 新增
+- `POST /api/cron/test-email` 專用測試端點
+- CRON_SECRET 認證 + body `{to}` 指定收件人
+- 用於 deploy 後驗證 Gmail SMTP 設定，無需 LIFF auth
+- 不會誤發給其他人，只寄 body.to 一封
+
 ## 20260514_42 — 2026-05-14 (大幅功能 + 計價邏輯重構)
 
 ### Bug fix
