@@ -19,7 +19,9 @@ const BodySchema = z.object({
     .array(
       z.object({
         itemType: z.enum(["BCD", "regulator", "wetsuit", "fins", "mask", "computer", "full_set"]),
-        price: z.number().int(),
+        // 安全：min(0) 防止 client 送負數造成負餘額（credit attack）
+        // max(50000) 防止離譜金額
+        price: z.number().int().min(0).max(50000),
         // 數量；舊版客戶不送 qty 視為 1 (per person 模式由 totalAmount 公式統一處理)
         qty: z.number().int().min(1).max(20).default(1),
       }),
@@ -124,6 +126,13 @@ export async function POST(req: NextRequest) {
   // 裝備改為各自獨立數量 (不再 ×人數)
   const gearAmount = data.rentalGear.reduce((s, g) => s + g.price * g.qty, 0);
   const totalAmount = baseAmount * data.participants + gearAmount;
+  // 二次保護：理論上 schema 已擋負數，但 baseAmount 也可能因 admin 設負 pricing 出狀況
+  if (totalAmount < 0) {
+    return NextResponse.json(
+      { error: `計算結果異常 (totalAmount=${totalAmount})，請聯絡客服` },
+      { status: 400 },
+    );
+  }
 
   // 更新 user 個資 (如有提供)
   const userPatch: Parameters<typeof prisma.user.update>[0]["data"] = {};

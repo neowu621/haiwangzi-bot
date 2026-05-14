@@ -2,6 +2,21 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260514_40 — 2026-05-14 (Critical 安全修補：price tampering)
+
+### Critical
+- `POST /api/bookings/daily` rentalGear price 現在強制 `min(0).max(50000)`
+  - **之前**：client 可送 `price: -9999` → totalAmount 變負數 → 客戶等於拿信用額度
+  - **現在**：Zod schema 擋住負數，超過 5 萬也擋
+- totalAmount 二次保護：若計算結果 < 0 直接 400 reject
+
+### 為什麼能造成負數
+之前 schema 只 `z.number().int()` 沒 min，客戶端任意數字都通過驗證。
+這是 Zod 預設行為 — number 接受負值。修法：明確 `.min(0)`。
+
+### Note: tour route 已經安全
+`POST /api/bookings/tour` addons 是從 DB 查 server-side 價格，不取信於 client。
+
 ## 20260514_39 — 2026-05-14 (深度 audit 第二批 fix)
 
 ### 修
