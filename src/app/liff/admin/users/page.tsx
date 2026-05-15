@@ -16,9 +16,10 @@ import {
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
+import { VIP_TIERS, getVipTier } from "@/lib/vip-tier";
 import { cn } from "@/lib/utils";
 
-type Role = "customer" | "coach" | "admin";
+type Role = "customer" | "coach" | "boss" | "admin";
 type Cert = "OW" | "AOW" | "Rescue" | "DM" | "Instructor";
 
 interface AdminUser {
@@ -39,6 +40,7 @@ interface AdminUser {
   blacklisted: boolean;
   blacklistReason: string | null;
   vipLevel: number;
+  totalSpend?: number;
   lastActiveAt: string;
   createdAt: string;
   stats?: {
@@ -52,7 +54,7 @@ interface AdminUser {
 }
 
 const CERTS: Cert[] = ["OW", "AOW", "Rescue", "DM", "Instructor"];
-const ROLES: Role[] = ["customer", "coach", "admin"];
+const ROLES: Role[] = ["customer", "coach", "boss", "admin"];
 
 export default function AdminUsersPage() {
   const liff = useLiff();
@@ -176,6 +178,7 @@ export default function AdminUsersPage() {
             blacklisted: editing.blacklisted,
             blacklistReason: editing.blacklistReason,
             vipLevel: editing.vipLevel,
+            totalSpend: editing.totalSpend,
           }),
         },
       );
@@ -193,7 +196,8 @@ export default function AdminUsersPage() {
   }
 
   function vipLabel(lv: number) {
-    return lv === 2 ? "Gold" : lv === 1 ? "VIP" : "—";
+    const tier = getVipTier(lv);
+    return `${tier.emoji} ${tier.name}`;
   }
 
   return (
@@ -507,31 +511,54 @@ export default function AdminUsersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">VIP 等級</Label>
-                <div className="flex gap-1">
-                  {[
-                    [0, "—"],
-                    [1, "VIP"],
-                    [2, "Gold"],
-                  ].map(([lv, label]) => (
-                    <button
-                      key={lv}
-                      type="button"
-                      onClick={() =>
-                        setEditing({ ...editing, vipLevel: lv as number })
-                      }
-                      className={cn(
-                        "flex-1 rounded-full px-2 py-1 text-[11px] font-semibold",
-                        editing.vipLevel === lv
-                          ? "bg-[var(--color-gold)] text-[var(--color-ocean-deep)]"
-                          : "bg-[var(--muted)] text-[var(--muted-foreground)]",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                <Label className="text-xs pt-1">VIP 等級</Label>
+                <div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {VIP_TIERS.map((tier) => (
+                      <button
+                        key={tier.level}
+                        type="button"
+                        onClick={() =>
+                          setEditing({ ...editing, vipLevel: tier.level })
+                        }
+                        className={cn(
+                          "rounded-md px-1 py-1.5 text-[10px] font-semibold border-2",
+                          editing.vipLevel === tier.level
+                            ? "border-[var(--color-gold)] bg-[var(--color-gold)]/15"
+                            : "border-[var(--border)] bg-[var(--muted)]",
+                        )}
+                        style={
+                          editing.vipLevel === tier.level
+                            ? { borderColor: tier.color }
+                            : undefined
+                        }
+                        title={`${tier.emoji} ${tier.name} (${tier.enName})`}
+                      >
+                        <div className="text-base">{tier.emoji}</div>
+                        <div>LV{tier.level}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                    手動調整等級會被系統「核可款項時」覆寫，建議改 logCount 或 totalSpend 觸發自動升等
+                  </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">累計消費 (NT$)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editing.totalSpend ?? 0}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      totalSpend: Math.max(0, Number(e.target.value)),
+                    })
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">

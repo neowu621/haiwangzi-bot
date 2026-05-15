@@ -84,10 +84,12 @@ export function getUserRoles(user: User): UserRole[] {
 /** 檢查角色,不夠就回 403 — 支援多重身分：只要有任何一個 role 在 allowed 內就過 */
 export function requireRole<T extends User>(
   user: T,
-  allowed: Array<"customer" | "coach" | "admin">,
+  allowed: Array<"customer" | "coach" | "boss" | "admin">,
 ): { ok: true } | { ok: false; status: number; message: string } {
   const effectiveRoles = getUserRoles(user);
   const allowedSet = new Set(allowed);
+  // admin 永遠通過（superuser）
+  if (effectiveRoles.includes("admin")) return { ok: true };
   const matched = effectiveRoles.some((r) => allowedSet.has(r));
   if (!matched) {
     return {

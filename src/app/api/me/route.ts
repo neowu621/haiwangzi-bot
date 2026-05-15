@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
     role: u.role,
     // 新版多重身分；空陣列 fallback 為 [role]
     roles: u.roles && u.roles.length > 0 ? u.roles : [u.role],
+    vipLevel: u.vipLevel ?? 1,
+    totalSpend: u.totalSpend ?? 0,
     notes: u.notes,
     emergencyContact: u.emergencyContact,
     companions: u.companions ?? [],

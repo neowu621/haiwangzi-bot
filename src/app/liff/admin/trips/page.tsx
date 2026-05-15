@@ -753,6 +753,33 @@ function AdminTripsContent() {
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          // 複製潛水團：去掉 id，日期 +1 個月
+                          const start = new Date(t.dateStart);
+                          start.setMonth(start.getMonth() + 1);
+                          const dur =
+                            new Date(t.dateEnd).getTime() -
+                            new Date(t.dateStart).getTime();
+                          const end = new Date(start.getTime() + dur);
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                          const { id, status, ...rest } = t;
+                          setEditingTour({
+                            ...rest,
+                            title: `${t.title} (複製)`,
+                            dateStart: start.toISOString().slice(0, 10),
+                            dateEnd: end.toISOString().slice(0, 10),
+                            depositDeadline: null,
+                            finalDeadline: null,
+                            status: "open",
+                          } as Partial<Tour>);
+                        }}
+                        title="複製潛水團（同設定不同日期）"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
+                      </Button>
                       {t.status === "open" ? (
                         <Button
                           size="sm"

@@ -2,6 +2,64 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260515_54 — 2026-05-15 (老闆角色 + 海王子潛水 5 等級會員)
+
+### 新角色：boss 老闆
+- `UserRole` enum 新增 `boss`
+- 權限矩陣：
+  - **admin**：所有功能（系統管理者）
+  - **boss**：開團 / 訂單 / 會員 / **收款核對**（不含系統設定）
+  - **coach**：帶團 / 看當日場次學員資訊（**不碰款項**）
+  - **customer**：預約 / 上傳付款截圖 / 看自己訂單
+
+### 5 等級會員系統
+| LV | 名稱 | Emoji | 條件 (OR) |
+|---|---|---|---|
+| 1 | 小蝦 Shrimp | 🦐 | <20 潛 或 <10,000 |
+| 2 | 龍蝦 Lobster | 🦞 | 21-50 潛 或 10k-30k |
+| 3 | 海龜 Sea Turtle | 🐢 | 51-100 潛 或 30k-80k |
+| 4 | 鬼蝠魟 Manta Ray | 🪼 | 101-200 潛 或 80k-150k |
+| 5 | 鯨鯊 Whale Shark | 🦈 | >200 潛 或 >150k |
+
+升級條件「OR」：兩個條件**任一達標**就升等。
+
+### Schema 變更
+- `User.vipLevel Int @default(1)` 範圍改為 1-5（之前 0-2）
+- `User.totalSpend Int @default(0)` 新欄位：累計消費
+
+### 自動升等引擎 (`src/lib/vip-tier.ts`)
+- `computeVipLevel(logs, spend)` — 依 OR 條件回 1-5
+- `getNextTierProgress()` — 距離下一級還差多少（給進度條）
+- 觸發點：**款項核可時**自動 `totalSpend += amount` + 重算 vipLevel
+
+### Permission 改動
+- `POST/GET /api/coach/payment-proofs`：從 `coach+admin` 改為 **`boss+admin`**（教練不該碰款項）
+- `requireRole()`：admin 永遠通過 (superuser)
+- `POST /api/admin/users`：role 與 vipLevel 接受 boss 與 1-5
+
+### UI
+- **`/liff/profile`** 新「會員等級卡」：
+  - 大 emoji + LV 標籤
+  - 顯示目前潛水次數 + 累計消費
+  - 升等進度條（還差 N 支或 NT$ XX）
+  - 福利清單
+- **`/liff/admin/users`** 編輯 Dialog：
+  - VIP 等級改為 5 個彩色 chip（含 emoji + LV）
+  - 新增「累計消費 (NT$)」欄位
+  - 自動重算：只改 logCount/totalSpend 不指定 vipLevel 時 → 系統 auto compute
+- **Profile 後台入口**：admin 看「Admin 主控台」、boss 看「老闆主控台」
+
+### Phase A 進度
+- **潛水團複製按鈕**（📋）：日期 +1 個月、title 加 (複製)、id 清空
+- 潛水團「📸 當日照片」入口（與日潛同 component，可再加入）
+
+### `docs/CRON_SETUP.md`
+- 完整列出 4 個 cron endpoint + 排程建議：
+  - `/api/cron/reminders` — D-1 + 尾款 (每 30 分鐘)
+  - `/api/cron/weather-check` — 海況 (每天 06:00)
+  - `/api/cron/expire-trip-photos` — 過期照片清理 (每天 02:00)
+  - `/api/cron/admin-weekly` — 週報 (週一 09:00)
+
 ## 20260515_53 — 2026-05-15 (admin 開團 編輯日期 + 顯示優化)
 
 ### Bug fix #1：編輯場次日期欄位空白

@@ -12,9 +12,10 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────
 enum UserRole {
-  customer
-  coach
-  admin
+  customer  // 一般會員（用 vipLevel 1-5 表示等級）
+  coach     // 教練：帶團 + 看當日場次/學員資訊
+  boss      // 老闆：開團 / 營運 / 收帳核對（不含系統設定）
+  admin     // 系統管理者：擁有所有權限
 }
 
 enum CertLevel {
@@ -134,7 +135,16 @@ model User {
   noShowCount      Int       @default(0) @map("no_show_count")
   blacklisted      Boolean   @default(false)
   blacklistReason  String?   @map("blacklist_reason")
-  vipLevel         Int       @default(0) @map("vip_level")  // 0=normal, 1=VIP, 2=Gold
+  // 海王子潛水會員等級 1-5：
+  //   1 = 小蝦 Shrimp     (<20 潛 or <10,000)
+  //   2 = 龍蝦 Lobster    (21-50 潛 or 10k-30k)
+  //   3 = 海龜 SeaTurtle  (51-100 潛 or 30k-80k)
+  //   4 = 鬼蝠魟 MantaRay (101-200 潛 or 80k-150k)
+  //   5 = 鯨鯊 WhaleShark (>200 潛 or >150k)
+  // 0 = 未指派（系統初始或新註冊）
+  vipLevel         Int       @default(1) @map("vip_level")
+  // 累計消費 (NT$)：booking.paidAmount 已驗證的總和，會員升等用
+  totalSpend       Int       @default(0) @map("total_spend")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
 

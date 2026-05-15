@@ -35,6 +35,7 @@ import { BottomNav } from "@/components/shell/BottomNav";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
+import { getVipTier, getNextTierProgress } from "@/lib/vip-tier";
 import { cn } from "@/lib/utils";
 
 interface Companion {
@@ -79,7 +80,9 @@ interface Me {
   logCount: number;
   role: string;
   // 多重身分
-  roles: Array<"customer" | "coach" | "admin">;
+  roles: Array<"customer" | "coach" | "boss" | "admin">;
+  vipLevel: number;
+  totalSpend: number;
   notes: string | null;
   emergencyContact: { name: string; phone: string; relationship: string } | null;
   companions: Companion[];
@@ -462,8 +465,16 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Admin / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
-        {(me.roles ?? [me.role]).includes("admin") && (
+        {/* 海王子潛水會員等級卡 */}
+        <VipTierCard
+          vipLevel={me.vipLevel ?? 1}
+          logCount={me.logCount}
+          totalSpend={me.totalSpend ?? 0}
+        />
+
+        {/* Admin / Boss / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
+        {((me.roles ?? [me.role]).includes("admin") ||
+          (me.roles ?? [me.role]).includes("boss")) && (
           <Link href="/liff/admin/dashboard">
             <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
               <CardContent className="flex items-center gap-3 p-4">
@@ -471,9 +482,15 @@ export default function ProfilePage() {
                   <Settings className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-bold">Admin 主控台</div>
+                  <div className="text-sm font-bold">
+                    {(me.roles ?? [me.role]).includes("admin")
+                      ? "Admin 主控台"
+                      : "老闆主控台"}
+                  </div>
                   <div className="text-[11px] text-[var(--muted-foreground)]">
-                    開團 / 訂單 / 會員 / 訊息模板 / 群發推播
+                    {(me.roles ?? [me.role]).includes("admin")
+                      ? "開團 / 訂單 / 會員 / 訊息模板 / 系統設定"
+                      : "開團 / 訂單 / 會員 / 收款核對"}
                   </div>
                 </div>
                 <span className="text-[var(--color-ocean-deep)]">▸</span>
@@ -800,6 +817,90 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
     </LiffShell>
+  );
+}
+
+// ── 海王子潛水會員等級卡 ────────────────────────────
+function VipTierCard({
+  vipLevel,
+  logCount,
+  totalSpend,
+}: {
+  vipLevel: number;
+  logCount: number;
+  totalSpend: number;
+}) {
+  const tier = getVipTier(vipLevel);
+  const progress = getNextTierProgress(logCount, totalSpend);
+
+  return (
+    <Card
+      className="border-2"
+      style={{ borderColor: tier.color }}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-full text-3xl"
+            style={{ backgroundColor: `${tier.color}25` }}
+          >
+            {tier.emoji}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base font-bold tabular">LV {tier.level}</span>
+              <span className="text-sm font-semibold">{tier.name}</span>
+              <span className="text-[10px] text-[var(--muted-foreground)] tracking-wider">
+                {tier.enName.toUpperCase()}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)] tabular">
+              潛水 {logCount} 支 · 累計消費 NT$ {totalSpend.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {progress && (
+          <div className="mt-3 rounded-md bg-[var(--muted)]/50 p-2 text-[11px] tabular">
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--muted-foreground)]">
+                距離 LV {progress.next.level} {progress.next.name}{" "}
+                {progress.next.emoji}
+              </span>
+            </div>
+            <div className="mt-1 flex gap-3 text-[10px]">
+              {progress.logsLeft > 0 && (
+                <span>還差 {progress.logsLeft} 支潛水</span>
+              )}
+              {progress.spendLeft > 0 && (
+                <span>
+                  或 NT$ {progress.spendLeft.toLocaleString()} 累計消費
+                </span>
+              )}
+              {progress.logsLeft === 0 && progress.spendLeft === 0 && (
+                <span className="text-[var(--color-phosphor)] font-bold">
+                  即將升等！
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-2 space-y-0.5">
+          <div className="text-[10px] font-semibold text-[var(--muted-foreground)]">
+            您的會員福利
+          </div>
+          <ul className="space-y-0.5 text-[11px]">
+            {tier.benefits.map((b, i) => (
+              <li key={i} className="flex items-start gap-1">
+                <span style={{ color: tier.color }}>✦</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

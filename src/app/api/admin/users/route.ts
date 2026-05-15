@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { computeVipLevel } from "@/lib/vip-tier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,9 +78,9 @@ export async function GET(req: NextRequest) {
 
 const PatchSchema = z.object({
   lineUserId: z.string(),
-  role: z.enum(["customer", "coach", "admin"]).optional(),
+  role: z.enum(["customer", "coach", "boss", "admin"]).optional(),
   // 多重身分（推薦）；若帶這個會同步把 role 設為第一個元素以保持向後相容
-  roles: z.array(z.enum(["customer", "coach", "admin"])).optional(),
+  roles: z.array(z.enum(["customer", "coach", "boss", "admin"])).optional(),
   realName: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z
@@ -98,7 +99,9 @@ const PatchSchema = z.object({
   notes: z.string().nullable().optional(),
   blacklisted: z.boolean().optional(),
   blacklistReason: z.string().nullable().optional(),
-  vipLevel: z.number().int().min(0).max(2).optional(),
+  vipLevel: z.number().int().min(1).max(5).optional(),
+  // admin 可手動調整累計消費（修正歷史資料用）
+  totalSpend: z.number().int().min(0).optional(),
 });
 
 // POST /api/admin/users
@@ -149,6 +152,22 @@ export async function POST(req: NextRequest) {
     patch.blacklistReason =
       data.blacklistReason === "" ? null : data.blacklistReason;
   if (data.vipLevel !== undefined) patch.vipLevel = data.vipLevel;
+  if (data.totalSpend !== undefined) patch.totalSpend = data.totalSpend;
+
+  // 若 admin 只改了 logCount 或 totalSpend，沒手動指定 vipLevel → 自動重算
+  if (
+    data.vipLevel === undefined &&
+    (data.logCount !== undefined || data.totalSpend !== undefined)
+  ) {
+    const existing = await prisma.user.findUnique({
+      where: { lineUserId: data.lineUserId },
+    });
+    if (existing) {
+      const finalLogs = data.logCount ?? existing.logCount;
+      const finalSpend = data.totalSpend ?? existing.totalSpend ?? 0;
+      patch.vipLevel = computeVipLevel(finalLogs, finalSpend);
+    }
+  }
 
   const updated = await prisma.user.update({
     where: { lineUserId: data.lineUserId },

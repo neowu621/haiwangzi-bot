@@ -50,7 +50,55 @@
 ### 觸發內容
 
 1. **D-1 日潛行前提醒** — 明日所有 `open` 的 daily trip，confirmed bookings
-2. **旅行團尾款提醒** — 3 天後出發、`deposit_paid` 但尾款未清的 booking
+2. **潛水團尾款提醒** — N 天後出發、`deposit_paid` 但尾款未清的 booking（N 依每團 `finalReminderDays` 設定，預設 30）
+3. 兩通道：LINE Flex + Email（依 user `notifyByLine` / `notifyByEmail` opt-in）
+
+---
+
+## Endpoint：`/api/cron/weather-check`
+
+| 項目 | 內容 |
+|---|---|
+| Method | `POST` / `GET` |
+| Auth | `Authorization: Bearer <CRON_SECRET>` |
+| 排程建議 | 每天 06:00 (台灣) — Cronicle 用 UTC：`0 22 * * *` |
+| 邏輯 | 抓 CWA O-A0001-001 即時測站 → 風速超過 `WEATHER_WIND_THRESHOLD`（預設 10 m/s）|
+|  | **若 `SiteConfig.weatherAutoCancel = false`（預設）**：只推警告給場次教練 + admin |
+|  | **若 = true**：自動把當日 open 場次設 cancelled + 推 LINE Flex + Email 給客戶 |
+
+---
+
+## Endpoint：`/api/cron/expire-trip-photos`
+
+| 項目 | 內容 |
+|---|---|
+| Method | `POST` / `GET` |
+| Auth | `Authorization: Bearer <CRON_SECRET>` |
+| 排程建議 | 每天 02:00 (台灣) — Cronicle 用 UTC：`0 18 * * *` |
+| 邏輯 | 找 `TripPhoto.expiresAt < now` 的照片 → 刪 R2 物件 + DB row |
+
+### 回傳範例
+
+```json
+{
+  "ok": true,
+  "expired": 12,
+  "r2Deleted": 12,
+  "dbDeleted": 12,
+  "r2Errors": []
+}
+```
+
+---
+
+## Endpoint：`/api/cron/admin-weekly`
+
+| 項目 | 內容 |
+|---|---|
+| Method | `POST` / `GET` |
+| Auth | `Authorization: Bearer <CRON_SECRET>` |
+| 排程建議 | 週一 09:00 (台灣) — Cronicle 用 UTC：`0 1 * * 1` |
+| 邏輯 | 寄上週營運週報 Flex 給 admin/boss |
 
 ---
 

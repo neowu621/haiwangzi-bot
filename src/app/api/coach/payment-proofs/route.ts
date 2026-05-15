@@ -4,15 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { sendEmail } from "@/lib/email/send";
 import { paymentReceivedEmail } from "@/lib/email/templates";
+import { computeVipLevel } from "@/lib/vip-tier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/coach/payment-proofs - 待核對的截圖
+// 收款核對是「老闆」職責，coach 不應碰款項
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "admin"]);
+  const role = requireRole(auth.user, ["boss", "admin"]);
   if (!role.ok) return NextResponse.json({ error: role.message }, { status: role.status });
 
   const proofs = await prisma.paymentProof.findMany({
@@ -49,11 +51,11 @@ const VerifySchema = z.object({
   approve: z.boolean(),
 });
 
-// POST /api/coach/payment-proofs - 核對 (approve/reject)
+// POST /api/coach/payment-proofs - 核對 (approve/reject) — 只有老闆/admin 可以
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "admin"]);
+  const role = requireRole(auth.user, ["boss", "admin"]);
   if (!role.ok) return NextResponse.json({ error: role.message }, { status: role.status });
 
   const data = VerifySchema.parse(await req.json());
@@ -99,6 +101,11 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
+  // 累計消費 + 重算 VIP 等級（這次核可的金額計入）
+  void promoteVipIfNeeded(proof.booking.userId, proof.amount).catch((e) =>
+    console.error("[promote vip]", e),
+  );
+
   // 寄收款確認 email (fire-and-forget)
   void sendPaymentReceivedEmail({
     bookingId: proof.bookingId,
@@ -109,6 +116,25 @@ export async function POST(req: NextRequest) {
   }).catch((e) => console.error("[payment confirm email]", e));
 
   return NextResponse.json({ ok: true, action: "approved" });
+}
+
+/**
+ * 核可款項時更新 user.totalSpend + 重算 vipLevel
+ * 不阻擋主流程，失敗只 log
+ */
+async function promoteVipIfNeeded(lineUserId: string, addAmount: number) {
+  const user = await prisma.user.findUnique({ where: { lineUserId } });
+  if (!user) return;
+  const newSpend = (user.totalSpend ?? 0) + addAmount;
+  const newLevel = computeVipLevel(user.logCount ?? 0, newSpend);
+  const updates: Record<string, unknown> = { totalSpend: newSpend };
+  if (newLevel !== user.vipLevel) {
+    updates.vipLevel = newLevel;
+    console.log(
+      `[vip] ${lineUserId} 升等 ${user.vipLevel} → ${newLevel} (logs=${user.logCount}, spend=${newSpend})`,
+    );
+  }
+  await prisma.user.update({ where: { lineUserId }, data: updates });
 }
 
 async function sendPaymentReceivedEmail(args: {
