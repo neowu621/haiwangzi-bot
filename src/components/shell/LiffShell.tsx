@@ -87,8 +87,17 @@ export function LiffShell({
       </header>
 
       {liff.mode === "mock" && (
-        <div className="bg-[var(--color-gold)] px-4 py-1 text-center text-[11px] font-semibold text-[var(--color-ocean-deep)]">
-          🧪 桌面 Mock 模式 — 設 NEXT_PUBLIC_LIFF_MOCK=0 切回真 LIFF
+        <div className="flex items-center justify-between gap-2 bg-[var(--color-gold)] px-4 py-1 text-[11px] font-semibold text-[var(--color-ocean-deep)]">
+          <span>
+            🧪 Dev 模式 · {liff.profile?.displayName ?? "未選"}{" "}
+            <span className="opacity-60">({liff.profile?.userId})</span>
+          </span>
+          <Link
+            href="/dev-login"
+            className="rounded-full bg-[var(--color-ocean-deep)] px-2 py-0.5 text-[10px] text-[var(--color-gold)] hover:bg-[var(--color-ocean-deep)]/85"
+          >
+            切換身分
+          </Link>
         </div>
       )}
       {liff.error && (

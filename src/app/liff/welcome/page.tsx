@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Plane,
@@ -65,6 +66,7 @@ const ACCENT_STYLES: Record<
 
 export default function WelcomePage() {
   const liff = useLiff();
+  const router = useRouter();
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
   const [emailMissing, setEmailMissing] = useState(false);
 
@@ -74,6 +76,16 @@ export default function WelcomePage() {
       .then((d) => setCfg((c) => ({ ...c, ...d })))
       .catch(() => {});
   }, []);
+
+  // Dev mode：第一次進站還沒選身分 → 自動跳到 /dev-login
+  useEffect(() => {
+    if (liff.mode !== "mock") return;
+    if (typeof window === "undefined") return;
+    const picked = localStorage.getItem("devPersona");
+    if (!picked && !process.env.NEXT_PUBLIC_MOCK_USER_ID) {
+      router.push("/dev-login");
+    }
+  }, [liff.mode, router]);
 
   // 首次登入：拉 /api/me 看有沒有 email；沒有就提示去填
   useEffect(() => {

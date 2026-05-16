@@ -26,8 +26,12 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
     return await verifyIdToken(idToken);
   }
 
-  // dev fallback
-  if (process.env.NODE_ENV !== "production") {
+  // dev fallback：本地（NODE_ENV !== production）或顯式開啟 DEV_MODE_ENABLED=1 才允許
+  // 允許用 ?lineUserId=Uxxx 在 query 帶入身分；用於 dev personas 跳過 LINE 登入
+  const devEnabled =
+    process.env.NODE_ENV !== "production" ||
+    process.env.DEV_MODE_ENABLED === "1";
+  if (devEnabled) {
     const url = new URL(req.url);
     const lineUserId = url.searchParams.get("lineUserId");
     if (lineUserId) {

@@ -2,6 +2,82 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260516_58 — 2026-05-16 (Dev 身分切換 + 補償金/禮金系統)
+
+### 🎭 Dev 模式（6 虛擬身分）
+
+**新檔案**
+- `src/lib/dev-personas.ts` — 6 個身分定義（小明、小華、阿凱教練、阿志教練、老闆娘、admin）
+- `src/app/dev-login/page.tsx` — 切換身分頁
+- `src/app/api/dev/login/route.ts` — GET 列表 / POST 建/更新 user
+
+**啟用方式**
+1. 本地：`NEXT_PUBLIC_LIFF_MOCK=1` 或 `NEXT_PUBLIC_DEV_MODE=1`（任一）
+2. Zeabur prod 預覽：加 env `NEXT_PUBLIC_DEV_MODE=1` + `DEV_MODE_ENABLED=1`
+3. 開站第一次進 `/liff/welcome` → 自動跳 `/dev-login` 讓你選身分
+4. 上方黃色 banner 顯示目前身分，點「切換身分」隨時換
+
+**6 個身分**
+| ID | 名稱 | 角色 | 證照 |
+|---|---|---|---|
+| 🐠 U_dev_customer_1 | 小明 | customer | OW |
+| 🐢 U_dev_customer_2 | 小華 | customer | AOW |
+| 🤿 U_dev_coach_1 | 阿凱教練 | coach | Instructor |
+| 🦈 U_dev_coach_2 | 阿志教練 | coach | DM |
+| 👩‍💼 U_dev_boss | 老闆娘 | boss | — |
+| 🛠️ U_dev_admin | 系統管理員 | admin | — |
+
+**安全**：`/api/dev/login` 與 `?lineUserId=` query 只在 `NODE_ENV!=production` **或** `DEV_MODE_ENABLED=1` 時開啟，prod 預設關閉。
+
+---
+
+### 🎁 補償金 / 禮金 系統
+
+**新 Schema**
+- `User.birthday DateTime?` — 生日（年月日）
+- `User.creditBalance Int @default(0)` — 禮金餘額（denormalized）
+- `User.birthdayCreditYear Int?` — 已領年份（防重發）
+- 新 model `CreditTx`：每筆變動的 audit trail（`amount`/`reason`/`balanceAfter`/`refType`/`refId`/`note`）
+- `SiteConfig.birthdayCreditAmount Int @default(100)` — 生日禮金金額
+- `SiteConfig.vipUpgradeCredits Json @default("{}")` — VIP 升等獎金 map `{"2":200, "3":500, ...}`
+
+**新檔案**
+- `src/lib/credit.ts` — `grantCredit()` helper（transaction 保證 audit + balance 一致）
+- `src/app/api/me/credits/route.ts` — 查自己禮金紀錄
+- `src/app/api/admin/credits/route.ts` — admin 查/調整任何 user 的禮金
+- `src/app/api/cron/birthday-credits/route.ts` — 每日跑，台灣時區當天生日的人自動發放
+
+**自動發放規則**（預設值，admin 可改）
+- 生日當天：NT$ 100（每年一次，靠 `birthdayCreditYear` 防重）
+- 升 LV2：NT$ 200
+- 升 LV3：NT$ 500
+- 升 LV4：NT$ 1000
+- 升 LV5：NT$ 2000
+- 跨等級升等（例：LV1→LV3）會逐階發放
+
+**Hook 點**
+- `/api/coach/payment-proofs` 核可款項 → `promoteVipIfNeeded` 偵測升等發禮金
+- `/api/coach/bookings/[id]/attendance` 到場勾選 → 偵測升等發禮金
+
+**UI**
+- `/liff/profile`：
+  - 新增「生日」欄位（個人資料 collapsible 內，自動儲存）
+  - 新增「🎁 我的補償金 / 禮金」卡，點開看 Dialog（餘額 + 交易明細，含原因 emoji）
+- `/liff/admin/users` 編輯 dialog：
+  - 新增「生日」欄位
+  - 新增「🎁 補償金 / 禮金 餘額」區塊，可直接「+ 發放」/「− 扣回」（原因可選填），呼叫 `/api/admin/credits`
+
+**Cronicle 排程要加**
+- `GET https://haiwangzi.zeabur.app/api/cron/birthday-credits`
+- Header: `Authorization: Bearer $HAIWANGZI_CRON_SECRET`
+- 頻率：每日台灣時間早上 8:00 一次
+
+---
+
+### Migration 注意
+Zeabur container 啟動會自動跑 `prisma db push` 同步 schema。
+新欄位都有 default 值或 nullable，現有資料不會掉。
+
 ## 20260516_57 — 2026-05-16 (拆兩個潛水次數欄位)
 
 ### 背景

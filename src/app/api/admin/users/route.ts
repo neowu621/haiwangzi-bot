@@ -104,6 +104,8 @@ const PatchSchema = z.object({
   totalSpend: z.number().int().min(0).optional(),
   // admin 可手動調整海王子累積次數（修正歷史資料用）
   haiwangziLogCount: z.number().int().min(0).optional(),
+  // 生日（YYYY-MM-DD）
+  birthday: z.string().nullable().optional(),
 });
 
 // POST /api/admin/users
@@ -157,6 +159,11 @@ export async function POST(req: NextRequest) {
   if (data.totalSpend !== undefined) patch.totalSpend = data.totalSpend;
   if (data.haiwangziLogCount !== undefined)
     patch.haiwangziLogCount = data.haiwangziLogCount;
+  if (data.birthday !== undefined)
+    patch.birthday =
+      data.birthday && typeof data.birthday === "string"
+        ? new Date(data.birthday)
+        : null;
 
   // 若 admin 改了 haiwangziLogCount 或 totalSpend，沒手動指定 vipLevel → 自動重算
   if (

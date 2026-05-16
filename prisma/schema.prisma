@@ -150,14 +150,44 @@ model User {
   vipLevel         Int       @default(1) @map("vip_level")
   // 累計消費 (NT$)：booking.paidAmount 已驗證的總和，會員升等用
   totalSpend       Int       @default(0) @map("total_spend")
+  // 生日（年月日）— 用於發放生日禮金（每年自動）
+  birthday         DateTime? @db.Date
+  // 補償金/禮金餘額 (NT$)。來源：生日、VIP 升等、refund 轉禮金、admin 手調
+  // 變動皆記錄到 CreditTx 表（audit trail）
+  creditBalance    Int       @default(0) @map("credit_balance")
+  // 最後一次發放生日禮金的年份，避免同一年發兩次
+  birthdayCreditYear Int?    @map("birthday_credit_year")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
 
   bookings         Booking[]
   coachProfile     Coach?
   verifiedProofs   PaymentProof[]
+  creditTxs        CreditTx[]
 
   @@map("users")
+}
+
+// 補償金 / 禮金 交易紀錄（audit trail）
+// amount: 正 = 增加 / 負 = 使用
+// reason: birthday / vip_upgrade / refund / used / admin_adjust
+model CreditTx {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.VarChar(64)
+  amount    Int                                       // + 增 / - 用
+  reason    String   @db.VarChar(32)
+  refType   String?  @map("ref_type") @db.VarChar(32) // booking / vip / null
+  refId     String?  @map("ref_id")
+  note      String?
+  // 紀錄事件後的餘額（方便對帳）
+  balanceAfter Int   @map("balance_after")
+  createdBy String?  @map("created_by") @db.VarChar(64) // admin lineUserId
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User     @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("credit_txs")
 }
 
 model DiveSite {
@@ -383,6 +413,12 @@ model SiteConfig {
   // 結構：[{level, key, name, enName, emoji, minLogs, minSpend, benefits[], color}, ...]
   // 空陣列 = 使用 src/lib/vip-tier.ts 內建預設
   vipTiers Json @default("[]") @map("vip_tiers")
+
+  // 補償金 / 禮金 規則
+  // 生日當天自動發放金額 (NT$)。設 0 = 關閉
+  birthdayCreditAmount Int @default(100) @map("birthday_credit_amount")
+  // VIP 升等獎金：{ "2": 200, "3": 500, "4": 1000, "5": 2000 } — key=升到的等級
+  vipUpgradeCredits Json @default("{}") @map("vip_upgrade_credits")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)

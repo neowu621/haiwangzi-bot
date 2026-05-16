@@ -37,6 +37,8 @@ interface AdminUser {
   certNumber: string | null;
   logCount: number;
   haiwangziLogCount: number;
+  birthday: string | null;
+  creditBalance: number;
   notes: string | null;
   blacklisted: boolean;
   blacklistReason: string | null;
@@ -176,6 +178,9 @@ export default function AdminUsersPage() {
             certNumber: editing.certNumber,
             logCount: editing.logCount,
             haiwangziLogCount: editing.haiwangziLogCount,
+            birthday: editing.birthday
+              ? String(editing.birthday).slice(0, 10)
+              : null,
             notes: editing.notes,
             blacklisted: editing.blacklisted,
             blacklistReason: editing.blacklistReason,
@@ -598,6 +603,33 @@ export default function AdminUsersPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">生日</Label>
+                <Input
+                  type="date"
+                  value={
+                    editing.birthday
+                      ? String(editing.birthday).slice(0, 10)
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      birthday: e.target.value || null,
+                    })
+                  }
+                />
+              </div>
+
+              {/* 補償金 / 禮金 — 即時調整（呼叫 /api/admin/credits）*/}
+              <CreditAdjustSection
+                userId={editing.lineUserId}
+                currentBalance={editing.creditBalance ?? 0}
+                onChanged={(newBalance) =>
+                  setEditing({ ...editing, creditBalance: newBalance })
+                }
+              />
+
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
                 <Label className="text-xs pt-1">Admin 備註</Label>
                 <textarea
@@ -657,5 +689,106 @@ export default function AdminUsersPage() {
         </DialogContent>
       </Dialog>
     </LiffShell>
+  );
+}
+
+// ── 補償金 / 禮金 即時調整區塊（在 user edit dialog 內）─────
+function CreditAdjustSection({
+  userId,
+  currentBalance,
+  onChanged,
+}: {
+  userId: string;
+  currentBalance: number;
+  onChanged: (newBalance: number) => void;
+}) {
+  const liff = useLiff();
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function grant(sign: 1 | -1) {
+    const n = Math.abs(Number(amount));
+    if (!n || isNaN(n)) {
+      setErr("請輸入金額");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await liff.fetchWithAuth<{
+        newBalance: number;
+      }>("/api/admin/credits", {
+        method: "POST",
+        body: JSON.stringify({
+          userId,
+          amount: n * sign,
+          reason: "admin_adjust",
+          note: note || (sign > 0 ? "管理員發放" : "管理員扣回"),
+        }),
+      });
+      onChanged(r.newBalance);
+      setAmount("");
+      setNote("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-2.5 space-y-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-semibold text-[var(--color-coral)]">
+          🎁 補償金 / 禮金 餘額
+        </Label>
+        <span className="text-base font-bold tabular text-[var(--color-coral)]">
+          NT$ {currentBalance.toLocaleString()}
+        </span>
+      </div>
+      <div className="grid grid-cols-[1fr_1fr] gap-2">
+        <Input
+          type="number"
+          min={0}
+          placeholder="金額"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="text-center"
+        />
+        <Input
+          placeholder="原因（選填）"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-[var(--color-phosphor)] text-[var(--color-phosphor)]"
+          disabled={busy || !amount}
+          onClick={() => grant(1)}
+        >
+          + 發放
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-[var(--color-coral)] text-[var(--color-coral)]"
+          disabled={busy || !amount}
+          onClick={() => grant(-1)}
+        >
+          − 扣回
+        </Button>
+      </div>
+      {err && (
+        <div className="text-[10px] text-[var(--color-coral)]">{err}</div>
+      )}
+      <div className="text-[10px] text-[var(--muted-foreground)]">
+        生日 / 升等 / 退費 系統會自動發放；這裡用於人工補償（如客訴）
+      </div>
+    </div>
   );
 }

@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
     roles: u.roles && u.roles.length > 0 ? u.roles : [u.role],
     vipLevel: u.vipLevel ?? 1,
     totalSpend: u.totalSpend ?? 0,
+    birthday: u.birthday,
+    creditBalance: u.creditBalance ?? 0,
     notes: u.notes,
     emergencyContact: u.emergencyContact,
     companions: u.companions ?? [],
@@ -70,6 +72,8 @@ const PatchSchema = z.object({
     .or(z.literal("")),
   notifyByLine: z.boolean().optional(),
   notifyByEmail: z.boolean().optional(),
+  // 生日 — YYYY-MM-DD 字串；空字串 = 清空
+  birthday: z.string().nullable().optional(),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
   certNumber: z.string().nullable().optional(),
   logCount: z.number().int().min(0).optional(),
@@ -102,7 +106,12 @@ export async function PATCH(req: NextRequest) {
   for (const [k, v] of Object.entries(body)) {
     if (v !== undefined) {
       // 空字串 → null（避免 DB 存空字串）
-      data[k] = v === "" ? null : v;
+      if (k === "birthday") {
+        // birthday 是 Date 欄位，要把 YYYY-MM-DD 轉成 Date object
+        data[k] = v && typeof v === "string" ? new Date(v as string) : null;
+      } else {
+        data[k] = v === "" ? null : v;
+      }
     }
   }
   try {

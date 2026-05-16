@@ -32,27 +32,50 @@ const LiffContext = createContext<LiffContextValue | null>(null);
 // Mock 模式預設用「桌面測試員」假帳號；可用 NEXT_PUBLIC_MOCK_USER_ID 覆寫，
 // 例如本地連 production DB 想以真實 admin 身分操作時：
 //   NEXT_PUBLIC_MOCK_USER_ID=Ufe9a553a9149d9ef6e9401dfb2e94a65
-const MOCK_PROFILE: LiffProfile = {
-  userId:
-    process.env.NEXT_PUBLIC_MOCK_USER_ID ?? "U_mock_dev_user_0001",
-  displayName: process.env.NEXT_PUBLIC_MOCK_USER_ID
-    ? "（local dev 以 admin 身分）"
-    : "桌面測試員",
-  pictureUrl: undefined,
-};
+// 或在 /dev-login 選身分（會寫 localStorage.devPersona），優先級最高
+function getMockProfile(): LiffProfile {
+  // 1. localStorage devPersona（透過 /dev-login 選擇）
+  if (typeof window !== "undefined") {
+    const persona = localStorage.getItem("devPersona");
+    if (persona) {
+      return {
+        userId: persona,
+        displayName:
+          localStorage.getItem("devPersonaName") ?? "（dev persona）",
+      };
+    }
+  }
+  // 2. env NEXT_PUBLIC_MOCK_USER_ID（build-time 寫死）
+  if (process.env.NEXT_PUBLIC_MOCK_USER_ID) {
+    return {
+      userId: process.env.NEXT_PUBLIC_MOCK_USER_ID,
+      displayName: "（local dev 以 admin 身分）",
+    };
+  }
+  // 3. 預設 fallback
+  return {
+    userId: "U_mock_dev_user_0001",
+    displayName: "桌面測試員",
+  };
+}
 
 export function LiffProvider({ children }: { children: React.ReactNode }) {
-  const isMock = process.env.NEXT_PUBLIC_LIFF_MOCK === "1";
+  const isMock =
+    process.env.NEXT_PUBLIC_LIFF_MOCK === "1" ||
+    process.env.NEXT_PUBLIC_DEV_MODE === "1";
 
   const [ready, setReady] = useState<boolean>(isMock);
   const [loggedIn, setLoggedIn] = useState<boolean>(isMock);
-  const [profile, setProfile] = useState<LiffProfile | null>(
-    isMock ? MOCK_PROFILE : null,
-  );
+  const [profile, setProfile] = useState<LiffProfile | null>(null);
   const [idToken, setIdToken] = useState<string | null>(
     isMock ? "mock-id-token" : null,
   );
   const [error, setError] = useState<string | null>(null);
+
+  // mock 模式：載入時讀 localStorage 設 profile（避免 SSR mismatch）
+  useEffect(() => {
+    if (isMock) setProfile(getMockProfile());
+  }, [isMock]);
 
   useEffect(() => {
     if (isMock) return;
@@ -124,9 +147,11 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         if (isMock) {
           // Mock 模式：跳過 Bearer header (假 token 過不了 JWKS 驗章)，
           // 改走後端 auth.ts 的 ?lineUserId= query fallback。
+          // 每次 fetch 都重新讀 localStorage，支援使用者切身分後不需 reload
+          const mockProfile = profile ?? getMockProfile();
           const u = new URL(url, window.location.origin);
           if (!u.searchParams.has("lineUserId")) {
-            u.searchParams.set("lineUserId", MOCK_PROFILE.userId);
+            u.searchParams.set("lineUserId", mockProfile.userId);
           }
           url = u.pathname + u.search;
         } else {

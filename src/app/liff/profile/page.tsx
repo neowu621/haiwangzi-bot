@@ -84,6 +84,10 @@ interface Me {
   roles: Array<"customer" | "coach" | "boss" | "admin">;
   vipLevel: number;
   totalSpend: number;
+  // 生日 — 用於生日禮金
+  birthday: string | null;
+  // 補償金 / 禮金 餘額
+  creditBalance: number;
   notes: string | null;
   emergencyContact: { name: string; phone: string; relationship: string } | null;
   companions: Companion[];
@@ -108,6 +112,7 @@ export default function ProfilePage() {
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
   const [certNumber, setCertNumber] = useState("");
   const [logCount, setLogCount] = useState("");
+  const [birthday, setBirthday] = useState(""); // YYYY-MM-DD
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
@@ -176,6 +181,8 @@ export default function ProfilePage() {
         setCert(u.cert ?? "");
         setCertNumber(u.certNumber ?? "");
         setLogCount(String(u.logCount ?? 0));
+        // birthday 從 ISO 切 YYYY-MM-DD（HTML date input 格式）
+        setBirthday(u.birthday ? String(u.birthday).slice(0, 10) : "");
         setEmergencyName(u.emergencyContact?.name ?? "");
         setEmergencyPhone(formatPhoneTW(u.emergencyContact?.phone ?? ""));
         setEmergencyRel(u.emergencyContact?.relationship ?? "");
@@ -223,6 +230,7 @@ export default function ProfilePage() {
     cert,
     certNumber,
     logCount,
+    birthday,
     notes,
     emergencyName,
     emergencyPhone,
@@ -249,6 +257,7 @@ export default function ProfilePage() {
           cert: cert || null,
           certNumber: certNumber || null,
           logCount: Number(logCount) || 0,
+          birthday: birthday || null,
           notes: notes || null,
           emergencyContact:
             emergencyName && emergencyPhone
@@ -478,6 +487,9 @@ export default function ProfilePage() {
           totalSpend={me.totalSpend ?? 0}
         />
 
+        {/* 補償金 / 禮金 卡 */}
+        <CreditCard balance={me.creditBalance ?? 0} liff={liff} />
+
         {/* Admin / Boss / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
         {((me.roles ?? [me.role]).includes("admin") ||
           (me.roles ?? [me.role]).includes("boss")) && (
@@ -630,6 +642,19 @@ export default function ProfilePage() {
                   className="text-center"
                 />
               </div>
+            </div>
+            <div>
+              <Label>
+                生日
+                <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
+                  （生日當天自動發放禮金 🎂）
+                </span>
+              </Label>
+              <Input
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
             </div>
             <div>
               <Label>
@@ -1024,6 +1049,151 @@ function BookingHistoryList({
         );
       })}
     </div>
+  );
+}
+
+// ── 補償金 / 禮金 卡 ─────────────────────────────────────
+interface CreditTx {
+  id: string;
+  amount: number;
+  reason: string;
+  note: string | null;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+const REASON_LABELS: Record<string, { label: string; emoji: string }> = {
+  birthday: { label: "生日禮金", emoji: "🎂" },
+  vip_upgrade: { label: "升等獎勵", emoji: "✨" },
+  refund: { label: "退費補償", emoji: "🔄" },
+  used: { label: "訂單折抵", emoji: "💸" },
+  admin_adjust: { label: "管理員調整", emoji: "🛠" },
+};
+
+function CreditCard({
+  balance,
+  liff,
+}: {
+  balance: number;
+  liff: ReturnType<typeof useLiff>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [txs, setTxs] = useState<CreditTx[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function openDialog() {
+    setOpen(true);
+    if (txs === null) {
+      setLoading(true);
+      try {
+        const r = await liff.fetchWithAuth<{
+          balance: number;
+          txs: CreditTx[];
+        }>("/api/me/credits");
+        setTxs(r.txs);
+      } catch {
+        setTxs([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
+
+  return (
+    <>
+      <Card
+        className="cursor-pointer border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 transition-colors hover:bg-[var(--color-coral)]/10"
+        onClick={openDialog}
+      >
+        <CardContent className="flex items-center gap-3 p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-coral)]/20 text-2xl">
+            🎁
+          </div>
+          <div className="flex-1">
+            <div className="text-[11px] text-[var(--muted-foreground)]">
+              我的補償金 / 禮金
+            </div>
+            <div className="text-xl font-bold tabular text-[var(--color-coral)]">
+              NT$ {balance.toLocaleString()}
+            </div>
+            <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+              生日 +100、升等 LV2 +200、退費可轉禮金
+            </div>
+          </div>
+          <span className="text-[var(--color-coral)]">▸</span>
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>禮金紀錄</DialogTitle>
+          </DialogHeader>
+          <div className="rounded-md bg-[var(--color-coral)]/10 p-3 text-center">
+            <div className="text-[11px] text-[var(--muted-foreground)]">
+              目前餘額
+            </div>
+            <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
+              NT$ {balance.toLocaleString()}
+            </div>
+          </div>
+          {loading ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              載入中...
+            </div>
+          ) : !txs || txs.length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              尚無紀錄。生日當天或會員升等時系統會自動發放禮金。
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {txs.map((t) => {
+                const meta = REASON_LABELS[t.reason] ?? {
+                  label: t.reason,
+                  emoji: "·",
+                };
+                const positive = t.amount >= 0;
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] p-2.5"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-lg">{meta.emoji}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold">
+                          {meta.label}
+                        </div>
+                        <div className="text-[10px] text-[var(--muted-foreground)] tabular">
+                          {new Date(t.createdAt).toLocaleDateString("zh-TW")}
+                          {t.note && ` · ${t.note}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className={cn(
+                          "text-sm font-bold tabular",
+                          positive
+                            ? "text-[var(--color-phosphor)]"
+                            : "text-[var(--color-coral)]",
+                        )}
+                      >
+                        {positive ? "+" : ""}
+                        {t.amount.toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[var(--muted-foreground)] tabular">
+                        餘 {t.balanceAfter.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
