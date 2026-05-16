@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "admin"]);
+  const role = requireRole(auth.user, ["coach", "boss", "admin"]);
   if (!role.ok) return NextResponse.json({ error: role.message }, { status: role.status });
 
   const today = new Date();
@@ -71,8 +71,11 @@ export async function GET(req: NextRequest) {
           rentalGear: b.rentalGear,
           totalAmount: b.totalAmount,
           paidAmount: b.paidAmount,
+          paymentStatus: b.paymentStatus,
           notes: b.notes,
           participants: b.participants,
+          participantDetails: b.participantDetails, // 潛伴明細
+          status: b.status, // confirmed / completed / no_show 等
           overCapacity: b.overCapacity,
           blacklisted: b.user.blacklisted,
           vipLevel: b.user.vipLevel,

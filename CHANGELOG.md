@@ -2,6 +2,26 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260515_56 — 2026-05-15 (Phase B 教練端：到場勾選 + 學員潛伴資訊)
+
+### `/liff/coach/today` 大改
+- 每張訂單卡顯示**潛伴清單**（從 `participantDetails` 抓）：姓名 / 證照 / 關係 / 電話
+- 多人預約有 `Users` icon + 人數 badge
+- 新增「**✓ 到場 / ✗ 缺席**」兩個按鈕：
+  - 到場 → booking status = completed + user.logCount += tankCount + **自動重算 vipLevel**
+  - 缺席 → booking status = no_show + user.noShowCount += 1
+- 卡片顏色依狀態：completed 螢光綠、no_show 紅+半透明
+- 移除「→ 付款核對」入口（教練不碰款項，由老闆做）
+- 加說明「收款核對由老闆 / admin 處理」
+
+### 新 API
+- `POST /api/coach/bookings/[id]/attendance` body `{action: "completed" | "no_show"}`
+  - 權限：coach / boss / admin
+  - 自動 increment logCount + 重算 vipLevel（用 DB 自訂等級設定）
+
+### Permission
+- `/api/coach/today` 開放給 boss + admin（不只 coach）— 老闆也想看當日狀況
+
 ## 20260515_55 — 2026-05-15 (會員等級可由 admin 自訂)
 
 ### 新增 admin 設定頁
