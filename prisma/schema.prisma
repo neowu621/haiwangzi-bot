@@ -299,6 +299,11 @@ model Booking {
   cancellationReason String?        @map("cancellation_reason")
   refundAmount       Int?           @map("refund_amount")
   refundedAt         DateTime?      @map("refunded_at") @db.Timestamptz
+  // 退款方式：cash = 退現金 / credit = 轉成禮金（user.creditBalance）
+  refundMethod       String?        @map("refund_method") @db.VarChar(16)
+  // 預約時使用的禮金（從 user.creditBalance 扣，CreditTx 有對應紀錄）
+  // 取消時若 paidAmount>0 系統會自動把這部份退回 creditBalance
+  creditUsed         Int            @default(0) @map("credit_used")
   agreedToTermsAt    DateTime       @map("agreed_to_terms_at") @db.Timestamptz
   // 超賣標記：booking 接受但容量已滿，提醒教練處理
   overCapacity       Boolean        @default(false) @map("over_capacity")

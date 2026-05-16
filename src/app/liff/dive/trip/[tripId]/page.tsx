@@ -122,6 +122,9 @@ export default function TripBookingPage({
   // 付款方式：cash 現場 / bank 轉帳 / linepay LINE Pay / other 其他
   // 日潛預設「現場」(當天結算)；客戶可改成轉帳
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | "linepay" | "other">("cash");
+  // 禮金折抵：可用餘額 + 本次折抵
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [creditUsed, setCreditUsed] = useState(0);
 
   // 同伴
   const [savedCompanions, setSavedCompanions] = useState<Companion[]>([]);
@@ -160,6 +163,7 @@ export default function TripBookingPage({
         cert: typeof CERTS[number] | null;
         certNumber: string | null;
         logCount: number;
+        creditBalance: number;
         emergencyContact: {
           name: string;
           phone: string;
@@ -178,6 +182,7 @@ export default function TripBookingPage({
           setEmergencyRel(me.emergencyContact.relationship);
         }
         setSavedCompanions(me.companions ?? []);
+        setCreditBalance(me.creditBalance ?? 0);
       })
       .catch(() => {})
       .finally(() => setMeLoaded(true));
@@ -303,6 +308,7 @@ export default function TripBookingPage({
         })),
         notes: notes || undefined,
         paymentMethod, // 客戶選的付款方式
+        creditUsed: Math.min(creditUsed, creditBalance, total),
         agreedToTerms: true as const,
         realName,
         phone,
@@ -594,6 +600,47 @@ export default function TripBookingPage({
                 {paymentMethod === "linepay" && "（即將開放）目前先選現場或轉帳"}
               </div>
             </div>
+
+            {/* 禮金折抵 — 有餘額才顯示 */}
+            {creditBalance > 0 && (
+              <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs">
+                    🎁 使用禮金折抵
+                    <span className="ml-1 font-normal text-[var(--muted-foreground)]">
+                      （餘額 NT$ {creditBalance.toLocaleString()}）
+                    </span>
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCreditUsed(Math.min(creditBalance, total))
+                    }
+                    className="rounded-full bg-[var(--color-coral)] px-2 py-0.5 text-[10px] font-semibold text-white"
+                  >
+                    全部用
+                  </button>
+                </div>
+                <Input
+                  type="number"
+                  min={0}
+                  max={Math.min(creditBalance, total)}
+                  value={creditUsed || ""}
+                  onChange={(e) => {
+                    const v = Math.max(0, Number(e.target.value) || 0);
+                    setCreditUsed(Math.min(v, creditBalance, total));
+                  }}
+                  placeholder="NT$ 0"
+                  className="text-center text-base font-bold"
+                />
+                {creditUsed > 0 && (
+                  <div className="mt-1 text-[10px] tabular text-[var(--color-coral)]">
+                    折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
+                    {(total - creditUsed).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </CollapsibleCard>
 

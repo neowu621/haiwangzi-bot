@@ -63,12 +63,28 @@ export default function TourDetailPage({
   const [notes, setNotes] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // 禮金折抵
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [creditUsed, setCreditUsed] = useState(0);
 
   useEffect(() => {
     liff
       .fetchWithAuth<TourDetail>(`/api/tours/${packageId}`)
       .then(setTour)
       .catch((e) => setError(e.message));
+    // 取自己 creditBalance
+    liff
+      .fetchWithAuth<{
+        creditBalance: number;
+        realName: string | null;
+        phone: string | null;
+      }>("/api/me")
+      .then((me) => {
+        setCreditBalance(me.creditBalance ?? 0);
+        if (me.realName) setRealName(me.realName);
+        if (me.phone) setPhone(formatPhoneTW(me.phone));
+      })
+      .catch(() => {});
   }, [packageId, liff]);
 
   const total = useMemo(() => {
@@ -104,6 +120,7 @@ export default function TourDetailPage({
             (k) => selectedAddons[k],
           ),
           notes: notes || undefined,
+          creditUsed: Math.min(creditUsed, creditBalance, total),
           agreedToTerms: true as const,
           realName,
           phone,
@@ -394,6 +411,47 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
+        {/* 禮金折抵 — 有餘額才顯示 */}
+        {creditBalance > 0 && (
+          <Card className="border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-semibold">
+                  🎁 使用禮金折抵
+                  <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
+                    （餘額 NT$ {creditBalance.toLocaleString()}）
+                  </span>
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setCreditUsed(Math.min(creditBalance, total))}
+                  className="rounded-full bg-[var(--color-coral)] px-3 py-0.5 text-[11px] font-semibold text-white"
+                >
+                  全部用
+                </button>
+              </div>
+              <Input
+                type="number"
+                min={0}
+                max={Math.min(creditBalance, total)}
+                value={creditUsed || ""}
+                onChange={(e) => {
+                  const v = Math.max(0, Number(e.target.value) || 0);
+                  setCreditUsed(Math.min(v, creditBalance, total));
+                }}
+                placeholder="NT$ 0"
+                className="text-center text-lg font-bold"
+              />
+              {creditUsed > 0 && (
+                <div className="mt-2 text-xs tabular text-[var(--color-coral)] font-semibold">
+                  折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
+                  {(total - creditUsed).toLocaleString()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="sticky bottom-4 z-10">
           <CardContent className="p-4">
             <div className="flex items-baseline justify-between">
@@ -406,6 +464,11 @@ export default function TourDetailPage({
                 </div>
                 <div className="mt-0.5 text-xs text-[var(--muted-foreground)] tabular">
                   訂金 NT$ {depositTotal.toLocaleString()}
+                  {creditUsed > 0 && (
+                    <span className="ml-2 text-[var(--color-coral)]">
+                      · 已折抵 NT$ {creditUsed.toLocaleString()}
+                    </span>
+                  )}
                 </div>
               </div>
               <Button

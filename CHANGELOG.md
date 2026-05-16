@@ -2,6 +2,37 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260517_60 — 2026-05-17 (預約折抵禮金 + 退費轉禮金)
+
+### 🎯 兩個用例都接上了
+
+**用例 A：預約時用禮金折抵（客戶端）**
+- `/liff/dive/trip/[id]` 和 `/liff/tour/[id]` — 表單下方多了「🎁 使用禮金折抵」卡（餘額 > 0 才顯示）
+- 客戶可輸入金額或按「全部用」一鍵填滿
+- 後端在 booking POST 時：
+  - 驗證 `creditUsed ≤ user.creditBalance` 且 `≤ totalAmount`
+  - 寫入 `Booking.creditUsed` + `paidAmount = creditUsed`
+  - 呼叫 `grantCredit(-creditUsed, reason="used", refId=bookingId)` 扣餘額 + 寫 CreditTx
+  - 折抵後若 ≥ totalAmount → paymentStatus=fully_paid；≥ depositAmount → deposit_paid + status=confirmed
+
+**用例 B：退費可轉禮金（boss/admin 端）**
+- `/liff/admin/bookings` 編輯 dialog → 訂單若有 `paidAmount>0` 且未退款 → 新增「💸 退款處理」摺疊區塊
+- 兩個按鈕：「🎁 轉禮金」（立即入帳）、「💵 退現金」（線下匯款）
+- 後端 `POST /api/admin/bookings/[id]/refund`：
+  - 設 `paymentStatus=refunded`, `refundAmount`, `refundedAt`, `refundMethod`
+  - method=credit → 呼叫 `grantCredit(+amount, reason="refund")` 入禮金
+  - method=cash → 只標記，老闆/admin 須線下退款
+  - 退款上限：已付金額
+
+### Schema 變更（純 additive）
+- `Booking.creditUsed Int @default(0)` — 預約時用了多少禮金
+- `Booking.refundMethod String?` — cash / credit
+- Zeabur 重啟自動 `prisma db push`
+
+### 權限
+- 預約折抵：任何登入 user
+- 退款處理：boss + admin
+
 ## 20260516_59 — 2026-05-16 (Demo 環境支援)
 
 ### 三模式架構

@@ -607,6 +607,24 @@ function AdminBookingsContent() {
                 </select>
               </div>
 
+              {/* 退款區塊 — 有 paidAmount 才顯示 */}
+              {editing.paidAmount > 0 &&
+                editing.paymentStatus !== "refunded" && (
+                  <RefundSection
+                    bookingId={editing.id}
+                    paidAmount={editing.paidAmount}
+                    onDone={(updated) => {
+                      setEditing({ ...editing, ...updated });
+                      // 同步列表上的這筆
+                      setBookings((arr) =>
+                        arr.map((x) =>
+                          x.id === editing.id ? { ...x, ...updated } : x,
+                        ),
+                      );
+                    }}
+                  />
+                )}
+
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)}>
                   取消
@@ -620,5 +638,162 @@ function AdminBookingsContent() {
         </DialogContent>
       </Dialog>
     </LiffShell>
+  );
+}
+
+// ── 退款區塊 — 老闆/admin 用 ────────────────────────────
+function RefundSection({
+  bookingId,
+  paidAmount,
+  onDone,
+}: {
+  bookingId: string;
+  paidAmount: number;
+  onDone: (updated: {
+    paymentStatus: string;
+    paidAmount?: number;
+  }) => void;
+}) {
+  const liff = useLiff();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(String(paidAmount));
+  const [method, setMethod] = useState<"cash" | "credit">("credit");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+
+  async function doRefund() {
+    const n = Number(amount);
+    if (!n || isNaN(n) || n <= 0) {
+      setErr("請輸入退款金額");
+      return;
+    }
+    if (n > paidAmount) {
+      setErr(`退款金額不可超過已付金額 NT$ ${paidAmount.toLocaleString()}`);
+      return;
+    }
+    if (
+      !confirm(
+        `確定退款 NT$ ${n.toLocaleString()} ${
+          method === "credit" ? "為禮金" : "為現金（須線下退款）"
+        }?`,
+      )
+    )
+      return;
+    setBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      await liff.fetchWithAuth(`/api/admin/bookings/${bookingId}/refund`, {
+        method: "POST",
+        body: JSON.stringify({
+          amount: n,
+          method,
+          reason: reason || undefined,
+        }),
+      });
+      setOk(
+        method === "credit"
+          ? `已退 NT$ ${n.toLocaleString()} 為禮金 ✓`
+          : `已標記退現金 NT$ ${n.toLocaleString()}（請線下匯款）`,
+      );
+      onDone({ paymentStatus: "refunded" });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-2.5 space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between"
+      >
+        <span className="text-sm font-semibold text-[var(--color-coral)]">
+          💸 退款處理（已付 NT$ {paidAmount.toLocaleString()}）
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </button>
+      {open && (
+        <div className="space-y-2 pt-1">
+          <div>
+            <Label className="text-[10px]">退款方式</Label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMethod("credit")}
+                className={
+                  method === "credit"
+                    ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 px-2 py-2 text-xs font-semibold"
+                    : "rounded-md border border-[var(--border)] px-2 py-2 text-xs"
+                }
+              >
+                🎁 轉禮金
+                <div className="mt-0.5 text-[9px] font-normal text-[var(--muted-foreground)]">
+                  立即入帳，下次可折抵
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMethod("cash")}
+                className={
+                  method === "cash"
+                    ? "rounded-md border-2 border-[var(--color-coral)] bg-[var(--color-coral)]/15 px-2 py-2 text-xs font-semibold"
+                    : "rounded-md border border-[var(--border)] px-2 py-2 text-xs"
+                }
+              >
+                💵 退現金
+                <div className="mt-0.5 text-[9px] font-normal text-[var(--muted-foreground)]">
+                  須線下匯款
+                </div>
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px]">退款金額 (NT$)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={paidAmount}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="text-center"
+              />
+            </div>
+            <div>
+              <Label className="text-[10px]">原因（選填）</Label>
+              <Input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="客戶因故無法參加"
+              />
+            </div>
+          </div>
+          <Button
+            size="sm"
+            className="w-full bg-[var(--color-coral)] text-white"
+            disabled={busy}
+            onClick={doRefund}
+          >
+            {busy ? "處理中..." : `確認退款 NT$ ${Number(amount || 0).toLocaleString()}`}
+          </Button>
+          {err && (
+            <div className="text-[11px] text-[var(--color-coral)]">{err}</div>
+          )}
+          {ok && (
+            <div className="text-[11px] text-[var(--color-phosphor)]">{ok}</div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
