@@ -2,6 +2,35 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260516_57 — 2026-05-16 (拆兩個潛水次數欄位)
+
+### 背景
+原本只有一個 `logCount`（使用者自填）—— 但這個數字在 VIP 升等用，使用者可以「自填 999」灌水。
+所以拆成兩個欄位，VIP 等級只看可驗證的那個。
+
+### Schema
+- User 新增 `haiwangziLogCount Int @default(0)` — 在本系統 booking 完成（教練勾到場）才會 +1
+- 既有 `logCount` 保留 —— 改成「使用者自填的總經驗（含其他單位累積）」
+
+### 影響範圍
+- **Attendance**（`/api/coach/bookings/[id]/attendance`）
+  - 「到場」改成 `haiwangziLogCount += addLogs`，不再動 `logCount`
+  - VIP 重算用 `haiwangziLogCount`
+- **VIP 自動升等**（`/api/coach/payment-proofs` 的 `promoteVipIfNeeded`）
+  - 收款累積消費更新時，VIP 計算也改用 `haiwangziLogCount`
+- **Admin user 編輯**（`/api/admin/users`、`/liff/admin/users`）
+  - PatchSchema 接受 `haiwangziLogCount`
+  - 編輯 dialog 顯示兩個輸入框（左：自填總經驗 / 右：海王子累積，計等級用）
+  - 列表行顯示「海王子 N 支 (自填 M)」
+  - 自動重算 VIP 改看 `haiwangziLogCount`（不再看 `logCount`）
+- **個人頁**（`/liff/profile`、`/api/me`）
+  - `/api/me` 回傳 `haiwangziLogCount`
+  - 首屏「潛水次數」改成「海王子累積」+ 副標「含他處 N 支」
+  - VipTierCard 改用 `haiwangziLogCount` 計進度
+
+### 為什麼
+讓 VIP 等級只能透過「在海王子實際下水」來升等，避免自填灌水導致龍蝦變鯨鯊。
+
 ## 20260515_56 — 2026-05-15 (Phase B 教練端：到場勾選 + 學員潛伴資訊)
 
 ### `/liff/coach/today` 大改

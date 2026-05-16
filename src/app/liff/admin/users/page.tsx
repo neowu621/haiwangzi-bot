@@ -36,6 +36,7 @@ interface AdminUser {
   cert: Cert | null;
   certNumber: string | null;
   logCount: number;
+  haiwangziLogCount: number;
   notes: string | null;
   blacklisted: boolean;
   blacklistReason: string | null;
@@ -174,6 +175,7 @@ export default function AdminUsersPage() {
             cert: editing.cert,
             certNumber: editing.certNumber,
             logCount: editing.logCount,
+            haiwangziLogCount: editing.haiwangziLogCount,
             notes: editing.notes,
             blacklisted: editing.blacklisted,
             blacklistReason: editing.blacklistReason,
@@ -305,7 +307,8 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="tabular text-[10px] text-[var(--muted-foreground)]">
                   {u.certNumber ? `${u.certNumber} · ` : ""}
-                  {u.logCount} logs
+                  海王子 {u.haiwangziLogCount ?? 0} 支
+                  {u.logCount > 0 && ` (自填 ${u.logCount})`}
                 </div>
                 {u.stats && u.stats.totalBookings > 0 && (
                   <div className="tabular text-[10px] text-[var(--muted-foreground)]">
@@ -496,19 +499,53 @@ export default function AdminUsersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">潛水紀錄數</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editing.logCount}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      logCount: Math.max(0, Number(e.target.value)),
-                    })
-                  }
-                />
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                <Label className="text-xs pt-1">潛水紀錄</Label>
+                <div className="space-y-1.5">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
+                    <div>
+                      <div className="text-[10px] text-[var(--muted-foreground)] mb-0.5">
+                        自填總經驗
+                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editing.logCount}
+                        onChange={(e) =>
+                          setEditing({
+                            ...editing,
+                            logCount: Math.max(0, Number(e.target.value)),
+                          })
+                        }
+                      />
+                    </div>
+                    <span className="pt-4 text-[var(--muted-foreground)]">
+                      /
+                    </span>
+                    <div>
+                      <div className="text-[10px] text-[var(--muted-foreground)] mb-0.5">
+                        海王子累積（計等級）
+                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editing.haiwangziLogCount ?? 0}
+                        onChange={(e) =>
+                          setEditing({
+                            ...editing,
+                            haiwangziLogCount: Math.max(
+                              0,
+                              Number(e.target.value),
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-[var(--muted-foreground)]">
+                    左：使用者自填（含他處經驗）。右：在本系統 booking 完成才累計，VIP 等級用這個。
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
@@ -541,7 +578,7 @@ export default function AdminUsersPage() {
                     ))}
                   </div>
                   <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-                    手動調整等級會被系統「核可款項時」覆寫，建議改 logCount 或 totalSpend 觸發自動升等
+                    手動調整等級會被系統「核可款項時」覆寫，建議改海王子累積或 totalSpend 觸發自動升等
                   </div>
                 </div>
               </div>

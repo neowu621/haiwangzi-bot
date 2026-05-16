@@ -47,16 +47,17 @@ export async function POST(
 
   try {
     if (parsed.data.action === "completed") {
-      // 算這筆 booking 加多少 logs
-      // daily booking: 每人加 trip.tankCount (一個本人 + 潛伴各自獨立) — 簡化只加本人
+      // 算這筆 booking 加多少 logs (海王子累積，不動使用者自填的 logCount)
+      // daily booking: 每人加 trip.tankCount × participants
       let addLogs = 0;
       if (booking.type === "daily") {
         const trip = await prisma.divingTrip.findUnique({
           where: { id: booking.refId },
         });
-        addLogs = trip?.tankCount ?? 1;
+        addLogs = (trip?.tankCount ?? 1) * booking.participants;
       } else {
-        addLogs = 1; // 潛水團一筆當 1 次
+        // 潛水團：每人算 1 趟（每團平均 N 潛由 trip 包定，這裡先簡化）
+        addLogs = booking.participants;
       }
       await prisma.$transaction([
         prisma.booking.update({
@@ -65,11 +66,12 @@ export async function POST(
         }),
         prisma.user.update({
           where: { lineUserId: booking.userId },
-          data: { logCount: { increment: addLogs } },
+          // 只加 haiwangziLogCount，不動 logCount (使用者自填的歷史經驗)
+          data: { haiwangziLogCount: { increment: addLogs } },
         }),
       ]);
 
-      // 重算 vipLevel
+      // 重算 vipLevel — 用 haiwangziLogCount (避免使用者自填灌水)
       const user = await prisma.user.findUnique({
         where: { lineUserId: booking.userId },
       });
@@ -81,7 +83,7 @@ export async function POST(
           ? normalizeVipTiers(cfg.vipTiers)
           : VIP_TIERS;
         const newLevel = computeVipLevel(
-          user.logCount,
+          user.haiwangziLogCount ?? 0,
           user.totalSpend ?? 0,
           tiers,
         );

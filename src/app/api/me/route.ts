@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     cert: u.cert,
     certNumber: u.certNumber,
     logCount: u.logCount,
+    haiwangziLogCount: u.haiwangziLogCount ?? 0,
     role: u.role,
     // 新版多重身分；空陣列 fallback 為 [role]
     roles: u.roles && u.roles.length > 0 ? u.roles : [u.role],

@@ -132,12 +132,17 @@ async function promoteVipIfNeeded(lineUserId: string, addAmount: number) {
   const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : VIP_TIERS;
 
   const newSpend = (user.totalSpend ?? 0) + addAmount;
-  const newLevel = computeVipLevel(user.logCount ?? 0, newSpend, tiers);
+  // 用海王子累積次數（user.haiwangziLogCount）算等級，避免自填 logCount 灌水
+  const newLevel = computeVipLevel(
+    user.haiwangziLogCount ?? 0,
+    newSpend,
+    tiers,
+  );
   const updates: Record<string, unknown> = { totalSpend: newSpend };
   if (newLevel !== user.vipLevel) {
     updates.vipLevel = newLevel;
     console.log(
-      `[vip] ${lineUserId} 升等 ${user.vipLevel} → ${newLevel} (logs=${user.logCount}, spend=${newSpend})`,
+      `[vip] ${lineUserId} 升等 ${user.vipLevel} → ${newLevel} (hwLogs=${user.haiwangziLogCount}, spend=${newSpend})`,
     );
   }
   await prisma.user.update({ where: { lineUserId }, data: updates });

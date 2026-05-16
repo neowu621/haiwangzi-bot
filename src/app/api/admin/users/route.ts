@@ -102,6 +102,8 @@ const PatchSchema = z.object({
   vipLevel: z.number().int().min(1).max(5).optional(),
   // admin 可手動調整累計消費（修正歷史資料用）
   totalSpend: z.number().int().min(0).optional(),
+  // admin 可手動調整海王子累積次數（修正歷史資料用）
+  haiwangziLogCount: z.number().int().min(0).optional(),
 });
 
 // POST /api/admin/users
@@ -153,23 +155,28 @@ export async function POST(req: NextRequest) {
       data.blacklistReason === "" ? null : data.blacklistReason;
   if (data.vipLevel !== undefined) patch.vipLevel = data.vipLevel;
   if (data.totalSpend !== undefined) patch.totalSpend = data.totalSpend;
+  if (data.haiwangziLogCount !== undefined)
+    patch.haiwangziLogCount = data.haiwangziLogCount;
 
-  // 若 admin 只改了 logCount 或 totalSpend，沒手動指定 vipLevel → 自動重算
+  // 若 admin 改了 haiwangziLogCount 或 totalSpend，沒手動指定 vipLevel → 自動重算
   if (
     data.vipLevel === undefined &&
-    (data.logCount !== undefined || data.totalSpend !== undefined)
+    (data.haiwangziLogCount !== undefined || data.totalSpend !== undefined)
   ) {
     const existing = await prisma.user.findUnique({
       where: { lineUserId: data.lineUserId },
     });
     if (existing) {
-      const finalLogs = data.logCount ?? existing.logCount;
+      // 用「海王子累積」次數計算，admin 改 logCount/totalSpend 不會直接觸發升等
+      // 升等只看 haiwangziLogCount 或 totalSpend
+      const finalHwLogs =
+        data.haiwangziLogCount ?? existing.haiwangziLogCount ?? 0;
       const finalSpend = data.totalSpend ?? existing.totalSpend ?? 0;
       const cfg = await prisma.siteConfig
         .findUnique({ where: { id: "default" } })
         .catch(() => null);
       const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : VIP_TIERS;
-      patch.vipLevel = computeVipLevel(finalLogs, finalSpend, tiers);
+      patch.vipLevel = computeVipLevel(finalHwLogs, finalSpend, tiers);
     }
   }
 

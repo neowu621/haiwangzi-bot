@@ -78,6 +78,7 @@ interface Me {
   cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
   certNumber: string | null;
   logCount: number;
+  haiwangziLogCount: number;
   role: string;
   // 多重身分
   roles: Array<"customer" | "coach" | "boss" | "admin">;
@@ -422,11 +423,16 @@ export default function ProfilePage() {
           <CardContent className="grid grid-cols-3 gap-2 p-3 text-center">
             <div className="rounded-lg px-1 py-1">
               <div className="text-xl font-bold tabular text-[var(--color-phosphor)]">
-                {me.logCount}
+                {me.haiwangziLogCount ?? 0}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                潛水次數
+                海王子累積
               </div>
+              {me.logCount > 0 && (
+                <div className="text-[9px] text-[var(--muted-foreground)] mt-0.5">
+                  含他處 {me.logCount} 支
+                </div>
+              )}
             </div>
             <button
               type="button"
@@ -465,10 +471,10 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* 海王子潛水會員等級卡 */}
+        {/* 海王子潛水會員等級卡 — 用海王子累積次數計算等級（防自填灌水）*/}
         <VipTierCard
           vipLevel={me.vipLevel ?? 1}
-          logCount={me.logCount}
+          haiwangziLogCount={me.haiwangziLogCount ?? 0}
           totalSpend={me.totalSpend ?? 0}
         />
 
@@ -823,11 +829,11 @@ export default function ProfilePage() {
 // ── 海王子潛水會員等級卡 ────────────────────────────
 function VipTierCard({
   vipLevel,
-  logCount,
+  haiwangziLogCount,
   totalSpend,
 }: {
   vipLevel: number;
-  logCount: number;
+  haiwangziLogCount: number;
   totalSpend: number;
 }) {
   // 從 /api/vip-tiers (公開) 拿 admin 自訂等級
@@ -841,7 +847,7 @@ function VipTierCard({
       .catch(() => {});
   }, []);
   const tier = getVipTier(vipLevel, tiers);
-  const progress = getNextTierProgress(logCount, totalSpend, tiers);
+  const progress = getNextTierProgress(haiwangziLogCount, totalSpend, tiers);
 
   return (
     <Card
@@ -865,7 +871,8 @@ function VipTierCard({
               </span>
             </div>
             <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)] tabular">
-              潛水 {logCount} 支 · 累計消費 NT$ {totalSpend.toLocaleString()}
+              海王子累積 {haiwangziLogCount} 支 · 累計消費 NT${" "}
+              {totalSpend.toLocaleString()}
             </div>
           </div>
         </div>

@@ -122,7 +122,12 @@ model User {
   emergencyContact Json?     @map("emergency_contact")
   cert             CertLevel?
   certNumber       String?   @map("cert_number") @db.VarChar(64)
+  // 「總經驗」潛水次數：使用者自填（含其他單位累積，不可驗證）
   logCount         Int       @default(0) @map("log_count")
+  // 「海王子累積」潛水次數：在本系統有 booking 完成（到場勾選）才會 +1
+  //   - 教練/老闆按「到場」時 += trip.tankCount × participants
+  //   - VIP 等級升等用這個欄位（避免使用者自填灌水）
+  haiwangziLogCount Int @default(0) @map("haiwangzi_log_count")
   // legacy 單一角色（保留以相容舊資料；新版改用 roles[] 陣列支援多重身分）
   role             UserRole  @default(customer)
   // 多重角色：一個 user 可同時是 customer + coach + admin
