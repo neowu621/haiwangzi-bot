@@ -2,6 +2,68 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260516_59 — 2026-05-16 (Demo 環境支援)
+
+### 三模式架構
+
+| 環境 | URL | DB | banner |
+|---|---|---|---|
+| Local Dev | localhost:3000 | docker pg | 黃色「💻 LOCAL」 |
+| Demo | haiwangzi-demo.zeabur.app | demo pg | 紫色「🎬 DEMO」 |
+| Production | haiwangzi.zeabur.app | prod pg | 無 |
+
+### 新增
+
+- **`prisma/seed-demo.ts`** — Demo 環境完整 seed
+  - 6 個 dev personas（生日、證照、角色完整）
+  - 6 個潛點 + 2 個教練（綁定 coach_1 / coach_2 user）
+  - 未來 21 天潛水場次 + 2 個潛水團
+  - customer_2 歷史訂單（completed / confirmed / tour deposit_paid 各一）
+  - customer_2 預存 NT$ 300 禮金（升等 + 生日歷史）
+  - admin 預存 NT$ 5000 禮金
+  - customer_1 生日設為今天（demo 生日禮金可立刻看到效果）
+  - 跑法：`npm run db:seed:demo`
+
+- **`/api/cron/reset-demo`** — Demo 每日 reset cron
+  - 清掉：bookings / payment proofs / credit txs / reminder logs / trip photos / [demo] trips & tours
+  - 重設：dev personas 的 logCount / vipLevel / creditBalance / companions
+  - 重灌：sites / coaches / trips / 1 tour / customer_2 + admin 預設禮金
+  - 保留：SiteConfig + MessageTemplate
+  - 安全閘：`RESET_DEMO_DAILY=1` 才執行；認證 `Bearer $CRON_SECRET`
+
+- **`NEXT_PUBLIC_APP_LABEL`** banner — Header 環境徽章
+  - LOCAL（黃 💻）/ DEMO（紫 🎬）/ STAGING（橘 🚧）/ DEV（黃 🧪 預設）
+  - prod 不設 → 無 banner
+
+### Zeabur 設定（user 要做）
+
+新增 service `haiwangzi-demo`：
+- repo: 同 `neowu621/haiwangzi-bot` master
+- 新增獨立 Postgres add-on
+- env 設：
+  ```
+  NEXT_PUBLIC_DEV_MODE=1
+  DEV_MODE_ENABLED=1
+  NEXT_PUBLIC_APP_LABEL=DEMO
+  RESET_DEMO_DAILY=1
+  CRON_SECRET=<生一個獨立的>
+  JWT_SECRET=<生一個獨立的>
+  LINE_LIFF_ID=<同 prod>
+  LINE_CHANNEL_ACCESS_TOKEN=<同 prod 或空白>
+  LINE_CHANNEL_SECRET=<同 prod 或空白>
+  R2_* + SMTP_* + GMAIL_USER + GMAIL_APP_PASSWORD（可選，要寄信/上傳才需要）
+  ```
+
+第一次部署後 SSH 進去跑：
+```
+npm run db:seed:demo
+```
+
+Cronicle 加新 job：
+- `GET https://haiwangzi-demo.zeabur.app/api/cron/reset-demo`
+- Header `Authorization: Bearer $DEMO_CRON_SECRET`
+- 每日台灣 4:00 AM
+
 ## 20260516_58 — 2026-05-16 (Dev 身分切換 + 補償金/禮金系統)
 
 ### 🎭 Dev 模式（6 虛擬身分）

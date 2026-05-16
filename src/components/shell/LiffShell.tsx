@@ -86,20 +86,37 @@ export function LiffShell({
         </div>
       </header>
 
-      {liff.mode === "mock" && (
-        <div className="flex items-center justify-between gap-2 bg-[var(--color-gold)] px-4 py-1 text-[11px] font-semibold text-[var(--color-ocean-deep)]">
-          <span>
-            🧪 Dev 模式 · {liff.profile?.displayName ?? "未選"}{" "}
-            <span className="opacity-60">({liff.profile?.userId})</span>
-          </span>
-          <Link
-            href="/dev-login"
-            className="rounded-full bg-[var(--color-ocean-deep)] px-2 py-0.5 text-[10px] text-[var(--color-gold)] hover:bg-[var(--color-ocean-deep)]/85"
-          >
-            切換身分
-          </Link>
-        </div>
-      )}
+      {liff.mode === "mock" &&
+        (() => {
+          // NEXT_PUBLIC_APP_LABEL: DEMO / LOCAL / STAGING ... 沒設就用 DEV
+          const label = process.env.NEXT_PUBLIC_APP_LABEL ?? "DEV";
+          // 不同 label 不同配色，避免一眼搞混
+          const styles: Record<string, { bg: string; fg: string; emoji: string }> = {
+            DEV: { bg: "var(--color-gold)", fg: "var(--color-ocean-deep)", emoji: "🧪" },
+            LOCAL: { bg: "var(--color-gold)", fg: "var(--color-ocean-deep)", emoji: "💻" },
+            DEMO: { bg: "#8B5CF6", fg: "#FFFFFF", emoji: "🎬" },
+            STAGING: { bg: "#F59E0B", fg: "#0A2342", emoji: "🚧" },
+          };
+          const s = styles[label] ?? styles.DEV;
+          return (
+            <div
+              className="flex items-center justify-between gap-2 px-4 py-1 text-[11px] font-semibold"
+              style={{ backgroundColor: s.bg, color: s.fg }}
+            >
+              <span>
+                {s.emoji} {label} 模式 ·{" "}
+                {liff.profile?.displayName ?? "未選"}{" "}
+                <span className="opacity-60">({liff.profile?.userId})</span>
+              </span>
+              <Link
+                href="/dev-login"
+                className="rounded-full bg-black/30 px-2 py-0.5 text-[10px] text-white hover:bg-black/50"
+              >
+                切換身分
+              </Link>
+            </div>
+          );
+        })()}
       {liff.error && (
         <div className="bg-[var(--color-coral)]/15 px-4 py-2 text-center text-xs text-[var(--color-coral)]">
           LIFF 錯誤: {liff.error}
