@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
-import { computeVipLevel } from "@/lib/vip-tier";
+import { computeVipLevel, normalizeVipTiers, VIP_TIERS } from "@/lib/vip-tier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -165,7 +165,11 @@ export async function POST(req: NextRequest) {
     if (existing) {
       const finalLogs = data.logCount ?? existing.logCount;
       const finalSpend = data.totalSpend ?? existing.totalSpend ?? 0;
-      patch.vipLevel = computeVipLevel(finalLogs, finalSpend);
+      const cfg = await prisma.siteConfig
+        .findUnique({ where: { id: "default" } })
+        .catch(() => null);
+      const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : VIP_TIERS;
+      patch.vipLevel = computeVipLevel(finalLogs, finalSpend, tiers);
     }
   }
 

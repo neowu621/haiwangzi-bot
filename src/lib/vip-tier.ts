@@ -5,8 +5,8 @@
  */
 
 export interface VipTier {
-  level: 1 | 2 | 3 | 4 | 5;
-  key: "shrimp" | "lobster" | "seaTurtle" | "mantaRay" | "whaleShark";
+  level: number; // 1-10 (admin 可調)
+  key: string; // 唯一識別字串，admin 可隨意命名
   name: string; // 中文名
   enName: string; // 英文名
   emoji: string;
@@ -104,48 +104,78 @@ export const VIP_TIER_MAP: Record<number, VipTier> = Object.fromEntries(
 
 /**
  * 計算用戶應有等級（OR 條件：潛次 or 消費金額 任一達標就升）
+ * @param tiers 自訂等級表（admin 設的），不傳就用內建預設
  */
 export function computeVipLevel(
   logCount: number,
   totalSpend: number,
-): VipTier["level"] {
+  tiers: VipTier[] = VIP_TIERS,
+): number {
+  if (tiers.length === 0) tiers = VIP_TIERS;
   // 從最高等級往下檢查
-  for (let i = VIP_TIERS.length - 1; i >= 0; i--) {
-    const tier = VIP_TIERS[i];
+  const sorted = [...tiers].sort((a, b) => b.level - a.level);
+  for (const tier of sorted) {
     if (logCount >= tier.minLogs || totalSpend >= tier.minSpend) {
       return tier.level;
     }
   }
-  return 1;
+  return sorted[sorted.length - 1]?.level ?? 1;
 }
 
 /**
  * 取得指定 level 的 tier 資訊
  */
-export function getVipTier(level: number): VipTier {
-  return VIP_TIER_MAP[level] ?? VIP_TIERS[0];
+export function getVipTier(level: number, tiers: VipTier[] = VIP_TIERS): VipTier {
+  const map = Object.fromEntries(tiers.map((t) => [t.level, t]));
+  return map[level] ?? tiers[0] ?? VIP_TIERS[0];
 }
 
 /**
- * 距離下一級還差多少（給「升等進度條」用）
- * 回傳：null = 已是最高，或 { nextTier, logsLeft, spendLeft }
+ * 距離下一級還差多少
  */
 export function getNextTierProgress(
   logCount: number,
   totalSpend: number,
+  tiers: VipTier[] = VIP_TIERS,
 ): {
   current: VipTier;
   next: VipTier;
   logsLeft: number;
   spendLeft: number;
 } | null {
-  const currentLevel = computeVipLevel(logCount, totalSpend);
-  if (currentLevel === 5) return null;
-  const next = VIP_TIER_MAP[currentLevel + 1];
+  if (tiers.length === 0) tiers = VIP_TIERS;
+  const sorted = [...tiers].sort((a, b) => a.level - b.level);
+  const currentLevel = computeVipLevel(logCount, totalSpend, sorted);
+  const maxLevel = sorted[sorted.length - 1].level;
+  if (currentLevel >= maxLevel) return null;
+  const current = sorted.find((t) => t.level === currentLevel) ?? sorted[0];
+  const next = sorted.find((t) => t.level > currentLevel) ?? sorted[sorted.length - 1];
   return {
-    current: VIP_TIER_MAP[currentLevel],
+    current,
     next,
     logsLeft: Math.max(0, next.minLogs - logCount),
     spendLeft: Math.max(0, next.minSpend - totalSpend),
   };
+}
+
+/**
+ * 從 DB SiteConfig.vipTiers (Json) 拿，回 fallback 內建預設
+ */
+export function normalizeVipTiers(raw: unknown): VipTier[] {
+  if (!Array.isArray(raw) || raw.length === 0) return VIP_TIERS;
+  try {
+    return (raw as VipTier[]).map((t) => ({
+      level: Number(t.level) as VipTier["level"],
+      key: t.key,
+      name: t.name,
+      enName: t.enName,
+      emoji: t.emoji,
+      minLogs: Math.max(0, Number(t.minLogs)),
+      minSpend: Math.max(0, Number(t.minSpend)),
+      benefits: Array.isArray(t.benefits) ? t.benefits : [],
+      color: t.color,
+    }));
+  } catch {
+    return VIP_TIERS;
+  }
 }

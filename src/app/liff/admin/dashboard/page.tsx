@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   MapPin,
   UserCog,
+  Award,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -125,6 +126,7 @@ export default function AdminDashboardPage() {
             <AdminLink href="/liff/admin/templates" Icon={MessageSquareText} label="訊息模板" />
             <AdminLink href="/liff/coach/media" Icon={Camera} label="動態管理" />
             <AdminLink href="/liff/admin/site-config" Icon={LayoutDashboard} label="首頁設定" />
+            <AdminLink href="/liff/admin/vip-tiers" Icon={Award} label="會員等級設定" />
             <AdminLink href="/liff/admin/reports" Icon={TrendingUp} label="營運報表" />
             <AdminLink href="/liff/admin/settings" Icon={Settings} label="系統設定" />
             <AdminLink href="/liff/coach/payment" Icon={AlertCircle} label="收款核對" />

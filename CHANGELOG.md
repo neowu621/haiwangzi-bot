@@ -2,6 +2,39 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260515_55 — 2026-05-15 (會員等級可由 admin 自訂)
+
+### 新增 admin 設定頁
+- `/liff/admin/vip-tiers` — 完整管理頁
+  - 每個等級可改：level / key / 中文名 / 英文名 / emoji / 主題色 / 門檻 / 福利清單
+  - 等級數量 1-10 可增可刪
+  - Emoji 預設 20 種快選；色彩預設 6 種快選 + color picker
+  - 「儲存」會自動**重算所有會員等級**，回報變動人數
+
+### Schema
+- `SiteConfig.vipTiers Json @default("[]")` 儲存自訂等級
+- 空陣列 → fallback 到內建 5 種預設
+
+### 新 API
+- `GET /api/vip-tiers` 公開：client 拿目前等級設定
+- `GET /api/admin/vip-tiers` admin/boss 可看
+- `POST /api/admin/vip-tiers` admin only：整批更新 + 重算
+- `DELETE /api/admin/vip-tiers` admin only：還原預設
+
+### 核心 helper 更新
+- `computeVipLevel(logs, spend, tiers?)` 加 tiers 參數
+- `getVipTier(level, tiers?)` 同上
+- `getNextTierProgress(logs, spend, tiers?)` 同上
+- `normalizeVipTiers(raw)` 解析 DB Json
+
+### 整合
+- 老闆核可款項時：讀 DB 設定算等級
+- admin 編輯會員 logCount/totalSpend：依 DB 設定 auto-promote
+- profile 會員卡：fetch `/api/vip-tiers` 動態取設定
+
+### Dashboard 入口
+- admin 主控台多「**會員等級設定**」入口（Award icon）
+
 ## 20260515_54 — 2026-05-15 (老闆角色 + 海王子潛水 5 等級會員)
 
 ### 新角色：boss 老闆

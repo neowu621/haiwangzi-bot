@@ -374,6 +374,11 @@ model SiteConfig {
   // true：cron 直接 cancel + 推通知給所有客戶（舊行為）
   weatherAutoCancel Boolean @default(false) @map("weather_auto_cancel")
 
+  // 5 等級會員設定（JSON array of VipTier objects）
+  // 結構：[{level, key, name, enName, emoji, minLogs, minSpend, benefits[], color}, ...]
+  // 空陣列 = 使用 src/lib/vip-tier.ts 內建預設
+  vipTiers Json @default("[]") @map("vip_tiers")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

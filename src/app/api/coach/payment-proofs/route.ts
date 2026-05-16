@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { sendEmail } from "@/lib/email/send";
 import { paymentReceivedEmail } from "@/lib/email/templates";
-import { computeVipLevel } from "@/lib/vip-tier";
+import { computeVipLevel, normalizeVipTiers, VIP_TIERS } from "@/lib/vip-tier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,8 +125,14 @@ export async function POST(req: NextRequest) {
 async function promoteVipIfNeeded(lineUserId: string, addAmount: number) {
   const user = await prisma.user.findUnique({ where: { lineUserId } });
   if (!user) return;
+  // 從 SiteConfig 讀 admin 自訂的等級設定（沒設用內建）
+  const cfg = await prisma.siteConfig
+    .findUnique({ where: { id: "default" } })
+    .catch(() => null);
+  const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : VIP_TIERS;
+
   const newSpend = (user.totalSpend ?? 0) + addAmount;
-  const newLevel = computeVipLevel(user.logCount ?? 0, newSpend);
+  const newLevel = computeVipLevel(user.logCount ?? 0, newSpend, tiers);
   const updates: Record<string, unknown> = { totalSpend: newSpend };
   if (newLevel !== user.vipLevel) {
     updates.vipLevel = newLevel;

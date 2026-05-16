@@ -35,7 +35,7 @@ import { BottomNav } from "@/components/shell/BottomNav";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
-import { getVipTier, getNextTierProgress } from "@/lib/vip-tier";
+import { getVipTier, getNextTierProgress, VIP_TIERS, type VipTier } from "@/lib/vip-tier";
 import { cn } from "@/lib/utils";
 
 interface Companion {
@@ -830,8 +830,18 @@ function VipTierCard({
   logCount: number;
   totalSpend: number;
 }) {
-  const tier = getVipTier(vipLevel);
-  const progress = getNextTierProgress(logCount, totalSpend);
+  // 從 /api/vip-tiers (公開) 拿 admin 自訂等級
+  const [tiers, setTiers] = useState<VipTier[]>(VIP_TIERS);
+  useEffect(() => {
+    fetch("/api/vip-tiers")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.tiers) && d.tiers.length > 0) setTiers(d.tiers);
+      })
+      .catch(() => {});
+  }, []);
+  const tier = getVipTier(vipLevel, tiers);
+  const progress = getNextTierProgress(logCount, totalSpend, tiers);
 
   return (
     <Card
