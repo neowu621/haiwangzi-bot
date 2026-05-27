@@ -442,10 +442,10 @@ export default function AdminTripsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {/* 日期 + 集合時間 */}
+            {/* 日期 + 集合時間（24 小時制雙 select） */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">日期</Label>
+                <Label className="mb-1 block text-xs">日期</Label>
                 <Input
                   type="date"
                   value={form.date}
@@ -453,21 +453,45 @@ export default function AdminTripsPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">集合時間</Label>
-                <Input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => {
-                    const time = e.target.value;
-                    setForm({ ...form, startTime: time, isNightDive: time >= "16:00" });
-                  }}
-                />
+                <Label className="mb-1 block text-xs">集合時間（24 小時）</Label>
+                <div className="flex items-center gap-1">
+                  <select
+                    className="flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    value={form.startTime.split(":")[0] ?? "08"}
+                    onChange={(e) => {
+                      const h = e.target.value;
+                      const m = form.startTime.split(":")[1] ?? "00";
+                      const time = `${h}:${m}`;
+                      setForm({ ...form, startTime: time, isNightDive: time >= "16:00" });
+                    }}
+                  >
+                    {Array.from({ length: 18 }, (_, i) => i + 5).map((h) => (
+                      <option key={h} value={String(h).padStart(2, "0")}>
+                        {String(h).padStart(2, "0")}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm font-bold text-[var(--muted-foreground)]">:</span>
+                  <select
+                    className="w-16 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    value={form.startTime.split(":")[1] ?? "00"}
+                    onChange={(e) => {
+                      const h = form.startTime.split(":")[0] ?? "08";
+                      const time = `${h}:${e.target.value}`;
+                      setForm({ ...form, startTime: time, isNightDive: time >= "16:00" });
+                    }}
+                  >
+                    {["00", "15", "30", "45"].map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* 場次狀態 — inline, label 左 pills 右 */}
-            <div className="grid grid-cols-[5rem_1fr] items-center gap-2">
-              <Label className="text-xs">場次狀態</Label>
+            {/* 場次狀態 */}
+            <div>
+              <Label className="mb-1 block text-xs">場次狀態</Label>
               <div className="flex gap-1.5">
                 {[
                   { value: "open", label: "開放" },
@@ -495,10 +519,10 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* 潛點: single-select pills */}
+            {/* 潛點 */}
             <div>
-              <Label className="text-xs">潛點</Label>
-              <div className="mt-1 flex flex-wrap gap-1.5">
+              <Label className="mb-1 block text-xs">潛點</Label>
+              <div className="flex flex-wrap gap-1.5">
                 {sites.length === 0
                   ? <span className="text-xs text-[var(--muted-foreground)]">載入中...</span>
                   : sites.map((s) => (
@@ -520,9 +544,9 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* 教練 — dropdown, inline */}
-            <div className="grid grid-cols-[5rem_1fr] items-center gap-2">
-              <Label className="text-xs">教練</Label>
+            {/* 教練 */}
+            <div>
+              <Label className="mb-1 block text-xs">教練</Label>
               <select
                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                 value={form.coachIds[0] ?? ""}
@@ -537,36 +561,39 @@ export default function AdminTripsPage() {
               </select>
             </div>
 
-            {/* 氣瓶數 — inline */}
-            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-              <Label className="text-xs">氣瓶數</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={form.tankCount}
-                onChange={(e) =>
-                  setForm({ ...form, tankCount: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })
-                }
-              />
+            {/* 氣瓶數 / 可參加人數 — label 上方，input 下方，左右並排 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block text-xs">氣瓶數</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.tankCount}
+                  onChange={(e) =>
+                    setForm({ ...form, tankCount: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })
+                  }
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">
+                  可參加人數
+                  <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">（0 = 無上限）</span>
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.capacity}
+                  onChange={(e) =>
+                    setForm({ ...form, capacity: Math.max(0, Number(e.target.value) || 0) })
+                  }
+                />
+              </div>
             </div>
 
-            {/* 可參加人數 — inline */}
-            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-              <Label className="text-xs">可參加人數<br /><span className="text-[10px] font-normal text-[var(--muted-foreground)]">（0 = 無上限）</span></Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={form.capacity}
-                onChange={(e) =>
-                  setForm({ ...form, capacity: Math.max(0, Number(e.target.value) || 0) })
-                }
-              />
-            </div>
-
-            {/* 費用設定 — no spinners */}
+            {/* 費用設定 — 每項各一行 */}
             <div>
-              <Label className="text-xs mb-1.5 block">費用設定 (NT$)</Label>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <Label className="mb-1.5 block text-xs">費用設定 (NT$)</Label>
+              <div className="space-y-2">
                 <div>
                   <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">基本費</div>
                   <Input
@@ -579,7 +606,7 @@ export default function AdminTripsPage() {
                   />
                 </div>
                 <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">加支費</div>
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">加支費（每瓶）</div>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -602,7 +629,7 @@ export default function AdminTripsPage() {
                     />
                   </div>
                 )}
-                <div className="col-span-2">
+                <div>
                   <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">其他費用</div>
                   <div className="flex gap-2">
                     <Input
