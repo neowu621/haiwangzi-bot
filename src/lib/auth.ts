@@ -14,20 +14,22 @@ export type AuthResult =
   | { ok: false; status: number; message: string };
 
 /**
- * 從 request 拿 LIFF idToken,驗簽 + 取/建 User row
+ * 從 request 拿 Bearer token，依 issuer 決定驗證路徑：
+ *  - iss = "haiwangzi-admin-web" → admin web JWT（HS256，伺服器端 secret）
+ *  - 其他 → LINE idToken（RS256，JWKS 驗簽）
  *
- * 兩種模式:
- *  1. Authorization: Bearer <idToken>      (LIFF API 呼叫時 client 會帶)
- *  2. ?lineUserId=Uxxx (dev only,production 不允許)
+ * 注意：issuer 檢查只是 decode（不驗簽），防止 admin token 誤跑進 LINE JWKS
+ * 讓錯誤訊息清晰（session 過期 vs idToken 無效）
  */
 export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
   const auth = req.headers.get("authorization");
   if (auth?.startsWith("Bearer ")) {
     const token = auth.slice(7);
-    // Try our own admin web JWT first
-    const ownResult = await tryVerifyAdminWebJwt(token);
-    if (ownResult.ok) return ownResult;
-    // Fall back to LINE idToken verification
+    if (looksLikeAdminWebJwt(token)) {
+      // admin web token：直接驗，不 fallthrough 到 LINE JWKS
+      return await tryVerifyAdminWebJwt(token);
+    }
+    // 其餘視為 LINE idToken
     return await verifyIdToken(token);
   }
 
@@ -48,23 +50,57 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
   return { ok: false, status: 401, message: "missing idToken" };
 }
 
+/**
+ * 用不驗簽的方式 decode JWT payload，檢查 iss 是否為 admin web token。
+ * 避免 admin token 被誤送進 LINE JWKS 驗證。
+ */
+function looksLikeAdminWebJwt(token: string): boolean {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8"),
+    );
+    return payload?.iss === "haiwangzi-admin-web";
+  } catch {
+    return false;
+  }
+}
+
 async function tryVerifyAdminWebJwt(token: string): Promise<AuthResult> {
   const secret = process.env.JWT_SECRET;
-  if (!secret) return { ok: false, status: 401, message: "no JWT_SECRET" };
+  if (!secret)
+    return { ok: false, status: 500, message: "JWT_SECRET not configured" };
+
+  // 先只驗簽（signature + expiry），DB 查詢分開處理讓錯誤更清晰
+  let lineUserId: string | undefined;
   try {
     const key = new TextEncoder().encode(secret);
     const { payload } = await jwtVerify(token, key, {
       issuer: "haiwangzi-admin-web",
     });
-    const lineUserId = payload.sub;
-    if (!lineUserId) return { ok: false, status: 401, message: "no sub" };
-    const user = await prisma.user.findUnique({ where: { lineUserId } });
-    if (!user) return { ok: false, status: 401, message: "user not found" };
-    await prisma.user.update({ where: { lineUserId }, data: { lastActiveAt: new Date() } });
-    return { ok: true, user, lineUserId };
+    lineUserId = payload.sub;
   } catch {
-    return { ok: false, status: 401, message: "not an admin web token" };
+    // 簽章錯誤或 token 過期 → 請重新登入
+    return {
+      ok: false,
+      status: 401,
+      message: "session expired, please log in again",
+    };
   }
+
+  if (!lineUserId)
+    return { ok: false, status: 401, message: "invalid admin token (no sub)" };
+
+  // DB 查詢（DB 錯誤不應誤導成 LINE auth 錯誤）
+  const user = await prisma.user.findUnique({ where: { lineUserId } });
+  if (!user)
+    return { ok: false, status: 401, message: "admin user not found" };
+  await prisma.user.update({
+    where: { lineUserId },
+    data: { lastActiveAt: new Date() },
+  });
+  return { ok: true, user, lineUserId };
 }
 
 export async function createAdminWebJwt(lineUserId: string): Promise<string> {
