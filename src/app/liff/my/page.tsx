@@ -242,6 +242,7 @@ export default function MyBookingsPage() {
 
       <EditBookingDialog
         booking={editing}
+        gearOptions={gearOptions}
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
@@ -580,10 +581,12 @@ function SectionCard({
 // ─── Edit Dialog ────────────────────────────────────────
 function EditBookingDialog({
   booking,
+  gearOptions,
   onClose,
   onSaved,
 }: {
   booking: MyBooking | null;
+  gearOptions: GearOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {

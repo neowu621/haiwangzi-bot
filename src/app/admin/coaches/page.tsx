@@ -56,7 +56,7 @@ export default function CoachesPage() {
       setLoading(true);
       const [coachData, cfgData] = await Promise.all([
         adminFetch<{ coaches: Coach[] }>("/api/admin/coaches?includeInactive=1"),
-        adminFetch<{ config: { defaultCoachFee?: number } }>("/api/admin/site-config").catch(() => ({ config: {} })),
+        adminFetch<{ config: { defaultCoachFee?: number } }>("/api/admin/site-config").catch(() => ({ config: {} as { defaultCoachFee?: number } })),
       ]);
       setCoaches(coachData.coaches);
       setDefaultFee(cfgData.config.defaultCoachFee ?? 1500);

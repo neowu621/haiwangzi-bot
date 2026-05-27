@@ -2,6 +2,25 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_74 — 2026-05-27 (修復 TypeScript 建構錯誤 + 換品牌 Logo)
+
+### 🔧 修復 TypeScript 建構錯誤（v66-v73 全部 build fail 原因）
+
+| 檔案 | 錯誤 | 修法 |
+|---|---|---|
+| `liff/my/page.tsx` | `EditBookingDialog` 引用 parent scope `gearOptions` | 改為 prop 傳入 |
+| `lib/audit.ts` | `metadata: Record<string, unknown>` 與 Prisma JSON 型別不符 | 明確 cast `as Prisma.InputJsonValue` |
+| `admin/coaches/page.tsx` | `.catch(() => ({}))` 型別推導過窄 | cast `as { defaultCoachFee?: number }` |
+| `admin/trips/page.tsx` | 同上 | cast `as { defaultTripPricing?: Partial<Pricing> }` |
+
+### 🖼 品牌 Logo 更換
+
+- `public/logo.png` — 新增潛水員插畫圖片
+- `Logo.tsx` — 改用 `next/image` 顯示 `/logo.png`（圓形裁切）
+- `AdminShell.tsx` — 側欄左上角從 🤿 emoji 改為品牌 logo 圖片
+
+---
+
 ## 20260527_73 — 2026-05-27 (後台側欄顯示登入帳號資訊)
 
 - 登入成功後將使用者資訊（姓名、角色）存入 `localStorage`

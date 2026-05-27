@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export interface AuditParams {
   actorId?: string;
@@ -15,7 +16,17 @@ export interface AuditParams {
  */
 export async function logAudit(params: AuditParams): Promise<void> {
   try {
-    await prisma.auditLog.create({ data: params });
+    await prisma.auditLog.create({
+      data: {
+        actorId: params.actorId,
+        actorName: params.actorName,
+        action: params.action,
+        targetType: params.targetType,
+        targetId: params.targetId,
+        targetLabel: params.targetLabel,
+        metadata: params.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
   } catch {
     // 日誌失敗不中斷主流程
   }

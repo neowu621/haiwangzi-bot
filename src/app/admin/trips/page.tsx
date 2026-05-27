@@ -109,7 +109,7 @@ export default function AdminTripsPage() {
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches").catch(() => ({
         coaches: [],
       })),
-      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing> } }>("/api/admin/site-config").catch(() => ({ config: {} })),
+      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing> } }>("/api/admin/site-config").catch(() => ({ config: {} as { defaultTripPricing?: Partial<Pricing> } })),
     ])
       .then(([t, s, c, cfg]) => {
         setTrips(t.trips);

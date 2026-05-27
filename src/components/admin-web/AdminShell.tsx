@@ -97,7 +97,8 @@ export function AdminShell({
       <div className="px-4 py-4">
         {/* Brand row */}
         <div className="flex items-center gap-2.5 mb-3">
-          <span className="text-2xl">🤿</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="海王子" width={36} height={36} style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           <div>
             <div
               className="text-sm font-bold"
