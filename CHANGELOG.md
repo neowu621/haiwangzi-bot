@@ -2,6 +2,15 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_90 — 2026-05-28 (DB 欄位安全補丁 — 修復 LIFF 401 / users.code 缺欄)
+
+### 緊急修復
+- **根本原因**：`prisma db push` 在生產容器啟動時靜默失敗（`|| echo WARNING`），導致 `users.code` 等欄位從未被加入資料庫，而 Prisma Client 卻預期這些欄位存在 → 所有 `prisma.user.*` 查詢拋出 `column does not exist` → LIFF 401 / 資料看似消失
+- **資料安全**：**資料完全未遺失**，DB 中所有 users / bookings / trips / tours 記錄均完好
+- 新增 `scripts/migrate-safety.js`：使用 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`（冪等）直接補上關鍵欄位，不依賴 `prisma db push` 是否成功
+- `docker-entrypoint.sh` 更新啟動順序：`migrate-safety` → `db push` → `backfill-codes` → `node server.js`
+- 涵蓋欄位：`users.code VARCHAR(12)`、`diving_trips/tour_packages/bookings.code VARCHAR(12)`
+
 ## 20260528_89 — 2026-05-28 (全站時區統一 Asia/Taipei GMT+8)
 
 ### 修正
