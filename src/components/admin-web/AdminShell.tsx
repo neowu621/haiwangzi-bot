@@ -101,10 +101,10 @@ export function AdminShell({
           <img src="/logo.png" alt="海王子" width={36} height={36} style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           <div>
             <div
-              className="text-sm font-bold"
+              className="text-sm font-bold leading-tight"
               style={{ color: "var(--color-phosphor)" }}
             >
-              海王子
+              海王子潛水團
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px]" style={{ color: "rgba(230,240,255,0.5)" }}>

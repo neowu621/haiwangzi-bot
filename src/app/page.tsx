@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           <Logo size={40} />
           <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold tracking-wider">海王子</span>
+            <span className="text-base font-bold tracking-wider">海王子潛水團</span>
             <span className="text-[10px] tracking-[0.2em] opacity-70">
               DIVING TEAM
             </span>
