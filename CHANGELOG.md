@@ -2,6 +2,17 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_85 — 2026-05-28 (補發所有舊資料編號)
+
+### 功能
+- `GET /api/admin/backfill-codes`：查詢尚未補發的筆數（各類型分別顯示）
+- `POST /api/admin/backfill-codes`：對所有缺少 code 的記錄補發新格式編號，使用各自 `createdAt` 日期
+- `/admin/settings` 新增「🔢 補發編號」區塊：查詢 → 預覽缺少筆數 → 一鍵補發 → 顯示結果
+
+### 邏輯
+- `code-gen.ts` 新增 `genMemberCodeForDate / genTripCodeForDate / genTourCodeForDate / genBookingCodeForDate`（接受 Date 參數，使用指定日期而非今天）
+- 逐筆補發，失敗的記入 errors 欄位，不中斷整批
+
 ## 20260528_84 — 2026-05-28 (編號格式統一改為 {P}{YYYYMMDD}-{XX})
 
 ### 編號格式
