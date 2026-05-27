@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { genTourCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,8 +60,10 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
   try {
+    const code = await genTourCode();
     const tour = await prisma.tourPackage.create({
       data: {
+        code,
         title: data.title,
         destination: data.destination,
         dateStart: new Date(data.dateStart),

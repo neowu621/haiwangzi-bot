@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { genTripCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,8 +98,10 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
 
   try {
+    const code = await genTripCode();
     const trip = await prisma.divingTrip.create({
       data: {
+        code,
         date: new Date(data.date),
         startTime: data.startTime,
         isNightDive: data.isNightDive,

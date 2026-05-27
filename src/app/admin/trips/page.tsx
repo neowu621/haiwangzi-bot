@@ -26,6 +26,7 @@ interface Pricing {
 
 interface Trip {
   id: string;
+  code?: string | null;
   date: string;
   startTime: string;
   isNightDive: boolean;
@@ -296,6 +297,7 @@ export default function AdminTripsPage() {
                     className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}
                   >
+                    <th className="px-4 py-3 font-medium">編號</th>
                     <th className="px-4 py-3 font-medium">日期</th>
                     <th className="px-4 py-3 font-medium">時段</th>
                     <th className="px-4 py-3 font-medium">地點</th>
@@ -325,6 +327,11 @@ export default function AdminTripsPage() {
                           : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
                       }}
                     >
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
+                          {trip.code ?? "—"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 tabular-nums font-medium">
                         {trip.date.slice(0, 10)}
                       </td>
@@ -408,7 +415,7 @@ export default function AdminTripsPage() {
                   {trips.length === 0 && (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         沒有場次資料

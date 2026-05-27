@@ -2,6 +2,27 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_81 — 2026-05-28 (唯一編號：訂單 O-、場次 D-、潛水團 T-)
+
+### Schema 新增欄位
+- `Booking.code`：`O-XXXXXX`（6位大寫英數，唯一）
+- `DivingTrip.code`：`D-XXXXXX`（6位大寫英數，唯一）
+- `TourPackage.code`：`T-XXXXXX`（6位大寫英數，唯一）
+- 欄位為 nullable（舊有資料不受影響）；新建立的紀錄自動產生唯一編號
+
+### API 更新
+- `POST /api/admin/trips`、`/api/admin/tours`、`/api/bookings/daily`、`/api/bookings/tour` 建立時自動呼叫 `code-gen.ts` 產生唯一碼
+- `GET /api/admin/bookings/by-trip` 成員列表加入 `code` 欄位
+
+### 後台 UI
+- 日潛場次列表：新增「編號」欄（D-XXXXXX，磷光綠字體）
+- 潛水團列表：新增「編號」欄（T-XXXXXX）
+- 訂單管理（依場次）展開成員：新增「訂單編號」欄（O-XXXXXX）
+- 訂單管理（全部訂單）：新增「訂單編號」欄
+- 訂單詳情對話框：右上角顯示訂單編號
+
+---
+
 ## 20260528_80 — 2026-05-28 (新增/編輯場次對話框 UI 重整)
 
 ### 新增/編輯日潛水場次對話框

@@ -7,6 +7,7 @@ import { buildFlexByKey } from "@/lib/flex";
 import { sendEmail } from "@/lib/email/send";
 import { bookingConfirmEmail } from "@/lib/email/templates";
 import { grantCredit } from "@/lib/credit";
+import { genBookingCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -209,8 +210,10 @@ export async function POST(req: NextRequest) {
   const paymentStatus =
     paidAmount >= totalAmount && totalAmount > 0 ? "fully_paid" : "pending";
 
+  const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({
     data: {
+      code: bookingCode,
       userId: auth.user.lineUserId,
       type: "daily",
       refId: data.tripId,

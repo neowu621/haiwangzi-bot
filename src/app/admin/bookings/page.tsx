@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 // ── Types ────────────────────────────────────────────────────
 interface AdminBooking {
   id: string;
+  code?: string | null;
   type: "daily" | "tour";
   status: string;
   paymentStatus: string;
@@ -40,6 +41,7 @@ interface AdminBooking {
 
 interface ByTripBooking {
   id: string;
+  code?: string | null;
   userName: string;
   phone: string | null;
   participants: number;
@@ -496,6 +498,7 @@ export default function AdminBookingsPage() {
                                         color: "#2a5580",
                                       }}
                                     >
+                                      <th className="px-4 py-2 font-semibold">訂單編號</th>
                                       <th className="px-6 py-2 font-semibold">姓名</th>
                                       <th className="px-4 py-2 font-semibold">電話</th>
                                       <th className="px-4 py-2 font-semibold text-right">人數</th>
@@ -517,6 +520,11 @@ export default function AdminBookingsPage() {
                                         onClick={() => openEditFromByTrip(b, g)}
                                         title="點擊查看/編輯訂單"
                                       >
+                                        <td className="px-4 py-2.5">
+                                          <span className="font-mono text-[11px] font-semibold tracking-wide" style={{ color: "#2a5580" }}>
+                                            {b.code ?? "—"}
+                                          </span>
+                                        </td>
                                         <td className="px-6 py-2.5 font-semibold" style={{ color: "#1a4a70" }}>
                                           {b.userName}
                                         </td>
@@ -605,6 +613,7 @@ export default function AdminBookingsPage() {
                 <thead>
                   <tr className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}>
+                    <th className="px-4 py-3 font-medium">訂單編號</th>
                     <th className="px-4 py-3 font-medium">建單日</th>
                     <th className="px-4 py-3 font-medium">客戶</th>
                     <th className="px-4 py-3 font-medium">場次</th>
@@ -631,6 +640,12 @@ export default function AdminBookingsPage() {
                         )}
                         style={{ borderColor: "var(--border)" }}
                       >
+                        {/* 訂單編號 */}
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
+                            {b.code ?? "—"}
+                          </span>
+                        </td>
                         {/* 建單日 */}
                         <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--muted-foreground)] whitespace-nowrap">
                           {new Date(b.createdAt).toLocaleDateString("zh-TW")}
@@ -720,7 +735,7 @@ export default function AdminBookingsPage() {
                   })}
                   {filteredBookings.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
@@ -741,8 +756,15 @@ export default function AdminBookingsPage() {
           {editing && (
             <div className="space-y-3">
               <div className="rounded-md bg-[var(--muted)]/40 p-2 text-[11px] text-[var(--muted-foreground)]">
-                <div className="font-bold text-[var(--foreground)]">
-                  {editing.user.realName ?? editing.user.displayName}
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-[var(--foreground)]">
+                    {editing.user.realName ?? editing.user.displayName}
+                  </div>
+                  {editing.code && (
+                    <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
+                      {editing.code}
+                    </span>
+                  )}
                 </div>
                 <div>
                   {editing.type === "daily"

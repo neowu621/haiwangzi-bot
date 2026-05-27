@@ -229,6 +229,7 @@ model Coach {
 
 model DivingTrip {
   id           String       @id @default(uuid()) @db.Uuid
+  code         String?      @unique @map("code") @db.VarChar(8)
   date         DateTime     @db.Date
   startTime    String       @map("start_time") @db.VarChar(5)
   isNightDive  Boolean      @default(false) @map("is_night_dive")
@@ -254,6 +255,7 @@ model DivingTrip {
 
 model TourPackage {
   id                    String     @id @default(uuid()) @db.Uuid
+  code                  String?    @unique @map("code") @db.VarChar(8)
   title                 String
   destination           Region
   dateStart             DateTime   @map("date_start") @db.Date
@@ -283,6 +285,7 @@ model TourPackage {
 
 model Booking {
   id                 String         @id @default(uuid()) @db.Uuid
+  code               String?        @unique @map("code") @db.VarChar(8)
   userId             String         @map("user_id") @db.VarChar(64)
   type               BookingType
   refId              String         @map("ref_id") @db.Uuid

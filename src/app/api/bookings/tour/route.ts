@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
+import { genBookingCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,8 +113,10 @@ export async function POST(req: NextRequest) {
     status = "confirmed";
   }
 
+  const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({
     data: {
+      code: bookingCode,
       userId: auth.user.lineUserId,
       type: "tour",
       refId: data.tourId,

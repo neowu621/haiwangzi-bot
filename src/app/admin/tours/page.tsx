@@ -15,6 +15,7 @@ const DEST_LABELS: Record<Dest, string> = { northeast: "東北角", green_island
 
 interface Tour {
   id: string;
+  code?: string | null;
   title: string;
   destination: Dest;
   dateStart: string;
@@ -157,7 +158,7 @@ export default function ToursPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
-                  {["主題", "目的地", "出發日", "結束日", "定價", "訂金", "已報名/可接受", "狀態", "操作"].map(h => (
+                  {["編號", "主題", "目的地", "出發日", "結束日", "定價", "訂金", "已報名/可接受", "狀態", "操作"].map(h => (
                     <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -165,6 +166,11 @@ export default function ToursPage() {
               <tbody>
                 {visible.map((t, i) => (
                   <tr key={t.id} className={cn("border-t", i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20")} style={{ opacity: t.status === "cancelled" ? 0.5 : 1 }}>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
+                        {t.code ?? "—"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 font-semibold max-w-[180px]" style={{ color: "var(--foreground)" }}>{t.title}</td>
                     <td className="px-4 py-3 text-[var(--muted-foreground)]">{DEST_LABELS[t.destination]}</td>
                     <td className="px-4 py-3 text-[var(--muted-foreground)]">{t.dateStart.split("T")[0]}</td>

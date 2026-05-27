@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
       totalSum,
       bookings: refBookings.map((b) => ({
         id: b.id,
+        code: b.code,
         userName: b.user.realName ?? b.user.displayName,
         phone: b.user.phone,
         participants: b.participants,
@@ -130,6 +131,7 @@ export async function GET(req: NextRequest) {
       totalSum,
       bookings: refBookings.map((b) => ({
         id: b.id,
+        code: b.code,
         userName: b.user.realName ?? b.user.displayName,
         phone: b.user.phone,
         participants: b.participants,
