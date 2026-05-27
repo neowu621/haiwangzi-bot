@@ -6,15 +6,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/admin/bookings - 全部訂單，含 trip/tour 的日期時間資訊
+// ?userId=xxx  → 只回該 user 的訂單（用於會員管理的潛水紀錄彈窗）
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
   const role = requireRole(auth.user, ["admin", "coach"]);
   if (!role.ok) return NextResponse.json({ error: role.message }, { status: role.status });
 
+  const url = new URL(req.url);
+  const filterUserId = url.searchParams.get("userId") ?? undefined;
+
   const bookings = await prisma.booking.findMany({
+    where: filterUserId ? { userId: filterUserId } : {},
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take: filterUserId ? 500 : 200,
     include: { user: { select: { displayName: true, realName: true, phone: true } } },
   });
 

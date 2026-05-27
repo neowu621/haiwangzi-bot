@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEV_PERSONAS, isDevModeEnabled, findDevPersona } from "@/lib/dev-personas";
+import { genMemberCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
   }
 
   // upsert：保留現有資料（roles 已被人為改過時不蓋掉），只在 create 時填預設
+  const existing = await prisma.user.findUnique({ where: { lineUserId: persona.lineUserId } });
+  const code = existing ? undefined : await genMemberCode();
   const user = await prisma.user.upsert({
     where: { lineUserId: persona.lineUserId },
     create: {
@@ -55,6 +58,7 @@ export async function POST(req: NextRequest) {
       certNumber: persona.certNumber ?? null,
       role: persona.roles[0],
       roles: persona.roles,
+      ...(code && { code }),
     },
     update: {
       lastActiveAt: new Date(),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { genMemberCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,12 +21,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const existing = await prisma.user.findUnique({ where: { lineUserId: data.lineUserId } });
+  const code = existing ? undefined : await genMemberCode();
   const user = await prisma.user.upsert({
     where: { lineUserId: data.lineUserId },
     create: {
       lineUserId: data.lineUserId,
       displayName: `Admin ${data.lineUserId.slice(0, 8)}`,
       role: "admin",
+      ...(code && { code }),
     },
     update: { role: "admin" },
   });

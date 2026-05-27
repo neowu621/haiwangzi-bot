@@ -3,6 +3,7 @@ import type { WebhookEvent } from "@line/bot-sdk";
 import { getLineClient, verifyLineSignature } from "@/lib/line";
 import { prisma } from "@/lib/prisma";
 import { buildFlexByKey } from "@/lib/flex";
+import { genMemberCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,9 +76,11 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
 
   // upsert User (容錯：DB 失敗也不擋歡迎訊息)
   try {
+    const existing = await prisma.user.findUnique({ where: { lineUserId: userId } });
+    const code = existing ? undefined : await genMemberCode();
     await prisma.user.upsert({
       where: { lineUserId: userId },
-      create: { lineUserId: userId, displayName },
+      create: { lineUserId: userId, displayName, ...(code && { code }) },
       update: { displayName, lastActiveAt: new Date() },
     });
   } catch (err) {
@@ -115,11 +118,12 @@ async function handleTextMessage(
   await prisma.user.update({
     where: { lineUserId: userId },
     data: { lastActiveAt: new Date() },
-  }).catch(() => {
-    // user 不存在就 upsert
+  }).catch(async () => {
+    // user 不存在就 upsert（帶會員編號）
+    const code = await genMemberCode().catch(() => undefined);
     return prisma.user.upsert({
       where: { lineUserId: userId },
-      create: { lineUserId: userId, displayName: `User ${userId.slice(0, 8)}` },
+      create: { lineUserId: userId, displayName: `User ${userId.slice(0, 8)}`, ...(code && { code }) },
       update: {},
     });
   });

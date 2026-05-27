@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { SignJWT, jwtVerify, createRemoteJWKSet } from "jose";
 import { prisma } from "./prisma";
+import { genMemberCode } from "./code-gen";
 import type { User, UserRole } from "@prisma/client";
 
 // LINE 的 JWKS 公開金鑰,用來驗 idToken 的簽章
@@ -99,14 +100,23 @@ async function verifyIdToken(idToken: string): Promise<AuthResult> {
   }
 }
 
-/** 第一次看到的 LINE userId 自動建 User row */
+/** 第一次看到的 LINE userId 自動建 User row（新用戶自動產生會員編號）*/
 async function getOrCreateUser(
   lineUserId: string,
   displayName: string,
 ): Promise<User> {
+  // 先看是否已存在，避免每次 auth 都無謂產生 code
+  const existing = await prisma.user.findUnique({ where: { lineUserId } });
+  if (existing) {
+    return await prisma.user.update({
+      where: { lineUserId },
+      data: { lastActiveAt: new Date() },
+    });
+  }
+  const code = await genMemberCode();
   return await prisma.user.upsert({
     where: { lineUserId },
-    create: { lineUserId, displayName },
+    create: { lineUserId, displayName, code },
     update: { lastActiveAt: new Date() },
   });
 }

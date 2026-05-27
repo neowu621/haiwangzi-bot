@@ -2,6 +2,37 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_84 — 2026-05-28 (編號格式統一改為 {P}{YYYYMMDD}-{XX})
+
+### 編號格式
+- 新格式：`{Prefix}{YYYYMMDD}-{XX}`，XX 為 base-36 2位大寫英數（0-9 A-Z），共 1296 種/日
+- 會員：`M20260528-3A`　日潛：`D20260528-ZZ`　潛水團：`T20260528-01`　訂單：`O20260528-B7`
+- 舊格式（`O-XXXXXX` 6位亂數）廢棄，現有紀錄保留舊碼（nullable）
+
+### Schema
+- `User` 新增 `code String? @unique @map("code") @db.VarChar(12)` 會員編號
+- `DivingTrip / TourPackage / Booking` 的 `code` 欄位 `VarChar(8)` → `VarChar(12)`
+
+### 代碼產生
+- `src/lib/code-gen.ts` 全面改寫：新增 `genMemberCode()`；日期用 UTC+8 台灣時間；retry 50 次
+- 新用戶首次加入（LINE follow / LIFF auth / dev login / bootstrap）自動產生會員編號
+
+### 前台
+- 會員管理表格新增「會員編號」欄位（phosphor 綠色 monospace 字型）
+
+## 20260528_83 — 2026-05-28 (會員管理：禮金紀錄 / 潛水紀錄 / 傳送訊息 popup)
+
+### 功能
+- **禮金紀錄 popup**：點選會員的「禮金」欄位 → 展開該會員全部 CreditTx 歷程（類型、金額、餘額、備註）
+- **潛水紀錄 popup**：點選「消費王子潛水次數」欄位 → 展開該會員全部訂單（日期/行程、類型、人次、費用、狀態）
+- **欄位更名**：「海王子次數」→「消費王子潛水次數」；新增「消費總計」欄位（可排序）
+- **傳送訊息 popup**：點選 Email 地址 → 彈窗選擇 LINE / Email / 兩者，填寫內容後發送
+- 消費王子潛水次數 dialog 頂端顯示訂單數、總人次、已付款統計
+
+### API
+- `GET /api/admin/bookings` 新增 `?userId=xxx` 過濾，供潛水紀錄 popup 使用（最多 500 筆）
+- 新增 `POST /api/admin/notify`：向單一會員推送 LINE 推播 或 Email（admin/boss 限定）
+
 ## 20260528_82 — 2026-05-28 (訂單三層備註：客戶 / 網站 / 管理)
 
 ### Schema

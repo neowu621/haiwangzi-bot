@@ -12,17 +12,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Edit3, Search, Trash2, Ban, Crown, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Edit3,
+  Search,
+  Trash2,
+  Ban,
+  Crown,
+  ChevronUp,
+  ChevronDown,
+  Mail,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneTW } from "@/lib/phone";
 import { VIP_TIERS, getVipTier } from "@/lib/vip-tier";
 
 type Role = "customer" | "coach" | "boss" | "admin";
 type Cert = "OW" | "AOW" | "Rescue" | "DM" | "Instructor";
-type SortKey = "displayName" | "lastActiveAt" | "haiwangziLogCount" | "creditBalance";
+type SortKey =
+  | "displayName"
+  | "lastActiveAt"
+  | "haiwangziLogCount"
+  | "creditBalance"
+  | "totalSpend";
 
 interface AdminUser {
   lineUserId: string;
+  code?: string | null;
   displayName: string;
   realName: string | null;
   phone: string | null;
@@ -53,8 +68,56 @@ interface AdminUser {
   };
 }
 
+interface CreditTx {
+  id: string;
+  amount: number;
+  reason: string;
+  note: string | null;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+interface DiveBookingRef {
+  date?: string;
+  startTime?: string;
+  sites?: string[];
+  title?: string;
+  dateStart?: string;
+  dateEnd?: string;
+}
+
+interface DiveBooking {
+  id: string;
+  code?: string | null;
+  type: "daily" | "tour";
+  participants: number;
+  totalAmount: number;
+  paidAmount: number;
+  paymentStatus: string;
+  status: string;
+  createdAt: string;
+  ref: DiveBookingRef;
+}
+
 const CERTS: Cert[] = ["OW", "AOW", "Rescue", "DM", "Instructor"];
 const ROLES: Role[] = ["customer", "coach", "boss", "admin"];
+
+const REASON_LABELS: Record<string, string> = {
+  birthday: "生日禮金",
+  vip_upgrade: "VIP升等",
+  refund: "退款",
+  used: "使用",
+  admin_adjust: "管理員調整",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "待確認",
+  confirmed: "已確認",
+  completed: "已完成",
+  cancelled_by_user: "用戶取消",
+  cancelled_by_weather: "天氣取消",
+  no_show: "未到",
+};
 
 function roleBadgeVariant(r: Role): "coral" | "ocean" | "muted" {
   if (r === "admin") return "coral";
@@ -75,6 +138,24 @@ export default function AdminUsersPage() {
   const [creditAmount, setCreditAmount] = useState("");
   const [creditNote, setCreditNote] = useState("");
   const [creditBusy, setCreditBusy] = useState(false);
+
+  // ── 禮金紀錄 popup ──────────────────────────────────────────────────────────
+  const [creditHistUser, setCreditHistUser] = useState<AdminUser | null>(null);
+  const [creditTxs, setCreditTxs] = useState<CreditTx[]>([]);
+  const [creditTxsLoading, setCreditTxsLoading] = useState(false);
+
+  // ── 潛水紀錄 popup ──────────────────────────────────────────────────────────
+  const [diveHistUser, setDiveHistUser] = useState<AdminUser | null>(null);
+  const [diveBookings, setDiveBookings] = useState<DiveBooking[]>([]);
+  const [diveHistLoading, setDiveHistLoading] = useState(false);
+
+  // ── 傳送訊息 popup ──────────────────────────────────────────────────────────
+  const [notifyUser, setNotifyUser] = useState<AdminUser | null>(null);
+  const [notifyChannel, setNotifyChannel] = useState<"line" | "email" | "both">("line");
+  const [notifyLineText, setNotifyLineText] = useState("");
+  const [notifyEmailSubject, setNotifyEmailSubject] = useState("");
+  const [notifyEmailBody, setNotifyEmailBody] = useState("");
+  const [notifyBusy, setNotifyBusy] = useState(false);
 
   async function load() {
     try {
@@ -134,6 +215,9 @@ export default function AdminUsersPage() {
       } else if (sortKey === "creditBalance") {
         va = a.creditBalance;
         vb = b.creditBalance;
+      } else if (sortKey === "totalSpend") {
+        va = a.totalSpend ?? 0;
+        vb = b.totalSpend ?? 0;
       }
       if (va < vb) return sortAsc ? -1 : 1;
       if (va > vb) return sortAsc ? 1 : -1;
@@ -271,6 +355,12 @@ export default function AdminUsersPage() {
         },
       );
       setEditing({ ...editing, creditBalance: r.newBalance });
+      // 更新 users list
+      setUsers((arr) =>
+        arr.map((x) =>
+          x.lineUserId === editing.lineUserId ? { ...x, creditBalance: r.newBalance } : x,
+        ),
+      );
       setCreditAmount("");
       setCreditNote("");
     } catch (e) {
@@ -280,9 +370,105 @@ export default function AdminUsersPage() {
     }
   }
 
+  // ── 禮金紀錄 popup ──────────────────────────────────────────────────────────
+  async function openCreditHistory(u: AdminUser) {
+    setCreditHistUser(u);
+    setCreditTxsLoading(true);
+    setCreditTxs([]);
+    try {
+      const d = await adminFetch<{ txs: CreditTx[] }>(
+        `/api/admin/credits?userId=${encodeURIComponent(u.lineUserId)}`,
+      );
+      setCreditTxs(d.txs);
+    } catch (e) {
+      alert("載入禮金紀錄失敗：" + (e instanceof Error ? e.message : String(e)));
+      setCreditHistUser(null);
+    } finally {
+      setCreditTxsLoading(false);
+    }
+  }
+
+  // ── 潛水紀錄 popup ──────────────────────────────────────────────────────────
+  async function openDiveHistory(u: AdminUser) {
+    setDiveHistUser(u);
+    setDiveHistLoading(true);
+    setDiveBookings([]);
+    try {
+      const d = await adminFetch<{ bookings: DiveBooking[] }>(
+        `/api/admin/bookings?userId=${encodeURIComponent(u.lineUserId)}`,
+      );
+      setDiveBookings(d.bookings);
+    } catch (e) {
+      alert("載入潛水紀錄失敗：" + (e instanceof Error ? e.message : String(e)));
+      setDiveHistUser(null);
+    } finally {
+      setDiveHistLoading(false);
+    }
+  }
+
+  // ── 傳送訊息 ────────────────────────────────────────────────────────────────
+  function openNotify(u: AdminUser) {
+    setNotifyUser(u);
+    setNotifyChannel("line");
+    setNotifyLineText("");
+    setNotifyEmailSubject("");
+    setNotifyEmailBody("");
+  }
+
+  async function sendNotify() {
+    if (!notifyUser) return;
+    const needLine = notifyChannel === "line" || notifyChannel === "both";
+    const needEmail = notifyChannel === "email" || notifyChannel === "both";
+    if (needLine && !notifyLineText.trim()) {
+      alert("請填寫 LINE 訊息");
+      return;
+    }
+    if (needEmail && !notifyEmailBody.trim()) {
+      alert("請填寫 Email 內容");
+      return;
+    }
+    setNotifyBusy(true);
+    try {
+      const r = await adminFetch<{
+        lineSent: boolean;
+        emailSent: boolean;
+        lineError: string | null;
+        emailError: string | null;
+      }>("/api/admin/notify", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: notifyUser.lineUserId,
+          channel: notifyChannel,
+          lineText: notifyLineText,
+          emailSubject: notifyEmailSubject,
+          emailBody: notifyEmailBody,
+        }),
+      });
+      const msgs: string[] = [];
+      if (r.lineSent) msgs.push("LINE 推播成功");
+      if (r.emailSent) msgs.push("Email 發送成功");
+      if (r.lineError) msgs.push(`LINE 失敗：${r.lineError}`);
+      if (r.emailError) msgs.push(`Email 失敗：${r.emailError}`);
+      alert(msgs.join("\n") || "發送完成");
+      if (r.lineSent || r.emailSent) setNotifyUser(null);
+    } catch (e) {
+      alert("發送失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setNotifyBusy(false);
+    }
+  }
+
   function vipLabel(lv: number) {
     const tier = getVipTier(lv);
     return `${tier.emoji} ${tier.name}`;
+  }
+
+  function diveLabel(b: DiveBooking) {
+    if (b.type === "daily") {
+      const sites = b.ref.sites?.join("、") ?? "—";
+      return `${b.ref.date ?? ""} ${b.ref.startTime ?? ""} ${sites}`;
+    }
+    return `${b.ref.title ?? "潛水團"} ${b.ref.dateStart ?? ""} ~ ${b.ref.dateEnd ?? ""}`;
   }
 
   return (
@@ -369,6 +555,7 @@ export default function AdminUsersPage() {
                     className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}
                   >
+                    <th className="px-4 py-3 font-medium">會員編號</th>
                     <th
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("displayName")}
@@ -393,8 +580,15 @@ export default function AdminUsersPage() {
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("haiwangziLogCount")}
                     >
-                      海王子次數
+                      消費王子潛水次數
                       <SortIcon k="haiwangziLogCount" />
+                    </th>
+                    <th
+                      className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
+                      onClick={() => toggleSort("totalSpend")}
+                    >
+                      消費總計
+                      <SortIcon k="totalSpend" />
                     </th>
                     <th
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
@@ -417,6 +611,16 @@ export default function AdminUsersPage() {
                       )}
                       style={{ borderColor: "var(--border)" }}
                     >
+                      {/* 會員編號 */}
+                      <td className="px-4 py-3">
+                        <span
+                          className="font-mono text-xs font-semibold"
+                          style={{ color: "var(--color-phosphor)" }}
+                        >
+                          {u.code ?? "—"}
+                        </span>
+                      </td>
+                      {/* 姓名 */}
                       <td className="px-4 py-3">
                         <div className="font-medium">
                           {u.realName ?? u.displayName}
@@ -435,11 +639,13 @@ export default function AdminUsersPage() {
                           </div>
                         )}
                       </td>
+                      {/* LINE ID */}
                       <td className="px-4 py-3">
                         <span className="font-mono text-xs text-[var(--muted-foreground)]">
                           {u.lineUserId.slice(0, 10)}...
                         </span>
                       </td>
+                      {/* 角色 */}
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {u.effectiveRoles.map((r) => (
@@ -453,12 +659,27 @@ export default function AdminUsersPage() {
                           ))}
                         </div>
                       </td>
+                      {/* 電話 */}
                       <td className="px-4 py-3 tabular-nums text-xs">
                         {u.phone ?? "—"}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                        {u.email ?? "—"}
+                      {/* Email — 點擊開啟傳送視窗 */}
+                      <td className="px-4 py-3 text-xs">
+                        {u.email ? (
+                          <button
+                            type="button"
+                            onClick={() => openNotify(u)}
+                            className="flex items-center gap-1 text-[var(--color-ocean-deep)] underline decoration-dotted hover:opacity-70 transition-opacity"
+                            title="點擊傳送訊息"
+                          >
+                            <Mail className="h-3 w-3 shrink-0" />
+                            {u.email}
+                          </button>
+                        ) : (
+                          <span className="text-[var(--muted-foreground)]">—</span>
+                        )}
                       </td>
+                      {/* 證照 */}
                       <td className="px-4 py-3">
                         {u.cert ? (
                           <Badge variant="muted" className="text-[10px]">
@@ -470,6 +691,7 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
+                      {/* VIP */}
                       <td className="px-4 py-3">
                         {u.vipLevel > 0 ? (
                           <Badge variant="gold" className="gap-0.5 text-[10px]">
@@ -482,23 +704,47 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
+                      {/* 禮金 — 點擊看紀錄 */}
                       <td className="px-4 py-3 tabular-nums text-xs">
-                        {u.creditBalance > 0 ? (
-                          <span style={{ color: "var(--color-coral)" }}>
-                            NT${u.creditBalance.toLocaleString()}
-                          </span>
-                        ) : (
-                          "0"
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => openCreditHistory(u)}
+                          className="tabular-nums underline decoration-dotted hover:opacity-70 transition-opacity"
+                          style={{
+                            color: u.creditBalance > 0 ? "var(--color-coral)" : "inherit",
+                          }}
+                          title="點擊查看禮金紀錄"
+                        >
+                          {u.creditBalance > 0
+                            ? `NT$${u.creditBalance.toLocaleString()}`
+                            : "0"}
+                        </button>
                       </td>
+                      {/* 消費王子潛水次數 — 點擊看詳情 */}
+                      <td className="px-4 py-3 tabular-nums text-xs text-center">
+                        <button
+                          type="button"
+                          onClick={() => openDiveHistory(u)}
+                          className="tabular-nums underline decoration-dotted hover:opacity-70 transition-opacity font-medium"
+                          style={{ color: "var(--color-ocean-deep)" }}
+                          title="點擊查看潛水紀錄"
+                        >
+                          {u.haiwangziLogCount ?? 0}
+                        </button>
+                      </td>
+                      {/* 消費總計 */}
                       <td className="px-4 py-3 tabular-nums text-xs">
-                        {u.haiwangziLogCount ?? 0}
+                        {(u.totalSpend ?? 0) > 0
+                          ? `NT$${(u.totalSpend ?? 0).toLocaleString()}`
+                          : "—"}
                       </td>
+                      {/* 最後活躍 */}
                       <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
                         {u.lastActiveAt
                           ? new Date(u.lastActiveAt).toLocaleDateString("zh-TW")
                           : "—"}
                       </td>
+                      {/* 操作 */}
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <Button
@@ -525,7 +771,7 @@ export default function AdminUsersPage() {
                   {filtered.length === 0 && (
                     <tr>
                       <td
-                        colSpan={11}
+                        colSpan={13}
                         className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         沒有符合條件的會員
@@ -539,7 +785,7 @@ export default function AdminUsersPage() {
         )}
       </div>
 
-      {/* Edit dialog */}
+      {/* ── Edit dialog ──────────────────────────────────────────────────────── */}
       <Dialog
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}
@@ -704,7 +950,7 @@ export default function AdminUsersPage() {
                   </div>
                   <div>
                     <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
-                      海王子累積
+                      消費王子潛水次數
                     </div>
                     <Input
                       type="number"
@@ -895,6 +1141,346 @@ export default function AdminUsersPage() {
                 </Button>
                 <Button onClick={save} disabled={saving}>
                   {saving ? "儲存中..." : "儲存"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 禮金紀錄 dialog ───────────────────────────────────────────────────── */}
+      <Dialog
+        open={creditHistUser !== null}
+        onOpenChange={(o) => !o && setCreditHistUser(null)}
+      >
+        <DialogContent className="max-h-[80vh] overflow-y-auto max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              禮金紀錄 —{" "}
+              {creditHistUser?.realName ?? creditHistUser?.displayName}
+            </DialogTitle>
+          </DialogHeader>
+          {creditTxsLoading ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              載入中...
+            </div>
+          ) : creditTxs.length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              無禮金紀錄
+            </div>
+          ) : (
+            <div>
+              {/* 餘額 */}
+              <div
+                className="mb-3 flex items-center justify-between rounded-lg px-4 py-2"
+                style={{
+                  background: "rgba(255,123,90,0.08)",
+                  border: "1px solid rgba(255,123,90,0.25)",
+                }}
+              >
+                <span className="text-xs text-[var(--muted-foreground)]">目前餘額</span>
+                <span className="text-lg font-bold tabular-nums" style={{ color: "var(--color-coral)" }}>
+                  NT$ {(creditHistUser?.creditBalance ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <div
+                className="overflow-hidden rounded-lg border"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr
+                      className="text-left text-[var(--muted-foreground)]"
+                      style={{ background: "var(--muted)" }}
+                    >
+                      <th className="px-3 py-2 font-medium">日期</th>
+                      <th className="px-3 py-2 font-medium">類型</th>
+                      <th className="px-3 py-2 font-medium">金額</th>
+                      <th className="px-3 py-2 font-medium">餘額</th>
+                      <th className="px-3 py-2 font-medium">備註</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {creditTxs.map((tx, i) => (
+                      <tr
+                        key={tx.id}
+                        className={cn(
+                          "border-t",
+                          i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
+                        )}
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        <td className="px-3 py-2 tabular-nums text-[var(--muted-foreground)]">
+                          {new Date(tx.createdAt).toLocaleDateString("zh-TW")}
+                        </td>
+                        <td className="px-3 py-2">
+                          {REASON_LABELS[tx.reason] ?? tx.reason}
+                        </td>
+                        <td
+                          className={cn(
+                            "px-3 py-2 tabular-nums font-semibold",
+                            tx.amount > 0
+                              ? "text-green-600"
+                              : "text-[var(--color-coral)]",
+                          )}
+                        >
+                          {tx.amount > 0 ? "+" : ""}
+                          {tx.amount.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          {tx.balanceAfter.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 text-[var(--muted-foreground)]">
+                          {tx.note ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 潛水紀錄 dialog ───────────────────────────────────────────────────── */}
+      <Dialog
+        open={diveHistUser !== null}
+        onOpenChange={(o) => !o && setDiveHistUser(null)}
+      >
+        <DialogContent className="max-h-[80vh] overflow-y-auto max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              消費王子潛水紀錄 —{" "}
+              {diveHistUser?.realName ?? diveHistUser?.displayName}
+            </DialogTitle>
+          </DialogHeader>
+          {diveHistLoading ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              載入中...
+            </div>
+          ) : diveBookings.length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+              無潛水訂單紀錄
+            </div>
+          ) : (
+            <div>
+              {/* 統計 */}
+              {(() => {
+                const totalPaid = diveBookings.reduce((s, b) => s + b.paidAmount, 0);
+                const totalParticipants = diveBookings.reduce(
+                  (s, b) => s + b.participants,
+                  0,
+                );
+                return (
+                  <div className="mb-3 grid grid-cols-3 gap-2">
+                    {[
+                      ["訂單數", `${diveBookings.length} 筆`],
+                      ["總人次", `${totalParticipants} 人`],
+                      ["已付款", `NT$${totalPaid.toLocaleString()}`],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-lg px-3 py-2 text-center"
+                        style={{
+                          background: "rgba(0,67,118,0.06)",
+                          border: "1px solid rgba(0,67,118,0.15)",
+                        }}
+                      >
+                        <div className="text-[10px] text-[var(--muted-foreground)]">
+                          {label}
+                        </div>
+                        <div
+                          className="text-sm font-bold tabular-nums"
+                          style={{ color: "var(--color-ocean-deep)" }}
+                        >
+                          {value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <div
+                className="overflow-hidden rounded-lg border"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr
+                      className="text-left text-[var(--muted-foreground)]"
+                      style={{ background: "var(--muted)" }}
+                    >
+                      <th className="px-3 py-2 font-medium">日期 / 行程</th>
+                      <th className="px-3 py-2 font-medium">類型</th>
+                      <th className="px-3 py-2 font-medium">人數</th>
+                      <th className="px-3 py-2 font-medium">費用</th>
+                      <th className="px-3 py-2 font-medium">已付</th>
+                      <th className="px-3 py-2 font-medium">狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diveBookings.map((b, i) => (
+                      <tr
+                        key={b.id}
+                        className={cn(
+                          "border-t",
+                          i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
+                        )}
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{diveLabel(b)}</div>
+                          {b.code && (
+                            <div className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                              {b.code}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                            style={{
+                              background:
+                                b.type === "daily"
+                                  ? "rgba(0,67,118,0.1)"
+                                  : "rgba(255,123,90,0.1)",
+                              color:
+                                b.type === "daily"
+                                  ? "var(--color-ocean-deep)"
+                                  : "var(--color-coral)",
+                            }}
+                          >
+                            {b.type === "daily" ? "日潛" : "潛水團"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 tabular-nums text-center">
+                          {b.participants}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          NT${b.totalAmount.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums">
+                          NT${b.paidAmount.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={cn(
+                              "rounded px-1.5 py-0.5 text-[10px]",
+                              b.status === "completed"
+                                ? "bg-green-100 text-green-700"
+                                : b.status.startsWith("cancelled") || b.status === "no_show"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-yellow-100 text-yellow-700",
+                            )}
+                          >
+                            {STATUS_LABELS[b.status] ?? b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 傳送訊息 dialog ───────────────────────────────────────────────────── */}
+      <Dialog
+        open={notifyUser !== null}
+        onOpenChange={(o) => !o && setNotifyUser(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              傳送訊息 —{" "}
+              {notifyUser?.realName ?? notifyUser?.displayName}
+            </DialogTitle>
+          </DialogHeader>
+          {notifyUser && (
+            <div className="space-y-3">
+              {/* 收件人資訊 */}
+              <div className="rounded-md bg-[var(--muted)]/40 p-2 text-xs text-[var(--muted-foreground)] space-y-0.5">
+                <div>📧 Email：{notifyUser.email ?? "（未填）"}</div>
+                <div>💬 LINE：{notifyUser.lineUserId.slice(0, 14)}...</div>
+              </div>
+
+              {/* 通道選擇 */}
+              <div>
+                <Label className="text-xs mb-1.5 block">傳送管道</Label>
+                <div className="flex gap-2">
+                  {(["line", "email", "both"] as const).map((ch) => (
+                    <button
+                      key={ch}
+                      type="button"
+                      onClick={() => setNotifyChannel(ch)}
+                      className={cn(
+                        "flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors",
+                        notifyChannel === ch
+                          ? "border-[var(--color-ocean-deep)] bg-[var(--color-ocean-deep)] text-white"
+                          : "border-[var(--border)] hover:border-[var(--color-ocean-deep)]",
+                      )}
+                    >
+                      {ch === "line" ? "LINE" : ch === "email" ? "Email" : "兩者"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* LINE 文字 */}
+              {(notifyChannel === "line" || notifyChannel === "both") && (
+                <div>
+                  <Label className="text-xs mb-1 block">LINE 訊息</Label>
+                  <textarea
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    rows={4}
+                    placeholder="訊息內容..."
+                    value={notifyLineText}
+                    onChange={(e) => setNotifyLineText(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Email 欄位 */}
+              {(notifyChannel === "email" || notifyChannel === "both") && (
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-xs mb-1 block">Email 主旨</Label>
+                    <Input
+                      placeholder="（留空則用 LINE 訊息代替）"
+                      value={notifyEmailSubject}
+                      onChange={(e) => setNotifyEmailSubject(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Email 內容</Label>
+                    <textarea
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                      rows={5}
+                      placeholder="Email 正文..."
+                      value={notifyEmailBody}
+                      onChange={(e) => setNotifyEmailBody(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setNotifyUser(null)}
+                >
+                  取消
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={notifyBusy}
+                  onClick={sendNotify}
+                >
+                  {notifyBusy ? "發送中..." : "發送"}
                 </Button>
               </div>
             </div>

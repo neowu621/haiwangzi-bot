@@ -160,6 +160,8 @@ model User {
   // 網頁管理後台個人密碼（scrypt hash，格式 "salt:hash"）
   // 首次登入時自行設定，之後每次需輸入
   webPasswordHash  String?   @map("web_password_hash")
+  // 會員編號 M{YYYYMMDD}-{XX}，XX 為 base-36 2位，首次加入時自動產生
+  code             String?   @unique @map("code") @db.VarChar(12)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
 
@@ -229,7 +231,7 @@ model Coach {
 
 model DivingTrip {
   id           String       @id @default(uuid()) @db.Uuid
-  code         String?      @unique @map("code") @db.VarChar(8)
+  code         String?      @unique @map("code") @db.VarChar(12)
   date         DateTime     @db.Date
   startTime    String       @map("start_time") @db.VarChar(5)
   isNightDive  Boolean      @default(false) @map("is_night_dive")
@@ -255,7 +257,7 @@ model DivingTrip {
 
 model TourPackage {
   id                    String     @id @default(uuid()) @db.Uuid
-  code                  String?    @unique @map("code") @db.VarChar(8)
+  code                  String?    @unique @map("code") @db.VarChar(12)
   title                 String
   destination           Region
   dateStart             DateTime   @map("date_start") @db.Date
@@ -285,7 +287,7 @@ model TourPackage {
 
 model Booking {
   id                 String         @id @default(uuid()) @db.Uuid
-  code               String?        @unique @map("code") @db.VarChar(8)
+  code               String?        @unique @map("code") @db.VarChar(12)
   userId             String         @map("user_id") @db.VarChar(64)
   type               BookingType
   refId              String         @map("ref_id") @db.Uuid
