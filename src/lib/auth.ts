@@ -127,8 +127,8 @@ export function requireRole<T extends User>(
 ): { ok: true } | { ok: false; status: number; message: string } {
   const effectiveRoles = getUserRoles(user);
   const allowedSet = new Set(allowed);
-  // admin 永遠通過（superuser）
-  if (effectiveRoles.includes("admin")) return { ok: true };
+  // admin / boss 永遠通過（superuser）
+  if (effectiveRoles.includes("admin") || effectiveRoles.includes("boss")) return { ok: true };
   const matched = effectiveRoles.some((r) => allowedSet.has(r));
   if (!matched) {
     return {

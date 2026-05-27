@@ -2,6 +2,27 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_63 — 2026-05-27 (boss 角色全限 superuser)
+
+### 🔐 權限修正
+
+**boss 現在與 admin 同等級 — 全後台無限制存取**
+
+- `requireRole()` 新增 boss superuser 旁路：`effectiveRoles.includes("boss")` 同樣直接通過，不再受 `allowed` 清單限制
+- 一次修正 30+ 個 `/api/admin/*` endpoint，boss 不需要逐一被加入 allowed 陣列
+- 受影響端點：trips CRUD / tours CRUD / users CRUD / bookings / site-config / vip-tiers / broadcast / csv / coaches / sites 等全部 admin 路由
+
+**角色職責完整說明（修正後）**
+
+| 角色 | 定位 | 特殊旁路 |
+|---|---|---|
+| admin | 系統管理員 | ✅ superuser（所有路由） |
+| boss | 老闆/老闆娘 | ✅ superuser（所有路由）← 新增 |
+| coach | 教練 | 只能訪問 coach 相關 + 讀取場次/訂單 |
+| customer | 一般客戶 | 只能訪問自己的資料 |
+
+---
+
 ## 20260527_62 — 2026-05-27 (網頁管理後台 /admin)
 
 ### ✨ 新功能：獨立網頁管理後台
