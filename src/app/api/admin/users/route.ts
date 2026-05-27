@@ -131,8 +131,8 @@ export async function POST(req: NextRequest) {
       );
     }
     patch.roles = uniq;
-    // 同步 primary role (backwards compat)：admin > coach > customer 優先順序
-    const priority = ["admin", "coach", "customer"] as const;
+    // 同步 primary role (backwards compat)：admin > boss > coach > customer 優先順序
+    const priority = ["admin", "boss", "coach", "customer"] as const;
     patch.role = priority.find((r) => uniq.includes(r)) ?? "customer";
   } else if (data.role !== undefined) {
     // 沒帶 roles 但有帶 role：當作單一角色處理，並同步 roles

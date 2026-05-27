@@ -432,9 +432,9 @@ export default function AdminUsersPage() {
                             setEditing({
                               ...editing,
                               effectiveRoles: next,
-                              // role primary 取優先順序：admin > coach > customer
+                              // role primary 取優先順序：admin > boss > coach > customer
                               role:
-                                (["admin", "coach", "customer"] as const).find(
+                                (["admin", "boss", "coach", "customer"] as const).find(
                                   (x) => next.includes(x),
                                 ) ?? "customer",
                             });

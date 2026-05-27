@@ -2,6 +2,18 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_61 — 2026-05-27 (修正老闆角色無法儲存)
+
+### 🐛 Bug Fix
+
+**老闆角色 (boss) 儲存失敗 — 兩處 priority array 遺漏 "boss"**
+
+- **`/api/admin/users` POST**：`priority = ["admin", "coach", "customer"]` 缺少 `"boss"`，導致 `roles=["boss"]` 時 primary `role` 欄位被寫成 `"customer"`，Admin 改完存檔後顯示角色仍是 customer
+- **`/liff/admin/users/page.tsx`**：role toggle click handler 同一個陣列，`editing.role` 計算也有相同錯誤
+- 兩處皆改為 `["admin", "boss", "coach", "customer"]`（優先順序：admin > boss > coach > customer）
+
+---
+
 ## 20260517_60 — 2026-05-17 (預約折抵禮金 + 退費轉禮金)
 
 ### 🎯 兩個用例都接上了
