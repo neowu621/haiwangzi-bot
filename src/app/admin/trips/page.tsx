@@ -1,0 +1,606 @@
+"use client";
+import { useEffect, useState } from "react";
+import { AdminShell } from "@/components/admin-web/AdminShell";
+import { adminFetch } from "@/lib/admin-web-auth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Edit3, Trash2, Moon, Anchor } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface Pricing {
+  baseTrip: number;
+  extraTank: number;
+  nightDive: number;
+  scooterRental: number;
+}
+
+interface Trip {
+  id: string;
+  date: string;
+  startTime: string;
+  isNightDive: boolean;
+  isScooter: boolean;
+  diveSiteIds: string[];
+  tankCount: number;
+  capacity: number | null;
+  booked: number;
+  coachIds: string[];
+  pricing: Pricing;
+  notes: string | null;
+  meetingPoint: string | null;
+  images: string[];
+  status: string;
+}
+
+interface Site {
+  id: string;
+  name: string;
+}
+
+interface Coach {
+  id: string;
+  realName: string;
+  active: boolean;
+}
+
+const TRIP_STATUS_LABEL: Record<string, string> = {
+  open: "開放",
+  full: "額滿",
+  cancelled: "已取消",
+  completed: "已完成",
+};
+
+function statusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
+  if (s === "open") return "ocean";
+  if (s === "full") return "gold";
+  if (s === "cancelled") return "coral";
+  return "muted";
+}
+
+const BLANK_PRICING: Pricing = {
+  baseTrip: 1200,
+  extraTank: 500,
+  nightDive: 300,
+  scooterRental: 500,
+};
+
+const BLANK_FORM = {
+  date: "",
+  startTime: "08:00",
+  isNightDive: false,
+  isScooter: false,
+  diveSiteIds: [] as string[],
+  tankCount: 3,
+  capacity: 8,
+  coachIds: [] as string[],
+  pricing: BLANK_PRICING,
+  notes: "",
+  meetingPoint: "",
+};
+
+type TripForm = typeof BLANK_FORM;
+
+export default function AdminTripsPage() {
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Dialog state
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<TripForm>({ ...BLANK_FORM });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      adminFetch<{ trips: Trip[] }>("/api/admin/trips"),
+      adminFetch<Site[]>("/api/admin/sites").catch(() => []),
+      adminFetch<{ coaches: Coach[] }>("/api/admin/coaches").catch(() => ({
+        coaches: [],
+      })),
+    ])
+      .then(([t, s, c]) => {
+        setTrips(t.trips);
+        setSites(Array.isArray(s) ? s : []);
+        setCoaches(c.coaches ?? []);
+      })
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  function siteName(id: string) {
+    return sites.find((s) => s.id === id)?.name ?? id;
+  }
+
+  function coachName(id: string) {
+    return coaches.find((c) => c.id === id)?.realName ?? id;
+  }
+
+  function openCreate() {
+    setForm({ ...BLANK_FORM });
+    setEditingId(null);
+    setDialogMode("create");
+  }
+
+  function openEdit(trip: Trip) {
+    setForm({
+      date: trip.date.slice(0, 10),
+      startTime: trip.startTime,
+      isNightDive: trip.isNightDive,
+      isScooter: trip.isScooter,
+      diveSiteIds: [...trip.diveSiteIds],
+      tankCount: trip.tankCount,
+      capacity: trip.capacity ?? 0,
+      coachIds: [...trip.coachIds],
+      pricing: { ...trip.pricing },
+      notes: trip.notes ?? "",
+      meetingPoint: trip.meetingPoint ?? "",
+    });
+    setEditingId(trip.id);
+    setDialogMode("edit");
+  }
+
+  async function saveForm() {
+    if (!form.date || !form.startTime) {
+      alert("請填寫日期和時間");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body = {
+        ...form,
+        capacity: form.capacity === 0 ? null : form.capacity,
+        notes: form.notes || null,
+        meetingPoint: form.meetingPoint || null,
+      };
+      if (dialogMode === "create") {
+        const r = await adminFetch<{ ok: boolean; trip: Trip }>(
+          "/api/admin/trips",
+          { method: "POST", body: JSON.stringify(body) },
+        );
+        setTrips((arr) => [r.trip, ...arr]);
+      } else if (editingId) {
+        const r = await adminFetch<{ ok: boolean; trip: Trip }>(
+          `/api/admin/trips/${editingId}`,
+          { method: "PATCH", body: JSON.stringify(body) },
+        );
+        setTrips((arr) =>
+          arr.map((x) => (x.id === editingId ? { ...x, ...r.trip } : x)),
+        );
+      }
+      setDialogMode(null);
+    } catch (e) {
+      alert("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteTrip(trip: Trip) {
+    if (!confirm(`取消場次 ${trip.date.slice(0, 10)} ${trip.startTime}？`))
+      return;
+    try {
+      await adminFetch(`/api/admin/trips/${trip.id}`, { method: "DELETE" });
+      setTrips((arr) =>
+        arr.map((x) =>
+          x.id === trip.id ? { ...x, status: "cancelled" } : x,
+        ),
+      );
+    } catch (e) {
+      alert("取消失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function hardDeleteTrip(trip: Trip) {
+    if (!confirm(`永久刪除場次？無法復原。`)) return;
+    const ok2 = prompt("輸入「DELETE」確認：");
+    if (ok2 !== "DELETE") return;
+    try {
+      await adminFetch(`/api/admin/trips/${trip.id}?permanent=true`, {
+        method: "DELETE",
+      });
+      setTrips((arr) => arr.filter((x) => x.id !== trip.id));
+    } catch (e) {
+      alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  function toggleSiteId(id: string) {
+    setForm((f) => ({
+      ...f,
+      diveSiteIds: f.diveSiteIds.includes(id)
+        ? f.diveSiteIds.filter((x) => x !== id)
+        : [...f.diveSiteIds, id],
+    }));
+  }
+
+  function toggleCoachId(id: string) {
+    setForm((f) => ({
+      ...f,
+      coachIds: f.coachIds.includes(id)
+        ? f.coachIds.filter((x) => x !== id)
+        : [...f.coachIds, id],
+    }));
+  }
+
+  return (
+    <AdminShell title="場次管理">
+      <div className="space-y-4">
+        <div className="flex justify-between">
+          <div />
+          <Button onClick={openCreate}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            新增場次
+          </Button>
+        </div>
+
+        {err && (
+          <div
+            className="rounded-lg p-3 text-sm"
+            style={{
+              background: "rgba(255,123,90,0.1)",
+              color: "var(--color-coral)",
+              border: "1px solid rgba(255,123,90,0.3)",
+            }}
+          >
+            {err}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
+            載入中...
+          </div>
+        ) : (
+          <div
+            className="overflow-hidden rounded-xl border"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr
+                    className="text-left text-xs text-[var(--muted-foreground)]"
+                    style={{ background: "var(--muted)" }}
+                  >
+                    <th className="px-4 py-3 font-medium">日期</th>
+                    <th className="px-4 py-3 font-medium">時段</th>
+                    <th className="px-4 py-3 font-medium">地點</th>
+                    <th className="px-4 py-3 font-medium">教練</th>
+                    <th className="px-4 py-3 font-medium text-right">
+                      容量/已報名
+                    </th>
+                    <th className="px-4 py-3 font-medium text-right">
+                      基本費用
+                    </th>
+                    <th className="px-4 py-3 font-medium">狀態</th>
+                    <th className="px-4 py-3 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trips.map((trip, i) => (
+                    <tr
+                      key={trip.id}
+                      className={cn(
+                        "border-t",
+                        i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
+                        trip.status === "cancelled" && "opacity-50",
+                      )}
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      <td className="px-4 py-3 tabular-nums font-medium">
+                        {trip.date.slice(0, 10)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 tabular-nums">
+                          {trip.startTime}
+                          {trip.isNightDive && (
+                            <Moon className="h-3 w-3 text-[var(--color-phosphor)]" />
+                          )}
+                          {trip.isScooter && (
+                            <Anchor className="h-3 w-3 text-[var(--color-phosphor)]" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {trip.diveSiteIds.length > 0
+                          ? trip.diveSiteIds.map(siteName).join("・")
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {trip.coachIds.length > 0
+                          ? trip.coachIds.map(coachName).join("、")
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs">
+                        {trip.booked}/
+                        {trip.capacity == null ? "∞" : trip.capacity}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        NT${trip.pricing.baseTrip.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant={statusVariant(trip.status)}
+                          className="text-[10px]"
+                        >
+                          {TRIP_STATUS_LABEL[trip.status] ?? trip.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEdit(trip)}
+                            title="編輯"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                          {trip.status !== "cancelled" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteTrip(trip)}
+                              title="取消場次"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {trip.status === "cancelled" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => hardDeleteTrip(trip)}
+                              title="永久刪除"
+                              className="border-[var(--color-coral)]"
+                            >
+                              <Trash2 className="h-3 w-3 text-[var(--color-coral)]" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {trips.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
+                      >
+                        沒有場次資料
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create / Edit Dialog */}
+      <Dialog
+        open={dialogMode !== null}
+        onOpenChange={(o) => !o && setDialogMode(null)}
+      >
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogMode === "create" ? "新增場次" : "編輯場次"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">日期</Label>
+                <Input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">出發時間</Label>
+                <Input
+                  type="time"
+                  value={form.startTime}
+                  onChange={(e) =>
+                    setForm({ ...form, startTime: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1.5 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.isNightDive}
+                  onChange={(e) =>
+                    setForm({ ...form, isNightDive: e.target.checked })
+                  }
+                />
+                夜潛
+              </label>
+              <label className="flex items-center gap-1.5 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.isScooter}
+                  onChange={(e) =>
+                    setForm({ ...form, isScooter: e.target.checked })
+                  }
+                />
+                水下推進器
+              </label>
+            </div>
+
+            <div>
+              <Label className="text-xs">潛點</Label>
+              {sites.length === 0 ? (
+                <div className="text-xs text-[var(--muted-foreground)]">
+                  載入中...
+                </div>
+              ) : (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {sites.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleSiteId(s.id)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        form.diveSiteIds.includes(s.id)
+                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
+                          : "border-[var(--border)] hover:bg-[var(--muted)]",
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs">教練</Label>
+              {coaches.length === 0 ? (
+                <div className="text-xs text-[var(--muted-foreground)]">
+                  載入中...
+                </div>
+              ) : (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {coaches.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleCoachId(c.id)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        form.coachIds.includes(c.id)
+                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
+                          : "border-[var(--border)] hover:bg-[var(--muted)]",
+                      )}
+                    >
+                      {c.realName}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">氣瓶數</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={form.tankCount}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      tankCount: Math.max(
+                        1,
+                        Math.min(5, Number(e.target.value)),
+                      ),
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-xs">容量（0=無上限）</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.capacity}
+                  onChange={(e) =>
+                    setForm({ ...form, capacity: Number(e.target.value) })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs mb-1 block">費用設定 (NT$)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ["baseTrip", "基本費"],
+                    ["extraTank", "加支費"],
+                    ["nightDive", "夜潛費"],
+                    ["scooterRental", "推進器費"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <div key={key}>
+                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
+                      {label}
+                    </div>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.pricing[key]}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          pricing: {
+                            ...form.pricing,
+                            [key]: Number(e.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">集合地點</Label>
+              <Input
+                value={form.meetingPoint}
+                onChange={(e) =>
+                  setForm({ ...form, meetingPoint: e.target.value })
+                }
+                placeholder="例：龍洞停車場"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs">備註</Label>
+              <textarea
+                className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                rows={2}
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="天氣/裝備/注意事項..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button
+                variant="outline"
+                onClick={() => setDialogMode(null)}
+              >
+                取消
+              </Button>
+              <Button onClick={saveForm} disabled={saving}>
+                {saving ? "儲存中..." : "儲存"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AdminShell>
+  );
+}

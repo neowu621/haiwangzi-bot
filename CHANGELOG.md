@@ -2,6 +2,34 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_62 — 2026-05-27 (網頁管理後台 /admin)
+
+### ✨ 新功能：獨立網頁管理後台
+
+不需要 LINE app，直接在電腦/平板瀏覽器開啟 `/admin` 即可管理系統。
+
+**登入方式**
+- 開啟 `https://haiwangzi.zeabur.app/admin`（自動跳 `/admin/login`）
+- 輸入 `ADMIN_WEB_SECRET`（Zeabur env var 需新增）
+- 選擇身分（系統自動列出所有 admin/boss 帳號）
+- JWT（7天有效）存 localStorage，自動帶入 Bearer token
+
+**頁面（左側欄導覽）**
+- `/admin/bookings` — 訂單管理（依場次分組展開 + 全部訂單表格、退款操作）
+- `/admin/users` — 會員管理（寬表格、點標頭排序、搜尋、編輯 dialog）
+- `/admin/trips` — 場次管理（開團/編輯/刪除）
+
+**技術實作**
+- `src/lib/auth.ts` — `authFromRequest` 新增 HS256 JWT 驗證路徑（issuer: "haiwangzi-admin-web"），優先於 LINE JWKS，不影響現有 LIFF 登入
+- `src/app/api/admin-web/auth/route.ts` — GET（列出 admin/boss 帳號）+ POST（發放 JWT）
+- `src/lib/admin-web-auth.ts` — 前端 helper: `adminFetch`, `useAdminAuth`, token 存取
+- `src/components/admin-web/AdminShell.tsx` — 左側欄 shell（桌面固定 + 手機 hamburger）
+
+**Zeabur 需新增 env**
+- `ADMIN_WEB_SECRET` — 任意長字串，作為管理後台的共用登入密碼（建議 16 字以上）
+
+---
+
 ## 20260527_61 — 2026-05-27 (修正老闆角色無法儲存)
 
 ### 🐛 Bug Fix

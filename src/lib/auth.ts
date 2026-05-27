@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { jwtVerify, createRemoteJWKSet } from "jose";
+import { SignJWT, jwtVerify, createRemoteJWKSet } from "jose";
 import { prisma } from "./prisma";
 import type { User, UserRole } from "@prisma/client";
 
@@ -22,8 +22,12 @@ export type AuthResult =
 export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
   const auth = req.headers.get("authorization");
   if (auth?.startsWith("Bearer ")) {
-    const idToken = auth.slice(7);
-    return await verifyIdToken(idToken);
+    const token = auth.slice(7);
+    // Try our own admin web JWT first
+    const ownResult = await tryVerifyAdminWebJwt(token);
+    if (ownResult.ok) return ownResult;
+    // Fall back to LINE idToken verification
+    return await verifyIdToken(token);
   }
 
   // dev fallback：本地（NODE_ENV !== production）或顯式開啟 DEV_MODE_ENABLED=1 才允許
@@ -41,6 +45,37 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
   }
 
   return { ok: false, status: 401, message: "missing idToken" };
+}
+
+async function tryVerifyAdminWebJwt(token: string): Promise<AuthResult> {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return { ok: false, status: 401, message: "no JWT_SECRET" };
+  try {
+    const key = new TextEncoder().encode(secret);
+    const { payload } = await jwtVerify(token, key, {
+      issuer: "haiwangzi-admin-web",
+    });
+    const lineUserId = payload.sub;
+    if (!lineUserId) return { ok: false, status: 401, message: "no sub" };
+    const user = await prisma.user.findUnique({ where: { lineUserId } });
+    if (!user) return { ok: false, status: 401, message: "user not found" };
+    await prisma.user.update({ where: { lineUserId }, data: { lastActiveAt: new Date() } });
+    return { ok: true, user, lineUserId };
+  } catch {
+    return { ok: false, status: 401, message: "not an admin web token" };
+  }
+}
+
+export async function createAdminWebJwt(lineUserId: string): Promise<string> {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET not configured");
+  const key = new TextEncoder().encode(secret);
+  return await new SignJWT({})
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(lineUserId)
+    .setIssuer("haiwangzi-admin-web")
+    .setExpirationTime("7d")
+    .sign(key);
 }
 
 async function verifyIdToken(idToken: string): Promise<AuthResult> {
