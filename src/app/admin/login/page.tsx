@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { setAdminToken } from "@/lib/admin-web-auth";
+import { setAdminToken, setAdminUser } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +102,13 @@ export default function AdminLoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setAdminToken(data.token);
-      router.push("/admin/bookings");
+      setAdminUser({
+        lineUserId: data.user.lineUserId,
+        displayName: data.user.displayName,
+        realName: data.user.realName,
+        effectiveRoles: data.user.effectiveRoles,
+      });
+      router.push("/admin");
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -142,7 +148,13 @@ export default function AdminLoginPage() {
       const loginData = await loginRes.json();
       if (!loginRes.ok) throw new Error(loginData.error ?? `HTTP ${loginRes.status}`);
       setAdminToken(loginData.token);
-      router.push("/admin/bookings");
+      setAdminUser({
+        lineUserId: loginData.user.lineUserId,
+        displayName: loginData.user.displayName,
+        realName: loginData.user.realName,
+        effectiveRoles: loginData.user.effectiveRoles,
+      });
+      router.push("/admin");
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {

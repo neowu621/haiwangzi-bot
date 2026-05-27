@@ -74,7 +74,7 @@ export function AdminShell({
   children: ReactNode;
   title?: string;
 }) {
-  const { ready, logout } = useAdminAuth();
+  const { ready, logout, adminUser } = useAdminAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -93,28 +93,53 @@ export function AdminShell({
       className="flex h-full flex-col"
       style={{ background: "var(--color-ocean-deep)" }}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <span className="text-2xl">🤿</span>
-        <div>
-          <div
-            className="text-sm font-bold"
-            style={{ color: "var(--color-phosphor)" }}
-          >
-            海王子
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px]" style={{ color: "rgba(230,240,255,0.5)" }}>
-              管理後台
-            </span>
-            <span
-              className="rounded px-1.5 py-0.5 font-mono text-[9px]"
-              style={{ background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.4)" }}
+      {/* Logo + User Info */}
+      <div className="px-4 py-4">
+        {/* Brand row */}
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="text-2xl">🤿</span>
+          <div>
+            <div
+              className="text-sm font-bold"
+              style={{ color: "var(--color-phosphor)" }}
             >
-              v{APP_VERSION}
-            </span>
+              海王子
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]" style={{ color: "rgba(230,240,255,0.5)" }}>
+                管理後台
+              </span>
+              <span
+                className="rounded px-1.5 py-0.5 font-mono text-[9px]"
+                style={{ background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.4)" }}
+              >
+                v{APP_VERSION}
+              </span>
+            </div>
           </div>
         </div>
+        {/* Logged-in user row */}
+        {adminUser && (
+          <div
+            className="flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: "rgba(255,255,255,0.07)" }}
+          >
+            <div
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
+              style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+            >
+              {(adminUser.realName ?? adminUser.displayName).slice(0, 1)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold" style={{ color: "#e6f0ff" }}>
+                {adminUser.realName ?? adminUser.displayName}
+              </div>
+              <div className="truncate text-[10px]" style={{ color: "rgba(230,240,255,0.45)" }}>
+                {adminUser.effectiveRoles.join(" · ")}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mx-3 mb-2 border-t border-white/10" />

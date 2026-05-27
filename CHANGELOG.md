@@ -2,6 +2,15 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_73 — 2026-05-27 (後台側欄顯示登入帳號資訊)
+
+- 登入成功後將使用者資訊（姓名、角色）存入 `localStorage`
+- `AdminShell` 側欄 Logo 下方新增登入用戶資訊卡（頭像縮寫、真實姓名/顯示名、角色）
+- 登入後跳轉改為 `/admin`（Dashboard），不再跳 `/admin/bookings`
+- `admin-web-auth.ts` 新增 `AdminWebUser` interface + `getAdminUser()` / `setAdminUser()` + `useAdminAuth` 回傳 `adminUser`
+
+---
+
 ## 20260527_72 — 2026-05-27 (版本號移到側欄左上角 Logo 旁)
 
 - 版本號從底部移至左上角「管理後台」文字右側（更顯眼）
