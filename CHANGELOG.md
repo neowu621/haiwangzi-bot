@@ -2,6 +2,15 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_89 — 2026-05-28 (全站時區統一 Asia/Taipei GMT+8)
+
+### 修正
+- 新增共用工具 `src/lib/utils.ts`：`toTaipeiDateString`、`toTaipeiDateTimeString`、`toTaipeiISODate`、`taipeiToday`、`weekdayTW`，全部明確指定 `timeZone: "Asia/Taipei"`
+- `admin/trips`：場次新增對話框預設日期改用 `taipeiToday()`，不再以 UTC `toISOString()` 推算（夜間可能差 1 天）
+- `admin/bookings`：訂單建立日顯示改用 `toTaipeiDateString()`；`weekdayTW()` 改用共用版本（加 `+08:00` offset 解析日期字串，避免 UTC 午夜誤判星期）
+- `admin/users`：最後活躍、禮金交易日期改用 `toTaipeiDateString()`
+- `admin/audit-logs`：`formatDate` 改用 `toTaipeiDateTimeString()`，操作時間顯示正確的台北時間（原為 UTC，差 8 小時）
+
 ## 20260528_88 — 2026-05-28 (日潛場次對話框排版修正 + 24 小時制集合時間)
 
 ### 修正

@@ -22,7 +22,7 @@ import {
   ChevronDown,
   Mail,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toTaipeiDateString } from "@/lib/utils";
 import { formatPhoneTW } from "@/lib/phone";
 import { VIP_TIERS, getVipTier } from "@/lib/vip-tier";
 
@@ -741,7 +741,7 @@ export default function AdminUsersPage() {
                       {/* 最後活躍 */}
                       <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
                         {u.lastActiveAt
-                          ? new Date(u.lastActiveAt).toLocaleDateString("zh-TW")
+                          ? toTaipeiDateString(u.lastActiveAt)
                           : "—"}
                       </td>
                       {/* 操作 */}
@@ -1211,7 +1211,7 @@ export default function AdminUsersPage() {
                         style={{ borderColor: "var(--border)" }}
                       >
                         <td className="px-3 py-2 tabular-nums text-[var(--muted-foreground)]">
-                          {new Date(tx.createdAt).toLocaleDateString("zh-TW")}
+                          {toTaipeiDateString(tx.createdAt)}
                         </td>
                         <td className="px-3 py-2">
                           {REASON_LABELS[tx.reason] ?? tx.reason}

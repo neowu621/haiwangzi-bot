@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Edit3, Trash2, Moon, Sun, Anchor } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, taipeiToday } from "@/lib/utils";
 
 interface Pricing {
   baseTrip: number;
@@ -77,7 +77,7 @@ const BLANK_PRICING_DEFAULT: Pricing = {
   otherFeeNote: "",
 };
 
-const TODAY = new Date().toISOString().split("T")[0];
+const TODAY = taipeiToday();
 const BLANK_FORM = {
   date: TODAY,
   startTime: "08:00",

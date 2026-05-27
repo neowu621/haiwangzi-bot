@@ -5,6 +5,7 @@ import { adminFetch } from "@/lib/admin-web-auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { toTaipeiDateTimeString } from "@/lib/utils";
 
 interface AuditLog {
   id: string;
@@ -66,8 +67,7 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
 
 
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+  return toTaipeiDateTimeString(iso);
 }
 
 const ACTION_CATEGORIES = [

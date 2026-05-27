@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, weekdayTW, toTaipeiDateString } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────
 interface AdminBooking {
@@ -77,12 +77,6 @@ interface ByTripGroup {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
-const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
-function weekdayTW(dateStr: string) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return `週${WEEKDAYS[d.getDay()]}`;
-}
 function isPastDate(dateStr?: string) {
   if (!dateStr) return false;
   return new Date(dateStr.slice(0, 10)) < new Date(new Date().toDateString());
@@ -664,7 +658,7 @@ export default function AdminBookingsPage() {
                         </td>
                         {/* 建單日 */}
                         <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--muted-foreground)] whitespace-nowrap">
-                          {new Date(b.createdAt).toLocaleDateString("zh-TW")}
+                          {toTaipeiDateString(b.createdAt)}
                         </td>
                         {/* 客戶 — 一行 */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
