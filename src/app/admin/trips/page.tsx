@@ -51,6 +51,10 @@ interface Site {
 interface Coach {
   id: string;
   realName: string;
+  cert?: string | null;
+  specialty?: string[];
+  feePerDive?: number;
+  note?: string | null;
   active: boolean;
 }
 
@@ -69,7 +73,7 @@ function statusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
 }
 
 const BLANK_PRICING_DEFAULT: Pricing = {
-  baseTrip: 1200,
+  baseTrip: 0,
   extraTank: 500,
   nightDive: 300,
   scooterRental: 500,
@@ -523,9 +527,14 @@ export default function AdminTripsPage() {
             <div>
               <Label className="mb-1 block text-xs">潛點</Label>
               <div className="flex flex-wrap gap-1.5">
-                {sites.length === 0
-                  ? <span className="text-xs text-[var(--muted-foreground)]">載入中...</span>
-                  : sites.map((s) => (
+                {loading ? (
+                  <span className="text-xs text-[var(--muted-foreground)]">載入中...</span>
+                ) : sites.length === 0 ? (
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    無潛點資料（請先至「潛點管理」新增）
+                  </span>
+                ) : (
+                  sites.map((s) => (
                     <button
                       key={s.id}
                       type="button"
@@ -540,25 +549,46 @@ export default function AdminTripsPage() {
                       {s.name}
                     </button>
                   ))
-                }
+                )}
               </div>
             </div>
 
-            {/* 教練 */}
+            {/* 教練 — 選單(左) + 教練說明(右) */}
             <div>
               <Label className="mb-1 block text-xs">教練</Label>
-              <select
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                value={form.coachIds[0] ?? ""}
-                onChange={(e) =>
-                  setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
-                }
-              >
-                <option value="">（未選擇）</option>
-                {coaches.map((c) => (
-                  <option key={c.id} value={c.id}>{c.realName}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                  value={form.coachIds[0] ?? ""}
+                  onChange={(e) =>
+                    setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
+                  }
+                >
+                  <option value="">（未選擇）</option>
+                  {coaches.map((c) => (
+                    <option key={c.id} value={c.id}>{c.realName}</option>
+                  ))}
+                </select>
+                {/* 右側：顯示選定教練的資訊 */}
+                <div className="rounded-md border border-[var(--border)] bg-[var(--muted)]/30 px-2 py-1.5 text-xs text-[var(--muted-foreground)]">
+                  {(() => {
+                    const c = coaches.find((c) => c.id === form.coachIds[0]);
+                    if (!c) return <span>選擇教練後顯示說明</span>;
+                    return (
+                      <div className="space-y-0.5">
+                        {c.cert && <div>🎓 {c.cert}</div>}
+                        {c.specialty && c.specialty.length > 0 && (
+                          <div>✦ {c.specialty.join("、")}</div>
+                        )}
+                        {c.feePerDive != null && c.feePerDive > 0 && (
+                          <div>💰 NT${c.feePerDive.toLocaleString()}/潛</div>
+                        )}
+                        {c.note && <div className="line-clamp-2">{c.note}</div>}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
 
             {/* 氣瓶數 / 可參加人數 — label 上方，input 下方，左右並排 */}
@@ -606,7 +636,7 @@ export default function AdminTripsPage() {
                   />
                 </div>
                 <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">加支費（每瓶）</div>
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">氣瓶費（每瓶）</div>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -656,18 +686,18 @@ export default function AdminTripsPage() {
             </div>
 
             {/* 集合地點 */}
-            <div className="grid grid-cols-[5rem_1fr] items-center gap-2">
-              <Label className="text-xs">集合地點</Label>
+            <div>
+              <Label className="mb-1 block text-xs">集合地點</Label>
               <Input
                 value={form.meetingPoint}
                 onChange={(e) => setForm({ ...form, meetingPoint: e.target.value })}
-                placeholder="例：龍洞停車場"
+                placeholder="Google Map URL（如：https://maps.app.goo.gl/...）"
               />
             </div>
 
-            {/* 備註 */}
-            <div className="grid grid-cols-[5rem_1fr] items-start gap-2">
-              <Label className="text-xs pt-1.5">備註</Label>
+            {/* 日潛水備註 */}
+            <div>
+              <Label className="mb-1 block text-xs">日潛水備註</Label>
               <textarea
                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                 rows={2}

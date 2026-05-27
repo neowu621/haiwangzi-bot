@@ -563,10 +563,9 @@ export default function AdminUsersPage() {
                       姓名
                       <SortIcon k="displayName" />
                     </th>
-                    <th className="px-4 py-3 font-medium">LINE ID</th>
                     <th className="px-4 py-3 font-medium">角色</th>
                     <th className="px-4 py-3 font-medium">電話</th>
-                    <th className="px-4 py-3 font-medium">Email</th>
+                    <th className="px-4 py-3 font-medium">Email / LINE ID</th>
                     <th className="px-4 py-3 font-medium">證照</th>
                     <th className="px-4 py-3 font-medium">VIP</th>
                     <th
@@ -580,7 +579,7 @@ export default function AdminUsersPage() {
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("haiwangziLogCount")}
                     >
-                      消費王子潛水次數
+                      潛水次數
                       <SortIcon k="haiwangziLogCount" />
                     </th>
                     <th
@@ -639,12 +638,6 @@ export default function AdminUsersPage() {
                           </div>
                         )}
                       </td>
-                      {/* LINE ID */}
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs text-[var(--muted-foreground)]">
-                          {u.lineUserId.slice(0, 10)}...
-                        </span>
-                      </td>
                       {/* 角色 */}
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
@@ -663,7 +656,7 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3 tabular-nums text-xs">
                         {u.phone ?? "—"}
                       </td>
-                      {/* Email — 點擊開啟傳送視窗 */}
+                      {/* Email + LINE ID 合併欄 — 點擊開啟傳送視窗 */}
                       <td className="px-4 py-3 text-xs">
                         {u.email ? (
                           <button
@@ -678,6 +671,9 @@ export default function AdminUsersPage() {
                         ) : (
                           <span className="text-[var(--muted-foreground)]">—</span>
                         )}
+                        <div className="mt-0.5 font-mono text-[10px] text-[var(--muted-foreground)]">
+                          {u.lineUserId.slice(0, 10)}...
+                        </div>
                       </td>
                       {/* 證照 */}
                       <td className="px-4 py-3">
@@ -720,7 +716,7 @@ export default function AdminUsersPage() {
                             : "0"}
                         </button>
                       </td>
-                      {/* 消費王子潛水次數 — 點擊看詳情 */}
+                      {/* 潛水次數 — 點擊看詳情 */}
                       <td className="px-4 py-3 tabular-nums text-xs text-center">
                         <button
                           type="button"
@@ -771,7 +767,7 @@ export default function AdminUsersPage() {
                   {filtered.length === 0 && (
                     <tr>
                       <td
-                        colSpan={13}
+                        colSpan={12}
                         className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         沒有符合條件的會員
@@ -950,7 +946,7 @@ export default function AdminUsersPage() {
                   </div>
                   <div>
                     <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
-                      消費王子潛水次數
+                      潛水次數
                     </div>
                     <Input
                       type="number"
@@ -1251,7 +1247,7 @@ export default function AdminUsersPage() {
         <DialogContent className="max-h-[80vh] overflow-y-auto max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              消費王子潛水紀錄 —{" "}
+              潛水紀錄 —{" "}
               {diveHistUser?.realName ?? diveHistUser?.displayName}
             </DialogTitle>
           </DialogHeader>
