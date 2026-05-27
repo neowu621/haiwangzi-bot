@@ -103,8 +103,16 @@ export function AdminShell({
           >
             海王子
           </div>
-          <div className="text-[10px]" style={{ color: "rgba(230,240,255,0.5)" }}>
-            管理後台
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px]" style={{ color: "rgba(230,240,255,0.5)" }}>
+              管理後台
+            </span>
+            <span
+              className="rounded px-1.5 py-0.5 font-mono text-[9px]"
+              style={{ background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.4)" }}
+            >
+              v{APP_VERSION}
+            </span>
           </div>
         </div>
       </div>
@@ -128,16 +136,6 @@ export function AdminShell({
           />
         ))}
       </nav>
-
-      {/* Version */}
-      <div className="px-5 pb-2 text-center">
-        <span
-          className="rounded px-2 py-0.5 font-mono text-[10px]"
-          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(230,240,255,0.3)" }}
-        >
-          v{APP_VERSION}
-        </span>
-      </div>
 
       {/* Logout */}
       <div className="p-3">
