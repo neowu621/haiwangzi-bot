@@ -58,11 +58,9 @@ type GearItemType =
   | "computer"
   | "full_set";
 
-const GEAR_OPTIONS: Array<{
-  itemType: GearItemType;
-  label: string;
-  price: number;
-}> = [
+interface GearOption { itemType: GearItemType; label: string; price: number; }
+
+const GEAR_OPTIONS_DEFAULT: GearOption[] = [
   { itemType: "BCD", label: "BCD", price: 200 },
   { itemType: "regulator", label: "調節器", price: 200 },
   { itemType: "wetsuit", label: "防寒衣", price: 300 },
@@ -71,6 +69,11 @@ const GEAR_OPTIONS: Array<{
   { itemType: "computer", label: "潛水電腦錶", price: 300 },
   { itemType: "full_set", label: "整套 (七折)", price: 800 },
 ];
+
+const GEAR_LABELS: Record<GearItemType, string> = {
+  BCD: "BCD", regulator: "調節器", wetsuit: "防寒衣",
+  fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套 (七折)",
+};
 
 const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
 
@@ -104,6 +107,7 @@ export default function TripBookingPage({
   const router = useRouter();
   const liff = useLiff();
   const [trip, setTrip] = useState<TripDetail | null>(null);
+  const [gearOptions, setGearOptions] = useState<GearOption[]>(GEAR_OPTIONS_DEFAULT);
 
   // form state
   const [participants, setParticipants] = useState(1);
@@ -152,6 +156,25 @@ export default function TripBookingPage({
       })
       .catch((e) => setError(e.message));
   }, [tripId, liff]);
+
+  // 從後台讀取裝備租借費率（若有設定則覆蓋預設值）
+  useEffect(() => {
+    fetch("/api/site-config")
+      .then(r => r.json())
+      .then((cfg: { gearRentalPrices?: Partial<Record<GearItemType, number>> }) => {
+        const prices = cfg.gearRentalPrices ?? {};
+        if (Object.keys(prices).length > 0) {
+          setGearOptions(
+            GEAR_OPTIONS_DEFAULT.map(g => ({
+              ...g,
+              price: prices[g.itemType] ?? g.price,
+              label: GEAR_LABELS[g.itemType],
+            }))
+          );
+        }
+      })
+      .catch(() => { /* 靜默 fallback 到預設值 */ });
+  }, []);
 
   // 載入本人資料 + 同伴清單，第一次預約後再進來會自動帶入
   const [meLoaded, setMeLoaded] = useState(false);
@@ -226,7 +249,7 @@ export default function TripBookingPage({
 
   const selectedGearList = useMemo(
     () =>
-      GEAR_OPTIONS.map((g) => ({ ...g, qty: gearQty[g.itemType] ?? 0 })).filter(
+      gearOptions.map((g) => ({ ...g, qty: gearQty[g.itemType] ?? 0 })).filter(
         (g) => g.qty > 0,
       ),
     [gearQty],
@@ -869,7 +892,7 @@ export default function TripBookingPage({
             按 + 加數量，例如 2 人想各租 1 件 BCD → BCD 數量 2
           </p>
           <div className="space-y-2">
-            {GEAR_OPTIONS.map((g) => {
+            {gearOptions.map((g) => {
               const qty = gearQty[g.itemType] ?? 0;
               const active = qty > 0;
               return (

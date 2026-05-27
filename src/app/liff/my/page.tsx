@@ -104,11 +104,9 @@ const STATUS_LABEL: Record<MyBooking["status"], string> = {
   no_show: "未到",
 };
 
-const GEAR_OPTIONS: Array<{
-  itemType: GearItemType;
-  label: string;
-  price: number;
-}> = [
+interface GearOption { itemType: GearItemType; label: string; price: number; }
+
+const GEAR_OPTIONS_DEFAULT: GearOption[] = [
   { itemType: "BCD", label: "BCD", price: 200 },
   { itemType: "regulator", label: "調節器", price: 200 },
   { itemType: "wetsuit", label: "防寒衣", price: 300 },
@@ -117,6 +115,22 @@ const GEAR_OPTIONS: Array<{
   { itemType: "computer", label: "潛水電腦錶", price: 300 },
   { itemType: "full_set", label: "整套 (七折)", price: 800 },
 ];
+
+// 在頁面 mount 後從 /api/site-config 更新（若後台有設定）
+let _cachedGearOptions: GearOption[] | null = null;
+async function fetchGearOptions(): Promise<GearOption[]> {
+  if (_cachedGearOptions) return _cachedGearOptions;
+  try {
+    const res = await fetch("/api/site-config");
+    const cfg: { gearRentalPrices?: Partial<Record<GearItemType, number>> } = await res.json();
+    const prices = cfg.gearRentalPrices ?? {};
+    if (Object.keys(prices).length > 0) {
+      _cachedGearOptions = GEAR_OPTIONS_DEFAULT.map(g => ({ ...g, price: prices[g.itemType] ?? g.price }));
+      return _cachedGearOptions;
+    }
+  } catch { /* fallback */ }
+  return GEAR_OPTIONS_DEFAULT;
+}
 
 function isUpcoming(b: MyBooking) {
   if (
@@ -145,6 +159,11 @@ export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<MyBooking | null>(null);
+  const [gearOptions, setGearOptions] = useState<GearOption[]>(GEAR_OPTIONS_DEFAULT);
+
+  useEffect(() => {
+    fetchGearOptions().then(setGearOptions);
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -514,7 +533,7 @@ function BookingCard({
 }
 
 function gearLabel(itemType: GearItemType): string {
-  const item = GEAR_OPTIONS.find((g) => g.itemType === itemType);
+  const item = GEAR_OPTIONS_DEFAULT.find((g) => g.itemType === itemType);
   return item?.label ?? itemType;
 }
 
@@ -695,7 +714,7 @@ function EditBookingDialog({
   if (!booking) return null;
 
   const isDaily = booking.type === "daily";
-  const selectedGear = GEAR_OPTIONS.map((g) => ({
+  const selectedGear = gearOptions.map((g) => ({
     ...g,
     qty: gearQty[g.itemType] ?? 0,
   })).filter((g) => g.qty > 0);
@@ -1046,7 +1065,7 @@ function EditBookingDialog({
               }
             >
               <div className="space-y-1.5">
-                {GEAR_OPTIONS.map((g) => {
+                {gearOptions.map((g) => {
                   const qty = gearQty[g.itemType] ?? 0;
                   const active = qty > 0;
                   return (

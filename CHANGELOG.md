@@ -2,6 +2,22 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_69 — 2026-05-27 (動態化 hardcode 金額 — 裝備費率/場次定價/天氣門檻)
+
+### ✨ 新功能
+
+**LIFF 前台裝備租借費率動態化**
+- `liff/dive/trip/[tripId]/page.tsx` — 預約場次時的裝備租借選項，從 `/api/site-config` 讀取最新費率（有設定才覆蓋，未設定 fallback 到預設值）
+- `liff/my/page.tsx` — 修改預約 / 查看我的預約頁同步動態費率
+
+**網頁後台場次預設定價動態化**
+- `admin/trips/page.tsx` — 新增場次時，`baseTrip / extraTank / nightDive / scooterRental` 的預設值從 SiteConfig `defaultTripPricing` 讀取（在 `/admin/settings` 可設定）
+
+**天氣取消風速門檻動態化**
+- `api/cron/weather-check/route.ts` — 優先讀取 SiteConfig `weatherWindThreshold`，其次讀 `WEATHER_WIND_THRESHOLD` env var，最後 fallback 10 m/s
+
+---
+
 ## 20260527_68 — 2026-05-27 (網頁後台 — VIP設定 + 群發通知 + 報表頁)
 
 ### ✨ 新頁面

@@ -65,7 +65,9 @@ async function handle(req: NextRequest) {
   const forceWind = url.searchParams.get("force_wind");
   const dryRun = url.searchParams.get("dry_run") === "1";
 
-  const threshold = Number(process.env.WEATHER_WIND_THRESHOLD ?? 10);
+  // 優先讀 SiteConfig，其次 env var，最後 fallback 10 m/s
+  const cfgRow = await prisma.siteConfig.findUnique({ where: { id: "default" }, select: { weatherWindThreshold: true } }).catch(() => null);
+  const threshold = cfgRow?.weatherWindThreshold ?? Number(process.env.WEATHER_WIND_THRESHOLD ?? 10);
   const stationIds = (process.env.WEATHER_STATIONS ?? "466940,467080")
     .split(",")
     .map((s) => s.trim());

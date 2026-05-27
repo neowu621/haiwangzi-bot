@@ -65,7 +65,7 @@ function statusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
   return "muted";
 }
 
-const BLANK_PRICING: Pricing = {
+const BLANK_PRICING_DEFAULT: Pricing = {
   baseTrip: 1200,
   extraTank: 500,
   nightDive: 300,
@@ -81,7 +81,7 @@ const BLANK_FORM = {
   tankCount: 3,
   capacity: 8,
   coachIds: [] as string[],
-  pricing: BLANK_PRICING,
+  pricing: BLANK_PRICING_DEFAULT,
   notes: "",
   meetingPoint: "",
 };
@@ -100,6 +100,7 @@ export default function AdminTripsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TripForm>({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
+  const [defaultPricing, setDefaultPricing] = useState<Pricing>(BLANK_PRICING_DEFAULT);
 
   useEffect(() => {
     Promise.all([
@@ -108,11 +109,16 @@ export default function AdminTripsPage() {
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches").catch(() => ({
         coaches: [],
       })),
+      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing> } }>("/api/admin/site-config").catch(() => ({ config: {} })),
     ])
-      .then(([t, s, c]) => {
+      .then(([t, s, c, cfg]) => {
         setTrips(t.trips);
         setSites(Array.isArray(s) ? s : []);
         setCoaches(c.coaches ?? []);
+        const dp = cfg.config.defaultTripPricing;
+        if (dp && Object.keys(dp).length > 0) {
+          setDefaultPricing({ ...BLANK_PRICING_DEFAULT, ...dp });
+        }
       })
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
@@ -127,7 +133,7 @@ export default function AdminTripsPage() {
   }
 
   function openCreate() {
-    setForm({ ...BLANK_FORM });
+    setForm({ ...BLANK_FORM, pricing: { ...defaultPricing } });
     setEditingId(null);
     setDialogMode("create");
   }
