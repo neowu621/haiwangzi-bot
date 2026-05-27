@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Moon, Anchor } from "lucide-react";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Pricing {
@@ -316,20 +316,26 @@ export default function AdminTripsPage() {
                       key={trip.id}
                       className={cn(
                         "border-t",
-                        i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
                         trip.status === "cancelled" && "opacity-50",
                       )}
-                      style={{ borderColor: "var(--border)" }}
+                      style={{
+                        borderColor: "var(--border)",
+                        background: trip.isNightDive
+                          ? i % 2 === 0 ? "#d4e4f7" : "#c8daf2"
+                          : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
+                      }}
                     >
                       <td className="px-4 py-3 tabular-nums font-medium">
                         {trip.date.slice(0, 10)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 tabular-nums">
-                          {trip.startTime}
-                          {trip.isNightDive && (
-                            <Moon className="h-3 w-3 text-[var(--color-phosphor)]" />
+                          {trip.isNightDive ? (
+                            <Moon className="h-3.5 w-3.5 shrink-0" style={{ color: "#6b9fd4" }} />
+                          ) : (
+                            <Sun className="h-3.5 w-3.5 shrink-0" style={{ color: "#e8a020" }} />
                           )}
+                          {trip.startTime}
                           {trip.isScooter && (
                             <Anchor className="h-3 w-3 text-[var(--color-phosphor)]" />
                           )}
@@ -340,7 +346,7 @@ export default function AdminTripsPage() {
                           ? trip.diveSiteIds.map(siteName).join("・")
                           : "—"}
                         <span className="ml-1 text-[var(--muted-foreground)]">
-                          ×{trip.tankCount}
+                          / {trip.tankCount}支
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs">
