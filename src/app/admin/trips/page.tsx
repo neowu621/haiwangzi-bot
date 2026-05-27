@@ -20,6 +20,8 @@ interface Pricing {
   extraTank: number;
   nightDive: number;
   scooterRental: number;
+  otherFee?: number;
+  otherFeeNote?: string;
 }
 
 interface Trip {
@@ -70,10 +72,13 @@ const BLANK_PRICING_DEFAULT: Pricing = {
   extraTank: 500,
   nightDive: 300,
   scooterRental: 500,
+  otherFee: 0,
+  otherFeeNote: "",
 };
 
+const TODAY = new Date().toISOString().split("T")[0];
 const BLANK_FORM = {
-  date: "",
+  date: TODAY,
   startTime: "08:00",
   isNightDive: false,
   isScooter: false,
@@ -88,6 +93,17 @@ const BLANK_FORM = {
 };
 
 type TripForm = typeof BLANK_FORM;
+
+function estimatedRevenue(trip: Trip): number {
+  const p = trip.pricing;
+  const tanksPerPerson = trip.tankCount;
+  const baseWithTanks = p.baseTrip + (tanksPerPerson - 1) * p.extraTank;
+  const extras =
+    (trip.isNightDive ? p.nightDive : 0) +
+    (trip.isScooter ? p.scooterRental : 0) +
+    (p.otherFee ?? 0);
+  return trip.booked * (baseWithTanks + extras);
+}
 
 export default function AdminTripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -149,7 +165,10 @@ export default function AdminTripsPage() {
       tankCount: trip.tankCount,
       capacity: trip.capacity ?? 0,
       coachIds: [...trip.coachIds],
-      pricing: { ...trip.pricing },
+      pricing: {
+        ...BLANK_PRICING_DEFAULT,
+        ...trip.pricing,
+      },
       notes: trip.notes ?? "",
       meetingPoint: trip.meetingPoint ?? "",
       status: trip.status,
@@ -224,13 +243,8 @@ export default function AdminTripsPage() {
     }
   }
 
-  function toggleSiteId(id: string) {
-    setForm((f) => ({
-      ...f,
-      diveSiteIds: f.diveSiteIds.includes(id)
-        ? f.diveSiteIds.filter((x) => x !== id)
-        : [...f.diveSiteIds, id],
-    }));
+  function selectSiteId(id: string) {
+    setForm((f) => ({ ...f, diveSiteIds: f.diveSiteIds[0] === id ? [] : [id] }));
   }
 
   function toggleCoachId(id: string) {
@@ -340,13 +354,7 @@ export default function AdminTripsPage() {
                       <td className="px-4 py-3 text-right tabular-nums">
                         {trip.booked === 0
                           ? "NT$0"
-                          : `NT$${(
-                              trip.booked *
-                              (trip.pricing.baseTrip +
-                                (trip.tankCount - 1) * trip.pricing.extraTank +
-                                (trip.isNightDive ? trip.pricing.nightDive : 0) +
-                                (trip.isScooter ? trip.pricing.scooterRental : 0))
-                            ).toLocaleString()}`}
+                          : `NT$${estimatedRevenue(trip).toLocaleString()}`}
                       </td>
                       <td className="px-4 py-3">
                         <Badge
@@ -416,10 +424,12 @@ export default function AdminTripsPage() {
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === "create" ? "新增場次" : "編輯場次"}
+              {dialogMode === "create" ? "新增場次" : "編輯場次"}{" "}
+              {form.isNightDive ? "🌙" : "☀️"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* 日期 + 集合時間: 2-column grid */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">日期</Label>
@@ -430,28 +440,21 @@ export default function AdminTripsPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">出發時間</Label>
+                <Label className="text-xs">集合時間</Label>
                 <Input
                   type="time"
                   value={form.startTime}
-                  onChange={(e) =>
-                    setForm({ ...form, startTime: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const time = e.target.value;
+                    const isNight = time >= "16:00";
+                    setForm({ ...form, startTime: time, isNightDive: isNight });
+                  }}
                 />
               </div>
             </div>
 
+            {/* 水下推進器 checkbox only (isNightDive is auto-set by time) */}
             <div className="flex gap-4">
-              <label className="flex items-center gap-1.5 text-xs">
-                <input
-                  type="checkbox"
-                  checked={form.isNightDive}
-                  onChange={(e) =>
-                    setForm({ ...form, isNightDive: e.target.checked })
-                  }
-                />
-                夜潛
-              </label>
               <label className="flex items-center gap-1.5 text-xs">
                 <input
                   type="checkbox"
@@ -464,6 +467,7 @@ export default function AdminTripsPage() {
               </label>
             </div>
 
+            {/* 潛點: single-select */}
             <div>
               <Label className="text-xs">潛點</Label>
               {sites.length === 0 ? (
@@ -476,10 +480,10 @@ export default function AdminTripsPage() {
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => toggleSiteId(s.id)}
+                      onClick={() => selectSiteId(s.id)}
                       className={cn(
                         "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        form.diveSiteIds.includes(s.id)
+                        form.diveSiteIds[0] === s.id
                           ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
                           : "border-[var(--border)] hover:bg-[var(--muted)]",
                       )}
@@ -491,6 +495,7 @@ export default function AdminTripsPage() {
               )}
             </div>
 
+            {/* 教練 */}
             <div>
               <Label className="text-xs">教練</Label>
               {coaches.length === 0 ? (
@@ -518,6 +523,7 @@ export default function AdminTripsPage() {
               )}
             </div>
 
+            {/* 氣瓶數 + 容量 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">氣瓶數</Label>
@@ -550,41 +556,86 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
+            {/* 費用設定: conditional on isNightDive / isScooter */}
             <div>
               <Label className="text-xs mb-1 block">費用設定 (NT$)</Label>
               <div className="grid grid-cols-2 gap-2">
-                {(
-                  [
-                    ["baseTrip", "基本費"],
-                    ["extraTank", "加支費"],
-                    ["nightDive", "夜潛費"],
-                    ["scooterRental", "推進器費"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <div key={key}>
-                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
-                      {label}
-                    </div>
+                <div>
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">基本費</div>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.pricing.baseTrip}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, baseTrip: Number(e.target.value) } })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">加支費</div>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.pricing.extraTank}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, extraTank: Number(e.target.value) } })
+                    }
+                  />
+                </div>
+                {form.isNightDive && (
+                  <div>
+                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">夜潛費</div>
                     <Input
                       type="number"
                       min={0}
-                      value={form.pricing[key]}
+                      value={form.pricing.nightDive}
                       onChange={(e) =>
-                        setForm({
-                          ...form,
-                          pricing: {
-                            ...form.pricing,
-                            [key]: Number(e.target.value),
-                          },
-                        })
+                        setForm({ ...form, pricing: { ...form.pricing, nightDive: Number(e.target.value) } })
                       }
                     />
                   </div>
-                ))}
+                )}
+                {form.isScooter && (
+                  <div>
+                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">推進器費</div>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.pricing.scooterRental}
+                      onChange={(e) =>
+                        setForm({ ...form, pricing: { ...form.pricing, scooterRental: Number(e.target.value) } })
+                      }
+                    />
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">其他費用</div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="金額"
+                      className="w-28"
+                      value={form.pricing.otherFee ?? 0}
+                      onChange={(e) =>
+                        setForm({ ...form, pricing: { ...form.pricing, otherFee: Number(e.target.value) } })
+                      }
+                    />
+                    <Input
+                      placeholder="說明（選填）"
+                      className="flex-1"
+                      value={form.pricing.otherFeeNote ?? ""}
+                      onChange={(e) =>
+                        setForm({ ...form, pricing: { ...form.pricing, otherFeeNote: e.target.value } })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div>
+            {/* 集合地點 */}
+            <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
               <Label className="text-xs">集合地點</Label>
               <Input
                 value={form.meetingPoint}
@@ -595,10 +646,11 @@ export default function AdminTripsPage() {
               />
             </div>
 
-            <div>
-              <Label className="text-xs">備註</Label>
+            {/* 備註 */}
+            <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+              <Label className="text-xs pt-1.5">備註</Label>
               <textarea
-                className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                 rows={2}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -606,6 +658,7 @@ export default function AdminTripsPage() {
               />
             </div>
 
+            {/* 場次狀態 */}
             <div>
               <Label className="text-xs">場次狀態</Label>
               <div className="mt-1 flex gap-2">

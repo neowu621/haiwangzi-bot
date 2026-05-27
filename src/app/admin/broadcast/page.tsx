@@ -25,9 +25,6 @@ const TEMPLATES = [
   { key: "birthday_credit", label: "生日禮金" },
 ];
 
-const cardStyle: React.CSSProperties = { background: "var(--color-ocean-surface)", border: "1px solid rgba(255,255,255,0.1)" };
-const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
 export default function BroadcastPage() {
@@ -80,16 +77,16 @@ export default function BroadcastPage() {
           此操作會向真實用戶發送 LINE / Email 訊息，請確認內容後再送出。
         </div>
 
-        <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
+        <div className="rounded-xl border p-5 space-y-4 bg-white" style={{ borderColor: "var(--border)" }}>
           {/* Audience */}
           <div>
-            <Label className="mb-2 block text-sm" style={labelStyle}>發送對象</Label>
+            <Label className="mb-2 block text-sm text-[var(--foreground)]">發送對象</Label>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(AUDIENCE_LABELS) as Audience[]).map(a => (
                 <button key={a} onClick={() => setAudience(a)}
                   className="rounded-full px-3 py-1.5 text-sm transition-colors"
                   style={audience === a ? { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", fontWeight: 600 }
-                    : { background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    : { background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
                   {AUDIENCE_LABELS[a]}
                 </button>
               ))}
@@ -98,13 +95,13 @@ export default function BroadcastPage() {
 
           {/* Channel */}
           <div>
-            <Label className="mb-2 block text-sm" style={labelStyle}>發送管道</Label>
+            <Label className="mb-2 block text-sm text-[var(--foreground)]">發送管道</Label>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(CHANNEL_LABELS) as Channel[]).map(c => (
                 <button key={c} onClick={() => setChannel(c)}
                   className="rounded-full px-3 py-1.5 text-sm transition-colors"
                   style={channel === c ? { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", fontWeight: 600 }
-                    : { background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    : { background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
                   {CHANNEL_LABELS[c]}
                 </button>
               ))}
@@ -113,34 +110,34 @@ export default function BroadcastPage() {
 
           {/* Template */}
           <div>
-            <Label className="mb-2 block text-sm" style={labelStyle}>訊息模板</Label>
+            <Label className="mb-2 block text-sm text-[var(--foreground)]">訊息模板</Label>
             <select value={template} onChange={e => setTemplate(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}>
-              {TEMPLATES.map(t => <option key={t.key} value={t.key} style={{ background: "#0a1628" }}>{t.label}</option>)}
+              className="w-full rounded-lg border px-3 py-2 text-sm text-[var(--foreground)]"
+              style={{ borderColor: "var(--border)", background: "var(--background)" }}>
+              {TEMPLATES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
             </select>
           </div>
 
           {/* Text message */}
           {template === "text" ? (
             <div>
-              <Label className="mb-2 block text-sm" style={labelStyle}>訊息內容</Label>
+              <Label className="mb-2 block text-sm text-[var(--foreground)]">訊息內容</Label>
               <textarea value={textMsg} onChange={e => setTextMsg(e.target.value)} rows={5}
-                className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}
+                className="w-full rounded-lg border px-3 py-2 text-sm resize-none text-[var(--foreground)]"
+                style={{ borderColor: "var(--border)", background: "var(--background)" }}
                 placeholder="輸入純文字訊息內容..." />
             </div>
           ) : (
             <>
               <div>
-                <Label className="mb-1 block text-sm" style={labelStyle}>Alt Text（LINE 通知文字）</Label>
-                <Input className={inputCls} value={altText} onChange={e => setAltText(e.target.value)} placeholder="簡短說明訊息內容" />
+                <Label className="mb-1 block text-sm text-[var(--foreground)]">Alt Text（LINE 通知文字）</Label>
+                <Input value={altText} onChange={e => setAltText(e.target.value)} placeholder="簡短說明訊息內容" />
               </div>
               <div>
-                <Label className="mb-1 block text-sm" style={labelStyle}>模板參數（JSON）</Label>
+                <Label className="mb-1 block text-sm text-[var(--foreground)]">模板參數（JSON）</Label>
                 <textarea value={paramsJson} onChange={e => setParamsJson(e.target.value)} rows={4}
-                  className="w-full rounded-lg border px-3 py-2 text-sm font-mono resize-none"
-                  style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}
+                  className="w-full rounded-lg border px-3 py-2 text-sm font-mono resize-none text-[var(--foreground)]"
+                  style={{ borderColor: "var(--border)", background: "var(--background)" }}
                   placeholder='{"tripDate": "2026-06-01", "siteName": "龍洞"}' />
               </div>
             </>
@@ -150,14 +147,14 @@ export default function BroadcastPage() {
           {(channel === "email" || channel === "both") && (
             <>
               <div>
-                <Label className="mb-1 block text-sm" style={labelStyle}>Email 主旨</Label>
-                <Input className={inputCls} value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Email 標題" />
+                <Label className="mb-1 block text-sm text-[var(--foreground)]">Email 主旨</Label>
+                <Input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Email 標題" />
               </div>
               <div>
-                <Label className="mb-1 block text-sm" style={labelStyle}>Email 內文</Label>
+                <Label className="mb-1 block text-sm text-[var(--foreground)]">Email 內文</Label>
                 <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={5}
-                  className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                  style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}
+                  className="w-full rounded-lg border px-3 py-2 text-sm resize-none text-[var(--foreground)]"
+                  style={{ borderColor: "var(--border)", background: "var(--background)" }}
                   placeholder="Email 正文內容..." />
               </div>
             </>

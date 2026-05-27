@@ -28,9 +28,7 @@ const CERT_LABELS: Record<Cert, string> = {
   DM: "DM", Instructor: "Instructor", CourseDirector: "Course Director",
 };
 
-const cardStyle: React.CSSProperties = { background: "var(--color-ocean-surface)", border: "1px solid rgba(255,255,255,0.1)" };
 const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
 const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
@@ -132,7 +130,7 @@ export default function CoachesPage() {
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
 
         <div className="flex items-center justify-between">
-          <label className="flex cursor-pointer items-center gap-2 text-sm" style={subStyle}>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--muted-foreground)]">
             <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
               className="h-3.5 w-3.5 accent-[var(--color-phosphor)]" />
             顯示停用教練
@@ -143,44 +141,44 @@ export default function CoachesPage() {
         </div>
 
         {loading ? (
-          <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl" style={cardStyle}>
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
                   {["姓名", "證照", "特長", "費用/潛", "LINE", "狀態", "操作"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={subStyle}>{h}</th>
+                    <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {visible.map((c, i) => (
-                  <tr key={c.id} style={{ borderBottom: i < visible.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined, opacity: c.active ? 1 : 0.5 }}>
-                    <td className="px-4 py-3 font-semibold" style={{ color: "#e6f0ff" }}>{c.realName}</td>
-                    <td className="px-4 py-3" style={subStyle}>{CERT_LABELS[c.cert]}</td>
+                  <tr key={c.id} className={`border-t ${i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20"}`} style={{ borderColor: "var(--border)", opacity: c.active ? 1 : 0.5 }}>
+                    <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{c.realName}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{CERT_LABELS[c.cert]}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {c.specialty.slice(0, 3).map(s => (
-                          <span key={s} className="rounded px-1.5 py-0.5 text-[10px]" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.7)" }}>{s}</span>
+                          <span key={s} className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] text-[var(--foreground)]">{s}</span>
                         ))}
-                        {c.specialty.length > 3 && <span className="text-[10px]" style={subStyle}>+{c.specialty.length - 3}</span>}
+                        {c.specialty.length > 3 && <span className="text-[10px] text-[var(--muted-foreground)]">+{c.specialty.length - 3}</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3" style={subStyle}>NT$ {c.feePerDive}</td>
-                    <td className="px-4 py-3 font-mono text-[11px]" style={subStyle}>{c.lineUserId ? c.lineUserId.slice(0, 12) + "..." : "—"}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">NT$ {c.feePerDive}</td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-[var(--muted-foreground)]">{c.lineUserId ? c.lineUserId.slice(0, 12) + "..." : "—"}</td>
                     <td className="px-4 py-3">
                       <Badge variant={c.active ? "ocean" : "muted"}>{c.active ? "啟用" : "停用"}</Badge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => openEdit(c)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "rgba(230,240,255,0.6)" }} title="編輯">
+                        <button onClick={() => openEdit(c)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }} title="編輯">
                           <Edit3 className="h-3.5 w-3.5" />
                         </button>
-                        <button onClick={() => toggleActive(c)} className="rounded p-1.5 hover:bg-white/10" style={{ color: c.active ? "var(--color-coral)" : "var(--color-phosphor)" }} title={c.active ? "停用" : "啟用"}>
+                        <button onClick={() => toggleActive(c)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: c.active ? "var(--color-coral)" : "var(--color-phosphor)" }} title={c.active ? "停用" : "啟用"}>
                           {c.active ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
                         </button>
-                        <button onClick={() => deleteCoach(c)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "var(--color-coral)" }} title="永久刪除">
+                        <button onClick={() => deleteCoach(c)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-coral)" }} title="永久刪除">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -188,7 +186,7 @@ export default function CoachesPage() {
                   </tr>
                 ))}
                 {visible.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm" style={subStyle}>沒有教練資料</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">沒有教練資料</td></tr>
                 )}
               </tbody>
             </table>

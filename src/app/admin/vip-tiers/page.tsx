@@ -19,10 +19,6 @@ interface VipTier {
   benefits: string[];
 }
 
-const cardStyle: React.CSSProperties = { background: "var(--color-ocean-surface)", border: "1px solid rgba(255,255,255,0.1)" };
-const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
-const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
 export default function VipTiersPage() {
@@ -109,64 +105,64 @@ export default function VipTiersPage() {
         )}
 
         {loading ? (
-          <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : (
           <div className="space-y-4">
             {tiers.map((tier, idx) => (
-              <div key={tier.level} className="rounded-xl p-5" style={cardStyle}>
+              <div key={tier.level} className="rounded-xl border p-5 bg-white" style={{ borderColor: "var(--border)" }}>
                 <div className="mb-4 flex items-center gap-3">
-                  <Input className={`${inputCls} w-12 text-center text-lg`} value={tier.emoji}
+                  <Input className="w-12 text-center text-lg" value={tier.emoji}
                     onChange={e => updateTier(idx, { emoji: e.target.value })} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm" style={{ color: tier.color || "var(--color-phosphor)" }}>LV{tier.level}</span>
-                      <Input className={`${inputCls} h-7 text-sm`} value={tier.name} placeholder="中文名稱"
+                      <Input className="h-7 text-sm" value={tier.name} placeholder="中文名稱"
                         onChange={e => updateTier(idx, { name: e.target.value })} />
-                      <Input className={`${inputCls} h-7 text-sm`} value={tier.enName} placeholder="English name"
+                      <Input className="h-7 text-sm" value={tier.enName} placeholder="English name"
                         onChange={e => updateTier(idx, { enName: e.target.value })} />
                     </div>
                   </div>
-                  <Input className={`${inputCls} w-24 h-7 text-xs`} value={tier.color} placeholder="#ffffff"
+                  <Input className="w-24 h-7 text-xs" value={tier.color} placeholder="#ffffff"
                     onChange={e => updateTier(idx, { color: e.target.value })} />
                 </div>
 
                 <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div>
-                    <Label className="mb-1 block text-xs" style={{ color: "rgba(230,240,255,0.5)" }}>最低潛水次數</Label>
-                    <Input type="number" className={inputCls} value={tier.minLogs}
+                    <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數</Label>
+                    <Input type="number" value={tier.minLogs}
                       onChange={e => updateTier(idx, { minLogs: parseInt(e.target.value) || 0 })} />
                   </div>
                   <div>
-                    <Label className="mb-1 block text-xs" style={{ color: "rgba(230,240,255,0.5)" }}>最低消費 (NT$)</Label>
-                    <Input type="number" className={inputCls} value={tier.minSpend}
+                    <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低消費 (NT$)</Label>
+                    <Input type="number" value={tier.minSpend}
                       onChange={e => updateTier(idx, { minSpend: parseInt(e.target.value) || 0 })} />
                   </div>
                   <div>
-                    <Label className="mb-1 block text-xs" style={{ color: "rgba(230,240,255,0.5)" }}>Key</Label>
-                    <Input className={inputCls} value={tier.key} placeholder="shrimp"
+                    <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">Key</Label>
+                    <Input value={tier.key} placeholder="shrimp"
                       onChange={e => updateTier(idx, { key: e.target.value })} />
                   </div>
                 </div>
 
                 <div>
                   <div className="mb-2 flex items-center gap-2">
-                    <Label className="text-xs" style={{ color: "rgba(230,240,255,0.5)" }}>會員福利</Label>
-                    <button onClick={() => addBenefit(idx)} className="rounded p-0.5 hover:bg-white/10" style={{ color: "var(--color-phosphor)" }}>
+                    <Label className="text-xs text-[var(--muted-foreground)]">會員福利</Label>
+                    <button onClick={() => addBenefit(idx)} className="rounded p-0.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-phosphor)" }}>
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <div className="space-y-1.5">
                     {tier.benefits.map((b, j) => (
                       <div key={j} className="flex gap-2">
-                        <Input className={`${inputCls} text-sm`} value={b} placeholder="福利描述"
+                        <Input className="text-sm" value={b} placeholder="福利描述"
                           onChange={e => updateBenefit(idx, j, e.target.value)} />
-                        <button onClick={() => removeBenefit(idx, j)} className="rounded p-1.5 hover:bg-white/10 flex-shrink-0" style={{ color: "var(--color-coral)" }}>
+                        <button onClick={() => removeBenefit(idx, j)} className="rounded p-1.5 hover:bg-[var(--muted)] flex-shrink-0" style={{ color: "var(--color-coral)" }}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
                     {tier.benefits.length === 0 && (
-                      <p className="text-xs" style={subStyle}>尚無福利，點 + 新增</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">尚無福利，點 + 新增</p>
                     )}
                   </div>
                 </div>
@@ -176,8 +172,7 @@ export default function VipTiersPage() {
         )}
 
         <div className="flex gap-3 justify-between">
-          <Button variant="outline" size="sm" onClick={resetToDefault} disabled={saving}
-            style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.6)" }}>
+          <Button variant="outline" size="sm" onClick={resetToDefault} disabled={saving}>
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />還原預設
           </Button>
           <Button size="sm" style={primaryBtn} onClick={save} disabled={saving || loading}>

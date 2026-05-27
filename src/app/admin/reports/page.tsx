@@ -14,16 +14,14 @@ interface Stats {
   pendingProofs: number;
 }
 
-const cardStyle: React.CSSProperties = { background: "var(--color-ocean-surface)", border: "1px solid rgba(255,255,255,0.1)" };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
 function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="rounded-xl p-4" style={cardStyle}>
-      <div className="mb-1 text-xs" style={subStyle}>{label}</div>
-      <div className="text-2xl font-bold" style={{ color: color ?? "#e6f0ff" }}>{value}</div>
-      {sub && <div className="mt-1 text-xs" style={subStyle}>{sub}</div>}
+    <div className="rounded-xl border p-4 bg-white" style={{ borderColor: "var(--border)" }}>
+      <div className="mb-1 text-xs text-[var(--muted-foreground)]">{label}</div>
+      <div className="text-2xl font-bold" style={{ color: color ?? "var(--foreground)" }}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-[var(--muted-foreground)]">{sub}</div>}
     </div>
   );
 }
@@ -74,10 +72,9 @@ export default function ReportsPage() {
     <AdminShell>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold" style={{ color: "rgba(230,240,255,0.7)" }}>營運統計</h2>
+          <h2 className="text-base font-semibold text-[var(--foreground)]">營運統計</h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={load} disabled={loading}
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)" }}>
+            <Button size="sm" variant="outline" onClick={load} disabled={loading}>
               <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               重新整理
             </Button>
@@ -91,12 +88,12 @@ export default function ReportsPage() {
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
 
         {loading ? (
-          <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : stats ? (
           <div className="space-y-6">
             {/* Revenue */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={subStyle}>💰 收入</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">💰 收入</p>
               <div className="grid grid-cols-2 gap-4">
                 <StatCard label="已收款金額" value={`NT$ ${stats.revenue.paid.toLocaleString()}`} color="var(--color-phosphor)" />
                 <StatCard label="預計總收入" value={`NT$ ${stats.revenue.booked.toLocaleString()}`} sub="含未付款訂單" />
@@ -105,7 +102,7 @@ export default function ReportsPage() {
 
             {/* Users */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={subStyle}>👥 會員</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">👥 會員</p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <StatCard label="總會員數" value={stats.users.total.toString()} />
                 <StatCard label="客戶" value={stats.users.customers.toString()} />
@@ -116,7 +113,7 @@ export default function ReportsPage() {
 
             {/* Trips */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={subStyle}>🤿 場次</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">🤿 場次</p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <StatCard label="日潛場次（總計）" value={stats.trips.total.toString()} />
                 <StatCard label="開放中" value={stats.trips.open.toString()} />
@@ -126,7 +123,7 @@ export default function ReportsPage() {
 
             {/* Tours */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={subStyle}>🚢 潛水團</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">🚢 潛水團</p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <StatCard label="潛水團（總計）" value={stats.tours.total.toString()} />
                 <StatCard label="開放中" value={stats.tours.open.toString()} />
@@ -136,7 +133,7 @@ export default function ReportsPage() {
 
             {/* Bookings */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={subStyle}>📋 訂單</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">📋 訂單</p>
               <div className="grid grid-cols-2 gap-4">
                 <StatCard label="訂單總數" value={stats.bookings.total.toString()} />
                 <StatCard label="進行中訂單" value={stats.bookings.active.toString()} sub="未來場次且未取消" />
@@ -147,7 +144,7 @@ export default function ReportsPage() {
             {stats.pendingProofs > 0 && (
               <div className="rounded-xl p-4" style={{ background: "rgba(255,123,90,0.1)", border: "1px solid rgba(255,123,90,0.3)" }}>
                 <p className="font-semibold" style={{ color: "var(--color-coral)" }}>⚠️ {stats.pendingProofs} 筆付款證明待審核</p>
-                <p className="mt-1 text-sm" style={subStyle}>請前往「訂單管理」頁面處理</p>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">請前往「訂單管理」頁面處理</p>
               </div>
             )}
           </div>

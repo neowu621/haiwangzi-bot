@@ -68,19 +68,10 @@ const TRIP_LABELS: Record<keyof TripPricing, string> = {
   baseTrip: "基本潛水費", extraTank: "額外氣瓶", nightDive: "夜潛加成", scooterRental: "水上摩托車",
 };
 
-/* ─── Styles ─────────────────────────────────────────── */
-const cardStyle: React.CSSProperties = {
-  background: "var(--color-ocean-surface)",
-  border: "1px solid rgba(255,255,255,0.1)",
-};
-const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
-const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
-
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl p-5" style={cardStyle}>
-      <h2 className="mb-4 text-base font-semibold" style={{ color: "var(--color-phosphor)" }}>
+    <div className="rounded-xl border p-5 bg-white" style={{ borderColor: "var(--border)" }}>
+      <h2 className="mb-4 text-base font-semibold text-[var(--foreground)]">
         {title}
       </h2>
       {children}
@@ -91,7 +82,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[10rem_1fr] items-center gap-3">
-      <Label style={labelStyle} className="text-sm">{label}</Label>
+      <Label className="text-sm text-[var(--foreground)]">{label}</Label>
       {children}
     </div>
   );
@@ -150,14 +141,14 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <AdminShell>
-        <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+        <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
       </AdminShell>
     );
   }
   if (!cfg) {
     return (
       <AdminShell>
-        <div className="rounded-xl p-5 text-sm" style={{ ...cardStyle, color: "var(--color-coral)" }}>
+        <div className="rounded-xl border p-5 text-sm bg-white" style={{ borderColor: "var(--border)", color: "var(--color-coral)" }}>
           {err ?? "載入失敗"}
         </div>
       </AdminShell>
@@ -182,26 +173,26 @@ export default function SettingsPage() {
         <SectionCard title="🏠 首頁設定">
           <div className="space-y-3">
             <FieldRow label="Hero 標題">
-              <Input className={inputCls} value={cfg.heroTitle} onChange={e => setCfg(c => c ? { ...c, heroTitle: e.target.value } : c)} />
+              <Input value={cfg.heroTitle} onChange={e => setCfg(c => c ? { ...c, heroTitle: e.target.value } : c)} />
             </FieldRow>
             <FieldRow label="Hero 副標（英）">
-              <Input className={inputCls} value={cfg.heroSubtitle} onChange={e => setCfg(c => c ? { ...c, heroSubtitle: e.target.value } : c)} />
+              <Input value={cfg.heroSubtitle} onChange={e => setCfg(c => c ? { ...c, heroSubtitle: e.target.value } : c)} />
             </FieldRow>
             <FieldRow label="打招呼語">
-              <Input className={inputCls} value={cfg.heroGreeting} onChange={e => setCfg(c => c ? { ...c, heroGreeting: e.target.value } : c)} />
+              <Input value={cfg.heroGreeting} onChange={e => setCfg(c => c ? { ...c, heroGreeting: e.target.value } : c)} />
             </FieldRow>
             <FieldRow label="Footer 標語（中）">
-              <Input className={inputCls} value={cfg.footerSloganZh} onChange={e => setCfg(c => c ? { ...c, footerSloganZh: e.target.value } : c)} />
+              <Input value={cfg.footerSloganZh} onChange={e => setCfg(c => c ? { ...c, footerSloganZh: e.target.value } : c)} />
             </FieldRow>
             <FieldRow label="Footer 標語（英）">
-              <Input className={inputCls} value={cfg.footerSloganEn} onChange={e => setCfg(c => c ? { ...c, footerSloganEn: e.target.value } : c)} />
+              <Input value={cfg.footerSloganEn} onChange={e => setCfg(c => c ? { ...c, footerSloganEn: e.target.value } : c)} />
             </FieldRow>
             <FieldRow label="天氣自動取消">
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" checked={cfg.weatherAutoCancel}
                   onChange={e => setCfg(c => c ? { ...c, weatherAutoCancel: e.target.checked } : c)}
                   className="h-4 w-4 accent-[var(--color-phosphor)]" />
-                <span className="text-sm" style={labelStyle}>啟用（超過風速門檻自動取消場次）</span>
+                <span className="text-sm text-[var(--foreground)]">啟用（超過風速門檻自動取消場次）</span>
               </label>
             </FieldRow>
             <FieldRow label="Splash 動畫">
@@ -209,7 +200,7 @@ export default function SettingsPage() {
                 <input type="checkbox" checked={cfg.splashEnabled}
                   onChange={e => setCfg(c => c ? { ...c, splashEnabled: e.target.checked } : c)}
                   className="h-4 w-4 accent-[var(--color-phosphor)]" />
-                <span className="text-sm" style={labelStyle}>啟用</span>
+                <span className="text-sm text-[var(--foreground)]">啟用</span>
               </label>
             </FieldRow>
           </div>
@@ -232,12 +223,12 @@ export default function SettingsPage() {
 
           {/* B1 裝備租借 */}
           <div className="mb-5">
-            <p className="mb-3 text-sm font-medium" style={{ color: "rgba(230,240,255,0.6)" }}>裝備租借費率（NT$）</p>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">裝備租借費率（NT$）</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {(Object.keys(GEAR_LABELS) as Array<keyof GearPrices>).map(key => (
                 <div key={key}>
-                  <Label className="mb-1 block text-xs" style={subStyle}>{GEAR_LABELS[key]}</Label>
-                  <Input type="number" className={inputCls} value={gear[key]}
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{GEAR_LABELS[key]}</Label>
+                  <Input type="number" value={gear[key]}
                     onChange={e => {
                       const val = parseInt(e.target.value) || 0;
                       setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: val } } : c);
@@ -248,13 +239,13 @@ export default function SettingsPage() {
           </div>
 
           {/* B2 場次預設定價 */}
-          <div className="mb-5 border-t border-white/10 pt-4">
-            <p className="mb-3 text-sm font-medium" style={{ color: "rgba(230,240,255,0.6)" }}>場次預設定價（新增場次時的預設值，NT$）</p>
+          <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">場次預設定價（新增場次時的預設值，NT$）</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {(Object.keys(TRIP_LABELS) as Array<keyof TripPricing>).map(key => (
                 <div key={key}>
-                  <Label className="mb-1 block text-xs" style={subStyle}>{TRIP_LABELS[key]}</Label>
-                  <Input type="number" className={inputCls} value={trip[key]}
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{TRIP_LABELS[key]}</Label>
+                  <Input type="number" value={trip[key]}
                     onChange={e => {
                       const val = parseInt(e.target.value) || 0;
                       setCfg(c => c ? { ...c, defaultTripPricing: { ...trip, [key]: val } } : c);
@@ -265,35 +256,35 @@ export default function SettingsPage() {
           </div>
 
           {/* B3 其他費用 */}
-          <div className="mb-5 border-t border-white/10 pt-4">
-            <p className="mb-3 text-sm font-medium" style={{ color: "rgba(230,240,255,0.6)" }}>其他費用</p>
+          <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">其他費用</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div>
-                <Label className="mb-1 block text-xs" style={subStyle}>教練預設費用/潛（NT$）</Label>
-                <Input type="number" className={inputCls} value={cfg.defaultCoachFee}
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">教練預設費用/潛（NT$）</Label>
+                <Input type="number" value={cfg.defaultCoachFee}
                   onChange={e => setCfg(c => c ? { ...c, defaultCoachFee: parseInt(e.target.value) || 0 } : c)} />
               </div>
               <div>
-                <Label className="mb-1 block text-xs" style={subStyle}>生日禮金（NT$，0=停用）</Label>
-                <Input type="number" className={inputCls} value={cfg.birthdayCreditAmount}
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金（NT$，0=停用）</Label>
+                <Input type="number" value={cfg.birthdayCreditAmount}
                   onChange={e => setCfg(c => c ? { ...c, birthdayCreditAmount: parseInt(e.target.value) || 0 } : c)} />
               </div>
               <div>
-                <Label className="mb-1 block text-xs" style={subStyle}>天氣取消風速門檻（m/s）</Label>
-                <Input type="number" className={inputCls} value={cfg.weatherWindThreshold}
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">天氣取消風速門檻（m/s）</Label>
+                <Input type="number" value={cfg.weatherWindThreshold}
                   onChange={e => setCfg(c => c ? { ...c, weatherWindThreshold: parseInt(e.target.value) || 10 } : c)} />
               </div>
             </div>
           </div>
 
           {/* B4 VIP 升等獎金 */}
-          <div className="mb-4 border-t border-white/10 pt-4">
-            <p className="mb-3 text-sm font-medium" style={{ color: "rgba(230,240,255,0.6)" }}>VIP 升等獎金（NT$，0=停用）</p>
+          <div className="mb-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">VIP 升等獎金（NT$，0=停用）</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {(["2","3","4","5"] as const).map(lv => (
                 <div key={lv}>
-                  <Label className="mb-1 block text-xs" style={subStyle}>升到 LV{lv}</Label>
-                  <Input type="number" className={inputCls} value={vipCredits[lv] ?? 0}
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升到 LV{lv}</Label>
+                  <Input type="number" value={vipCredits[lv] ?? 0}
                     onChange={e => {
                       const val = parseInt(e.target.value) || 0;
                       setCfg(c => c ? { ...c, vipUpgradeCredits: { ...vipCredits, [lv]: val } } : c);
@@ -325,7 +316,7 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {/* Version */}
             <FieldRow label="目前版本">
-              <span className="rounded px-2 py-1 font-mono text-sm" style={{ background: "rgba(255,255,255,0.08)", color: "var(--color-phosphor)" }}>
+              <span className="rounded bg-[var(--muted)] px-2 py-1 font-mono text-sm" style={{ color: "var(--color-phosphor)" }}>
                 v{APP_VERSION}
               </span>
             </FieldRow>
@@ -333,10 +324,9 @@ export default function SettingsPage() {
             {/* Email test */}
             <FieldRow label="Email 測試">
               <div className="flex gap-2">
-                <Input className={inputCls} placeholder="(預設寄給自己)" value={emailTarget}
+                <Input placeholder="(預設寄給自己)" value={emailTarget}
                   onChange={e => setEmailTarget(e.target.value)} />
                 <Button size="sm" variant="outline"
-                  style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.8)" }}
                   onClick={sendTestEmail} disabled={saving === "email"}>
                   <Send className="mr-1.5 h-3.5 w-3.5" />
                   {saving === "email" ? "寄送中..." : "寄送"}
@@ -360,7 +350,6 @@ export default function SettingsPage() {
 
             <FieldRow label="重新整理設定">
               <Button size="sm" variant="outline"
-                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.8)" }}
                 onClick={load} disabled={loading}>
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                 重新載入

@@ -64,12 +64,6 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   config: "設定", broadcast: "群發",
 };
 
-const cardStyle: React.CSSProperties = {
-  background: "var(--color-ocean-surface)",
-  border: "1px solid rgba(255,255,255,0.1)",
-};
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
-const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)] h-8 text-sm";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -134,7 +128,7 @@ export default function AuditLogsPage() {
                 className="rounded-full px-2.5 py-1 text-xs transition-colors"
                 style={actionFilter === cat.value
                   ? { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", fontWeight: 600 }
-                  : { background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  : { background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
                 {cat.label}
               </button>
             ))}
@@ -144,36 +138,35 @@ export default function AuditLogsPage() {
 
           {/* Actor search */}
           <Input
-            className={inputCls}
+            className="h-8 text-sm"
             placeholder="搜尋操作者 ID..."
             value={actorFilter}
             onChange={e => { setActorFilter(e.target.value); setPage(1); }}
             style={{ width: 180 }}
           />
 
-          <Button size="sm" variant="outline" onClick={load} disabled={loading}
-            style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)", height: 32 }}>
+          <Button size="sm" variant="outline" onClick={load} disabled={loading} style={{ height: 32 }}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         {/* Stats */}
         {data && (
-          <div className="text-xs" style={subStyle}>
+          <div className="text-xs text-[var(--muted-foreground)]">
             共 {data.total.toLocaleString()} 筆紀錄，第 {data.page} / {data.pages} 頁
           </div>
         )}
 
         {/* Log table */}
         {loading && !data ? (
-          <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl" style={cardStyle}>
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
                   {["時間", "操作者", "操作", "對象類型", "對象", "詳情"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={subStyle}>{h}</th>
+                    <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -183,33 +176,33 @@ export default function AuditLogsPage() {
                     <tr
                       key={log.id}
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
-                      className="cursor-pointer transition-colors hover:bg-white/5"
-                      style={{ borderBottom: i < (data.logs.length - 1) ? "1px solid rgba(255,255,255,0.05)" : undefined }}
+                      className={`cursor-pointer border-t transition-colors hover:bg-[var(--muted)]/40 ${i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20"}`}
+                      style={{ borderColor: "var(--border)" }}
                     >
-                      <td className="px-4 py-2.5 font-mono text-[11px]" style={subStyle}>{formatDate(log.createdAt)}</td>
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-[var(--muted-foreground)]">{formatDate(log.createdAt)}</td>
                       <td className="px-4 py-2.5">
-                        <div className="font-medium text-xs" style={{ color: "#e6f0ff" }}>{log.actorName ?? "—"}</div>
-                        {log.actorId && <div className="font-mono text-[10px]" style={subStyle}>{log.actorId.slice(0, 14)}…</div>}
+                        <div className="font-medium text-xs text-[var(--foreground)]">{log.actorName ?? "—"}</div>
+                        {log.actorId && <div className="font-mono text-[10px] text-[var(--muted-foreground)]">{log.actorId.slice(0, 14)}…</div>}
                       </td>
-                      <td className="px-4 py-2.5 text-sm" style={{ color: "#e6f0ff" }}>
+                      <td className="px-4 py-2.5 text-sm text-[var(--foreground)]">
                         {ACTION_LABELS[log.action] ?? log.action}
                       </td>
-                      <td className="px-4 py-2.5 text-xs" style={subStyle}>
+                      <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)]">
                         {log.targetType ? TARGET_TYPE_LABELS[log.targetType] ?? log.targetType : "—"}
                       </td>
                       <td className="px-4 py-2.5">
-                        <div className="text-xs" style={{ color: "#e6f0ff" }}>{log.targetLabel ?? "—"}</div>
-                        {log.targetId && <div className="font-mono text-[10px]" style={subStyle}>{log.targetId.slice(0, 16)}…</div>}
+                        <div className="text-xs text-[var(--foreground)]">{log.targetLabel ?? "—"}</div>
+                        {log.targetId && <div className="font-mono text-[10px] text-[var(--muted-foreground)]">{log.targetId.slice(0, 16)}…</div>}
                       </td>
-                      <td className="px-4 py-2.5 text-xs" style={subStyle}>
+                      <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)]">
                         {log.metadata ? "點擊展開 ▾" : "—"}
                       </td>
                     </tr>
                     {expandedId === log.id && log.metadata && (
-                      <tr key={`${log.id}-detail`} style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <tr key={`${log.id}-detail`} className="bg-[var(--muted)]/30">
                         <td colSpan={6} className="px-4 py-3">
                           <pre className="overflow-x-auto rounded-lg p-3 text-[11px] font-mono"
-                            style={{ background: "rgba(0,0,0,0.3)", color: "var(--color-phosphor)", maxHeight: 200 }}>
+                            style={{ background: "rgba(0,0,0,0.06)", color: "var(--color-phosphor)", maxHeight: 200 }}>
                             {JSON.stringify(log.metadata, null, 2)}
                           </pre>
                         </td>
@@ -218,7 +211,7 @@ export default function AuditLogsPage() {
                   </>
                 ))}
                 {(!data || data.logs.length === 0) && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm" style={subStyle}>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
                     {loading ? "載入中..." : "沒有操作紀錄"}
                   </td></tr>
                 )}
@@ -231,12 +224,12 @@ export default function AuditLogsPage() {
         {data && data.pages > 1 && (
           <div className="flex items-center justify-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || loading}
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)", height: 32, width: 32, padding: 0 }}>
+              style={{ height: 32, width: 32, padding: 0 }}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm" style={subStyle}>{page} / {data.pages}</span>
+            <span className="text-sm text-[var(--muted-foreground)]">{page} / {data.pages}</span>
             <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(data.pages, p + 1))} disabled={page >= data.pages || loading}
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)", height: 32, width: 32, padding: 0 }}>
+              style={{ height: 32, width: 32, padding: 0 }}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

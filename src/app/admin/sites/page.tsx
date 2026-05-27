@@ -28,9 +28,7 @@ interface DiveSite {
   cautions: string | null;
 }
 
-const cardStyle: React.CSSProperties = { background: "var(--color-ocean-surface)", border: "1px solid rgba(255,255,255,0.1)" };
 const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
 const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
@@ -119,38 +117,38 @@ export default function SitesPage() {
         </div>
 
         {loading ? (
-          <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl" style={cardStyle}>
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
                   {["ID", "名稱", "區域", "難度", "最大深度", "操作"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={subStyle}>{h}</th>
+                    <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {sites.map((s, i) => (
-                  <tr key={s.id} style={{ borderBottom: i < sites.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined }}>
-                    <td className="px-4 py-3 font-mono text-xs" style={subStyle}>{s.id}</td>
-                    <td className="px-4 py-3 font-semibold" style={{ color: "#e6f0ff" }}>{s.name}</td>
-                    <td className="px-4 py-3" style={subStyle}>{REGION_LABELS[s.region]}</td>
+                  <tr key={s.id} className={`border-t ${i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20"}`} style={{ borderColor: "var(--border)" }}>
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--muted-foreground)]">{s.id}</td>
+                    <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{s.name}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{REGION_LABELS[s.region]}</td>
                     <td className="px-4 py-3">
                       <Badge variant={s.difficulty === "easy" ? "ocean" : s.difficulty === "medium" ? "muted" : "coral"}>
                         {DIFF_LABELS[s.difficulty]}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3" style={subStyle}>{s.maxDepth ? `${s.maxDepth}m` : "—"}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{s.maxDepth ? `${s.maxDepth}m` : "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => openEdit(s)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "rgba(230,240,255,0.6)" }} title="編輯"><Edit3 className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => deleteSite(s)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "var(--color-coral)" }} title="刪除"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => openEdit(s)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--muted-foreground)" }} title="編輯"><Edit3 className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => deleteSite(s)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-coral)" }} title="刪除"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {sites.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm" style={subStyle}>沒有潛點資料</td></tr>}
+                {sites.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">沒有潛點資料</td></tr>}
               </tbody>
             </table>
           </div>
