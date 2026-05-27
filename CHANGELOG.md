@@ -2,6 +2,16 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_92 — 2026-05-28 (後台設定：清空資料危險操作區)
+
+### 新功能
+- `/admin/settings` 新增「⚠️ 危險操作」區塊
+- 「清空所有訂單 / 日潛場次 / 潛水團」按鈕：點擊後彈窗要求輸入「確認刪除」，確認後呼叫 API 刪除
+- 會員資料不受影響
+- 刪除後顯示各類型刪除筆數
+- `POST /api/admin/reset-data`：需 admin/boss 角色 + `{ confirm: "DELETE ALL DATA" }` body
+- 操作記錄到 audit log（data.reset）
+
 ## 20260528_91 — 2026-05-28 (會員管理 + 日潛場次 UI 調整)
 
 ### 會員管理 (users)

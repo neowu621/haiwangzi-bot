@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { APP_VERSION } from "@/lib/version";
-import { ExternalLink, Save, Send, RefreshCw } from "lucide-react";
+import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 
 /* ─── Types ─────────────────────────────────────────── */
 interface GearPrices {
@@ -96,6 +96,8 @@ export default function SettingsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetResult, setResetResult] = useState<string | null>(null);
 
 
   const load = useCallback(async () => {
@@ -121,6 +123,35 @@ export default function SettingsPage() {
       setErr(e instanceof Error ? e.message : "儲存失敗");
     } finally {
       setSaving(null);
+    }
+  }
+
+  async function resetAllData() {
+    const typed = window.prompt(
+      "⚠️ 此操作將永久刪除所有訂單、日潛場次、潛水團，無法復原！\n\n請輸入「確認刪除」繼續："
+    );
+    if (typed !== "確認刪除") {
+      alert("取消操作，未刪除任何資料。");
+      return;
+    }
+    setResetBusy(true);
+    setResetResult(null);
+    setErr(null);
+    try {
+      const r = await adminFetch<{
+        ok: boolean;
+        deleted: { bookings: number; trips: number; tours: number };
+      }>("/api/admin/reset-data", {
+        method: "POST",
+        body: JSON.stringify({ confirm: "DELETE ALL DATA" }),
+      });
+      setResetResult(
+        `✅ 刪除完成：訂單 ${r.deleted.bookings} 筆、日潛場次 ${r.deleted.trips} 筆、潛水團 ${r.deleted.tours} 筆`
+      );
+    } catch (e) {
+      setErr("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -312,7 +343,42 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
-        {/* ── C. 系統工具 ──────────────────── */}
+        {/* ── C. 危險操作 ──────────────────── */}
+        <div className="rounded-xl border-2 p-5" style={{ borderColor: "var(--color-coral)", background: "rgba(255,80,65,0.04)" }}>
+          <h2 className="mb-1 text-base font-semibold" style={{ color: "var(--color-coral)" }}>
+            ⚠️ 危險操作
+          </h2>
+          <p className="mb-4 text-xs text-[var(--muted-foreground)]">
+            以下操作不可復原，請謹慎使用。會員資料不受影響。
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3" style={{ borderColor: "var(--color-coral)" }}>
+              <div>
+                <div className="text-sm font-medium">清空所有訂單 / 日潛場次 / 潛水團</div>
+                <div className="text-xs text-[var(--muted-foreground)]">刪除全部 Booking、DivingTrip、TourPackage 記錄，會員資料保留</div>
+              </div>
+              <Button
+                size="sm"
+                onClick={resetAllData}
+                disabled={resetBusy}
+                className="shrink-0 border-[var(--color-coral)] text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10"
+                variant="outline"
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                {resetBusy ? "刪除中..." : "清空資料"}
+              </Button>
+            </div>
+
+            {resetResult && (
+              <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+                {resetResult}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ── D. 系統工具 ──────────────────── */}
         <SectionCard title="🔧 系統工具">
           <div className="space-y-4">
             {/* Version */}
