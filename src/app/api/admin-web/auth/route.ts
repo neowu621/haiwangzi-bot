@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAdminWebJwt } from "@/lib/auth";
+import { verifyWebPassword } from "@/lib/admin-web-crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ function isAdminOrBoss(user: { role: string; roles: string[] }): boolean {
 }
 
 // GET /api/admin-web/auth?secret=xxx
-// Returns list of admin/boss users
+// 列出所有 admin/boss 帳號，並標示每人是否已設個人密碼
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const secret = url.searchParams.get("secret");
@@ -37,31 +38,38 @@ export async function GET(req: NextRequest) {
       realName: true,
       role: true,
       roles: true,
+      webPasswordHash: true,
     },
     orderBy: { displayName: "asc" },
   });
 
   return NextResponse.json({
     users: users.map((u) => ({
-      ...u,
+      lineUserId: u.lineUserId,
+      displayName: u.displayName,
+      realName: u.realName,
+      role: u.role,
+      roles: u.roles,
       effectiveRoles:
         u.roles && u.roles.length > 0 ? u.roles : [u.role],
+      // 只告訴前端「有沒有設密碼」，不傳 hash 本體
+      hasPassword: !!u.webPasswordHash,
     })),
   });
 }
 
 // POST /api/admin-web/auth
-// body: { secret, lineUserId }
-// Returns JWT token
+// body: { secret, lineUserId, password }
+// 驗共用密碼 + 個人密碼 → 發 JWT
 export async function POST(req: NextRequest) {
-  let body: { secret?: string; lineUserId?: string };
+  let body: { secret?: string; lineUserId?: string; password?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
   }
 
-  const { secret, lineUserId } = body;
+  const { secret, lineUserId, password } = body;
 
   if (!secret) {
     return NextResponse.json({ error: "missing secret" }, { status: 401 });
@@ -73,14 +81,47 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "missing lineUserId" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { lineUserId } });
+  const user = await prisma.user.findUnique({
+    where: { lineUserId },
+    select: {
+      lineUserId: true,
+      displayName: true,
+      realName: true,
+      role: true,
+      roles: true,
+      webPasswordHash: true,
+    },
+  });
+
   if (!user) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
-
   if (!isAdminOrBoss(user)) {
     return NextResponse.json(
-      { error: "user does not have admin or boss role" },
+      { error: "requires admin or boss role" },
+      { status: 403 },
+    );
+  }
+
+  // 若已設個人密碼 → 必須提供且正確
+  if (user.webPasswordHash) {
+    if (!password) {
+      return NextResponse.json(
+        { error: "password required", code: "PASSWORD_REQUIRED" },
+        { status: 401 },
+      );
+    }
+    const ok = await verifyWebPassword(password, user.webPasswordHash);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "incorrect password", code: "WRONG_PASSWORD" },
+        { status: 401 },
+      );
+    }
+  } else {
+    // 尚未設密碼 → 告訴前端要先設
+    return NextResponse.json(
+      { error: "no password set", code: "NO_PASSWORD" },
       { status: 403 },
     );
   }

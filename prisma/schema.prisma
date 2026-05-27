@@ -157,6 +157,9 @@ model User {
   creditBalance    Int       @default(0) @map("credit_balance")
   // 最後一次發放生日禮金的年份，避免同一年發兩次
   birthdayCreditYear Int?    @map("birthday_credit_year")
+  // 網頁管理後台個人密碼（scrypt hash，格式 "salt:hash"）
+  // 首次登入時自行設定，之後每次需輸入
+  webPasswordHash  String?   @map("web_password_hash")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
 

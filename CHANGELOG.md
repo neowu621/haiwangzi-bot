@@ -2,6 +2,29 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260527_64 — 2026-05-27 (網頁後台個人密碼)
+
+### ✨ 網頁管理後台 — 個人密碼機制
+
+每位 admin/boss 各自設定自己的個人密碼，三步驟登入：
+
+**登入流程**
+1. 輸入共用管理密碼（`ADMIN_WEB_SECRET`，確認是正確的系統）
+2. 選擇自己的帳號（admin 或 boss）
+3. 輸入個人密碼（首次登入 → 設定新密碼；後續 → 直接輸入）
+
+**忘記密碼**
+在步驟 3 點「忘記密碼？」→ 用 `ADMIN_WEB_SECRET` 重設（不需要舊密碼）
+
+**技術細節**
+- `prisma/schema.prisma` — `User` 新增 `webPasswordHash String?`（additive，自動 migrate）
+- `src/lib/admin-web-crypto.ts` — Node.js 內建 `crypto.scrypt` 雜湊（salt:hash hex 格式）
+- `GET /api/admin-web/auth` — 回傳每個 user 是否已設密碼（`hasPassword: bool`）
+- `POST /api/admin-web/auth` — 新增驗個人密碼；未設密碼回 `NO_PASSWORD` code
+- `POST /api/admin-web/set-password` — 首次設定或忘記密碼重設（需 `ADMIN_WEB_SECRET`）
+
+---
+
 ## 20260527_63 — 2026-05-27 (boss 角色全限 superuser)
 
 ### 🔐 權限修正
