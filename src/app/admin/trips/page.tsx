@@ -430,12 +430,12 @@ export default function AdminTripsPage() {
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === "create" ? "新增場次" : "編輯場次"}{" "}
-              {form.isNightDive ? "🌙" : "☀️"}
+              {form.isNightDive ? "🌙" : "☀️"}{" "}
+              {dialogMode === "create" ? "新增日潛水場次" : "編輯日潛水場次"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {/* 日期 + 集合時間: 2-column grid */}
+            {/* 日期 + 集合時間 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">日期</Label>
@@ -452,222 +452,16 @@ export default function AdminTripsPage() {
                   value={form.startTime}
                   onChange={(e) => {
                     const time = e.target.value;
-                    const isNight = time >= "16:00";
-                    setForm({ ...form, startTime: time, isNightDive: isNight });
+                    setForm({ ...form, startTime: time, isNightDive: time >= "16:00" });
                   }}
                 />
               </div>
             </div>
 
-            {/* 水下推進器 checkbox only (isNightDive is auto-set by time) */}
-            <div className="flex gap-4">
-              <label className="flex items-center gap-1.5 text-xs">
-                <input
-                  type="checkbox"
-                  checked={form.isScooter}
-                  onChange={(e) =>
-                    setForm({ ...form, isScooter: e.target.checked })
-                  }
-                />
-                水下推進器
-              </label>
-            </div>
-
-            {/* 潛點: single-select */}
-            <div>
-              <Label className="text-xs">潛點</Label>
-              {sites.length === 0 ? (
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  載入中...
-                </div>
-              ) : (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {sites.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => selectSiteId(s.id)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        form.diveSiteIds[0] === s.id
-                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
-                          : "border-[var(--border)] hover:bg-[var(--muted)]",
-                      )}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 教練 */}
-            <div>
-              <Label className="text-xs">教練</Label>
-              {coaches.length === 0 ? (
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  載入中...
-                </div>
-              ) : (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {coaches.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => toggleCoachId(c.id)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        form.coachIds.includes(c.id)
-                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
-                          : "border-[var(--border)] hover:bg-[var(--muted)]",
-                      )}
-                    >
-                      {c.realName}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 氣瓶數 + 容量 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">氣瓶數</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={form.tankCount}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      tankCount: Math.max(
-                        1,
-                        Math.min(5, Number(e.target.value)),
-                      ),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-xs">容量（0=無上限）</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.capacity}
-                  onChange={(e) =>
-                    setForm({ ...form, capacity: Number(e.target.value) })
-                  }
-                />
-              </div>
-            </div>
-
-            {/* 費用設定: conditional on isNightDive / isScooter */}
-            <div>
-              <Label className="text-xs mb-1 block">費用設定 (NT$)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">基本費</div>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.pricing.baseTrip}
-                    onChange={(e) =>
-                      setForm({ ...form, pricing: { ...form.pricing, baseTrip: Number(e.target.value) } })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">加支費</div>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.pricing.extraTank}
-                    onChange={(e) =>
-                      setForm({ ...form, pricing: { ...form.pricing, extraTank: Number(e.target.value) } })
-                    }
-                  />
-                </div>
-                {form.isNightDive && (
-                  <div>
-                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">夜潛費</div>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.pricing.nightDive}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, nightDive: Number(e.target.value) } })
-                      }
-                    />
-                  </div>
-                )}
-                {form.isScooter && (
-                  <div>
-                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">推進器費</div>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.pricing.scooterRental}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, scooterRental: Number(e.target.value) } })
-                      }
-                    />
-                  </div>
-                )}
-                <div className="col-span-2">
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">其他費用</div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="金額"
-                      className="w-28"
-                      value={form.pricing.otherFee ?? 0}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, otherFee: Number(e.target.value) } })
-                      }
-                    />
-                    <Input
-                      placeholder="說明（選填）"
-                      className="flex-1"
-                      value={form.pricing.otherFeeNote ?? ""}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, otherFeeNote: e.target.value } })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 集合地點 */}
-            <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-              <Label className="text-xs">集合地點</Label>
-              <Input
-                value={form.meetingPoint}
-                onChange={(e) =>
-                  setForm({ ...form, meetingPoint: e.target.value })
-                }
-                placeholder="例：龍洞停車場"
-              />
-            </div>
-
-            {/* 備註 */}
-            <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-              <Label className="text-xs pt-1.5">備註</Label>
-              <textarea
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                rows={2}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="天氣/裝備/注意事項..."
-              />
-            </div>
-
-            {/* 場次狀態 */}
-            <div>
+            {/* 場次狀態 — inline, label 左 pills 右 */}
+            <div className="grid grid-cols-[5rem_1fr] items-center gap-2">
               <Label className="text-xs">場次狀態</Label>
-              <div className="mt-1 flex gap-2">
+              <div className="flex gap-1.5">
                 {[
                   { value: "open", label: "開放" },
                   { value: "cancelled", label: "取消" },
@@ -694,11 +488,163 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Button
-                variant="outline"
-                onClick={() => setDialogMode(null)}
+            {/* 潛點: single-select pills */}
+            <div>
+              <Label className="text-xs">潛點</Label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {sites.length === 0
+                  ? <span className="text-xs text-[var(--muted-foreground)]">載入中...</span>
+                  : sites.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => selectSiteId(s.id)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        form.diveSiteIds[0] === s.id
+                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
+                          : "border-[var(--border)] hover:bg-[var(--muted)]",
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+
+            {/* 教練 — dropdown, inline */}
+            <div className="grid grid-cols-[5rem_1fr] items-center gap-2">
+              <Label className="text-xs">教練</Label>
+              <select
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                value={form.coachIds[0] ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
+                }
               >
+                <option value="">（未選擇）</option>
+                {coaches.map((c) => (
+                  <option key={c.id} value={c.id}>{c.realName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 氣瓶數 — inline */}
+            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+              <Label className="text-xs">氣瓶數</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={form.tankCount}
+                onChange={(e) =>
+                  setForm({ ...form, tankCount: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })
+                }
+              />
+            </div>
+
+            {/* 可參加人數 — inline */}
+            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+              <Label className="text-xs">可參加人數<br /><span className="text-[10px] font-normal text-[var(--muted-foreground)]">（0 = 無上限）</span></Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={form.capacity}
+                onChange={(e) =>
+                  setForm({ ...form, capacity: Math.max(0, Number(e.target.value) || 0) })
+                }
+              />
+            </div>
+
+            {/* 費用設定 — no spinners */}
+            <div>
+              <Label className="text-xs mb-1.5 block">費用設定 (NT$)</Label>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">基本費</div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.pricing.baseTrip}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, baseTrip: Number(e.target.value) || 0 } })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">加支費</div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.pricing.extraTank}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, extraTank: Number(e.target.value) || 0 } })
+                    }
+                  />
+                </div>
+                {form.isNightDive && (
+                  <div>
+                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">夜潛費</div>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.pricing.nightDive}
+                      onChange={(e) =>
+                        setForm({ ...form, pricing: { ...form.pricing, nightDive: Number(e.target.value) || 0 } })
+                      }
+                    />
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">其他費用</div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="金額"
+                      className="w-28"
+                      value={form.pricing.otherFee ?? 0}
+                      onChange={(e) =>
+                        setForm({ ...form, pricing: { ...form.pricing, otherFee: Number(e.target.value) || 0 } })
+                      }
+                    />
+                    <Input
+                      placeholder="說明（選填）"
+                      className="flex-1"
+                      value={form.pricing.otherFeeNote ?? ""}
+                      onChange={(e) =>
+                        setForm({ ...form, pricing: { ...form.pricing, otherFeeNote: e.target.value } })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 集合地點 */}
+            <div className="grid grid-cols-[5rem_1fr] items-center gap-2">
+              <Label className="text-xs">集合地點</Label>
+              <Input
+                value={form.meetingPoint}
+                onChange={(e) => setForm({ ...form, meetingPoint: e.target.value })}
+                placeholder="例：龍洞停車場"
+              />
+            </div>
+
+            {/* 備註 */}
+            <div className="grid grid-cols-[5rem_1fr] items-start gap-2">
+              <Label className="text-xs pt-1.5">備註</Label>
+              <textarea
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                rows={2}
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="天氣/裝備/注意事項..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button variant="outline" onClick={() => setDialogMode(null)}>
                 取消
               </Button>
               <Button onClick={saveForm} disabled={saving}>
