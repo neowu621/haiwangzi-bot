@@ -8,6 +8,7 @@ import {
   computeVipLevel,
   type VipTier,
 } from "@/lib/vip-tier";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,6 +106,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "vip_tiers.update",
+      targetType: "config",
+      targetId: "vip_tiers",
+      metadata: { tiersCount: tiers.length },
+    });
     return NextResponse.json({
       ok: true,
       tiers,
@@ -139,6 +147,13 @@ export async function DELETE(req: NextRequest) {
       update: { vipTiers: [] as never },
     })
     .catch(() => null);
+
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "vip_tiers.reset",
+    targetType: "config",
+    targetId: "vip_tiers",
+  });
 
   return NextResponse.json({ ok: true, tiers: VIP_TIERS });
 }

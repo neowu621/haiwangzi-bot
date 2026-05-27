@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,6 +73,13 @@ export async function PATCH(
 
   try {
     const trip = await prisma.divingTrip.update({ where: { id }, data: patch });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "trip.update",
+      targetType: "trip",
+      targetId: id,
+      metadata: patch,
+    });
     return NextResponse.json({ ok: true, trip });
   } catch (e) {
     console.error("[PATCH /admin/trips]", e);
@@ -121,6 +129,13 @@ export async function DELETE(
     }
     try {
       await prisma.divingTrip.delete({ where: { id } });
+      await logAudit({
+        actorId: auth.user.lineUserId,
+        action: "trip.delete",
+        targetType: "trip",
+        targetId: id,
+        metadata: { permanent },
+      });
       return NextResponse.json({ ok: true, action: "hard_deleted" });
     } catch (e) {
       console.error("[DELETE /admin/trips permanent]", e);
@@ -139,6 +154,13 @@ export async function DELETE(
     const trip = await prisma.divingTrip.update({
       where: { id },
       data: { status: "cancelled" },
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "trip.cancel",
+      targetType: "trip",
+      targetId: id,
+      metadata: { permanent },
     });
     return NextResponse.json({ ok: true, action: "soft_cancelled", trip });
   } catch (e) {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { grantCredit, type CreditReason } from "@/lib/credit";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,6 +69,13 @@ export async function POST(req: NextRequest) {
       refId: data.refId ?? null,
       note: data.note ?? null,
       createdBy: auth.user.lineUserId,
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: (data.amount ?? 0) >= 0 ? "credit.grant" : "credit.deduct",
+      targetType: "user",
+      targetId: data.userId,
+      metadata: { amount: data.amount, reason: data.reason, oldBalance: result.oldBalance, newBalance: result.newBalance },
     });
     return NextResponse.json({
       ok: true,

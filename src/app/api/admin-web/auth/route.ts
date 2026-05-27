@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAdminWebJwt } from "@/lib/auth";
 import { verifyWebPassword } from "@/lib/admin-web-crypto";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -127,6 +128,15 @@ export async function POST(req: NextRequest) {
   }
 
   const token = await createAdminWebJwt(lineUserId);
+  await logAudit({
+    actorId: user.lineUserId,
+    actorName: user.realName ?? user.displayName ?? undefined,
+    action: "auth.login",
+    targetType: "user",
+    targetId: user.lineUserId,
+    targetLabel: user.realName ?? user.displayName ?? user.lineUserId,
+    metadata: { channel: "web_admin" },
+  });
   return NextResponse.json({
     token,
     user: {

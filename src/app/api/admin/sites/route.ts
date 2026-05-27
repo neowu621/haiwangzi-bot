@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +59,13 @@ export async function POST(req: NextRequest) {
         youtubeUrl: data.youtubeUrl || null,
         cautions: data.cautions || null,
       },
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "site.create",
+      targetType: "site",
+      targetId: site.id,
+      targetLabel: site.name,
     });
     return NextResponse.json({ ok: true, site });
   } catch (e) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,6 +68,13 @@ export async function PATCH(
         cautions:
           data.cautions === "" ? null : (data.cautions ?? undefined),
       },
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "site.update",
+      targetType: "site",
+      targetId: id,
+      metadata: data as Record<string, unknown>,
     });
     return NextResponse.json({ ok: true, site });
   } catch (e) {
@@ -135,6 +143,12 @@ export async function DELETE(
       }
       await tx.diveSite.delete({ where: { id } });
     });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "site.delete",
+      targetType: "site",
+      targetId: id,
+    });
     return NextResponse.json({
       ok: true,
       forced: true,
@@ -144,5 +158,11 @@ export async function DELETE(
   }
 
   await prisma.diveSite.delete({ where: { id } });
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "site.delete",
+    targetType: "site",
+    targetId: id,
+  });
   return NextResponse.json({ ok: true });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,13 @@ export async function PATCH(
       where: { id },
       data: patch,
     });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "booking.update",
+      targetType: "booking",
+      targetId: id,
+      metadata: patch,
+    });
     return NextResponse.json({ ok: true, booking: updated });
   } catch (e) {
     console.error("[PATCH /admin/bookings]", e);
@@ -107,6 +115,13 @@ export async function DELETE(
         await tx.reminderLog.deleteMany({ where: { bookingId: id } });
         await tx.booking.delete({ where: { id } });
       });
+      await logAudit({
+        actorId: auth.user.lineUserId,
+        action: "booking.delete",
+        targetType: "booking",
+        targetId: id,
+        metadata: { permanent },
+      });
       return NextResponse.json({ ok: true, action: "hard_deleted" });
     }
 
@@ -117,6 +132,13 @@ export async function DELETE(
         status: "cancelled_by_user",
         cancellationReason: "admin cancelled",
       },
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "booking.cancel",
+      targetType: "booking",
+      targetId: id,
+      metadata: { permanent },
     });
     return NextResponse.json({
       ok: true,

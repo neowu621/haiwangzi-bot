@@ -7,6 +7,7 @@ import {
   ICON_NAMES,
   DEFAULT_SITE_CONFIG,
 } from "@/lib/site-config";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -123,6 +124,13 @@ export async function POST(req: NextRequest) {
     where: { id: "default" },
     create: { id: "default", ...patch },
     update: patch,
+  });
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "config.update",
+    targetType: "config",
+    targetId: "default",
+    metadata: data as Record<string, unknown>,
   });
   return NextResponse.json({ ok: true, config: row });
 }

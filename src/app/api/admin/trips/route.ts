@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,6 +113,14 @@ export async function POST(req: NextRequest) {
         images: data.images ?? [],
         status: "open",
       },
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "trip.create",
+      targetType: "trip",
+      targetId: trip.id,
+      targetLabel: data.date,
+      metadata: { date: data.date, diveSiteIds: data.diveSiteIds },
     });
     return NextResponse.json({ ok: true, trip });
   } catch (e) {

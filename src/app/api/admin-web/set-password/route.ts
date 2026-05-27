@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashWebPassword, verifyWebPassword } from "@/lib/admin-web-crypto";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,14 @@ export async function POST(req: NextRequest) {
   await prisma.user.update({
     where: { lineUserId },
     data: { webPasswordHash: hash },
+  });
+
+  await logAudit({
+    actorId: lineUserId,
+    action: user.webPasswordHash ? "auth.password_reset" : "auth.password_set",
+    targetType: "user",
+    targetId: lineUserId,
+    metadata: { hadPreviousPassword: !!user.webPasswordHash },
   });
 
   return NextResponse.json({ ok: true, message: "密碼設定成功" });

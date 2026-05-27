@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { buildFlexByKey, type FlexTemplateKey } from "@/lib/flex";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { broadcastEmail } from "@/lib/email/templates";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,5 +131,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "broadcast.send",
+    targetType: "broadcast",
+    metadata: {
+      audience: data.audience,
+      channel: data.channel,
+      template: data.template,
+      targets: targets.length,
+    },
+  });
   return NextResponse.json(result);
 }

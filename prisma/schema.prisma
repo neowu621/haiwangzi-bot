@@ -456,3 +456,29 @@ model MessageTemplate {
 
   @@map("message_templates")
 }
+
+// 操作紀錄 — 所有後台操作皆會記錄
+model AuditLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // 操作者
+  actorId     String?  @map("actor_id")    @db.VarChar(64)   // lineUserId 或 "system"
+  actorName   String?  @map("actor_name")  @db.VarChar(128)
+
+  // 操作類型：auth.login / booking.update / trip.create / config.update 等
+  action      String   @db.VarChar(64)
+
+  // 對象
+  targetType  String?  @map("target_type") @db.VarChar(32)   // booking / trip / user / config ...
+  targetId    String?  @map("target_id")   @db.VarChar(64)
+  targetLabel String?  @map("target_label") @db.VarChar(256) // 顯示用標籤
+
+  // 附加資料（前後值、操作詳情等）
+  metadata    Json?
+
+  @@map("audit_log")
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+}

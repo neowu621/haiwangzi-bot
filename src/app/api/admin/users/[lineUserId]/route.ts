@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,6 +67,13 @@ export async function DELETE(
       // Prisma 會自動處理；保險起見也可以顯式 unlink
       // tx.coach.updateMany({ where: { lineUserId }, data: { lineUserId: null } });
       await tx.user.delete({ where: { lineUserId } });
+    });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "user.delete",
+      targetType: "user",
+      targetId: lineUserId,
+      metadata: { force },
     });
     return NextResponse.json({
       ok: true,

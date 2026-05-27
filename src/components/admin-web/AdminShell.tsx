@@ -18,6 +18,7 @@ import {
   BarChart2,
   Settings,
   LayoutDashboard,
+  ClipboardCheck,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
   { href: "/admin/reports", icon: BarChart2, label: "報表" },
   { href: "/admin/settings", icon: Settings, label: "系統設定" },
+  { href: "/admin/audit-logs", icon: ClipboardCheck, label: "操作紀錄" },
 ];
 
 function NavLink({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +48,13 @@ export async function PATCH(
           data.lineUserId === "" ? null : (data.lineUserId ?? undefined),
       },
     });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "coach.update",
+      targetType: "coach",
+      targetId: id,
+      metadata: data as Record<string, unknown>,
+    });
     return NextResponse.json({ ok: true, coach });
   } catch (e) {
     console.error("[PATCH /admin/coaches]", e);
@@ -75,6 +83,12 @@ export async function DELETE(
 
   if (!permanent) {
     await prisma.coach.update({ where: { id }, data: { active: false } });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "coach.delete",
+      targetType: "coach",
+      targetId: id,
+    });
     return NextResponse.json({ ok: true, mode: "soft" });
   }
 
@@ -91,5 +105,11 @@ export async function DELETE(
     );
   }
   await prisma.coach.delete({ where: { id } });
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "coach.delete",
+    targetType: "coach",
+    targetId: id,
+  });
   return NextResponse.json({ ok: true, mode: "hard" });
 }

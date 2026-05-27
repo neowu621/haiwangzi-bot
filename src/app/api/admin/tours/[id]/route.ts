@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +79,13 @@ export async function PATCH(
 
   try {
     const tour = await prisma.tourPackage.update({ where: { id }, data: patch });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "tour.update",
+      targetType: "tour",
+      targetId: id,
+      metadata: patch,
+    });
     return NextResponse.json({ ok: true, tour });
   } catch (e) {
     console.error("[PATCH /admin/tours]", e);
@@ -122,12 +130,24 @@ export async function DELETE(
       );
     }
     await prisma.tourPackage.delete({ where: { id } });
+    await logAudit({
+      actorId: auth.user.lineUserId,
+      action: "tour.delete",
+      targetType: "tour",
+      targetId: id,
+    });
     return NextResponse.json({ ok: true, action: "hard_deleted" });
   }
 
   const tour = await prisma.tourPackage.update({
     where: { id },
     data: { status: "cancelled" },
+  });
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "tour.delete",
+    targetType: "tour",
+    targetId: id,
   });
   return NextResponse.json({ ok: true, action: "soft_cancelled", tour });
 }
