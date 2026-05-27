@@ -84,6 +84,7 @@ const BLANK_FORM = {
   pricing: BLANK_PRICING_DEFAULT,
   notes: "",
   meetingPoint: "",
+  status: "open" as string,
 };
 
 type TripForm = typeof BLANK_FORM;
@@ -151,6 +152,7 @@ export default function AdminTripsPage() {
       pricing: { ...trip.pricing },
       notes: trip.notes ?? "",
       meetingPoint: trip.meetingPoint ?? "",
+      status: trip.status,
     });
     setEditingId(trip.id);
     setDialogMode("edit");
@@ -168,6 +170,7 @@ export default function AdminTripsPage() {
         capacity: form.capacity === 0 ? null : form.capacity,
         notes: form.notes || null,
         meetingPoint: form.meetingPoint || null,
+        status: form.status,
       };
       if (dialogMode === "create") {
         const r = await adminFetch<{ ok: boolean; trip: Trip }>(
@@ -284,10 +287,10 @@ export default function AdminTripsPage() {
                     <th className="px-4 py-3 font-medium">地點</th>
                     <th className="px-4 py-3 font-medium">教練</th>
                     <th className="px-4 py-3 font-medium text-right">
-                      容量/已報名
+                      已報名/可接受
                     </th>
                     <th className="px-4 py-3 font-medium text-right">
-                      基本費用
+                      預估收費
                     </th>
                     <th className="px-4 py-3 font-medium">狀態</th>
                     <th className="px-4 py-3 font-medium">操作</th>
@@ -322,6 +325,9 @@ export default function AdminTripsPage() {
                         {trip.diveSiteIds.length > 0
                           ? trip.diveSiteIds.map(siteName).join("・")
                           : "—"}
+                        <span className="ml-1 text-[var(--muted-foreground)]">
+                          ×{trip.tankCount}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {trip.coachIds.length > 0
@@ -329,11 +335,18 @@ export default function AdminTripsPage() {
                           : "—"}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-xs">
-                        {trip.booked}/
-                        {trip.capacity == null ? "∞" : trip.capacity}
+                        {trip.booked} / {trip.capacity == null ? "∞" : trip.capacity}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        NT${trip.pricing.baseTrip.toLocaleString()}
+                        {trip.booked === 0
+                          ? "NT$0"
+                          : `NT$${(
+                              trip.booked *
+                              (trip.pricing.baseTrip +
+                                (trip.tankCount - 1) * trip.pricing.extraTank +
+                                (trip.isNightDive ? trip.pricing.nightDive : 0) +
+                                (trip.isScooter ? trip.pricing.scooterRental : 0))
+                            ).toLocaleString()}`}
                       </td>
                       <td className="px-4 py-3">
                         <Badge
@@ -591,6 +604,35 @@ export default function AdminTripsPage() {
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 placeholder="天氣/裝備/注意事項..."
               />
+            </div>
+
+            <div>
+              <Label className="text-xs">場次狀態</Label>
+              <div className="mt-1 flex gap-2">
+                {[
+                  { value: "open", label: "開放" },
+                  { value: "cancelled", label: "取消" },
+                  { value: "completed", label: "結束" },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setForm({ ...form, status: value })}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs transition-colors",
+                      form.status === value
+                        ? value === "open"
+                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
+                          : value === "cancelled"
+                          ? "border-[var(--color-coral)] bg-[var(--color-coral)]/20 text-[var(--color-coral)] font-semibold"
+                          : "border-[var(--muted-foreground)] bg-[var(--muted)] font-semibold"
+                        : "border-[var(--border)] hover:bg-[var(--muted)]",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">

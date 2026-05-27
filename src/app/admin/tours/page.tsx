@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Edit3, Trash2, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
 const DEST_LABELS: Record<Dest, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "其他" };
@@ -30,11 +31,8 @@ interface Tour {
   _count?: { bookings: number };
 }
 
-const cardStyle: React.CSSProperties = { background: "var(--color-ocean-surface)", border: "1px solid rgba(255,255,255,0.1)" };
 const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
 const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
-const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
 const today = new Date().toISOString().split("T")[0];
 const BLANK = {
@@ -133,60 +131,62 @@ export default function ToursPage() {
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
 
         <div className="flex items-center gap-3">
-          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
+          <div className="flex gap-2">
             {(["all", "open", "cancelled"] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className="px-3 py-1.5 text-sm transition-colors"
-                style={filter === f
-                  ? { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", fontWeight: 600 }
-                  : { color: "rgba(230,240,255,0.6)", background: "transparent" }}>
+                className={cn(
+                  "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                  filter === f
+                    ? "bg-[var(--color-ocean-deep)] text-white"
+                    : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                )}>
                 {f === "all" ? "全部" : f === "open" ? "進行中" : "已取消"}
               </button>
             ))}
           </div>
           <div className="flex-1" />
-          <Button size="sm" style={primaryBtn} onClick={openCreate}>
+          <Button size="sm" onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />新增潛水團
           </Button>
         </div>
 
         {loading ? (
-          <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
+          <div className="flex h-40 items-center justify-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl" style={cardStyle}>
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                  {["主題", "目的地", "出發日", "結束日", "定價", "訂金", "容額/已訂", "狀態", "操作"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={subStyle}>{h}</th>
+                <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
+                  {["主題", "目的地", "出發日", "結束日", "定價", "訂金", "已報名/可接受", "狀態", "操作"].map(h => (
+                    <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {visible.map((t, i) => (
-                  <tr key={t.id} style={{ borderBottom: i < visible.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined, opacity: t.status === "cancelled" ? 0.5 : 1 }}>
-                    <td className="px-4 py-3 font-semibold max-w-[180px]" style={{ color: "#e6f0ff" }}>{t.title}</td>
-                    <td className="px-4 py-3" style={subStyle}>{DEST_LABELS[t.destination]}</td>
-                    <td className="px-4 py-3" style={subStyle}>{t.dateStart.split("T")[0]}</td>
-                    <td className="px-4 py-3" style={subStyle}>{t.dateEnd.split("T")[0]}</td>
-                    <td className="px-4 py-3" style={subStyle}>NT$ {t.basePrice.toLocaleString()}</td>
-                    <td className="px-4 py-3" style={subStyle}>NT$ {t.deposit.toLocaleString()}</td>
-                    <td className="px-4 py-3" style={subStyle}>{t.capacity ?? "無上限"} / {t._count?.bookings ?? 0}</td>
+                  <tr key={t.id} className={cn("border-t", i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20")} style={{ opacity: t.status === "cancelled" ? 0.5 : 1 }}>
+                    <td className="px-4 py-3 font-semibold max-w-[180px]" style={{ color: "var(--foreground)" }}>{t.title}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{DEST_LABELS[t.destination]}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{t.dateStart.split("T")[0]}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{t.dateEnd.split("T")[0]}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">NT$ {t.basePrice.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">NT$ {t.deposit.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{t._count?.bookings ?? 0} / {t.capacity ?? "∞"}</td>
                     <td className="px-4 py-3">
                       <Badge variant={t.status === "open" ? "ocean" : "muted"}>{t.status === "open" ? "進行中" : "已取消"}</Badge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => openEdit(t)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "rgba(230,240,255,0.6)" }} title="編輯"><Edit3 className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => openEdit(t)} className="rounded p-1.5 hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯"><Edit3 className="h-3.5 w-3.5" /></button>
                         {t.status === "open" && (
-                          <button onClick={() => cancelTour(t)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "var(--color-coral)" }} title="取消"><XCircle className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => cancelTour(t)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-coral)" }} title="取消"><XCircle className="h-3.5 w-3.5" /></button>
                         )}
-                        <button onClick={() => deleteTour(t)} className="rounded p-1.5 hover:bg-white/10" style={{ color: "var(--color-coral)" }} title="永久刪除"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => deleteTour(t)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-coral)" }} title="永久刪除"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {visible.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-sm" style={subStyle}>沒有潛水團資料</td></tr>}
+                {visible.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">沒有潛水團資料</td></tr>}
               </tbody>
             </table>
           </div>
@@ -247,7 +247,7 @@ export default function ToursPage() {
               ))}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={() => setDialogMode(null)} style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)" }}>取消</Button>
-                <Button size="sm" style={primaryBtn} onClick={save} disabled={saving || !form.title.trim()}>{saving ? "儲存中..." : "儲存"}</Button>
+                <Button size="sm" onClick={save} disabled={saving || !form.title.trim()}>{saving ? "儲存中..." : "儲存"}</Button>
               </div>
             </div>
           </DialogContent>

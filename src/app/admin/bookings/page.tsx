@@ -69,6 +69,17 @@ interface ByTripGroup {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+function weekdayTW(dateStr: string) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return `週${WEEKDAYS[d.getDay()]}`;
+}
+function isPastDate(dateStr?: string) {
+  if (!dateStr) return false;
+  return new Date(dateStr.slice(0, 10)) < new Date(new Date().toDateString());
+}
+
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pending: "待付款",
   deposit_paid: "已付訂金",
@@ -120,6 +131,8 @@ export default function AdminBookingsPage() {
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   const [saving, setSaving] = useState(false);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
+  const [filterExpiry, setFilterExpiry] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [filterTripKey, setFilterTripKey] = useState<string>("all");
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
   const [refundMethod, setRefundMethod] = useState<"cash" | "credit">("credit");
@@ -141,10 +154,44 @@ export default function AdminBookingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredBookings =
-    filterPayStatus === "all"
-      ? bookings
-      : bookings.filter((b) => b.paymentStatus === filterPayStatus);
+  const allGroups = [...byTrip.daily, ...byTrip.tour];
+
+  // 依場次 filter by date
+  const filteredGroups = allGroups.filter((g) => {
+    if (filterExpiry === "all") return true;
+    const dateStr = g.dateStart ?? g.dateEnd ?? "";
+    const past = isPastDate(dateStr);
+    return filterExpiry === "past" ? past : !past;
+  });
+
+  // 全部訂單: build unique trip keys for filter
+  const tripKeyOptions: { key: string; label: string }[] = [{ key: "all", label: "全部" }];
+  const seenKeys = new Set<string>();
+  for (const b of bookings) {
+    const key =
+      b.type === "daily"
+        ? `${b.ref.date ?? ""}_${b.ref.startTime ?? ""}`
+        : `tour_${b.ref.title ?? ""}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      const label =
+        b.type === "daily"
+          ? `${b.ref.date ?? ""} ${b.ref.startTime ?? ""} ${(b.ref.sites ?? []).join("·")}`
+          : b.ref.title ?? "潛水團";
+      tripKeyOptions.push({ key, label });
+    }
+  }
+
+  const filteredBookings = bookings.filter((b) => {
+    const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
+    if (!payOk) return false;
+    if (filterTripKey === "all") return true;
+    const key =
+      b.type === "daily"
+        ? `${b.ref.date ?? ""}_${b.ref.startTime ?? ""}`
+        : `tour_${b.ref.title ?? ""}`;
+    return key === filterTripKey;
+  });
 
   async function saveEdit() {
     if (!editing) return;
@@ -212,26 +259,16 @@ export default function AdminBookingsPage() {
   async function doRefund() {
     if (!editing) return;
     const n = Number(refundAmount);
-    if (!n || n <= 0) {
-      alert("請輸入退款金額");
-      return;
-    }
-    if (!confirm(`確定退款 NT$${n.toLocaleString()} (${refundMethod === "credit" ? "轉禮金" : "退現金"})?`))
-      return;
+    if (!n || n <= 0) { alert("請輸入退款金額"); return; }
+    if (!confirm(`確定退款 NT$${n.toLocaleString()} (${refundMethod === "credit" ? "轉禮金" : "退現金"})?`)) return;
     setRefundBusy(true);
     try {
       await adminFetch(`/api/admin/bookings/${editing.id}/refund`, {
         method: "POST",
-        body: JSON.stringify({
-          amount: n,
-          method: refundMethod,
-          reason: refundReason || undefined,
-        }),
+        body: JSON.stringify({ amount: n, method: refundMethod, reason: refundReason || undefined }),
       });
       setBookings((arr) =>
-        arr.map((x) =>
-          x.id === editing.id ? { ...x, paymentStatus: "refunded" } : x,
-        ),
+        arr.map((x) => x.id === editing.id ? { ...x, paymentStatus: "refunded" } : x),
       );
       setEditing({ ...editing, paymentStatus: "refunded" });
       setRefundOpen(false);
@@ -242,8 +279,6 @@ export default function AdminBookingsPage() {
       setRefundBusy(false);
     }
   }
-
-  const allGroups = [...byTrip.daily, ...byTrip.tour];
 
   return (
     <AdminShell title="訂單管理">
@@ -256,7 +291,7 @@ export default function AdminBookingsPage() {
             "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
             tab === "by-trip"
               ? "bg-[var(--color-ocean-deep)] text-white"
-              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--muted)]",
+              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
           )}
         >
           依場次
@@ -268,7 +303,7 @@ export default function AdminBookingsPage() {
             "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
             tab === "all"
               ? "bg-[var(--color-ocean-deep)] text-white"
-              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--muted)]",
+              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
           )}
         >
           全部訂單 ({bookings.length})
@@ -276,182 +311,219 @@ export default function AdminBookingsPage() {
       </div>
 
       {err && (
-        <div
-          className="mb-4 rounded-lg p-3 text-sm"
-          style={{
-            background: "rgba(255,123,90,0.1)",
-            color: "var(--color-coral)",
-            border: "1px solid rgba(255,123,90,0.3)",
-          }}
-        >
+        <div className="mb-4 rounded-lg p-3 text-sm"
+          style={{ background: "rgba(255,123,90,0.1)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>
           {err}
         </div>
       )}
 
       {loading && (
-        <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-          載入中...
-        </div>
+        <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
       )}
 
       {/* ── By-trip view ─────────────────────────────── */}
       {!loading && tab === "by-trip" && (
         <div className="space-y-3">
-          {allGroups.length === 0 && (
+          {/* Expiry filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[var(--muted-foreground)]">顯示：</span>
+            {(["upcoming", "past", "all"] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilterExpiry(f)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  filterExpiry === f
+                    ? "bg-[var(--color-ocean-deep)] text-white"
+                    : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                )}
+              >
+                {f === "upcoming" ? "即將" : f === "past" ? "已過期" : "全部"}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-[var(--muted-foreground)]">
+              共 {filteredGroups.length} 筆
+            </span>
+          </div>
+
+          {filteredGroups.length === 0 && (
             <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-              沒有開團或還沒有訂單
+              沒有符合條件的場次
             </div>
           )}
-          {allGroups.map((g) => {
-            const key = `${g.kind}-${g.id}`;
-            const expanded = expandedGroup === key;
-            return (
-              <div
-                key={key}
-                className="overflow-hidden rounded-xl border"
-                style={{
-                  borderColor: "var(--border)",
-                  background: "white",
-                }}
-              >
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-[var(--muted)]/30"
-                  onClick={() => setExpandedGroup(expanded ? null : key)}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-[var(--foreground)]">
-                        {g.title}
-                      </span>
-                      <Badge
-                        variant={g.kind === "tour" ? "coral" : "muted"}
-                        className="text-[10px]"
-                      >
-                        {g.kind === "tour" ? "潛水團" : "日潛"}
-                      </Badge>
-                      <Badge
-                        variant={
-                          g.status === "open"
-                            ? "ocean"
-                            : g.status === "cancelled"
-                              ? "coral"
-                              : "muted"
-                        }
-                        className="text-[10px]"
-                      >
-                        {g.status}
-                      </Badge>
-                    </div>
-                    {g.kind === "daily" && g.sites && g.sites.length > 0 && (
-                      <div className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                        {g.sites.join(" · ")}
-                      </div>
-                    )}
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[var(--muted-foreground)]">
-                      <span>
-                        {g.bookingCount} 筆訂單 · {g.participantSum} 人
-                      </span>
-                      {g.tankSum !== undefined && (
-                        <span style={{ color: "var(--color-phosphor)" }}>
-                          共 {g.tankSum} 支
-                        </span>
-                      )}
-                      <span>
-                        已付 NT${g.paidSum.toLocaleString()} / 總額 NT$
-                        {g.totalSum.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  {expanded ? (
-                    <ChevronUp className="h-4 w-4 flex-shrink-0 text-[var(--muted-foreground)]" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 flex-shrink-0 text-[var(--muted-foreground)]" />
-                  )}
-                </button>
 
-                {expanded && (
-                  <div
-                    className="border-t"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    {g.bookings.length === 0 ? (
-                      <div className="py-6 text-center text-sm text-[var(--muted-foreground)]">
-                        沒有訂單
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr
-                              className="text-left text-xs text-[var(--muted-foreground)]"
-                              style={{
-                                background: "var(--muted)",
-                              }}
-                            >
-                              <th className="px-4 py-2 font-medium">姓名</th>
-                              <th className="px-4 py-2 font-medium">電話</th>
-                              <th className="px-4 py-2 font-medium text-right">人數</th>
-                              <th className="px-4 py-2 font-medium text-right">已付/總額</th>
-                              <th className="px-4 py-2 font-medium">付款狀態</th>
-                              <th className="px-4 py-2 font-medium">方式</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {g.bookings.map((b, i) => (
-                              <tr
-                                key={b.id}
-                                className={i % 2 === 0 ? "" : "bg-[var(--muted)]/30"}
-                              >
-                                <td className="px-4 py-2.5 font-medium">
-                                  {b.userName}
-                                </td>
-                                <td className="px-4 py-2.5 tabular-nums text-xs text-[var(--muted-foreground)]">
-                                  {b.phone ?? "—"}
-                                </td>
-                                <td className="px-4 py-2.5 text-right tabular-nums">
-                                  ×{b.participants}
-                                </td>
-                                <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                                  {b.paidAmount.toLocaleString()}/
-                                  {b.totalAmount.toLocaleString()}
-                                </td>
-                                <td className="px-4 py-2.5">
-                                  <Badge
-                                    variant={payStatusVariant(b.paymentStatus)}
-                                    className="text-[10px]"
-                                  >
-                                    {PAYMENT_STATUS_LABEL[b.paymentStatus] ??
-                                      b.paymentStatus}
-                                  </Badge>
-                                </td>
-                                <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)]">
-                                  {PAYMENT_METHOD_LABEL[b.paymentMethod] ??
-                                    b.paymentMethod ??
-                                    "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
+            {filteredGroups.length > 0 && (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-[var(--muted-foreground)]"
+                    style={{ background: "var(--muted)" }}>
+                    <th className="px-4 py-2.5 font-medium">日期</th>
+                    <th className="px-4 py-2.5 font-medium">地點</th>
+                    <th className="px-4 py-2.5 font-medium">狀態</th>
+                    <th className="px-4 py-2.5 font-medium text-right">訂單</th>
+                    <th className="px-4 py-2.5 font-medium text-right">人數/氣瓶</th>
+                    <th className="px-4 py-2.5 font-medium text-right">已付／總額</th>
+                    <th className="px-4 py-2.5 font-medium w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGroups.map((g, i) => {
+                    const key = `${g.kind}-${g.id}`;
+                    const expanded = expandedGroup === key;
+                    const dateStr = g.dateStart?.slice(0, 10) ?? "";
+                    const timeStr = g.kind === "daily"
+                      ? (g.title.includes(" ") ? g.title.split(" ")[1] : "")
+                      : `${g.dateStart?.slice(0, 10)} → ${g.dateEnd?.slice(0, 10)}`;
+                    return [
+                      <tr
+                        key={key}
+                        className={cn(
+                          "border-t cursor-pointer hover:bg-[var(--muted)]/30 transition-colors",
+                          i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/10",
+                        )}
+                        style={{ borderColor: "var(--border)" }}
+                        onClick={() => setExpandedGroup(expanded ? null : key)}
+                      >
+                        {/* 日期 + 星期 */}
+                        <td className="px-4 py-2.5 tabular-nums">
+                          <span className="font-medium">{dateStr}</span>
+                          {dateStr && (
+                            <span className="ml-1.5 text-[10px] text-[var(--muted-foreground)]">
+                              {weekdayTW(dateStr)}
+                            </span>
+                          )}
+                          {timeStr && g.kind === "daily" && (
+                            <span className="ml-1.5 text-xs text-[var(--muted-foreground)]">{timeStr}</span>
+                          )}
+                          {g.kind === "tour" && (
+                            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{timeStr}</div>
+                          )}
+                        </td>
+                        {/* 地點 */}
+                        <td className="px-4 py-2.5 text-xs">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant={g.kind === "tour" ? "coral" : "muted"} className="text-[9px]">
+                              {g.kind === "tour" ? "潛水團" : "日潛"}
+                            </Badge>
+                            <span>
+                              {g.kind === "tour"
+                                ? g.title
+                                : (g.sites && g.sites.length > 0 ? g.sites.join("・") : g.title)}
+                            </span>
+                          </div>
+                        </td>
+                        {/* 狀態 */}
+                        <td className="px-4 py-2.5">
+                          <Badge
+                            variant={g.status === "open" ? "ocean" : g.status === "cancelled" ? "coral" : "muted"}
+                            className="text-[10px]"
+                          >
+                            {g.status === "open" ? "開放" : g.status === "cancelled" ? "取消" : g.status === "completed" ? "結束" : g.status}
+                          </Badge>
+                        </td>
+                        {/* 訂單數 */}
+                        <td className="px-4 py-2.5 text-right tabular-nums text-xs">
+                          {g.bookingCount} 筆
+                        </td>
+                        {/* 人數/氣瓶 */}
+                        <td className="px-4 py-2.5 text-right tabular-nums text-xs">
+                          {g.participantSum} 人
+                          {g.tankSum !== undefined && (
+                            <span className="ml-1" style={{ color: "var(--color-phosphor)" }}>
+                              / {g.tankSum} 支
+                            </span>
+                          )}
+                        </td>
+                        {/* 金額 */}
+                        <td className="px-4 py-2.5 text-right tabular-nums text-xs text-[var(--muted-foreground)]">
+                          {g.paidSum.toLocaleString()} / {g.totalSum.toLocaleString()}
+                        </td>
+                        {/* Expand */}
+                        <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                          {expanded
+                            ? <ChevronUp className="h-3.5 w-3.5" />
+                            : <ChevronDown className="h-3.5 w-3.5" />
+                          }
+                        </td>
+                      </tr>,
+                      expanded && (
+                        <tr key={`${key}-detail`} className="border-t" style={{ borderColor: "var(--border)" }}>
+                          <td colSpan={7} className="p-0">
+                            {g.bookings.length === 0 ? (
+                              <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">沒有訂單</div>
+                            ) : (
+                              <div className="overflow-x-auto bg-[var(--muted)]/20">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="text-left text-[var(--muted-foreground)]"
+                                      style={{ borderBottom: "1px solid var(--border)" }}>
+                                      <th className="px-6 py-2 font-medium">姓名</th>
+                                      <th className="px-4 py-2 font-medium">電話</th>
+                                      <th className="px-4 py-2 font-medium text-right">人數</th>
+                                      <th className="px-4 py-2 font-medium text-right">已付/總額</th>
+                                      <th className="px-4 py-2 font-medium">付款狀態</th>
+                                      <th className="px-4 py-2 font-medium">方式</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {g.bookings.map((b) => (
+                                      <tr key={b.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                                        <td className="px-6 py-2 font-medium">{b.userName}</td>
+                                        <td className="px-4 py-2 tabular-nums text-[var(--muted-foreground)]">{b.phone ?? "—"}</td>
+                                        <td className="px-4 py-2 text-right tabular-nums">×{b.participants}</td>
+                                        <td className="px-4 py-2 text-right tabular-nums text-[var(--muted-foreground)]">
+                                          {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px]">
+                                            {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
+                                          </Badge>
+                                        </td>
+                                        <td className="px-4 py-2 text-[var(--muted-foreground)]">
+                                          {PAYMENT_METHOD_LABEL[b.paymentMethod] ?? b.paymentMethod ?? "—"}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ),
+                    ];
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 
       {/* ── All bookings flat table ──────────────────────── */}
       {!loading && tab === "all" && (
         <div className="space-y-3">
-          {/* Filter */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-[var(--muted-foreground)]">篩選付款：</span>
-            {["all", "pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map(
-              (s) => (
+          {/* Filters row */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {/* Trip filter */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">場次：</span>
+              <select
+                value={filterTripKey}
+                onChange={(e) => setFilterTripKey(e.target.value)}
+                className="min-w-0 max-w-[200px] rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs truncate"
+              >
+                {tripKeyOptions.map((o) => (
+                  <option key={o.key} value={o.key} className="truncate">{o.label}</option>
+                ))}
+              </select>
+            </div>
+            {/* Payment filter */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-[var(--muted-foreground)]">付款：</span>
+              {["all", "pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -465,135 +537,132 @@ export default function AdminBookingsPage() {
                 >
                   {s === "all" ? "全部" : PAYMENT_STATUS_LABEL[s] ?? s}
                 </button>
-              ),
-            )}
+              ))}
+            </div>
           </div>
 
-          <div
-            className="overflow-hidden rounded-xl border"
-            style={{ borderColor: "var(--border)" }}
-          >
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr
-                    className="text-left text-xs text-[var(--muted-foreground)]"
-                    style={{ background: "var(--muted)" }}
-                  >
-                    <th className="px-4 py-3 font-medium">日期</th>
+                  <tr className="text-left text-xs text-[var(--muted-foreground)]"
+                    style={{ background: "var(--muted)" }}>
+                    <th className="px-4 py-3 font-medium">建單日</th>
                     <th className="px-4 py-3 font-medium">客戶</th>
                     <th className="px-4 py-3 font-medium">場次</th>
                     <th className="px-4 py-3 font-medium text-right">金額</th>
                     <th className="px-4 py-3 font-medium text-right">已付</th>
-                    <th className="px-4 py-3 font-medium">狀態</th>
+                    <th className="px-4 py-3 font-medium">訂單</th>
                     <th className="px-4 py-3 font-medium">付款</th>
                     <th className="px-4 py-3 font-medium">方式</th>
                     <th className="px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBookings.map((b, i) => (
-                    <tr
-                      key={b.id}
-                      className={cn(
-                        "border-t",
-                        i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
-                      )}
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      <td className="px-4 py-3 text-xs tabular-nums text-[var(--muted-foreground)]">
-                        {new Date(b.createdAt).toLocaleDateString("zh-TW")}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium">
-                          {b.user.realName ?? b.user.displayName}
-                        </div>
-                        <div className="text-xs text-[var(--muted-foreground)] tabular-nums">
-                          {b.user.phone ?? "—"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {b.type === "daily"
-                          ? `${b.ref.date ?? "—"} ${b.ref.startTime ?? ""}`
-                          : b.ref.title ?? "潛水團"}
-                        {b.ref.sites && b.ref.sites.length > 0 && (
-                          <div className="text-[10px] text-[var(--muted-foreground)]">
-                            {b.ref.sites.join("・")}
-                          </div>
+                  {filteredBookings.map((b, i) => {
+                    const tripDateStr = b.ref.date ?? b.ref.dateStart ?? "";
+                    const tripDisplay = b.type === "daily"
+                      ? `${b.ref.date ?? "—"} ${weekdayTW(b.ref.date ?? "")} ${b.ref.startTime ?? ""}`
+                      : b.ref.title ?? "潛水團";
+                    return (
+                      <tr
+                        key={b.id}
+                        className={cn(
+                          "border-t",
+                          i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {b.totalAmount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {b.paidAmount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant={bookStatusVariant(b.status)}
-                          className="text-[10px]"
-                        >
-                          {BOOKING_STATUS_LABEL[b.status] ?? b.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant={payStatusVariant(b.paymentStatus)}
-                          className="text-[10px]"
-                        >
-                          {PAYMENT_STATUS_LABEL[b.paymentStatus] ??
-                            b.paymentStatus}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                        {PAYMENT_METHOD_LABEL[b.paymentMethod ?? ""] ??
-                          b.paymentMethod ??
-                          "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditing({ ...b });
-                              setRefundOpen(false);
-                              setRefundAmount(String(b.paidAmount));
-                            }}
-                            title="編輯"
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
-                          {(b.status === "pending" ||
-                            b.status === "confirmed") && (
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        {/* 建單日 */}
+                        <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--muted-foreground)] whitespace-nowrap">
+                          {new Date(b.createdAt).toLocaleDateString("zh-TW")}
+                        </td>
+                        {/* 客戶 — 一行 */}
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          <span className="font-medium text-sm">
+                            {b.user.realName ?? b.user.displayName}
+                          </span>
+                          {b.user.phone && (
+                            <span className="ml-1.5 text-xs text-[var(--muted-foreground)] tabular-nums">
+                              {b.user.phone}
+                            </span>
+                          )}
+                        </td>
+                        {/* 場次 — 一行 */}
+                        <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                          <span className="tabular-nums">{tripDisplay}</span>
+                          {b.ref.sites && b.ref.sites.length > 0 && (
+                            <span className="ml-1.5 text-[var(--muted-foreground)]">
+                              {b.ref.sites.join("·")}
+                            </span>
+                          )}
+                        </td>
+                        {/* 金額 */}
+                        <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
+                          {b.totalAmount.toLocaleString()}
+                        </td>
+                        {/* 已付 */}
+                        <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
+                          {b.paidAmount.toLocaleString()}
+                        </td>
+                        {/* 訂單狀態 */}
+                        <td className="px-4 py-2.5">
+                          <Badge variant={bookStatusVariant(b.status)} className="text-[10px] whitespace-nowrap">
+                            {BOOKING_STATUS_LABEL[b.status] ?? b.status}
+                          </Badge>
+                        </td>
+                        {/* 付款狀態 */}
+                        <td className="px-4 py-2.5">
+                          <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
+                            {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
+                          </Badge>
+                        </td>
+                        {/* 方式 */}
+                        <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                          {PAYMENT_METHOD_LABEL[b.paymentMethod ?? ""] ?? b.paymentMethod ?? "—"}
+                        </td>
+                        {/* 操作 */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex gap-1">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => cancelBooking(b)}
-                              title="取消訂單"
+                              onClick={() => {
+                                setEditing({ ...b });
+                                setRefundOpen(false);
+                                setRefundAmount(String(b.paidAmount));
+                              }}
+                              title="編輯"
                             >
-                              <X className="h-3 w-3" />
+                              <Edit3 className="h-3 w-3" />
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => deleteBooking(b)}
-                            title="永久刪除"
-                            className="border-[var(--color-coral)]"
-                          >
-                            <AlertTriangle className="h-3 w-3 text-[var(--color-coral)]" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {(b.status === "pending" || b.status === "confirmed") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => cancelBooking(b)}
+                                title="取消訂單"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteBooking(b)}
+                              title="永久刪除"
+                              className="border-[var(--color-coral)]"
+                            >
+                              <AlertTriangle className="h-3 w-3 text-[var(--color-coral)]" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {filteredBookings.length === 0 && (
                     <tr>
-                      <td
-                        colSpan={9}
-                        className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
-                      >
+                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
@@ -606,12 +675,7 @@ export default function AdminBookingsPage() {
       )}
 
       {/* ── Edit Dialog ───────────────────────────────── */}
-      <Dialog
-        open={editing !== null}
-        onOpenChange={(o) => {
-          if (!o) setEditing(null);
-        }}
-      >
+      <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null); }}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>編輯訂單</DialogTitle>
@@ -624,208 +688,99 @@ export default function AdminBookingsPage() {
                 </div>
                 <div>
                   {editing.type === "daily"
-                    ? `日潛 ${editing.ref.date ?? ""} ${editing.ref.startTime ?? ""}`
+                    ? `日潛 ${editing.ref.date ?? ""} ${weekdayTW(editing.ref.date ?? "")} ${editing.ref.startTime ?? ""}`
                     : `潛水團 ${editing.ref.title ?? ""}`}
                 </div>
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">參加人數</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={editing.participants}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      participants: Math.max(1, Number(e.target.value)),
-                    })
-                  }
-                />
+                <Input type="number" min={1} max={20} value={editing.participants}
+                  onChange={(e) => setEditing({ ...editing, participants: Math.max(1, Number(e.target.value)) })} />
               </div>
-
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">總金額</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editing.totalAmount}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      totalAmount: Math.max(0, Number(e.target.value)),
-                    })
-                  }
-                />
+                <Input type="number" min={0} value={editing.totalAmount}
+                  onChange={(e) => setEditing({ ...editing, totalAmount: Math.max(0, Number(e.target.value)) })} />
               </div>
-
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">已付金額</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editing.paidAmount}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      paidAmount: Math.max(0, Number(e.target.value)),
-                    })
-                  }
-                />
+                <Input type="number" min={0} value={editing.paidAmount}
+                  onChange={(e) => setEditing({ ...editing, paidAmount: Math.max(0, Number(e.target.value)) })} />
               </div>
-
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">付款方式</Label>
-                <select
-                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                   value={editing.paymentMethod ?? "cash"}
-                  onChange={(e) =>
-                    setEditing({ ...editing, paymentMethod: e.target.value })
-                  }
-                >
+                  onChange={(e) => setEditing({ ...editing, paymentMethod: e.target.value })}>
                   <option value="cash">現場支付</option>
                   <option value="bank">銀行轉帳</option>
                   <option value="linepay">LINE Pay</option>
                   <option value="other">其他</option>
                 </select>
               </div>
-
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">付款狀態</Label>
-                <select
-                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                   value={editing.paymentStatus}
-                  onChange={(e) =>
-                    setEditing({ ...editing, paymentStatus: e.target.value })
-                  }
-                >
-                  {["pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {PAYMENT_STATUS_LABEL[s]}
-                      </option>
-                    ),
-                  )}
+                  onChange={(e) => setEditing({ ...editing, paymentStatus: e.target.value })}>
+                  {["pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map((s) => (
+                    <option key={s} value={s}>{PAYMENT_STATUS_LABEL[s]}</option>
+                  ))}
                 </select>
               </div>
-
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">訂單狀態</Label>
-                <select
-                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                   value={editing.status}
-                  onChange={(e) =>
-                    setEditing({ ...editing, status: e.target.value })
-                  }
-                >
-                  {[
-                    "pending",
-                    "confirmed",
-                    "cancelled_by_user",
-                    "cancelled_by_weather",
-                    "completed",
-                    "no_show",
-                  ].map((s) => (
-                    <option key={s} value={s}>
-                      {BOOKING_STATUS_LABEL[s]}
-                    </option>
+                  onChange={(e) => setEditing({ ...editing, status: e.target.value })}>
+                  {["pending", "confirmed", "cancelled_by_user", "cancelled_by_weather", "completed", "no_show"].map((s) => (
+                    <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Refund section */}
-              {editing.paidAmount > 0 &&
-                editing.paymentStatus !== "refunded" && (
-                  <div
-                    className="rounded-md p-3 space-y-2"
-                    style={{
-                      border: "2px solid rgba(255,123,90,0.4)",
-                      background: "rgba(255,123,90,0.05)",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setRefundOpen(!refundOpen)}
-                      className="flex w-full items-center justify-between text-sm font-semibold"
-                      style={{ color: "var(--color-coral)" }}
-                    >
-                      退款處理（已付 NT$ {editing.paidAmount.toLocaleString()}）
-                      {refundOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </button>
-                    {refundOpen && (
-                      <div className="space-y-2 pt-1">
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setRefundMethod("credit")}
-                            className={cn(
-                              "rounded-md border px-2 py-2 text-xs",
-                              refundMethod === "credit"
-                                ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold"
-                                : "border-[var(--border)]",
-                            )}
-                          >
-                            轉禮金
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRefundMethod("cash")}
-                            className={cn(
-                              "rounded-md border px-2 py-2 text-xs",
-                              refundMethod === "cash"
-                                ? "border-[var(--color-coral)] bg-[var(--color-coral)]/15 font-semibold"
-                                : "border-[var(--border)]",
-                            )}
-                          >
-                            退現金
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            type="number"
-                            min={1}
-                            max={editing.paidAmount}
-                            value={refundAmount}
-                            onChange={(e) => setRefundAmount(e.target.value)}
-                            placeholder="退款金額"
-                          />
-                          <Input
-                            value={refundReason}
-                            onChange={(e) => setRefundReason(e.target.value)}
-                            placeholder="原因（選填）"
-                          />
-                        </div>
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          style={{
-                            background: "var(--color-coral)",
-                            color: "white",
-                          }}
-                          disabled={refundBusy}
-                          onClick={doRefund}
-                        >
-                          {refundBusy
-                            ? "處理中..."
-                            : `確認退款 NT$${Number(refundAmount || 0).toLocaleString()}`}
-                        </Button>
+              {/* Refund */}
+              {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (
+                <div className="rounded-md p-3 space-y-2"
+                  style={{ border: "2px solid rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.05)" }}>
+                  <button type="button" onClick={() => setRefundOpen(!refundOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold"
+                    style={{ color: "var(--color-coral)" }}>
+                    退款處理（已付 NT$ {editing.paidAmount.toLocaleString()}）
+                    {refundOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {refundOpen && (
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setRefundMethod("credit")}
+                          className={cn("rounded-md border px-2 py-2 text-xs",
+                            refundMethod === "credit" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
+                          轉禮金
+                        </button>
+                        <button type="button" onClick={() => setRefundMethod("cash")}
+                          className={cn("rounded-md border px-2 py-2 text-xs",
+                            refundMethod === "cash" ? "border-[var(--color-coral)] bg-[var(--color-coral)]/15 font-semibold" : "border-[var(--border)]")}>
+                          退現金
+                        </button>
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="number" min={1} max={editing.paidAmount} value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)} placeholder="退款金額" />
+                        <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="原因（選填）" />
+                      </div>
+                      <Button size="sm" className="w-full" style={{ background: "var(--color-coral)", color: "white" }}
+                        disabled={refundBusy} onClick={doRefund}>
+                        {refundBusy ? "處理中..." : `確認退款 NT$${Number(refundAmount || 0).toLocaleString()}`}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <Button variant="outline" onClick={() => setEditing(null)}>
-                  取消
-                </Button>
-                <Button onClick={saveEdit} disabled={saving}>
-                  {saving ? "儲存中..." : "儲存"}
-                </Button>
+                <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
+                <Button onClick={saveEdit} disabled={saving}>{saving ? "儲存中..." : "儲存"}</Button>
               </div>
             </div>
           )}
