@@ -125,25 +125,25 @@ export default function AdminTripsPage() {
   const [defaultPricing, setDefaultPricing] = useState<Pricing>(BLANK_PRICING_DEFAULT);
 
   useEffect(() => {
-    Promise.all([
+    // 用 allSettled：任一 API 失敗不影響其他資料載入
+    Promise.allSettled([
       adminFetch<{ trips: Trip[] }>("/api/admin/trips"),
-      adminFetch<Site[]>("/api/admin/sites").catch(() => []),
-      adminFetch<{ coaches: Coach[] }>("/api/admin/coaches").catch(() => ({
-        coaches: [],
-      })),
-      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing> } }>("/api/admin/site-config").catch(() => ({ config: {} as { defaultTripPricing?: Partial<Pricing> } })),
-    ])
-      .then(([t, s, c, cfg]) => {
-        setTrips(t.trips);
-        setSites(Array.isArray(s) ? s : []);
-        setCoaches(c.coaches ?? []);
-        const dp = cfg.config.defaultTripPricing;
+      adminFetch<Site[]>("/api/admin/sites"),
+      adminFetch<{ coaches: Coach[] }>("/api/admin/coaches"),
+      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing> } }>("/api/admin/site-config"),
+    ]).then(([t, s, c, cfg]) => {
+      if (t.status === "fulfilled") setTrips(t.value.trips ?? []);
+      else setErr("場次載入失敗：" + (t.reason?.message ?? String(t.reason)));
+
+      if (s.status === "fulfilled") setSites(Array.isArray(s.value) ? s.value : []);
+      if (c.status === "fulfilled") setCoaches(c.value.coaches ?? []);
+      if (cfg.status === "fulfilled") {
+        const dp = cfg.value.config.defaultTripPricing;
         if (dp && Object.keys(dp).length > 0) {
           setDefaultPricing({ ...BLANK_PRICING_DEFAULT, ...dp });
         }
-      })
-      .catch((e) => setErr(e.message))
-      .finally(() => setLoading(false));
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   function siteName(id: string) {
@@ -440,9 +440,22 @@ export default function AdminTripsPage() {
       >
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {form.isNightDive ? "🌙" : "☀️"}{" "}
-              {dialogMode === "create" ? "新增日潛水場次" : "編輯日潛水場次"}
+            <DialogTitle className="flex items-center gap-2">
+              <span>{form.isNightDive ? "🌙" : "☀️"}{" "}
+              {dialogMode === "create" ? "新增日潛水場次" : "編輯日潛水場次"}</span>
+              {dialogMode === "edit" && editingId && (() => {
+                const t = trips.find(x => x.id === editingId);
+                return t?.code ? (
+                  <span className="font-mono text-xs font-normal" style={{ color: "var(--color-phosphor)" }}>
+                    {t.code}
+                  </span>
+                ) : null;
+              })()}
+              {dialogMode === "create" && (
+                <span className="text-[10px] font-normal text-[var(--muted-foreground)]">
+                  建立後自動產生 D{new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }).replace(/-/g, "")}-XX 編號
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -553,42 +566,37 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* 教練 — 選單(左) + 教練說明(右) */}
+            {/* 教練 — 全寬選單，選定後下方顯示簡介 */}
             <div>
               <Label className="mb-1 block text-xs">教練</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                  value={form.coachIds[0] ?? ""}
-                  onChange={(e) =>
-                    setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
-                  }
-                >
-                  <option value="">（未選擇）</option>
-                  {coaches.map((c) => (
-                    <option key={c.id} value={c.id}>{c.realName}</option>
-                  ))}
-                </select>
-                {/* 右側：顯示選定教練的資訊 */}
-                <div className="rounded-md border border-[var(--border)] bg-[var(--muted)]/30 px-2 py-1.5 text-xs text-[var(--muted-foreground)]">
-                  {(() => {
-                    const c = coaches.find((c) => c.id === form.coachIds[0]);
-                    if (!c) return <span>選擇教練後顯示說明</span>;
-                    return (
-                      <div className="space-y-0.5">
-                        {c.cert && <div>🎓 {c.cert}</div>}
-                        {c.specialty && c.specialty.length > 0 && (
-                          <div>✦ {c.specialty.join("、")}</div>
-                        )}
-                        {c.feePerDive != null && c.feePerDive > 0 && (
-                          <div>💰 NT${c.feePerDive.toLocaleString()}/潛</div>
-                        )}
-                        {c.note && <div className="line-clamp-2">{c.note}</div>}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
+              <select
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                value={form.coachIds[0] ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
+                }
+              >
+                <option value="">（未選擇）</option>
+                {coaches.map((c) => (
+                  <option key={c.id} value={c.id}>{c.realName}</option>
+                ))}
+              </select>
+              {/* 選定後顯示教練資訊 */}
+              {(() => {
+                const c = coaches.find((c) => c.id === form.coachIds[0]);
+                if (!c) return null;
+                const parts = [
+                  c.cert && `🎓 ${c.cert}`,
+                  c.specialty?.length && `✦ ${c.specialty.join("、")}`,
+                  c.feePerDive && `💰 NT$${c.feePerDive.toLocaleString()}/潛`,
+                  c.note,
+                ].filter(Boolean);
+                return parts.length > 0 ? (
+                  <div className="mt-1 rounded-md bg-[var(--muted)]/50 px-2 py-1 text-[10px] text-[var(--muted-foreground)]">
+                    {parts.join("　")}
+                  </div>
+                ) : null;
+              })()}
             </div>
 
             {/* 氣瓶數 / 可參加人數 — label 上方，input 下方，左右並排 */}
@@ -620,23 +628,15 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* 費用設定 — 每項各一行 */}
+            {/* 費用設定 — 氣瓶費 + 其他費用 同一行 */}
             <div>
               <Label className="mb-1.5 block text-xs">費用設定 (NT$)</Label>
-              <div className="space-y-2">
-                <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">基本費</div>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.pricing.baseTrip}
-                    onChange={(e) =>
-                      setForm({ ...form, pricing: { ...form.pricing, baseTrip: Number(e.target.value) || 0 } })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">氣瓶費（每瓶）</div>
+              <div className="flex items-end gap-2">
+                {/* 氣瓶費 */}
+                <div className="w-28 shrink-0">
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
+                    氣瓶費（每瓶）
+                  </div>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -646,43 +646,47 @@ export default function AdminTripsPage() {
                     }
                   />
                 </div>
-                {form.isNightDive && (
-                  <div>
-                    <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">夜潛費</div>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={form.pricing.nightDive}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, nightDive: Number(e.target.value) || 0 } })
-                      }
-                    />
+                {/* 其他費用 金額 */}
+                <div className="w-24 shrink-0">
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
+                    其他費用
                   </div>
-                )}
-                <div>
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">其他費用</div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="金額"
-                      className="w-28"
-                      value={form.pricing.otherFee ?? 0}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, otherFee: Number(e.target.value) || 0 } })
-                      }
-                    />
-                    <Input
-                      placeholder="說明（選填）"
-                      className="flex-1"
-                      value={form.pricing.otherFeeNote ?? ""}
-                      onChange={(e) =>
-                        setForm({ ...form, pricing: { ...form.pricing, otherFeeNote: e.target.value } })
-                      }
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={form.pricing.otherFee ?? 0}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, otherFee: Number(e.target.value) || 0 } })
+                    }
+                  />
+                </div>
+                {/* 其他費用 說明 */}
+                <div className="flex-1">
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">說明（選填）</div>
+                  <Input
+                    placeholder="說明"
+                    value={form.pricing.otherFeeNote ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, otherFeeNote: e.target.value } })
+                    }
+                  />
                 </div>
               </div>
+              {/* 夜潛費（僅夜潛時顯示） */}
+              {form.isNightDive && (
+                <div className="mt-2 w-28">
+                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">夜潛費</div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.pricing.nightDive}
+                    onChange={(e) =>
+                      setForm({ ...form, pricing: { ...form.pricing, nightDive: Number(e.target.value) || 0 } })
+                    }
+                  />
+                </div>
+              )}
             </div>
 
             {/* 集合地點 */}
