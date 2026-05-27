@@ -428,6 +428,14 @@ model SiteConfig {
   // VIP 升等獎金：{ "2": 200, "3": 500, "4": 1000, "5": 2000 } — key=升到的等級
   vipUpgradeCredits Json @default("{}") @map("vip_upgrade_credits")
 
+  // 可配置金額設定
+  gearRentalPrices     Json @default("{}") @map("gear_rental_prices")
+  // {"BCD":200,"regulator":200,"wetsuit":300,"fins":100,"mask":100,"computer":300,"full_set":800}
+  defaultTripPricing   Json @default("{}") @map("default_trip_pricing")
+  // {"baseTrip":1200,"extraTank":500,"nightDive":300,"scooterRental":500}
+  defaultCoachFee      Int  @default(1500) @map("default_coach_fee")
+  weatherWindThreshold Int  @default(10)   @map("weather_wind_threshold")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

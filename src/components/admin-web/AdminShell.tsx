@@ -6,17 +6,32 @@ import { useAdminAuth } from "@/lib/admin-web-auth";
 import { cn } from "@/lib/utils";
 import {
   Menu,
-  X,
   LogOut,
   BookOpen,
   Users,
-  Anchor,
+  Waves,
+  Ship,
+  GraduationCap,
+  MapPin,
+  Star,
+  Megaphone,
+  BarChart2,
+  Settings,
+  LayoutDashboard,
 } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
   { href: "/admin/bookings", icon: BookOpen, label: "訂單管理" },
   { href: "/admin/users", icon: Users, label: "會員管理" },
-  { href: "/admin/trips", icon: Anchor, label: "場次管理" },
+  { href: "/admin/trips", icon: Waves, label: "日潛場次" },
+  { href: "/admin/tours", icon: Ship, label: "潛水團" },
+  { href: "/admin/coaches", icon: GraduationCap, label: "教練管理" },
+  { href: "/admin/sites", icon: MapPin, label: "潛點管理" },
+  { href: "/admin/vip-tiers", icon: Star, label: "VIP 設定" },
+  { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
+  { href: "/admin/reports", icon: BarChart2, label: "報表" },
+  { href: "/admin/settings", icon: Settings, label: "系統設定" },
 ];
 
 function NavLink({
@@ -94,14 +109,18 @@ export function AdminShell({
       <div className="mx-3 mb-2 border-t border-white/10" />
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.href}
             href={item.href}
             icon={item.icon}
             label={item.label}
-            active={pathname === item.href || pathname.startsWith(item.href + "/")}
+            active={
+              item.exact
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(item.href + "/")
+            }
             onClick={() => setMobileOpen(false)}
           />
         ))}
@@ -126,7 +145,7 @@ export function AdminShell({
     <div className="flex min-h-screen" style={{ background: "var(--color-pearl)" }}>
       {/* Desktop sidebar */}
       <aside className="hidden w-56 flex-shrink-0 lg:block">
-        <div className="fixed left-0 top-0 h-full w-56">{sidebar}</div>
+        <div className="fixed left-0 top-0 h-full w-56 overflow-y-auto">{sidebar}</div>
       </aside>
 
       {/* Mobile overlay */}
@@ -166,9 +185,10 @@ export function AdminShell({
             style={{ color: "#e6f0ff" }}
           >
             {title ??
-              NAV_ITEMS.find(
-                (n) =>
-                  pathname === n.href || pathname.startsWith(n.href + "/"),
+              NAV_ITEMS.find((n) =>
+                n.exact
+                  ? pathname === n.href
+                  : pathname === n.href || pathname.startsWith(n.href + "/"),
               )?.label ??
               "管理後台"}
           </h1>

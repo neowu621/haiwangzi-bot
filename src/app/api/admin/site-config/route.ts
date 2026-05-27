@@ -40,6 +40,15 @@ const PatchSchema = z.object({
   splashDurationMs: z.number().int().min(0).max(60000).optional(),
   splashCooldownMs: z.number().int().min(0).max(86400000).optional(),
   weatherAutoCancel: z.boolean().optional(),
+  gearRentalPrices: z.record(z.number()).optional(),
+  defaultTripPricing: z.object({
+    baseTrip: z.number().int().min(0),
+    extraTank: z.number().int().min(0),
+    nightDive: z.number().int().min(0),
+    scooterRental: z.number().int().min(0),
+  }).optional(),
+  defaultCoachFee: z.number().int().min(0).optional(),
+  weatherWindThreshold: z.number().int().min(1).max(50).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -53,7 +62,18 @@ export async function GET(req: NextRequest) {
 
   const row = await prisma.siteConfig.findUnique({ where: { id: "default" } });
   if (!row) {
-    return NextResponse.json({ config: DEFAULT_SITE_CONFIG, isDefault: true });
+    return NextResponse.json({
+      config: {
+        ...DEFAULT_SITE_CONFIG,
+        gearRentalPrices: {},
+        defaultTripPricing: {},
+        defaultCoachFee: 1500,
+        weatherWindThreshold: 10,
+        birthdayCreditAmount: 100,
+        vipUpgradeCredits: {},
+      },
+      isDefault: true,
+    });
   }
   return NextResponse.json({
     config: {
@@ -72,6 +92,12 @@ export async function GET(req: NextRequest) {
       splashDurationMs: row.splashDurationMs,
       splashCooldownMs: row.splashCooldownMs,
       weatherAutoCancel: row.weatherAutoCancel,
+      gearRentalPrices: row.gearRentalPrices,
+      defaultTripPricing: row.defaultTripPricing,
+      defaultCoachFee: row.defaultCoachFee,
+      weatherWindThreshold: row.weatherWindThreshold,
+      birthdayCreditAmount: row.birthdayCreditAmount,
+      vipUpgradeCredits: row.vipUpgradeCredits,
     },
     isDefault: false,
     updatedAt: row.updatedAt,

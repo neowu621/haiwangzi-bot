@@ -14,7 +14,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const row = await prisma.siteConfig.findUnique({ where: { id: "default" } });
   if (!row) {
-    return NextResponse.json(DEFAULT_SITE_CONFIG);
+    return NextResponse.json({
+      ...DEFAULT_SITE_CONFIG,
+      gearRentalPrices: {},
+      defaultTripPricing: {},
+    });
   }
   const cards = Array.isArray(row.cards) && row.cards.length > 0
     ? (row.cards as unknown as SiteConfig["cards"])
@@ -34,5 +38,7 @@ export async function GET() {
     splashEnabled: row.splashEnabled,
     splashDurationMs: row.splashDurationMs,
     splashCooldownMs: row.splashCooldownMs,
+    gearRentalPrices: row.gearRentalPrices ?? {},
+    defaultTripPricing: row.defaultTripPricing ?? {},
   });
 }
