@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 import {
   Menu,
   LogOut,
@@ -127,6 +128,16 @@ export function AdminShell({
           />
         ))}
       </nav>
+
+      {/* Version */}
+      <div className="px-5 pb-2 text-center">
+        <span
+          className="rounded px-2 py-0.5 font-mono text-[10px]"
+          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(230,240,255,0.3)" }}
+        >
+          v{APP_VERSION}
+        </span>
+      </div>
 
       {/* Logout */}
       <div className="p-3">
