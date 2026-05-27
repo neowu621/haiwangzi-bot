@@ -256,6 +256,37 @@ export default function AdminBookingsPage() {
     }
   }
 
+  function openEditFromByTrip(b: ByTripBooking, g: ByTripGroup) {
+    const full = bookings.find((x) => x.id === b.id);
+    if (full) {
+      setEditing({ ...full });
+    } else {
+      setEditing({
+        id: b.id,
+        type: g.kind,
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        paymentMethod: b.paymentMethod,
+        totalAmount: b.totalAmount,
+        paidAmount: b.paidAmount,
+        participants: b.participants,
+        overCapacity: false,
+        createdAt: "",
+        user: { displayName: b.userName, realName: null, phone: b.phone },
+        ref: {
+          date: g.kind === "daily" ? g.dateStart?.slice(0, 10) : undefined,
+          startTime: g.kind === "daily" ? (g.title.split(" ")[1] ?? undefined) : undefined,
+          title: g.kind === "tour" ? g.title : undefined,
+          dateStart: g.dateStart,
+          dateEnd: g.dateEnd,
+          sites: g.sites,
+        },
+      });
+    }
+    setRefundOpen(false);
+    setRefundAmount(String(b.paidAmount));
+  }
+
   async function doRefund() {
     if (!editing) return;
     const n = Number(refundAmount);
@@ -454,35 +485,62 @@ export default function AdminBookingsPage() {
                             {g.bookings.length === 0 ? (
                               <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">沒有訂單</div>
                             ) : (
-                              <div className="overflow-x-auto bg-[var(--muted)]/20">
+                              <div className="overflow-x-auto" style={{ background: "#eaf3ff" }}>
                                 <table className="w-full text-xs">
                                   <thead>
-                                    <tr className="text-left text-[var(--muted-foreground)]"
-                                      style={{ borderBottom: "1px solid var(--border)" }}>
-                                      <th className="px-6 py-2 font-medium">姓名</th>
-                                      <th className="px-4 py-2 font-medium">電話</th>
-                                      <th className="px-4 py-2 font-medium text-right">人數</th>
-                                      <th className="px-4 py-2 font-medium text-right">已付/總額</th>
-                                      <th className="px-4 py-2 font-medium">付款狀態</th>
-                                      <th className="px-4 py-2 font-medium">方式</th>
+                                    <tr
+                                      className="text-left text-xs font-semibold"
+                                      style={{
+                                        background: "#c8dff8",
+                                        borderBottom: "1px solid #b3cff0",
+                                        color: "#2a5580",
+                                      }}
+                                    >
+                                      <th className="px-6 py-2 font-semibold">姓名</th>
+                                      <th className="px-4 py-2 font-semibold">電話</th>
+                                      <th className="px-4 py-2 font-semibold text-right">人數</th>
+                                      <th className="px-4 py-2 font-semibold text-right">已付/總額</th>
+                                      <th className="px-4 py-2 font-semibold">付款狀態</th>
+                                      <th className="px-4 py-2 font-semibold">方式</th>
+                                      <th className="px-4 py-2 font-semibold">訂單狀態</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {g.bookings.map((b) => (
-                                      <tr key={b.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                                        <td className="px-6 py-2 font-medium">{b.userName}</td>
-                                        <td className="px-4 py-2 tabular-nums text-[var(--muted-foreground)]">{b.phone ?? "—"}</td>
-                                        <td className="px-4 py-2 text-right tabular-nums">×{b.participants}</td>
-                                        <td className="px-4 py-2 text-right tabular-nums text-[var(--muted-foreground)]">
+                                    {g.bookings.map((b, bi) => (
+                                      <tr
+                                        key={b.id}
+                                        className="cursor-pointer transition-colors hover:bg-[#c8e0ff]"
+                                        style={{
+                                          background: bi % 2 === 0 ? "#eaf3ff" : "#ddeefb",
+                                          borderBottom: "1px solid #c0d8f0",
+                                        }}
+                                        onClick={() => openEditFromByTrip(b, g)}
+                                        title="點擊查看/編輯訂單"
+                                      >
+                                        <td className="px-6 py-2.5 font-semibold" style={{ color: "#1a4a70" }}>
+                                          {b.userName}
+                                        </td>
+                                        <td className="px-4 py-2.5 tabular-nums" style={{ color: "#4a6a88" }}>
+                                          {b.phone ?? "—"}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right tabular-nums font-medium">
+                                          ×{b.participants}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: "#4a6a88" }}>
                                           {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
                                         </td>
-                                        <td className="px-4 py-2">
+                                        <td className="px-4 py-2.5">
                                           <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px]">
                                             {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
                                           </Badge>
                                         </td>
-                                        <td className="px-4 py-2 text-[var(--muted-foreground)]">
+                                        <td className="px-4 py-2.5" style={{ color: "#4a6a88" }}>
                                           {PAYMENT_METHOD_LABEL[b.paymentMethod] ?? b.paymentMethod ?? "—"}
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                          <Badge variant={bookStatusVariant(b.status)} className="text-[10px]">
+                                            {BOOKING_STATUS_LABEL[b.status] ?? b.status}
+                                          </Badge>
                                         </td>
                                       </tr>
                                     ))}
@@ -678,7 +736,7 @@ export default function AdminBookingsPage() {
       <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null); }}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>編輯訂單</DialogTitle>
+            <DialogTitle>訂單詳情 / 編輯</DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="space-y-3">
