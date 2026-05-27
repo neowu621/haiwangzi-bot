@@ -5,6 +5,7 @@ import { setAdminToken } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { APP_VERSION } from "@/lib/version";
 
 interface AdminUser {
   lineUserId: string;
@@ -165,7 +166,13 @@ export default function AdminLoginPage() {
           <h1 className="text-2xl font-bold" style={{ color: "var(--color-phosphor)" }}>
             東北角海王子
           </h1>
-          <p className="mt-1 text-sm" style={subStyle}>管理後台</p>
+          <p className="mt-1 text-sm" style={subStyle}>
+            管理後台{" "}
+            <span className="rounded px-1.5 py-0.5 text-[10px] font-mono"
+              style={{ background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.45)" }}>
+              v{APP_VERSION}
+            </span>
+          </p>
         </div>
 
         {/* 步驟進度條 */}
