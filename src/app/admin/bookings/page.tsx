@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
-import { adminFetch } from "@/lib/admin-web-auth";
+import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ interface AdminBooking {
   participants: number;
   overCapacity?: boolean;
   createdAt: string;
+  notes?: string | null;
+  siteNotes?: string | null;
+  adminNotes?: string | null;
   user: { displayName: string; realName: string | null; phone: string | null };
   ref: {
     date?: string;
@@ -50,6 +53,9 @@ interface ByTripBooking {
   paymentStatus: string;
   paymentMethod: string;
   status: string;
+  notes?: string | null;
+  siteNotes?: string | null;
+  adminNotes?: string | null;
 }
 
 interface ByTripGroup {
@@ -121,6 +127,9 @@ function bookStatusVariant(s: string): "ocean" | "coral" | "muted" {
 
 // ── Main Page ────────────────────────────────────────────────
 export default function AdminBookingsPage() {
+  const { adminUser } = useAdminAuth();
+  const isAdminOrBoss = adminUser?.effectiveRoles.some((r) => r === "admin" || r === "boss") ?? false;
+
   const [tab, setTab] = useState<"by-trip" | "all">("by-trip");
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [byTrip, setByTrip] = useState<{
@@ -210,6 +219,9 @@ export default function AdminBookingsPage() {
             paymentStatus: editing.paymentStatus,
             paymentMethod: editing.paymentMethod,
             status: editing.status,
+            notes: editing.notes ?? null,
+            siteNotes: editing.siteNotes ?? null,
+            adminNotes: editing.adminNotes ?? null,
           }),
         },
       );
@@ -265,6 +277,7 @@ export default function AdminBookingsPage() {
     } else {
       setEditing({
         id: b.id,
+        code: b.code,
         type: g.kind,
         status: b.status,
         paymentStatus: b.paymentStatus,
@@ -274,6 +287,9 @@ export default function AdminBookingsPage() {
         participants: b.participants,
         overCapacity: false,
         createdAt: "",
+        notes: b.notes,
+        siteNotes: b.siteNotes,
+        adminNotes: b.adminNotes,
         user: { displayName: b.userName, realName: null, phone: b.phone },
         ref: {
           date: g.kind === "daily" ? g.dateStart?.slice(0, 10) : undefined,
@@ -818,6 +834,60 @@ export default function AdminBookingsPage() {
                     <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* ── 備註區塊 ── */}
+              <div className="space-y-2 pt-1">
+                <div
+                  className="rounded-md px-3 py-2 text-[11px] font-semibold tracking-wide"
+                  style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}
+                >
+                  備註
+                </div>
+
+                {/* 客戶備註（唯讀） */}
+                <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                  <Label className="text-xs pt-1.5">客戶備註</Label>
+                  <div
+                    className="min-h-[2.5rem] rounded-md border px-2 py-1.5 text-sm"
+                    style={{ borderColor: "var(--border)", background: "var(--muted)/30", color: "var(--muted-foreground)" }}
+                  >
+                    {editing.notes || <span className="opacity-40">（客戶未填寫）</span>}
+                  </div>
+                </div>
+
+                {/* 網站備註（admin 寫，客戶可見） */}
+                <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                  <Label className="text-xs pt-1.5">
+                    網站備註
+                    <span className="block font-normal text-[10px]" style={{ color: "var(--muted-foreground)" }}>客戶可見</span>
+                  </Label>
+                  <textarea
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    rows={2}
+                    placeholder="顯示給客戶的公開備註（如：注意帶泳衣）"
+                    value={editing.siteNotes ?? ""}
+                    onChange={(e) => setEditing({ ...editing, siteNotes: e.target.value })}
+                  />
+                </div>
+
+                {/* 管理備註（admin/boss only） */}
+                {isAdminOrBoss && (
+                  <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                    <Label className="text-xs pt-1.5">
+                      管理備註
+                      <span className="block font-normal text-[10px]" style={{ color: "var(--color-coral)" }}>僅管理員可見</span>
+                    </Label>
+                    <textarea
+                      className="w-full rounded-md border px-2 py-1.5 text-sm"
+                      style={{ borderColor: "rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.04)" }}
+                      rows={2}
+                      placeholder="內部備註（客戶不可見）"
+                      value={editing.adminNotes ?? ""}
+                      onChange={(e) => setEditing({ ...editing, adminNotes: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Refund */}

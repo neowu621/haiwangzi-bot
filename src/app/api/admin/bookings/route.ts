@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authFromRequest, requireRole } from "@/lib/auth";
+import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
   });
   const siteMap = new Map(sites.map((s) => [s.id, s.name]));
 
+  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
+
   return NextResponse.json({
     bookings: bookings.map((b) => {
       let ref: Record<string, unknown> = {};
@@ -64,7 +66,12 @@ export async function GET(req: NextRequest) {
           };
         }
       }
-      return { ...b, ref };
+      return {
+        ...b,
+        // 管理備註僅 admin/boss 可見
+        adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
+        ref,
+      };
     }),
   });
 }

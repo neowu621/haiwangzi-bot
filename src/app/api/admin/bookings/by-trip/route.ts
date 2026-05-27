@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authFromRequest, requireRole } from "@/lib/auth";
+import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
     prisma.diveSite.findMany({ select: { id: true, name: true } }),
   ]);
   const siteMap = new Map(sites.map((s) => [s.id, s.name]));
+  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
 
   // group
   const tripGroups = trips.map((t) => {
@@ -103,6 +104,9 @@ export async function GET(req: NextRequest) {
         paymentMethod: b.paymentMethod,
         status: b.status,
         createdAt: b.createdAt,
+        notes: b.notes,
+        siteNotes: b.siteNotes,
+        adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
       })),
     };
   });
@@ -141,6 +145,9 @@ export async function GET(req: NextRequest) {
         paymentMethod: b.paymentMethod,
         status: b.status,
         createdAt: b.createdAt,
+        notes: b.notes,
+        siteNotes: b.siteNotes,
+        adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
       })),
     };
   });

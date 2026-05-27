@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { authFromRequest, requireRole } from "@/lib/auth";
+import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
@@ -27,6 +27,8 @@ const PatchSchema = z.object({
     ])
     .optional(),
   notes: z.string().nullable().optional(),
+  siteNotes: z.string().nullable().optional(),
+  adminNotes: z.string().nullable().optional(),
   cancellationReason: z.string().nullable().optional(),
 });
 
@@ -52,9 +54,14 @@ export async function PATCH(
     );
   }
   const data = parsed.data;
+  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
+
   const patch: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
-    if (v !== undefined) patch[k] = v === "" ? null : v;
+    if (v === undefined) continue;
+    // 管理備註只有 admin/boss 可寫
+    if (k === "adminNotes" && !isAdminOrBoss) continue;
+    patch[k] = v === "" ? null : v;
   }
   try {
     const updated = await prisma.booking.update({

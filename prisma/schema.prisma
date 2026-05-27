@@ -294,7 +294,9 @@ model Booking {
   participantDetails Json           @default("[]") @map("participant_details")
   selectedAddons     String[]       @default([]) @map("selected_addons")
   rentalGear         Json           @default("[]") @map("rental_gear")
-  notes              String?
+  notes              String?        // 客戶備註（客戶預約時填寫）
+  siteNotes          String?        @map("site_notes")   // 網站備註（管理員填，客戶可見）
+  adminNotes         String?        @map("admin_notes")  // 管理備註（僅 admin/boss 可見）
   totalAmount        Int            @map("total_amount")
   depositAmount      Int            @default(0) @map("deposit_amount")
   paidAmount         Int            @default(0) @map("paid_amount")

@@ -2,6 +2,25 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_82 — 2026-05-28 (訂單三層備註：客戶 / 網站 / 管理)
+
+### Schema
+- `Booking` 新增 `siteNotes`（網站備註，客戶可見）
+- `Booking` 新增 `adminNotes`（管理備註，僅 admin/boss 可見）
+- 原 `notes` 欄位為客戶預約時填寫的備註（唯讀）
+
+### API 權限
+- `GET /api/admin/bookings` + `by-trip`：非 admin/boss 不回傳 `adminNotes`
+- `PATCH /api/admin/bookings/[id]`：非 admin/boss 無法寫入 `adminNotes`
+
+### 訂單詳情對話框
+- 新增「備註」區塊（三格）：
+  - **客戶備註**：唯讀，顯示客戶預約時填寫
+  - **網站備註**：可編輯，顯示給客戶看（適合填注意事項）
+  - **管理備註**：可編輯，紅框標示，僅 admin/boss 可見與編輯
+
+---
+
 ## 20260528_81 — 2026-05-28 (唯一編號：訂單 O-、場次 D-、潛水團 T-)
 
 ### Schema 新增欄位
