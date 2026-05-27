@@ -40,6 +40,7 @@ RUN npm install --no-save --no-audit --no-fund prisma@6.19.3 @prisma/client@6.19
 # 把 builder 生成的 prisma client (含 query engines binary) 覆蓋上去
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
+COPY scripts/ ./scripts/
 RUN chmod +x ./docker-entrypoint.sh
 
 USER nextjs

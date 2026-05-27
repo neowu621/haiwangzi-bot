@@ -97,39 +97,6 @@ export default function SettingsPage() {
   const [ok, setOk] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState("");
 
-  // ── 補發編號 ──
-  const [backfillPending, setBackfillPending] = useState<{ users: number; trips: number; tours: number; bookings: number; total: number } | null>(null);
-  const [backfillLoading, setBackfillLoading] = useState(false);
-  const [backfillRunning, setBackfillRunning] = useState(false);
-  const [backfillResult, setBackfillResult] = useState<string | null>(null);
-
-  async function checkBackfill() {
-    setBackfillLoading(true);
-    setBackfillResult(null);
-    try {
-      const d = await adminFetch<{ users: number; trips: number; tours: number; bookings: number; total: number }>("/api/admin/backfill-codes");
-      setBackfillPending(d);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "查詢失敗");
-    } finally {
-      setBackfillLoading(false);
-    }
-  }
-
-  async function runBackfill() {
-    if (!confirm(`確定要為所有缺少編號的記錄（${backfillPending?.total ?? "?"}筆）補發新格式編號？`)) return;
-    setBackfillRunning(true);
-    setBackfillResult(null);
-    try {
-      const r = await adminFetch<{ users: number; trips: number; tours: number; bookings: number; errors: number }>("/api/admin/backfill-codes", { method: "POST" });
-      setBackfillResult(`✓ 補發完成：會員 ${r.users} 筆、日潛 ${r.trips} 筆、潛水團 ${r.tours} 筆、訂單 ${r.bookings} 筆${r.errors > 0 ? `（失敗 ${r.errors} 筆）` : ""}`);
-      setBackfillPending(null);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "補發失敗");
-    } finally {
-      setBackfillRunning(false);
-    }
-  }
 
   const load = useCallback(async () => {
     try {
@@ -392,83 +359,6 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
-        {/* ── D. 補發編號 ──────────────────── */}
-        <SectionCard title="🔢 補發編號">
-          <p className="mb-4 text-sm text-[var(--muted-foreground)]">
-            將所有尚未有編號的會員、日潛場次、潛水團、訂單，依各筆資料的建立日期補發新格式編號
-            （<span className="font-mono text-xs">M/D/T/O&#x7b;YYYYMMDD&#x7d;-XX</span>）。每次執行只補發缺少的，不會覆蓋已有編號的資料。
-          </p>
-
-          {/* 查詢缺少筆數 */}
-          {backfillPending === null && !backfillResult && (
-            <Button size="sm" variant="outline" onClick={checkBackfill} disabled={backfillLoading}>
-              {backfillLoading ? "查詢中..." : "查詢缺少編號的筆數"}
-            </Button>
-          )}
-
-          {/* 顯示查詢結果 */}
-          {backfillPending !== null && (
-            <div className="space-y-3">
-              <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--border)" }}>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-1">
-                  {[
-                    ["會員", backfillPending.users],
-                    ["日潛場次", backfillPending.trips],
-                    ["潛水團", backfillPending.tours],
-                    ["訂單", backfillPending.bookings],
-                  ].map(([label, count]) => (
-                    <div key={label as string} className="flex justify-between">
-                      <span className="text-[var(--muted-foreground)]">{label}</span>
-                      <span className={`font-semibold tabular-nums ${Number(count) > 0 ? "text-[var(--color-coral)]" : "text-[var(--muted-foreground)]"}`}>
-                        {count} 筆
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                  <div className="flex justify-between font-semibold">
-                    <span>合計</span>
-                    <span className={backfillPending.total > 0 ? "text-[var(--color-coral)]" : "text-[var(--muted-foreground)]"}>
-                      {backfillPending.total} 筆
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {backfillPending.total === 0 ? (
-                <p className="text-sm" style={{ color: "var(--color-phosphor)" }}>
-                  ✓ 所有資料都已有編號，無需補發
-                </p>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={runBackfill}
-                    disabled={backfillRunning}
-                    style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
-                  >
-                    {backfillRunning ? "補發中，請稍候..." : `立即補發 ${backfillPending.total} 筆`}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setBackfillPending(null)}>
-                    取消
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 補發結果 */}
-          {backfillResult && (
-            <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "var(--color-phosphor)", border: "1px solid rgba(99,235,164,0.25)" }}>
-              {backfillResult}
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={checkBackfill} disabled={backfillLoading}>
-                  再次確認
-                </Button>
-              </div>
-            </div>
-          )}
-        </SectionCard>
       </div>
     </AdminShell>
   );
