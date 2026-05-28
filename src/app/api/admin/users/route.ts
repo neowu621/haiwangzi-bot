@@ -187,8 +187,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 反向：若 admin 手動指定 vipLevel 而沒指定 haiwangziLogCount/totalSpend
-  // → 自動把潛水次數設為該等級的最低門檻（符合使用者要求）
+  // 反向：若 admin 手動指定 vipLevel 而沒指定 haiwangziLogCount
+  // → 自動把潛水次數設為該等級的最低門檻
+  // 注意：totalSpend（累計消費）是真實付款紀錄，不會自動變動，只動潛水次數
   if (
     data.vipLevel !== undefined &&
     data.haiwangziLogCount === undefined
@@ -199,12 +200,7 @@ export async function POST(req: NextRequest) {
     const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : VIP_TIERS;
     const tier = tiers.find((t) => t.level === data.vipLevel);
     if (tier) {
-      // 直接設為該等級的最低潛水次數
       patch.haiwangziLogCount = tier.minLogs;
-      // 同步：若沒指定 totalSpend，也設為該等級最低消費
-      if (data.totalSpend === undefined && tier.minSpend) {
-        patch.totalSpend = tier.minSpend;
-      }
     }
   }
 
