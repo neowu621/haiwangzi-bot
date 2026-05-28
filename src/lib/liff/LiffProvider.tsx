@@ -21,6 +21,8 @@ export interface LiffContextValue {
   profile: LiffProfile | null;
   idToken: string | null;
   mode: "real" | "mock";
+  /** null = 還在檢查 / true = 已加 OA 好友 / false = 尚未加好友 */
+  isFriend: boolean | null;
   login: () => void;
   logout: () => void;
   fetchWithAuth: <T = unknown>(url: string, init?: RequestInit) => Promise<T>;
@@ -70,6 +72,8 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
   const [idToken, setIdToken] = useState<string | null>(
     isMock ? "mock-id-token" : null,
   );
+  // Mock 模式預設視為已加好友（dev 用）；真實模式從 null 開始等 getFriendship
+  const [isFriend, setIsFriend] = useState<boolean | null>(isMock ? true : null);
   const [error, setError] = useState<string | null>(null);
 
   // mock 模式：載入時讀 localStorage 設 profile（避免 SSR mismatch）
@@ -104,6 +108,15 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
             statusMessage: p.statusMessage,
           });
           setIdToken(liff.getIDToken());
+          // 查 LINE OA 好友狀態（必須在 LIFF 內、且 LIFF App 設定的 Channel 有對應 OA 才會 work）
+          try {
+            const friendship = await liff.getFriendship();
+            if (!cancelled) setIsFriend(friendship.friendFlag);
+          } catch (e) {
+            console.warn("[liff getFriendship] failed:", e);
+            // 失敗就放行（避免擋住正常用戶；LIFF Channel 設定問題時不要全站當機）
+            if (!cancelled) setIsFriend(true);
+          }
         }
         setReady(true);
       } catch (err) {
@@ -123,6 +136,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
       loggedIn,
       profile,
       idToken,
+      isFriend,
       mode: isMock ? "mock" : "real",
       error,
       login: () => {
@@ -207,7 +221,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         return (await res.json()) as T;
       },
     };
-  }, [ready, loggedIn, profile, idToken, error, isMock]);
+  }, [ready, loggedIn, profile, idToken, isFriend, error, isMock]);
 
   return <LiffContext.Provider value={value}>{children}</LiffContext.Provider>;
 }

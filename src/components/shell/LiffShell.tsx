@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/brand/Logo";
 import { SplashOverlay } from "@/components/shell/SplashOverlay";
@@ -15,6 +15,8 @@ interface LiffShellProps {
   midnight?: boolean;
   bottomNav?: React.ReactNode;
   rightSlot?: React.ReactNode;
+  /** 跳過好友檢查（給 /liff/add-friend 自己用，避免無限重導） */
+  skipFriendGate?: boolean;
   children: React.ReactNode;
 }
 
@@ -24,10 +26,22 @@ export function LiffShell({
   midnight = false,
   bottomNav,
   rightSlot,
+  skipFriendGate = false,
   children,
 }: LiffShellProps) {
   const liff = useLiff();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // 好友 gate：未加 OA 好友 → 強制導到 /liff/add-friend（除非已在該頁）
+  React.useEffect(() => {
+    if (skipFriendGate) return;
+    if (!liff.ready) return;
+    if (liff.mode === "mock") return; // 開發模式跳過
+    if (liff.isFriend === false && pathname !== "/liff/add-friend") {
+      router.replace("/liff/add-friend");
+    }
+  }, [liff.ready, liff.isFriend, liff.mode, pathname, skipFriendGate, router]);
 
   function handleBack() {
     // 永遠優先用瀏覽器歷史（router.back 對 Next.js App Router 客戶端導航是可靠的）
