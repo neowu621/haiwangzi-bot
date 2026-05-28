@@ -15,6 +15,10 @@ const PATCHES = [
   // ── users ─────────────────────────────────────────────────────────
   // v84: 新增 users.code 欄位（會員編號）
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
+  // v112: 軟刪除欄位
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(64)`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_reason TEXT`,
 
   // ── code 欄位（先 ADD，後 ALTER TYPE 至 VARCHAR(12)）─────────────────
   // 注意：必須先 ADD COLUMN IF NOT EXISTS，否則 ALTER TYPE 在欄位不存在時會靜默失敗

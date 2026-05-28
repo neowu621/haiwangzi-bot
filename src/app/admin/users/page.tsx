@@ -21,6 +21,8 @@ import {
   ChevronUp,
   ChevronDown,
   Mail,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { cn, toTaipeiDateString } from "@/lib/utils";
 import { formatPhoneTW } from "@/lib/phone";
@@ -58,6 +60,9 @@ interface AdminUser {
   totalSpend?: number;
   lastActiveAt: string;
   createdAt: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deletedReason?: string | null;
   stats?: {
     totalBookings: number;
     completed: number;
@@ -249,12 +254,53 @@ export default function AdminUsersPage() {
     );
   }
 
+  async function softDeleteUser(u: AdminUser) {
+    const reason = window.prompt(
+      `軟刪除（封存）會員「${u.realName ?? u.displayName}」？\n\n` +
+      `會員帳號保留，但無法登入 LIFF；所有訂單/付款紀錄保留以利查帳。\n\n` +
+      `（選填）封存原因：`,
+      "",
+    );
+    if (reason === null) return; // 取消
+    try {
+      const r = await adminFetch<{ ok: boolean; preserved: { bookings: number; activeBookings: number; paidBookings: number } }>(
+        `/api/admin/users/${encodeURIComponent(u.lineUserId)}/soft-delete`,
+        { method: "POST", body: JSON.stringify({ reason: reason || undefined }) },
+      );
+      alert(
+        `✓ 已軟刪除「${u.realName ?? u.displayName}」\n\n` +
+        `保留資料：\n` +
+        `• 訂單 ${r.preserved.bookings} 筆\n` +
+        `• 進行中訂單 ${r.preserved.activeBookings} 筆\n` +
+        `• 未退款已付款訂單 ${r.preserved.paidBookings} 筆`,
+      );
+      setUsers((arr) => arr.map((x) => x.lineUserId === u.lineUserId ? { ...x, deletedAt: new Date().toISOString() } : x));
+    } catch (e) {
+      alert("軟刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function restoreUser(u: AdminUser) {
+    if (!confirm(`還原會員「${u.realName ?? u.displayName}」？\n還原後該會員可重新登入 LIFF。`)) return;
+    try {
+      await adminFetch(
+        `/api/admin/users/${encodeURIComponent(u.lineUserId)}/soft-delete?action=restore`,
+        { method: "POST", body: "{}" },
+      );
+      setUsers((arr) => arr.map((x) => x.lineUserId === u.lineUserId ? { ...x, deletedAt: null } : x));
+    } catch (e) {
+      alert("還原失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   async function removeUser(u: AdminUser) {
     const hasBookings = (u.stats?.totalBookings ?? 0) > 0;
     if (
       !confirm(
-        `刪除會員「${u.realName ?? u.displayName}」？` +
-          (hasBookings ? `\n此會員有 ${u.stats?.totalBookings} 筆訂單。` : ""),
+        `永久刪除會員「${u.realName ?? u.displayName}」？\n\n` +
+          (hasBookings ? `⚠️ 此會員有 ${u.stats?.totalBookings} 筆訂單將一併刪除。\n\n` : "") +
+          `如果只是要停用該會員，請改用「封存」(軟刪除)，保留所有訂單。\n\n` +
+          `永久刪除 = 全部消失，無法復原。`,
       )
     )
       return;
@@ -622,12 +668,20 @@ export default function AdminUsersPage() {
                       </td>
                       {/* 姓名 */}
                       <td className="px-4 py-3">
-                        <div className="font-medium">
+                        <div className={cn("font-medium", u.deletedAt && "line-through text-[var(--muted-foreground)]")}>
                           {u.realName ?? u.displayName}
                         </div>
                         {u.realName && (
                           <div className="text-xs text-[var(--muted-foreground)]">
                             {u.displayName}
+                          </div>
+                        )}
+                        {u.deletedAt && (
+                          <div className="mt-0.5 flex items-center gap-1">
+                            <Archive className="h-3 w-3 text-amber-600" />
+                            <span className="text-[10px] text-amber-600 font-semibold">
+                              已封存
+                            </span>
                           </div>
                         )}
                         {u.blacklisted && (
@@ -752,11 +806,32 @@ export default function AdminUsersPage() {
                           >
                             <Edit3 className="h-3 w-3" />
                           </Button>
+                          {u.deletedAt ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => restoreUser(u)}
+                              title="還原（取消封存）"
+                              className="border-blue-400 text-blue-600 hover:bg-blue-50"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => softDeleteUser(u)}
+                              title="封存（軟刪除）— 保留訂單，會員無法登入"
+                              className="border-amber-400 text-amber-600 hover:bg-amber-50"
+                            >
+                              <Archive className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => removeUser(u)}
-                            title="刪除"
+                            title="永久刪除（不可復原）"
                             className="border-[var(--color-coral)]"
                           >
                             <Trash2 className="h-3 w-3 text-[var(--color-coral)]" />

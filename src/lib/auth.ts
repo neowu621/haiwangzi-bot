@@ -96,6 +96,10 @@ async function tryVerifyAdminWebJwt(token: string): Promise<AuthResult> {
   const user = await prisma.user.findUnique({ where: { lineUserId } });
   if (!user)
     return { ok: false, status: 401, message: "admin user not found" };
+  // 軟刪除檢查
+  if (user.deletedAt) {
+    return { ok: false, status: 403, message: "user_deleted: 此帳號已被停用" };
+  }
   await prisma.user.update({
     where: { lineUserId },
     data: { lastActiveAt: new Date() },
@@ -129,6 +133,10 @@ async function verifyIdToken(idToken: string): Promise<AuthResult> {
       return { ok: false, status: 401, message: "no sub in idToken" };
     }
     const user = await getOrCreateUser(String(lineUserId), displayName);
+    // 軟刪除檢查
+    if (user.deletedAt) {
+      return { ok: false, status: 403, message: "user_deleted: 此帳號已被停用" };
+    }
     return { ok: true, user, lineUserId: String(lineUserId) };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "verify failed";

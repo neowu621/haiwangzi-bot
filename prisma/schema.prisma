@@ -164,6 +164,11 @@ model User {
   code             String?   @unique @map("code") @db.VarChar(12)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
+  // 軟刪除：設值後使用者無法登入 LIFF，但訂單/付款紀錄保留以便查帳
+  // null = 正常會員；DateTime = 已刪除的時間
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+  deletedBy        String?   @map("deleted_by") @db.VarChar(64)
+  deletedReason    String?   @map("deleted_reason")
 
   bookings         Booking[]
   coachProfile     Coach?

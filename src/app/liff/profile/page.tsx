@@ -814,6 +814,26 @@ export default function ProfilePage() {
             </Button>
           </div>
         </CollapsibleCard>
+
+        {/* FAQ / 關於 入口 */}
+        <a
+          href="/liff/faq"
+          className="flex items-center justify-between rounded-xl border bg-white p-4 transition-colors hover:bg-[var(--muted)]/40"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-phosphor)]/15">
+              <span className="text-base">❓</span>
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[var(--foreground)]">常見問題與關於</div>
+              <div className="text-[10px] text-[var(--muted-foreground)]">
+                預約規則 / 退款 / VIP 福利 / 聯絡我們
+              </div>
+            </div>
+          </div>
+          <span className="text-[var(--muted-foreground)]">→</span>
+        </a>
       </div>
 
       {/* 預約紀錄 / 已完成 點擊跳出 Dialog */}
