@@ -12,7 +12,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
-  audience: z.enum(["all", "customers", "coaches", "admins"]).default("all"),
+  audience: z.enum(["all", "customers", "coaches", "admins", "single", "trip"]).default("all"),
+  // single 用：指定 LINE userId
+  singleUserId: z.string().optional(),
+  // trip 用：指定 daily trip id 或 tour id（會自動 join booking 找參加者）
+  refType: z.enum(["daily", "tour"]).optional(),
+  refId: z.string().optional(),
   template: z.string(),
   altText: z.string().min(1),
   params: z.record(z.unknown()).default({}),
@@ -36,11 +41,42 @@ export async function POST(req: NextRequest) {
   const data = BodySchema.parse(await req.json());
 
   // 算 audience userIds（拿完整 user 物件，後面 email 也要用）
-  const where =
-    data.audience === "all"
-      ? {}
-      : { role: data.audience.slice(0, -1) as "customer" | "coach" | "admin" };
-  const targets = await prisma.user.findMany({ where });
+  let targets: Awaited<ReturnType<typeof prisma.user.findMany>> = [];
+
+  if (data.audience === "single") {
+    if (!data.singleUserId) {
+      return NextResponse.json({ error: "missing singleUserId" }, { status: 400 });
+    }
+    const u = await prisma.user.findUnique({ where: { lineUserId: data.singleUserId } });
+    if (!u) {
+      return NextResponse.json({ error: "user not found" }, { status: 404 });
+    }
+    targets = [u];
+  } else if (data.audience === "trip") {
+    if (!data.refType || !data.refId) {
+      return NextResponse.json({ error: "missing refType/refId for trip audience" }, { status: 400 });
+    }
+    // 找這個 trip/tour 的所有活躍訂單，拉出 userId 去重，再撈 user
+    const bookings = await prisma.booking.findMany({
+      where: {
+        type: data.refType,
+        refId: data.refId,
+        status: { in: ["pending", "confirmed", "completed"] },
+      },
+      select: { userId: true },
+    });
+    const userIds = Array.from(new Set(bookings.map((b) => b.userId)));
+    if (userIds.length === 0) {
+      return NextResponse.json({ ok: true, delivered: 0, emailed: 0, note: "此場次/潛水團無活躍訂單" });
+    }
+    targets = await prisma.user.findMany({ where: { lineUserId: { in: userIds } } });
+  } else {
+    const where =
+      data.audience === "all"
+        ? {}
+        : { role: data.audience.slice(0, -1) as "customer" | "coach" | "admin" };
+    targets = await prisma.user.findMany({ where });
+  }
 
   if (targets.length === 0) {
     return NextResponse.json({ ok: true, delivered: 0, emailed: 0 });
@@ -140,6 +176,9 @@ export async function POST(req: NextRequest) {
       channel: data.channel,
       template: data.template,
       targets: targets.length,
+      singleUserId: data.singleUserId,
+      refType: data.refType,
+      refId: data.refId,
     },
   });
   return NextResponse.json(result);

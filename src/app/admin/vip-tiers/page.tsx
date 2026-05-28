@@ -5,7 +5,8 @@ import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Save, RotateCcw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Trash2, Save, RotateCcw, Edit3, MoreVertical } from "lucide-react";
 
 interface VipTier {
   level: number;
@@ -29,6 +30,10 @@ export default function VipTiersPage() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
+  // Edit dialog
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<VipTier | null>(null);
+
   async function load() {
     try {
       setLoading(true);
@@ -44,25 +49,37 @@ export default function VipTiersPage() {
 
   useEffect(() => { load(); }, []);
 
-  function updateTier(idx: number, patch: Partial<VipTier>) {
-    setTiers(ts => ts.map((t, i) => i === idx ? { ...t, ...patch } : t));
+  function openEdit(idx: number) {
+    setEditIdx(idx);
+    setEditDraft({ ...tiers[idx], benefits: [...tiers[idx].benefits] });
   }
 
-  function updateBenefit(tierIdx: number, benefitIdx: number, val: string) {
-    setTiers(ts => ts.map((t, i) => {
-      if (i !== tierIdx) return t;
-      const benefits = [...t.benefits];
-      benefits[benefitIdx] = val;
-      return { ...t, benefits };
-    }));
+  function applyEdit() {
+    if (editIdx === null || !editDraft) return;
+    setTiers(ts => ts.map((t, i) => i === editIdx ? editDraft : t));
+    setEditIdx(null);
+    setEditDraft(null);
   }
 
-  function addBenefit(tierIdx: number) {
-    setTiers(ts => ts.map((t, i) => i === tierIdx ? { ...t, benefits: [...t.benefits, ""] } : t));
+  function updateDraft(patch: Partial<VipTier>) {
+    setEditDraft(d => d ? { ...d, ...patch } : d);
   }
 
-  function removeBenefit(tierIdx: number, benefitIdx: number) {
-    setTiers(ts => ts.map((t, i) => i === tierIdx ? { ...t, benefits: t.benefits.filter((_, j) => j !== benefitIdx) } : t));
+  function updateBenefitInDraft(j: number, val: string) {
+    setEditDraft(d => {
+      if (!d) return d;
+      const benefits = [...d.benefits];
+      benefits[j] = val;
+      return { ...d, benefits };
+    });
+  }
+
+  function addBenefitInDraft() {
+    setEditDraft(d => d ? { ...d, benefits: [...d.benefits, ""] } : d);
+  }
+
+  function removeBenefitInDraft(j: number) {
+    setEditDraft(d => d ? { ...d, benefits: d.benefits.filter((_, i) => i !== j) } : d);
   }
 
   async function save() {
@@ -94,12 +111,12 @@ export default function VipTiersPage() {
 
   return (
     <AdminShell>
-      <div className="mx-auto max-w-4xl space-y-4">
+      <div className="mx-auto max-w-6xl space-y-4">
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
         {ok && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "var(--color-phosphor)", border: "1px solid rgba(99,235,164,0.25)" }}>✓ {ok}</div>}
 
         {isDefault && (
-          <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,200,100,0.12)", color: "#fbbf24", border: "1px solid rgba(255,200,100,0.25)" }}>
+          <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,200,100,0.12)", color: "#b07c00", border: "1px solid rgba(255,200,100,0.4)" }}>
             ⚠️ 目前使用內建預設設定，儲存後將寫入資料庫
           </div>
         )}
@@ -107,67 +124,85 @@ export default function VipTiersPage() {
         {loading ? (
           <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
         ) : (
-          <div className="space-y-4">
-            {tiers.map((tier, idx) => (
-              <div key={tier.level} className="rounded-xl border p-5 bg-white" style={{ borderColor: "var(--border)" }}>
-                <div className="mb-4 flex items-center gap-3">
-                  <Input className="w-12 text-center text-lg" value={tier.emoji}
-                    onChange={e => updateTier(idx, { emoji: e.target.value })} />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm" style={{ color: tier.color || "var(--color-phosphor)" }}>LV{tier.level}</span>
-                      <Input className="h-7 text-sm" value={tier.name} placeholder="中文名稱"
-                        onChange={e => updateTier(idx, { name: e.target.value })} />
-                      <Input className="h-7 text-sm" value={tier.enName} placeholder="English name"
-                        onChange={e => updateTier(idx, { enName: e.target.value })} />
-                    </div>
-                  </div>
-                  <Input className="w-24 h-7 text-xs" value={tier.color} placeholder="#ffffff"
-                    onChange={e => updateTier(idx, { color: e.target.value })} />
-                </div>
-
-                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div>
-                    <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數</Label>
-                    <Input type="number" value={tier.minLogs}
-                      onChange={e => updateTier(idx, { minLogs: parseInt(e.target.value) || 0 })} />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低消費 (NT$)</Label>
-                    <Input type="number" value={tier.minSpend}
-                      onChange={e => updateTier(idx, { minSpend: parseInt(e.target.value) || 0 })} />
-                  </div>
-                  <div>
-                    <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">Key</Label>
-                    <Input value={tier.key} placeholder="shrimp"
-                      onChange={e => updateTier(idx, { key: e.target.value })} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <Label className="text-xs text-[var(--muted-foreground)]">會員福利</Label>
-                    <button onClick={() => addBenefit(idx)} className="rounded p-0.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-phosphor)" }}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="space-y-1.5">
-                    {tier.benefits.map((b, j) => (
-                      <div key={j} className="flex gap-2">
-                        <Input className="text-sm" value={b} placeholder="福利描述"
-                          onChange={e => updateBenefit(idx, j, e.target.value)} />
-                        <button onClick={() => removeBenefit(idx, j)} className="rounded p-1.5 hover:bg-[var(--muted)] flex-shrink-0" style={{ color: "var(--color-coral)" }}>
-                          <Trash2 className="h-3.5 w-3.5" />
+          <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
+                  <th className="px-4 py-3 font-medium">等級</th>
+                  <th className="px-4 py-3 font-medium text-right">最低潛水次數</th>
+                  <th className="px-4 py-3 font-medium text-right">最低消費 (NT$)</th>
+                  <th className="px-4 py-3 font-medium">Key</th>
+                  <th className="px-4 py-3 font-medium">會員福利</th>
+                  <th className="px-4 py-3 font-medium w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                {tiers.map((tier, idx) => (
+                  <tr key={tier.level} className="border-t" style={{ borderColor: "var(--border)" }}>
+                    {/* 等級：emoji + LV + 中英文名 */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-lg flex-shrink-0"
+                          style={{ background: tier.color ? `${tier.color}20` : "rgba(99,235,164,0.15)" }}
+                        >
+                          {tier.emoji}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs" style={{ color: tier.color || "var(--color-phosphor)" }}>
+                            LV{tier.level}
+                          </div>
+                          <div className="font-semibold text-sm text-[var(--foreground)]">{tier.name}</div>
+                          <div className="text-[10px] text-[var(--muted-foreground)]">{tier.enName}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {/* 最低潛水次數 */}
+                    <td className="px-4 py-3 text-right tabular-nums font-medium">
+                      {tier.minLogs}
+                    </td>
+                    {/* 最低消費 */}
+                    <td className="px-4 py-3 text-right tabular-nums font-medium">
+                      {tier.minSpend.toLocaleString()}
+                    </td>
+                    {/* Key */}
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--muted-foreground)]">
+                      {tier.key}
+                    </td>
+                    {/* 會員福利 */}
+                    <td className="px-4 py-3">
+                      {tier.benefits.length === 0 ? (
+                        <span className="text-xs text-[var(--muted-foreground)]">尚無福利</span>
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {tier.benefits.map((b, j) => (
+                            <li key={j} className="flex items-start gap-1.5 text-xs">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--color-phosphor)] flex-shrink-0" />
+                              <span>{b}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                    {/* 操作 */}
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        <button onClick={() => openEdit(idx)}
+                          className="rounded p-1.5 hover:bg-[var(--muted)]"
+                          style={{ color: "var(--muted-foreground)" }} title="編輯">
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="rounded p-1.5 hover:bg-[var(--muted)]"
+                          style={{ color: "var(--muted-foreground)" }} title="更多">
+                          <MoreVertical className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                    ))}
-                    {tier.benefits.length === 0 && (
-                      <p className="text-xs text-[var(--muted-foreground)]">尚無福利，點 + 新增</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
@@ -181,6 +216,98 @@ export default function VipTiersPage() {
           </Button>
         </div>
       </div>
+
+      {/* 編輯 VIP 等級 Dialog（淺色系） */}
+      <Dialog open={editIdx !== null} onOpenChange={(open) => { if (!open) { setEditIdx(null); setEditDraft(null); } }}>
+        <DialogContent className="max-w-lg bg-white text-[var(--foreground)]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              編輯 VIP 等級 — LV{editDraft?.level}
+            </DialogTitle>
+          </DialogHeader>
+          {editDraft && (
+            <div className="space-y-3 pt-2">
+              {/* Emoji + 名稱 + 顏色 */}
+              <div className="grid grid-cols-[5rem_1fr_1fr] items-end gap-2">
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">圖示</Label>
+                  <Input className="text-center text-lg" value={editDraft.emoji}
+                    onChange={e => updateDraft({ emoji: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">中文名稱</Label>
+                  <Input value={editDraft.name}
+                    onChange={e => updateDraft({ name: e.target.value })} placeholder="如：龍蝦" />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">English Name</Label>
+                  <Input value={editDraft.enName}
+                    onChange={e => updateDraft({ enName: e.target.value })} placeholder="Lobster" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">Key（程式用）</Label>
+                  <Input value={editDraft.key} onChange={e => updateDraft({ key: e.target.value })} placeholder="lobster" />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">顏色</Label>
+                  <div className="flex gap-2">
+                    <Input value={editDraft.color} onChange={e => updateDraft({ color: e.target.value })} placeholder="#ff8866" />
+                    <div className="h-9 w-9 flex-shrink-0 rounded-md border" style={{ background: editDraft.color || "transparent", borderColor: "var(--border)" }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數</Label>
+                  <Input type="number" value={editDraft.minLogs}
+                    onChange={e => updateDraft({ minLogs: parseInt(e.target.value) || 0 })} />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低消費 (NT$)</Label>
+                  <Input type="number" value={editDraft.minSpend}
+                    onChange={e => updateDraft({ minSpend: parseInt(e.target.value) || 0 })} />
+                </div>
+              </div>
+
+              {/* 會員福利 */}
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <Label className="text-xs text-[var(--muted-foreground)]">會員福利</Label>
+                  <button onClick={addBenefitInDraft} className="rounded p-0.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-phosphor)" }}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {editDraft.benefits.map((b, j) => (
+                    <div key={j} className="flex gap-2">
+                      <Input className="text-sm" value={b} placeholder="福利描述"
+                        onChange={e => updateBenefitInDraft(j, e.target.value)} />
+                      <button onClick={() => removeBenefitInDraft(j)} className="rounded p-1.5 hover:bg-[var(--muted)] flex-shrink-0" style={{ color: "var(--color-coral)" }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {editDraft.benefits.length === 0 && (
+                    <p className="text-xs text-[var(--muted-foreground)]">尚無福利，點 + 新增</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => { setEditIdx(null); setEditDraft(null); }}>取消</Button>
+                <Button size="sm" style={primaryBtn} onClick={applyEdit}>套用變更</Button>
+              </div>
+              <p className="text-[10px] text-[var(--muted-foreground)] text-center">
+                ※「套用變更」只暫存到表格，請記得回主頁按「儲存 VIP 設定」才會寫入資料庫
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }
