@@ -39,6 +39,7 @@ interface Trip {
   pricing: Pricing;
   notes: string | null;
   meetingPoint: string | null;
+  meetingPointUrl: string | null;
   images: string[];
   status: string;
 }
@@ -111,6 +112,7 @@ const BLANK_FORM = {
   pricing: BLANK_PRICING_DEFAULT,
   notes: "",
   meetingPoint: "",
+  meetingPointUrl: "",
   status: "open" as string,
 };
 
@@ -193,6 +195,7 @@ export default function AdminTripsPage() {
       },
       notes: trip.notes ?? "",
       meetingPoint: trip.meetingPoint ?? "",
+      meetingPointUrl: trip.meetingPointUrl ?? "",
       status: trip.status,
     });
     setEditingId(trip.id);
@@ -211,6 +214,7 @@ export default function AdminTripsPage() {
         capacity: form.capacity === 0 ? null : form.capacity,
         notes: form.notes || null,
         meetingPoint: form.meetingPoint || null,
+        meetingPointUrl: form.meetingPointUrl || null,
         status: form.status,
       };
       if (dialogMode === "create") {
@@ -735,14 +739,25 @@ export default function AdminTripsPage() {
               )}
             </div>
 
-            {/* 集合地點 */}
-            <div>
-              <Label className="mb-1 block text-xs">集合地點</Label>
-              <Input
-                value={form.meetingPoint}
-                onChange={(e) => setForm({ ...form, meetingPoint: e.target.value })}
-                placeholder="Google Map URL（如：https://maps.app.goo.gl/...）"
-              />
+            {/* 集合地點 — 分兩欄：地點說明 + Google Map URL */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block text-xs">地點說明</Label>
+                <Input
+                  value={form.meetingPoint}
+                  onChange={(e) => setForm({ ...form, meetingPoint: e.target.value })}
+                  placeholder="例：萊萊花椰菜 / 龍洞 4 號港"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Google Map URL</Label>
+                <Input
+                  type="url"
+                  value={form.meetingPointUrl}
+                  onChange={(e) => setForm({ ...form, meetingPointUrl: e.target.value })}
+                  placeholder="https://maps.app.goo.gl/..."
+                />
+              </div>
             </div>
 
             {/* 日潛水備註 */}

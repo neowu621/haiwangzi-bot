@@ -92,6 +92,8 @@ const PATCHES = [
   // ── diving_trips 新欄位（v91+）───────────────────────────────────────
   // meeting_point: 集合地點
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS meeting_point TEXT`,
+  // meeting_point_url: 集合地點 Google Map URL（與 meeting_point 分欄）
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS meeting_point_url TEXT`,
   // weather_note: 天氣取消說明
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS weather_note TEXT`,
   // cancel_reason: 取消原因 enum — 需先確保 enum type 存在

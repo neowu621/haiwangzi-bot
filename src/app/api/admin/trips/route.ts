@@ -79,6 +79,7 @@ const CreateSchema = z.object({
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
   notes: z.string().nullable().optional().or(z.literal("")),
   meetingPoint: z.string().nullable().optional().or(z.literal("")),
+  meetingPointUrl: z.string().nullable().optional().or(z.literal("")),
   images: z.array(z.string()).default([]),
 });
 
@@ -130,6 +131,7 @@ export async function POST(req: NextRequest) {
         pricing: data.pricing,
         notes: data.notes || null,
         meetingPoint: data.meetingPoint || null,
+        meetingPointUrl: data.meetingPointUrl || null,
         images: data.images ?? [],
         status: (data.status ?? "open") as "open" | "full" | "cancelled" | "completed",
       },

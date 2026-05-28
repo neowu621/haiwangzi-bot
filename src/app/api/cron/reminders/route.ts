@@ -159,7 +159,8 @@ async function handle(req: NextRequest) {
             date: dateStr,
             time: trip.startTime,
             site: siteName,
-            meetingPoint: trip.meetingPoint,
+            // 同時帶 description + URL，讓 template 自由組合（向下相容舊資料）
+            meetingPoint: [trip.meetingPoint, trip.meetingPointUrl].filter(Boolean).join(" "),
             notes: trip.notes,
             daysLeft: 1,
           });

@@ -31,6 +31,7 @@ const PatchSchema = z.object({
   weatherNote: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   meetingPoint: z.string().nullable().optional(),
+  meetingPointUrl: z.string().nullable().optional(),
   images: z.array(z.string()).optional(),
 });
 
@@ -95,6 +96,8 @@ export async function PATCH(
   if (data.notes !== undefined) patch.notes = data.notes === "" ? null : data.notes;
   if (data.meetingPoint !== undefined)
     patch.meetingPoint = data.meetingPoint === "" ? null : data.meetingPoint;
+  if (data.meetingPointUrl !== undefined)
+    patch.meetingPointUrl = data.meetingPointUrl === "" ? null : data.meetingPointUrl;
   if (data.images !== undefined) patch.images = data.images;
 
   try {
