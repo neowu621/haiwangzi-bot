@@ -119,7 +119,7 @@ export function AdminShell({
             </div>
           </div>
         </div>
-        {/* Logged-in user row */}
+        {/* Logged-in user row + 登出按鈕 */}
         {adminUser && (
           <div
             className="flex items-center gap-2 rounded-xl px-3 py-2"
@@ -139,6 +139,16 @@ export function AdminShell({
                 {adminUser.effectiveRoles.join(" · ")}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+              style={{ color: "var(--color-coral)" }}
+              title="登出"
+              aria-label="登出"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
           </div>
         )}
       </div>
@@ -162,19 +172,6 @@ export function AdminShell({
           />
         ))}
       </nav>
-
-      {/* Logout */}
-      <div className="p-3">
-        <button
-          type="button"
-          onClick={logout}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors"
-          style={{ color: "var(--color-coral)" }}
-        >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
-          登出
-        </button>
-      </div>
     </div>
   );
 
