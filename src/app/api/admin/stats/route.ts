@@ -20,12 +20,16 @@ export async function GET(req: NextRequest) {
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = new Date(todayStart);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const [
     users,
     customers,
     coaches,
     admins,
+    todayNewUsers,
+    last7DaysNewUsers,
     trips,
     openTrips,
     bookableTrips,
@@ -33,11 +37,17 @@ export async function GET(req: NextRequest) {
     openTours,
     bookableTours,
     bookings,
+    todayNewBookings,
+    last7DaysNewBookings,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: "customer" } }),
     prisma.user.count({ where: { role: "coach" } }),
     prisma.user.count({ where: { role: "admin" } }),
+    // 今天新增會員（建立日 >= 今天 00:00）
+    prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
+    // 7 天內新增會員
+    prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
     prisma.divingTrip.count(),
     prisma.divingTrip.count({ where: { status: "open" } }),
     // 可預約：open + 未來日期
@@ -51,6 +61,10 @@ export async function GET(req: NextRequest) {
       where: { status: "open", dateStart: { gte: todayStart } },
     }),
     prisma.booking.count(),
+    // 今天新增訂單
+    prisma.booking.count({ where: { createdAt: { gte: todayStart } } }),
+    // 7 天內新增訂單
+    prisma.booking.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
   ]);
 
   // 只算「未審核 + booking 仍存在」的憑證；過濾掉孤兒紀錄（用 raw SQL 才能 INNER JOIN）
@@ -101,10 +115,22 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({
-    users: { total: users, customers, coaches, admins },
+    users: {
+      total: users,
+      customers,
+      coaches,
+      admins,
+      todayNew: todayNewUsers,
+      last7DaysNew: last7DaysNewUsers,
+    },
     trips: { total: trips, open: openTrips, bookable: bookableTrips },
     tours: { total: tours, open: openTours, bookable: bookableTours },
-    bookings: { total: bookings, active: activeBookings },
+    bookings: {
+      total: bookings,
+      active: activeBookings,
+      todayNew: todayNewBookings,
+      last7DaysNew: last7DaysNewBookings,
+    },
     revenue: {
       paid: revenueAgg._sum.paidAmount ?? 0,
       booked: revenueAgg._sum.totalAmount ?? 0,

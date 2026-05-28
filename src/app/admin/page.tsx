@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 
 interface Stats {
-  users: { total: number; customers: number; coaches: number; admins: number };
+  users: { total: number; customers: number; coaches: number; admins: number; todayNew: number; last7DaysNew: number };
   trips: { total: number; open: number; bookable: number };
   tours: { total: number; open: number; bookable: number };
-  bookings: { total: number; active: number };
+  bookings: { total: number; active: number; todayNew: number; last7DaysNew: number };
   revenue: { paid: number; booked: number };
   pendingProofs: number;
 }
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
             </button>
           )}
 
-          {/* Stat cards */}
+          {/* Stat cards — 主要指標 */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               { label: "總收入", value: `NT$ ${stats.revenue.paid.toLocaleString()}`, sub: `預計 ${stats.revenue.booked.toLocaleString()}` },
@@ -87,6 +87,67 @@ export default function AdminDashboard() {
                 <div className="text-xs mt-1" style={subStyle}>{sub}</div>
               </div>
             ))}
+          </div>
+
+          {/* 動態指標：今日 + 7 天內 */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* 會員新增 */}
+            <div className="rounded-xl p-4" style={cardStyle}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-medium" style={{ color: "rgba(230,240,255,0.7)" }}>
+                  📈 會員新增
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider" style={subStyle}>今日</div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold" style={{ color: "var(--color-phosphor)" }}>
+                      +{stats.users.todayNew ?? 0}
+                    </span>
+                    <span className="text-xs" style={subStyle}>位</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider" style={subStyle}>近 7 天</div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold" style={{ color: "#60a5fa" }}>
+                      +{stats.users.last7DaysNew ?? 0}
+                    </span>
+                    <span className="text-xs" style={subStyle}>位</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 訂單新增 */}
+            <div className="rounded-xl p-4" style={cardStyle}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-medium" style={{ color: "rgba(230,240,255,0.7)" }}>
+                  📋 訂單新增
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider" style={subStyle}>今日</div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold" style={{ color: "var(--color-phosphor)" }}>
+                      +{stats.bookings.todayNew ?? 0}
+                    </span>
+                    <span className="text-xs" style={subStyle}>筆</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider" style={subStyle}>近 7 天</div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold" style={{ color: "#60a5fa" }}>
+                      +{stats.bookings.last7DaysNew ?? 0}
+                    </span>
+                    <span className="text-xs" style={subStyle}>筆</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Shortcut grid */}
