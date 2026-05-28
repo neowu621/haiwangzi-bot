@@ -37,10 +37,22 @@ export async function GET(req: NextRequest) {
   const role = requireRole(auth.user, ["admin", "coach"]);
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
-  const tours = await prisma.tourPackage.findMany({
-    orderBy: { dateStart: "asc" },
-  });
-  return NextResponse.json({ tours });
+  try {
+    const tours = await prisma.tourPackage.findMany({
+      orderBy: { dateStart: "asc" },
+    });
+    return NextResponse.json({ tours });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[GET /api/admin/tours] error:", msg, e);
+    return NextResponse.json(
+      {
+        error: `潛水團查詢失敗：${msg}`,
+        hint: "若包含 'column does not exist'，代表 DB schema 沒同步；請去 Zeabur 重新部署或檢查 docker-entrypoint logs",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 // POST /api/admin/tours - 新增潛水團

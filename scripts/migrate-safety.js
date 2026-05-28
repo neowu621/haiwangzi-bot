@@ -16,17 +16,36 @@ const PATCHES = [
   // v84: 新增 users.code 欄位（會員編號）
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
 
-  // ── code VARCHAR 擴充（由 VarChar(8) → 12）──────────────────────────
+  // ── code 欄位（先 ADD，後 ALTER TYPE 至 VARCHAR(12)）─────────────────
+  // 注意：必須先 ADD COLUMN IF NOT EXISTS，否則 ALTER TYPE 在欄位不存在時會靜默失敗
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
   `DO $$ BEGIN
      ALTER TABLE diving_trips ALTER COLUMN code TYPE VARCHAR(12);
    EXCEPTION WHEN others THEN NULL;
    END $$`,
+  // 確保 unique constraint 也存在（Prisma client 期望此 index）
+  `DO $$ BEGIN
+     CREATE UNIQUE INDEX IF NOT EXISTS diving_trips_code_key ON diving_trips(code) WHERE code IS NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
+
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
   `DO $$ BEGIN
      ALTER TABLE tour_packages ALTER COLUMN code TYPE VARCHAR(12);
    EXCEPTION WHEN others THEN NULL;
    END $$`,
   `DO $$ BEGIN
+     CREATE UNIQUE INDEX IF NOT EXISTS tour_packages_code_key ON tour_packages(code) WHERE code IS NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
+
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
+  `DO $$ BEGIN
      ALTER TABLE bookings ALTER COLUMN code TYPE VARCHAR(12);
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
+  `DO $$ BEGIN
+     CREATE UNIQUE INDEX IF NOT EXISTS bookings_code_key ON bookings(code) WHERE code IS NOT NULL;
    EXCEPTION WHEN others THEN NULL;
    END $$`,
 
