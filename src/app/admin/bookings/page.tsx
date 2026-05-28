@@ -626,7 +626,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium">訂單編號</th>
                     <th className="px-4 py-3 font-medium">建單日</th>
                     <th className="px-4 py-3 font-medium">客戶</th>
-                    <th className="px-3 py-3 font-medium text-center">時序</th>
+                    <th className="px-3 py-3 font-medium text-center">消費</th>
                     <th className="px-4 py-3 font-medium">場次</th>
                     <th className="px-4 py-3 font-medium text-right">金額</th>
                     <th className="px-4 py-3 font-medium text-right">已付</th>
@@ -673,23 +673,49 @@ export default function AdminBookingsPage() {
                             </span>
                           )}
                         </td>
-                        {/* 時序：場次是否已過期 */}
+                        {/* 消費狀態：結合 booking status + 場次日期 */}
                         <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                          {tripDateStr ? (
-                            past ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--muted)] px-2 py-0.5 text-[10px] text-[var(--muted-foreground)]">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted-foreground)]" />
-                                已過
+                          {(() => {
+                            // 1. 已取消（不論時間）
+                            if (b.status === "cancelled_by_user" || b.status === "cancelled_by_weather") {
+                              return (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--muted)] px-2 py-0.5 text-[10px] text-[var(--muted-foreground)] line-through">
+                                  已取消
+                                </span>
+                              );
+                            }
+                            // 2. 已完成 — 客戶實際有來
+                            if (b.status === "completed") {
+                              return (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-phosphor)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-phosphor)]">
+                                  ✓ 已消費
+                                </span>
+                              );
+                            }
+                            // 3. 未到場 — 場次已過但客戶沒來
+                            if (b.status === "no_show") {
+                              return (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-coral)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-coral)]">
+                                  ✗ 未到場
+                                </span>
+                              );
+                            }
+                            // 4. pending / confirmed
+                            if (tripDateStr && past) {
+                              // 過期了但 booking 還沒結算 — 提醒 admin
+                              return (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700" title="場次已過，請更新訂單狀態為「已完成」或「未到場」">
+                                  ⚠ 待結算
+                                </span>
+                              );
+                            }
+                            // 5. 未來場次，未消費
+                            return (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-700">
+                                ⏳ 待消費
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-phosphor)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-phosphor)]">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-phosphor)]" />
-                                即將
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-[10px] text-[var(--muted-foreground)]">—</span>
-                          )}
+                            );
+                          })()}
                         </td>
                         {/* 場次 — 一行 */}
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap">
