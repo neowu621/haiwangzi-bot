@@ -36,8 +36,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 依 FK 順序刪除：先 Booking（有外鍵參照 Trip/Tour），再 Trip/Tour
-  const [bookingCount, tripCount, tourCount] = await prisma.$transaction([
+  // 依 FK 順序刪除：
+  //   1. PaymentProof（FK → Booking，需先刪以避免孤兒紀錄）
+  //   2. Booking（FK → Trip/Tour）
+  //   3. DivingTrip / TourPackage
+  const [proofCount, bookingCount, tripCount, tourCount] = await prisma.$transaction([
+    prisma.paymentProof.deleteMany({}),
     prisma.booking.deleteMany({}),
     prisma.divingTrip.deleteMany({}),
     prisma.tourPackage.deleteMany({}),
@@ -49,8 +53,9 @@ export async function POST(req: NextRequest) {
     action: "data.reset",
     targetType: "system",
     targetId: "all",
-    targetLabel: "清空訂單/場次/潛水團",
+    targetLabel: "清空訂單/場次/潛水團/付款憑證",
     metadata: {
+      paymentProofsDeleted: proofCount.count,
       bookingsDeleted: bookingCount.count,
       tripsDeleted: tripCount.count,
       toursDeleted: tourCount.count,
@@ -60,6 +65,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     deleted: {
+      paymentProofs: proofCount.count,
       bookings: bookingCount.count,
       trips: tripCount.count,
       tours: tourCount.count,

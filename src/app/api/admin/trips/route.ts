@@ -17,32 +17,46 @@ export async function GET(req: NextRequest) {
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
-  const trips = await prisma.divingTrip.findMany({
-    orderBy: [{ date: "desc" }, { startTime: "asc" }],
-    take: 200,
-  });
+  try {
+    const trips = await prisma.divingTrip.findMany({
+      orderBy: [{ date: "desc" }, { startTime: "asc" }],
+      take: 200,
+    });
 
-  // 算 booked
-  const tripIds = trips.map((t) => t.id);
-  const bookings = await prisma.booking.groupBy({
-    by: ["refId"],
-    where: {
-      refId: { in: tripIds },
-      type: "daily",
-      status: {
-        notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
+    // 算 booked（trips 為空時直接跳過）
+    const tripIds = trips.map((t) => t.id);
+    const bookings = tripIds.length === 0
+      ? []
+      : await prisma.booking.groupBy({
+          by: ["refId"],
+          where: {
+            refId: { in: tripIds },
+            type: "daily",
+            status: {
+              notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
+            },
+          },
+          _sum: { participants: true },
+        });
+    const bookingMap = new Map(bookings.map((b) => [b.refId, b._sum.participants ?? 0]));
+
+    return NextResponse.json({
+      trips: trips.map((t) => ({
+        ...t,
+        booked: bookingMap.get(t.id) ?? 0,
+      })),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[GET /api/admin/trips] error:", msg, e);
+    return NextResponse.json(
+      {
+        error: `場次查詢失敗：${msg}`,
+        hint: "若包含 'column does not exist'，代表 DB schema 沒同步；請去 Zeabur 重新部署或檢查 docker-entrypoint logs",
       },
-    },
-    _sum: { participants: true },
-  });
-  const bookingMap = new Map(bookings.map((b) => [b.refId, b._sum.participants ?? 0]));
-
-  return NextResponse.json({
-    trips: trips.map((t) => ({
-      ...t,
-      booked: bookingMap.get(t.id) ?? 0,
-    })),
-  });
+      { status: 500 },
+    );
+  }
 }
 
 const CreateSchema = z.object({

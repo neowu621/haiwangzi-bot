@@ -98,6 +98,8 @@ export default function SettingsPage() {
   const [emailTarget, setEmailTarget] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
   const [resetResult, setResetResult] = useState<string | null>(null);
+  const [resetInitialBusy, setResetInitialBusy] = useState(false);
+  const [resetInitialResult, setResetInitialResult] = useState<string | null>(null);
 
 
   const load = useCallback(async () => {
@@ -152,6 +154,48 @@ export default function SettingsPage() {
       setErr("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
       setResetBusy(false);
+    }
+  }
+
+  async function resetToInitial() {
+    const typed = window.prompt(
+      "🚨 系統初始重置：將清空所有營運資料（訂單、場次、潛水團、付款憑證、教練、潛點、提醒紀錄、訊息範本、操作紀錄、媒體照片）並把會員的衍生欄位（VIP 等級、累計消費、禮金餘額）歸零。\n\n保留：會員帳號（lineUserId, displayName, role 等）+ 系統設定。\n\n此操作不可復原！請輸入「系統初始重置」繼續："
+    );
+    if (typed !== "系統初始重置") {
+      alert("取消操作，未刪除任何資料。");
+      return;
+    }
+    setResetInitialBusy(true);
+    setResetInitialResult(null);
+    setErr(null);
+    try {
+      const r = await adminFetch<{
+        ok: boolean;
+        deleted: Record<string, number>;
+      }>("/api/admin/reset-data/system-initial", {
+        method: "POST",
+        body: JSON.stringify({ confirm: "RESET TO INITIAL" }),
+      });
+      const lines = [
+        `✅ 系統初始重置完成：`,
+        `• 訂單 ${r.deleted.bookings} 筆`,
+        `• 日潛場次 ${r.deleted.trips} 筆`,
+        `• 潛水團 ${r.deleted.tours} 筆`,
+        `• 付款憑證 ${r.deleted.paymentProofs} 筆`,
+        `• 教練 ${r.deleted.coaches} 位`,
+        `• 潛點 ${r.deleted.sites} 個`,
+        `• 禮金交易 ${r.deleted.creditTxs} 筆`,
+        `• 提醒紀錄 ${r.deleted.reminderLogs} 筆`,
+        `• 訊息範本 ${r.deleted.templates} 筆`,
+        `• 操作紀錄 ${r.deleted.audits} 筆`,
+        `• 媒體照片 ${r.deleted.tripPhotos + r.deleted.tripMedia} 張`,
+        `• 已重設 ${r.deleted.usersReset} 位會員的衍生欄位（VIP/累計/禮金）`,
+      ];
+      setResetInitialResult(lines.join("\n"));
+    } catch (e) {
+      setErr("系統初始重置失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setResetInitialBusy(false);
     }
   }
 
@@ -374,6 +418,32 @@ export default function SettingsPage() {
               <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
                 {resetResult}
               </p>
+            )}
+
+            {/* 系統初始重置 — 更徹底，連教練/潛點/禮金紀錄/訊息範本/操作紀錄都清掉，
+                並把會員 VIP/累計/禮金歸零（保留會員帳號本身） */}
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3" style={{ borderColor: "var(--color-coral)" }}>
+              <div>
+                <div className="text-sm font-medium">系統初始重置（保留會員帳號）</div>
+                <div className="text-xs text-[var(--muted-foreground)]">
+                  把系統回到剛部署狀態：清空所有營運資料 + 教練/潛點 + 禮金紀錄 + 訊息範本 + 操作紀錄 + 媒體照片，並把會員的 VIP/累計消費/禮金餘額歸零。會員帳號本身保留。
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={resetToInitial}
+                disabled={resetInitialBusy}
+                className="shrink-0 border-[var(--color-coral)] bg-[var(--color-coral)] text-white hover:bg-[var(--color-coral)]/90"
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                {resetInitialBusy ? "重置中..." : "系統初始重置"}
+              </Button>
+            </div>
+
+            {resetInitialResult && (
+              <pre className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 whitespace-pre-wrap font-mono">
+                {resetInitialResult}
+              </pre>
             )}
           </div>
         </div>

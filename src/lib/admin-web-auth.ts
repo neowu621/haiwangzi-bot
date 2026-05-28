@@ -55,7 +55,8 @@ export async function adminFetch<T>(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    // 用 || 而非 ??：空字串也要 fallback 到 HTTP status，避免 "場次載入失敗：" 後面空白
+    throw new Error(err.error || err.detail || `HTTP ${res.status}`);
   }
   return res.json();
 }

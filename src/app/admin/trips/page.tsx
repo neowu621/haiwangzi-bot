@@ -459,9 +459,9 @@ export default function AdminTripsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {/* 日期 + 集合時間（24 小時制雙 select） */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            {/* Row 1: 日期 + 集合時間 + 場次狀態 (三欄並排) */}
+            <div className="grid grid-cols-12 gap-3">
+              <div className="col-span-4">
                 <Label className="mb-1 block text-xs">日期</Label>
                 <Input
                   type="date"
@@ -469,11 +469,11 @@ export default function AdminTripsPage() {
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                 />
               </div>
-              <div>
-                <Label className="mb-1 block text-xs">集合時間（24 小時）</Label>
+              <div className="col-span-4">
+                <Label className="mb-1 block text-xs">集合時間</Label>
                 <div className="flex items-center gap-1">
                   <select
-                    className="flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    className="flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-1.5 text-sm"
                     value={form.startTime.split(":")[0] ?? "08"}
                     onChange={(e) => {
                       const h = e.target.value;
@@ -488,9 +488,9 @@ export default function AdminTripsPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm font-bold text-[var(--muted-foreground)]">:</span>
+                  <span className="text-xs font-bold text-[var(--muted-foreground)]">:</span>
                   <select
-                    className="w-16 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    className="flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-1.5 py-1.5 text-sm"
                     value={form.startTime.split(":")[1] ?? "00"}
                     onChange={(e) => {
                       const h = form.startTime.split(":")[0] ?? "08";
@@ -504,39 +504,37 @@ export default function AdminTripsPage() {
                   </select>
                 </div>
               </div>
-            </div>
-
-            {/* 場次狀態 */}
-            <div>
-              <Label className="mb-1 block text-xs">場次狀態</Label>
-              <div className="flex gap-1.5">
-                {[
-                  { value: "open", label: "開放" },
-                  { value: "cancelled", label: "取消" },
-                  { value: "completed", label: "結束" },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setForm({ ...form, status: value })}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs transition-colors",
-                      form.status === value
-                        ? value === "open"
-                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
-                          : value === "cancelled"
-                          ? "border-[var(--color-coral)] bg-[var(--color-coral)]/20 text-[var(--color-coral)] font-semibold"
-                          : "border-[var(--muted-foreground)] bg-[var(--muted)] font-semibold"
-                        : "border-[var(--border)] hover:bg-[var(--muted)]",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="col-span-4">
+                <Label className="mb-1 block text-xs">場次狀態</Label>
+                <div className="flex gap-1">
+                  {[
+                    { value: "open", label: "開放" },
+                    { value: "cancelled", label: "取消" },
+                    { value: "completed", label: "結束" },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setForm({ ...form, status: value })}
+                      className={cn(
+                        "flex-1 rounded-full border px-1 py-1 text-xs transition-colors",
+                        form.status === value
+                          ? value === "open"
+                            ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
+                            : value === "cancelled"
+                            ? "border-[var(--color-coral)] bg-[var(--color-coral)]/20 text-[var(--color-coral)] font-semibold"
+                            : "border-[var(--muted-foreground)] bg-[var(--muted)] font-semibold"
+                          : "border-[var(--border)] hover:bg-[var(--muted)]",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* 潛點 */}
+            {/* Row 2: 潛點（單獨一行，chips 自由換行） */}
             <div>
               <Label className="mb-1 block text-xs">潛點</Label>
               <div className="flex flex-wrap gap-1.5">
@@ -566,22 +564,51 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* 教練 — 全寬選單，選定後下方顯示簡介 */}
+            {/* Row 3: 教練 + 氣瓶數 + 可參加人數 (三欄並排，教練佔較寬) */}
             <div>
-              <Label className="mb-1 block text-xs">教練</Label>
-              <select
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                value={form.coachIds[0] ?? ""}
-                onChange={(e) =>
-                  setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
-                }
-              >
-                <option value="">（未選擇）</option>
-                {coaches.map((c) => (
-                  <option key={c.id} value={c.id}>{c.realName}</option>
-                ))}
-              </select>
-              {/* 選定後顯示教練資訊 */}
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-6">
+                  <Label className="mb-1 block text-xs">教練</Label>
+                  <select
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    value={form.coachIds[0] ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, coachIds: e.target.value ? [e.target.value] : [] })
+                    }
+                  >
+                    <option value="">（未選擇）</option>
+                    {coaches.map((c) => (
+                      <option key={c.id} value={c.id}>{c.realName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-3">
+                  <Label className="mb-1 block text-xs">氣瓶數</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.tankCount}
+                    onChange={(e) =>
+                      setForm({ ...form, tankCount: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })
+                    }
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Label className="mb-1 block text-xs">
+                    人數
+                    <span className="ml-0.5 text-[9px] font-normal text-[var(--muted-foreground)]">(0=∞)</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.capacity}
+                    onChange={(e) =>
+                      setForm({ ...form, capacity: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                  />
+                </div>
+              </div>
+              {/* 教練選定後顯示資訊（橫跨整列） */}
               {(() => {
                 const c = coaches.find((c) => c.id === form.coachIds[0]);
                 if (!c) return null;
@@ -597,35 +624,6 @@ export default function AdminTripsPage() {
                   </div>
                 ) : null;
               })()}
-            </div>
-
-            {/* 氣瓶數 / 可參加人數 — label 上方，input 下方，左右並排 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1 block text-xs">氣瓶數</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.tankCount}
-                  onChange={(e) =>
-                    setForm({ ...form, tankCount: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })
-                  }
-                />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs">
-                  可參加人數
-                  <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">（0 = 無上限）</span>
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.capacity}
-                  onChange={(e) =>
-                    setForm({ ...form, capacity: Math.max(0, Number(e.target.value) || 0) })
-                  }
-                />
-              </div>
             </div>
 
             {/* 費用設定 — 氣瓶費 + 其他費用 同一行 */}

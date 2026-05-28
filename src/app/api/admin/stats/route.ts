@@ -33,7 +33,6 @@ export async function GET(req: NextRequest) {
     openTours,
     bookableTours,
     bookings,
-    pendingProofs,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: "customer" } }),
@@ -52,8 +51,16 @@ export async function GET(req: NextRequest) {
       where: { status: "open", dateStart: { gte: todayStart } },
     }),
     prisma.booking.count(),
-    prisma.paymentProof.count({ where: { verifiedAt: null } }),
   ]);
+
+  // 只算「未審核 + booking 仍存在」的憑證；過濾掉孤兒紀錄（用 raw SQL 才能 INNER JOIN）
+  const pendingProofsResult = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*)::bigint AS count
+    FROM payment_proofs pp
+    INNER JOIN bookings b ON pp.booking_id = b.id
+    WHERE pp.verified_at IS NULL
+  `;
+  const pendingProofs = Number(pendingProofsResult[0]?.count ?? 0n);
 
   // 算「尚未執行」訂單：status 為 pending / confirmed（含 deposit_paid 已是 confirmed status）
   // 並且關聯的 trip.date / tour.dateStart >= today
