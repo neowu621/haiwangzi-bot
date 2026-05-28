@@ -72,6 +72,23 @@ function statusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
   return "muted";
 }
 
+/** 場次的「有效狀態」：date 過了 + status 仍是 open/full → 視為 completed
+ *  cancelled / completed 不變
+ *  回傳 [effectiveStatus, isAutoCompleted] */
+function effectiveTripStatus(trip: Trip): [string, boolean] {
+  const dateStr = trip.date.slice(0, 10);
+  const today = taipeiToday();
+  const isPast = dateStr < today;
+  if (isPast && (trip.status === "open" || trip.status === "full")) {
+    return ["completed", true]; // 自動視為結束
+  }
+  return [trip.status, false];
+}
+
+function isPastTrip(trip: Trip): boolean {
+  return trip.date.slice(0, 10) < taipeiToday();
+}
+
 const BLANK_PRICING_DEFAULT: Pricing = {
   baseTrip: 0,
   extraTank: 500,
@@ -378,12 +395,24 @@ export default function AdminTripsPage() {
                           : `NT$${estimatedRevenue(trip).toLocaleString()}`}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant={statusVariant(trip.status)}
-                          className="text-[10px]"
-                        >
-                          {TRIP_STATUS_LABEL[trip.status] ?? trip.status}
-                        </Badge>
+                        {(() => {
+                          const [effStatus, isAuto] = effectiveTripStatus(trip);
+                          return (
+                            <div className="flex items-center gap-1">
+                              <Badge
+                                variant={statusVariant(effStatus)}
+                                className="text-[10px]"
+                              >
+                                {TRIP_STATUS_LABEL[effStatus] ?? effStatus}
+                              </Badge>
+                              {isAuto && (
+                                <span className="text-[9px] text-[var(--muted-foreground)]" title="日期已過，自動視為結束">
+                                  自動
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -516,26 +545,40 @@ export default function AdminTripsPage() {
                     { value: "open", label: "開放" },
                     { value: "cancelled", label: "取消" },
                     { value: "completed", label: "結束" },
-                  ].map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setForm({ ...form, status: value })}
-                      className={cn(
-                        "flex-1 rounded-full border px-1 py-1 text-xs transition-colors",
-                        form.status === value
-                          ? value === "open"
-                            ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
-                            : value === "cancelled"
-                            ? "border-[var(--color-coral)] bg-[var(--color-coral)]/20 text-[var(--color-coral)] font-semibold"
-                            : "border-[var(--muted-foreground)] bg-[var(--muted)] font-semibold"
-                          : "border-[var(--border)] hover:bg-[var(--muted)]",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  ].map(({ value, label }) => {
+                    // 已過期的場次不能改回 open（必須是 cancelled 或 completed）
+                    const isFormDatePast = form.date < taipeiToday();
+                    const disabled = value === "open" && isFormDatePast;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => !disabled && setForm({ ...form, status: value })}
+                        title={disabled ? "日期已過，無法設為開放" : ""}
+                        className={cn(
+                          "flex-1 rounded-full border px-1 py-1 text-xs transition-colors",
+                          disabled
+                            ? "border-[var(--border)] bg-[var(--muted)]/40 text-[var(--muted-foreground)] cursor-not-allowed line-through"
+                            : form.status === value
+                            ? value === "open"
+                              ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
+                              : value === "cancelled"
+                              ? "border-[var(--color-coral)] bg-[var(--color-coral)]/20 text-[var(--color-coral)] font-semibold"
+                              : "border-[var(--muted-foreground)] bg-[var(--muted)] font-semibold"
+                            : "border-[var(--border)] hover:bg-[var(--muted)]",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
+                {form.date < taipeiToday() && (
+                  <p className="mt-0.5 text-[9px] text-[var(--muted-foreground)]">
+                    日期已過：「開放」已停用，需設為取消或結束
+                  </p>
+                )}
               </div>
             </div>
 

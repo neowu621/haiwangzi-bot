@@ -56,6 +56,30 @@ export async function PATCH(
   }
   const data = parsed.data;
 
+  // 過期場次不能設回 open（cancelled / completed 仍允許）
+  if (data.status === "open") {
+    const existing = await prisma.divingTrip.findUnique({
+      where: { id },
+      select: { date: true },
+    });
+    const targetDate = data.date ? new Date(data.date) : existing?.date;
+    if (targetDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tripDay = new Date(targetDate);
+      tripDay.setHours(0, 0, 0, 0);
+      if (tripDay < today) {
+        return NextResponse.json(
+          {
+            error: "trip_date_passed",
+            message: "場次日期已過，無法設為「開放」。請改為「結束」或「取消」。",
+          },
+          { status: 400 },
+        );
+      }
+    }
+  }
+
   const patch: Record<string, unknown> = {};
   if (data.date) patch.date = new Date(data.date);
   if (data.startTime) patch.startTime = data.startTime;
