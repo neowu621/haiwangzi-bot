@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, XCircle } from "lucide-react";
+import { Plus, Edit3, Trash2, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
@@ -189,9 +189,14 @@ export default function ToursPage() {
                       <div className="flex gap-1">
                         <button onClick={() => openEdit(t)} className="rounded p-1.5 hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯"><Edit3 className="h-3.5 w-3.5" /></button>
                         {t.status === "open" && (
-                          <button onClick={() => cancelTour(t)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-coral)" }} title="取消"><XCircle className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => cancelTour(t)}
+                            className="rounded p-1.5 hover:bg-amber-50 text-amber-600"
+                            title="取消潛水團（保留資料）"><Ban className="h-3.5 w-3.5" /></button>
                         )}
-                        <button onClick={() => deleteTour(t)} className="rounded p-1.5 hover:bg-[var(--muted)]" style={{ color: "var(--color-coral)" }} title="永久刪除"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => deleteTour(t)}
+                          className="rounded p-1.5 hover:bg-[var(--color-coral)]/10"
+                          style={{ color: "var(--color-coral)" }}
+                          title="永久刪除（不可復原）"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     </td>
                   </tr>

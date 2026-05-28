@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Moon, Sun, Anchor } from "lucide-react";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
 
 interface Pricing {
@@ -395,27 +395,28 @@ export default function AdminTripsPage() {
                           >
                             <Edit3 className="h-3 w-3" />
                           </Button>
+                          {/* 取消（軟取消，status → cancelled）— 只有未取消的場次顯示 */}
                           {trip.status !== "cancelled" && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => deleteTrip(trip)}
-                              title="取消場次"
+                              title="取消場次（保留資料）"
+                              className="border-amber-400 text-amber-600 hover:bg-amber-50"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Ban className="h-3 w-3" />
                             </Button>
                           )}
-                          {trip.status === "cancelled" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => hardDeleteTrip(trip)}
-                              title="永久刪除"
-                              className="border-[var(--color-coral)]"
-                            >
-                              <Trash2 className="h-3 w-3 text-[var(--color-coral)]" />
-                            </Button>
-                          )}
+                          {/* 永久刪除 — 一律顯示，硬刪除整筆資料 */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => hardDeleteTrip(trip)}
+                            title="永久刪除（不可復原）"
+                            className="border-[var(--color-coral)]"
+                          >
+                            <Trash2 className="h-3 w-3 text-[var(--color-coral)]" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
