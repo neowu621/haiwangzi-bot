@@ -167,9 +167,13 @@ export default function ToursPage() {
                 {visible.map((t, i) => (
                   <tr key={t.id} className={cn("border-t", i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20")} style={{ opacity: t.status === "cancelled" ? 0.5 : 1 }}>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
-                        {t.code ?? "—"}
-                      </span>
+                      {t.code ? (
+                        <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
+                          {t.code}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-semibold max-w-[180px]" style={{ color: "var(--foreground)" }}>{t.title}</td>
                     <td className="px-4 py-3 text-[var(--muted-foreground)]">{DEST_LABELS[t.destination]}</td>

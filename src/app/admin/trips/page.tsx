@@ -332,9 +332,13 @@ export default function AdminTripsPage() {
                       }}
                     >
                       <td className="px-4 py-3">
-                        <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
-                          {trip.code ?? "—"}
-                        </span>
+                        {trip.code ? (
+                          <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
+                            {trip.code}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 tabular-nums font-medium">
                         {trip.date.slice(0, 10)}
@@ -446,7 +450,7 @@ export default function AdminTripsPage() {
               {dialogMode === "edit" && editingId && (() => {
                 const t = trips.find(x => x.id === editingId);
                 return t?.code ? (
-                  <span className="font-mono text-xs font-normal" style={{ color: "var(--color-phosphor)" }}>
+                  <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-normal text-teal-800">
                     {t.code}
                   </span>
                 ) : null;

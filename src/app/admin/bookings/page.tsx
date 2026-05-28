@@ -807,9 +807,13 @@ export default function AdminBookingsPage() {
                       >
                         {/* 訂單編號 */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
-                            {b.code ?? "—"}
-                          </span>
+                          {b.code ? (
+                            <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
+                              {b.code}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                          )}
                         </td>
                         {/* 建單日 */}
                         <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--muted-foreground)] whitespace-nowrap">
@@ -995,7 +999,7 @@ export default function AdminBookingsPage() {
                     {editing.user.realName ?? editing.user.displayName}
                   </div>
                   {editing.code && (
-                    <span className="font-mono text-xs font-semibold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
+                    <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
                       {editing.code}
                     </span>
                   )}

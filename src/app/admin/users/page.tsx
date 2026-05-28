@@ -612,12 +612,13 @@ export default function AdminUsersPage() {
                     >
                       {/* 會員編號 */}
                       <td className="px-4 py-3">
-                        <span
-                          className="font-mono text-xs font-semibold"
-                          style={{ color: "var(--color-phosphor)" }}
-                        >
-                          {u.code ?? "—"}
-                        </span>
+                        {u.code ? (
+                          <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
+                            {u.code}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                        )}
                       </td>
                       {/* 姓名 */}
                       <td className="px-4 py-3">
