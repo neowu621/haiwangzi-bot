@@ -39,6 +39,7 @@ const CreateSchema = z.object({
   features: z.array(z.string()).default([]),
   images: z.array(z.string()).default([]),
   youtubeUrl: z.string().url().optional().or(z.literal("")),
+  locationUrl: z.string().url().optional().or(z.literal("")),
   cautions: z.string().optional().or(z.literal("")),
 });
 
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
       data: {
         ...data,
         youtubeUrl: data.youtubeUrl || null,
+        locationUrl: data.locationUrl || null,
         cautions: data.cautions || null,
       },
     });

@@ -205,6 +205,7 @@ model DiveSite {
   features    String[]   @default([])
   images      String[]   @default([])
   youtubeUrl  String?    @map("youtube_url")
+  locationUrl String?    @map("location_url")  // Google Maps URL
   cautions    String?
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
 

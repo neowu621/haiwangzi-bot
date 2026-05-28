@@ -16,6 +16,7 @@ const PatchSchema = z.object({
   features: z.array(z.string()).optional(),
   images: z.array(z.string()).optional(),
   youtubeUrl: z.string().nullable().optional(),
+  locationUrl: z.string().nullable().optional(),
   cautions: z.string().nullable().optional(),
 });
 
@@ -65,6 +66,8 @@ export async function PATCH(
         ...data,
         youtubeUrl:
           data.youtubeUrl === "" ? null : (data.youtubeUrl ?? undefined),
+        locationUrl:
+          data.locationUrl === "" ? null : (data.locationUrl ?? undefined),
         cautions:
           data.cautions === "" ? null : (data.cautions ?? undefined),
       },

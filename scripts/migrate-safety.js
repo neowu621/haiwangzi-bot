@@ -49,6 +49,42 @@ const PATCHES = [
    EXCEPTION WHEN others THEN NULL;
    END $$`,
 
+  // ── bookings 其他新欄位 ───────────────────────────────────────────────
+  // 參加者明細（含個資、cert、log count 等）
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS participant_details JSONB DEFAULT '[]'::jsonb`,
+  // 選擇的加購項目
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS selected_addons TEXT[] DEFAULT ARRAY[]::TEXT[]`,
+  // 租借裝備
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS rental_gear JSONB DEFAULT '[]'::jsonb`,
+  // 網站備註（管理員填，客戶可見）
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS site_notes TEXT`,
+  // 管理備註（僅 admin/boss 可見）
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
+  // 付款方式（cash/bank/linepay/other）— 用 VARCHAR 因 enum 改動風險高
+  `DO $$ BEGIN
+     CREATE TYPE "PaymentMethod" AS ENUM ('cash', 'bank', 'linepay', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL;
+   END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method "PaymentMethod" DEFAULT 'cash';
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
+  // 取消原因 / 退款相關
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_method VARCHAR(16)`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS credit_used INTEGER DEFAULT 0`,
+
+  // ── dive_sites 新欄位 ─────────────────────────────────────────────────
+  // Google Maps URL
+  `ALTER TABLE dive_sites ADD COLUMN IF NOT EXISTS location_url TEXT`,
+
+  // ── tour_packages reminder 天數欄位 ──────────────────────────────────
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS deposit_reminder_days INTEGER DEFAULT 7`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS final_reminder_days INTEGER DEFAULT 30`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS guide_reminder_days INTEGER DEFAULT 2`,
+
   // ── diving_trips 新欄位（v91+）───────────────────────────────────────
   // meeting_point: 集合地點
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS meeting_point TEXT`,

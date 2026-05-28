@@ -25,16 +25,16 @@ interface DiveSite {
   features: string[];
   images: string[];
   youtubeUrl: string | null;
+  locationUrl: string | null;
   cautions: string | null;
 }
 
-const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
+// 淺色 dialog（與 settings / users 頁一致）
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
 
 const BLANK: Omit<DiveSite, "id"> = {
   name: "", region: "northeast", description: "", difficulty: "easy",
-  maxDepth: null, features: [], images: [], youtubeUrl: "", cautions: "",
+  maxDepth: null, features: [], images: [], youtubeUrl: "", locationUrl: "", cautions: "",
 };
 
 export default function SitesPage() {
@@ -66,7 +66,7 @@ export default function SitesPage() {
   }
 
   function openEdit(s: DiveSite) {
-    setForm({ name: s.name, region: s.region, description: s.description ?? "", difficulty: s.difficulty, maxDepth: s.maxDepth, features: s.features, images: s.images, youtubeUrl: s.youtubeUrl ?? "", cautions: s.cautions ?? "" });
+    setForm({ name: s.name, region: s.region, description: s.description ?? "", difficulty: s.difficulty, maxDepth: s.maxDepth, features: s.features, images: s.images, youtubeUrl: s.youtubeUrl ?? "", locationUrl: s.locationUrl ?? "", cautions: s.cautions ?? "" });
     setFeaturesInput(s.features.join(", "));
     setEditingId(s.id); setDialogMode("edit");
   }
@@ -155,55 +155,72 @@ export default function SitesPage() {
         )}
 
         <Dialog open={dialogMode !== null} onOpenChange={open => { if (!open) setDialogMode(null); }}>
-          <DialogContent style={{ background: "var(--color-ocean-deep)", border: "1px solid rgba(255,255,255,0.15)", color: "#e6f0ff", maxWidth: "520px" }}>
+          <DialogContent className="max-w-lg bg-white text-[var(--foreground)]">
             <DialogHeader>
-              <DialogTitle style={{ color: "var(--color-phosphor)" }}>{dialogMode === "create" ? "新增潛點" : "編輯潛點"}</DialogTitle>
+              <DialogTitle className="text-base font-semibold text-[var(--foreground)]">
+                {dialogMode === "create" ? "新增潛點" : "編輯潛點"}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 pt-2">
               {dialogMode === "create" && (
                 <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                  <Label style={labelStyle}>ID（英文）</Label>
-                  <Input className={inputCls} value={(form as DiveSite & {id?: string}).id ?? ""} onChange={e => setForm(f => ({ ...f, id: e.target.value } as unknown as Omit<DiveSite,"id">))} placeholder="northeast_longdong" />
+                  <Label className="text-xs text-[var(--muted-foreground)]">ID（英文）</Label>
+                  <Input value={(form as DiveSite & {id?: string}).id ?? ""} onChange={e => setForm(f => ({ ...f, id: e.target.value } as unknown as Omit<DiveSite,"id">))} placeholder="northeast_longdong" />
                 </div>
               )}
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>名稱</Label>
-                <Input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+                <Label className="text-xs text-[var(--muted-foreground)]">名稱</Label>
+                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>區域</Label>
+                <Label className="text-xs text-[var(--muted-foreground)]">區域</Label>
                 <select value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value as Region }))}
-                  className="rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}>
-                  {(Object.keys(REGION_LABELS) as Region[]).map(r => <option key={r} value={r} style={{ background: "#0a1628" }}>{REGION_LABELS[r]}</option>)}
+                  className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)]">
+                  {(Object.keys(REGION_LABELS) as Region[]).map(r => <option key={r} value={r}>{REGION_LABELS[r]}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>難度</Label>
+                <Label className="text-xs text-[var(--muted-foreground)]">難度</Label>
                 <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value as Difficulty }))}
-                  className="rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}>
-                  {(Object.keys(DIFF_LABELS) as Difficulty[]).map(d => <option key={d} value={d} style={{ background: "#0a1628" }}>{DIFF_LABELS[d]}</option>)}
+                  className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)]">
+                  {(Object.keys(DIFF_LABELS) as Difficulty[]).map(d => <option key={d} value={d}>{DIFF_LABELS[d]}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>最大深度(m)</Label>
-                <Input type="number" className={inputCls} value={form.maxDepth ?? ""} onChange={e => setForm(f => ({ ...f, maxDepth: e.target.value ? parseInt(e.target.value) : null }))} placeholder="選填" />
+                <Label className="text-xs text-[var(--muted-foreground)]">最大深度(m)</Label>
+                <Input type="number" value={form.maxDepth ?? ""} onChange={e => setForm(f => ({ ...f, maxDepth: e.target.value ? parseInt(e.target.value) : null }))} placeholder="選填" />
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>特色（逗號分隔）</Label>
-                <Input className={inputCls} value={featuresInput} onChange={e => setFeaturesInput(e.target.value)} placeholder="珊瑚礁、洞穴、魚群" />
+                <Label className="text-xs text-[var(--muted-foreground)]">特色（逗號分隔）</Label>
+                <Input value={featuresInput} onChange={e => setFeaturesInput(e.target.value)} placeholder="珊瑚礁、洞穴、魚群" />
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>描述</Label>
+                <Label className="text-xs text-[var(--muted-foreground)]">YouTube URL</Label>
+                <Input value={form.youtubeUrl ?? ""} onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))} placeholder="選填" />
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
+                <Label className="text-xs text-[var(--muted-foreground)]">位置 URL</Label>
+                <Input value={form.locationUrl ?? ""} onChange={e => setForm(f => ({ ...f, locationUrl: e.target.value }))} placeholder="Google Map URL（選填）" />
+              </div>
+
+              {/* 描述 + 備註：移到底部、跨整列 */}
+              <div className="space-y-1">
+                <Label className="text-xs text-[var(--muted-foreground)]">描述</Label>
                 <textarea value={form.description ?? ""} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  rows={2} className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                  style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }} />
+                  rows={2}
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-phosphor)]"
+                  placeholder="這個潛點的特色、適合什麼程度的潛水員..." />
               </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>YouTube URL</Label>
-                <Input className={inputCls} value={form.youtubeUrl ?? ""} onChange={e => setForm(f => ({ ...f, youtubeUrl: e.target.value }))} placeholder="選填" />
+              <div className="space-y-1">
+                <Label className="text-xs text-[var(--muted-foreground)]">備註（注意事項）</Label>
+                <textarea value={form.cautions ?? ""} onChange={e => setForm(f => ({ ...f, cautions: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-phosphor)]"
+                  placeholder="水流方向、入水點、緊急聯絡注意事項..." />
               </div>
+
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => setDialogMode(null)} style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)" }}>取消</Button>
+                <Button variant="outline" size="sm" onClick={() => setDialogMode(null)}>取消</Button>
                 <Button size="sm" style={primaryBtn} onClick={save} disabled={saving || !form.name.trim()}>{saving ? "儲存中..." : "儲存"}</Button>
               </div>
             </div>
