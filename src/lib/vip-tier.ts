@@ -1,7 +1,10 @@
 /**
  * 海王子潛水會員等級系統
  *
- * 5 個等級，升級條件是 OR（潛次 OR 消費金額 任一達標就升）
+ * 5 個等級，升級條件：**僅依「海王子累積潛水次數」(haiwangziLogCount)**
+ *
+ * 註：minSpend 欄位保留於 schema/data 中（向下相容），
+ * 但升等邏輯（computeVipLevel）已不再使用累計消費。
  */
 
 export interface VipTier {
@@ -103,19 +106,20 @@ export const VIP_TIER_MAP: Record<number, VipTier> = Object.fromEntries(
 );
 
 /**
- * 計算用戶應有等級（OR 條件：潛次 or 消費金額 任一達標就升）
+ * 計算用戶應有等級 — 僅依潛水次數（海王子累積）
+ * 累計消費（totalSpend）參數保留以維持 callsite 向下相容，但不會影響結果
  * @param tiers 自訂等級表（admin 設的），不傳就用內建預設
  */
 export function computeVipLevel(
   logCount: number,
-  totalSpend: number,
+  _totalSpend: number,
   tiers: VipTier[] = VIP_TIERS,
 ): number {
   if (tiers.length === 0) tiers = VIP_TIERS;
   // 從最高等級往下檢查
   const sorted = [...tiers].sort((a, b) => b.level - a.level);
   for (const tier of sorted) {
-    if (logCount >= tier.minLogs || totalSpend >= tier.minSpend) {
+    if (logCount >= tier.minLogs) {
       return tier.level;
     }
   }

@@ -130,7 +130,6 @@ export default function VipTiersPage() {
                 <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
                   <th className="px-4 py-3 font-medium">等級</th>
                   <th className="px-4 py-3 font-medium text-right">最低潛水次數</th>
-                  <th className="px-4 py-3 font-medium text-right">最低消費 (NT$)</th>
                   <th className="px-4 py-3 font-medium">Key</th>
                   <th className="px-4 py-3 font-medium">會員福利</th>
                   <th className="px-4 py-3 font-medium w-16" />
@@ -157,13 +156,9 @@ export default function VipTiersPage() {
                         </div>
                       </div>
                     </td>
-                    {/* 最低潛水次數 */}
+                    {/* 最低潛水次數（升等唯一條件） */}
                     <td className="px-4 py-3 text-right tabular-nums font-medium">
                       {tier.minLogs}
-                    </td>
-                    {/* 最低消費 */}
-                    <td className="px-4 py-3 text-right tabular-nums font-medium">
-                      {tier.minSpend.toLocaleString()}
                     </td>
                     {/* Key */}
                     <td className="px-4 py-3 font-mono text-xs text-[var(--muted-foreground)]">
@@ -260,17 +255,13 @@ export default function VipTiersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數</Label>
-                  <Input type="number" value={editDraft.minLogs}
-                    onChange={e => updateDraft({ minLogs: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低消費 (NT$)</Label>
-                  <Input type="number" value={editDraft.minSpend}
-                    onChange={e => updateDraft({ minSpend: parseInt(e.target.value) || 0 })} />
-                </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數（升等唯一條件）</Label>
+                <Input type="number" value={editDraft.minLogs}
+                  onChange={e => updateDraft({ minLogs: parseInt(e.target.value) || 0 })} />
+                <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                  ※ 升等僅依「海王子累積潛水次數」(haiwangziLogCount)，累計消費不再影響升等。
+                </p>
               </div>
 
               {/* 會員福利 */}
