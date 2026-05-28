@@ -626,6 +626,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium">訂單編號</th>
                     <th className="px-4 py-3 font-medium">建單日</th>
                     <th className="px-4 py-3 font-medium">客戶</th>
+                    <th className="px-3 py-3 font-medium text-center">時序</th>
                     <th className="px-4 py-3 font-medium">場次</th>
                     <th className="px-4 py-3 font-medium text-right">金額</th>
                     <th className="px-4 py-3 font-medium text-right">已付</th>
@@ -638,6 +639,7 @@ export default function AdminBookingsPage() {
                 <tbody>
                   {filteredBookings.map((b, i) => {
                     const tripDateStr = b.ref.date ?? b.ref.dateStart ?? "";
+                    const past = isPastDate(tripDateStr);
                     const tripDisplay = b.type === "daily"
                       ? `${b.ref.date ?? "—"} ${weekdayTW(b.ref.date ?? "")} ${b.ref.startTime ?? ""}`
                       : b.ref.title ?? "潛水團";
@@ -671,9 +673,27 @@ export default function AdminBookingsPage() {
                             </span>
                           )}
                         </td>
+                        {/* 時序：場次是否已過期 */}
+                        <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                          {tripDateStr ? (
+                            past ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--muted)] px-2 py-0.5 text-[10px] text-[var(--muted-foreground)]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted-foreground)]" />
+                                已過
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-phosphor)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-phosphor)]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-phosphor)]" />
+                                即將
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-[var(--muted-foreground)]">—</span>
+                          )}
+                        </td>
                         {/* 場次 — 一行 */}
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap">
-                          <span className="tabular-nums">{tripDisplay}</span>
+                          <span className={cn("tabular-nums", past && "text-[var(--muted-foreground)]")}>{tripDisplay}</span>
                           {b.ref.sites && b.ref.sites.length > 0 && (
                             <span className="ml-1.5 text-[var(--muted-foreground)]">
                               {b.ref.sites.join("·")}
