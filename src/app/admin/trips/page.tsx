@@ -47,7 +47,17 @@ interface Trip {
 interface Site {
   id: string;
   name: string;
+  region?: string;
+  difficulty?: string;
+  maxDepth?: number | null;
+  features?: string[];
+  description?: string | null;
+  locationUrl?: string | null;
+  cautions?: string | null;
 }
+
+const DIFF_LABELS: Record<string, string> = { easy: "初級", medium: "中級", hard: "進階" };
+const REGION_LABELS: Record<string, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "其他" };
 
 interface Coach {
   id: string;
@@ -544,45 +554,29 @@ export default function AdminTripsPage() {
               </div>
               <div className="col-span-4">
                 <Label className="mb-1 block text-xs">場次狀態</Label>
-                <div className="flex gap-1">
-                  {[
-                    { value: "open", label: "開放" },
-                    { value: "cancelled", label: "取消" },
-                    { value: "completed", label: "結束" },
-                  ].map(({ value, label }) => {
-                    // 已過期的場次不能改回 open（必須是 cancelled 或 completed）
-                    const isFormDatePast = form.date < taipeiToday();
-                    const disabled = value === "open" && isFormDatePast;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => !disabled && setForm({ ...form, status: value })}
-                        title={disabled ? "日期已過，無法設為開放" : ""}
-                        className={cn(
-                          "flex-1 rounded-full border px-1 py-1 text-xs transition-colors",
-                          disabled
-                            ? "border-[var(--border)] bg-[var(--muted)]/40 text-[var(--muted-foreground)] cursor-not-allowed line-through"
-                            : form.status === value
-                            ? value === "open"
-                              ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
-                              : value === "cancelled"
-                              ? "border-[var(--color-coral)] bg-[var(--color-coral)]/20 text-[var(--color-coral)] font-semibold"
-                              : "border-[var(--muted-foreground)] bg-[var(--muted)] font-semibold"
-                            : "border-[var(--border)] hover:bg-[var(--muted)]",
-                        )}
+                {(() => {
+                  const isFormDatePast = form.date < taipeiToday();
+                  return (
+                    <>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm({ ...form, status: e.target.value })}
+                        className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                       >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {form.date < taipeiToday() && (
-                  <p className="mt-0.5 text-[9px] text-[var(--muted-foreground)]">
-                    日期已過：「開放」已停用，需設為取消或結束
-                  </p>
-                )}
+                        <option value="open" disabled={isFormDatePast}>
+                          🟢 開放{isFormDatePast ? "（日期已過，禁用）" : ""}
+                        </option>
+                        <option value="cancelled">🚫 取消</option>
+                        <option value="completed">✓ 結束</option>
+                      </select>
+                      {isFormDatePast && form.status === "open" && (
+                        <p className="mt-0.5 text-[9px] text-amber-600">
+                          日期已過：請改為取消或結束
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -614,6 +608,44 @@ export default function AdminTripsPage() {
                   ))
                 )}
               </div>
+              {/* 選取潛點後顯示詳情（自潛點管理同步） */}
+              {(() => {
+                const selectedSite = sites.find((s) => s.id === form.diveSiteIds[0]);
+                if (!selectedSite) return null;
+                const parts: string[] = [];
+                if (selectedSite.region) parts.push(`📍 ${REGION_LABELS[selectedSite.region] ?? selectedSite.region}`);
+                if (selectedSite.difficulty) parts.push(`難度 ${DIFF_LABELS[selectedSite.difficulty] ?? selectedSite.difficulty}`);
+                if (selectedSite.maxDepth) parts.push(`最大 ${selectedSite.maxDepth}m`);
+                return (
+                  <div className="mt-1.5 rounded-md bg-[var(--muted)]/40 p-2 text-[10px] space-y-1 border" style={{ borderColor: "var(--border)" }}>
+                    {parts.length > 0 && (
+                      <div className="font-medium text-[var(--foreground)]">{parts.join("　")}</div>
+                    )}
+                    {selectedSite.features && selectedSite.features.length > 0 && (
+                      <div className="text-[var(--muted-foreground)]">✦ {selectedSite.features.join("、")}</div>
+                    )}
+                    {selectedSite.description && (
+                      <div className="text-[var(--muted-foreground)]">{selectedSite.description}</div>
+                    )}
+                    {selectedSite.cautions && (
+                      <div className="text-amber-600">⚠️ {selectedSite.cautions}</div>
+                    )}
+                    {selectedSite.locationUrl && !form.meetingPointUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({
+                          ...form,
+                          meetingPoint: form.meetingPoint || selectedSite.name,
+                          meetingPointUrl: selectedSite.locationUrl ?? "",
+                        })}
+                        className="text-[10px] text-[var(--color-phosphor)] hover:underline font-medium"
+                      >
+                        ↓ 自動帶入潛點位置 URL 到集合地點
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Row 3: 教練 + 氣瓶數 + 可參加人數 (三欄並排，教練佔較寬) */}
