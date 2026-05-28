@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────
@@ -669,10 +669,14 @@ export default function AdminBookingsPage() {
                                       <th className="px-4 py-2 font-semibold">付款狀態</th>
                                       <th className="px-4 py-2 font-semibold">方式</th>
                                       <th className="px-4 py-2 font-semibold">訂單狀態</th>
+                                      <th className="px-4 py-2 font-semibold text-center">操作</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {g.bookings.map((b, bi) => (
+                                    {g.bookings.map((b, bi) => {
+                                      // 找完整 booking 物件以供 quick actions 使用
+                                      const fullB = bookings.find((x) => x.id === b.id);
+                                      return (
                                       <tr
                                         key={b.id}
                                         className="cursor-pointer transition-colors hover:bg-[#c8e0ff]"
@@ -684,9 +688,13 @@ export default function AdminBookingsPage() {
                                         title="點擊查看/編輯訂單"
                                       >
                                         <td className="px-4 py-2.5">
-                                          <span className="font-mono text-[11px] font-semibold tracking-wide" style={{ color: "#2a5580" }}>
-                                            {b.code ?? "—"}
-                                          </span>
+                                          {b.code ? (
+                                            <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-teal-800">
+                                              {b.code}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[11px] text-[var(--muted-foreground)]">—</span>
+                                          )}
                                         </td>
                                         <td className="px-6 py-2.5 font-semibold" style={{ color: "#1a4a70" }}>
                                           {b.userName}
@@ -713,8 +721,46 @@ export default function AdminBookingsPage() {
                                             {BOOKING_STATUS_LABEL[b.status] ?? b.status}
                                           </Badge>
                                         </td>
+                                        {/* 操作 — 編輯 / 取消 / 刪除（stopPropagation 避免觸發 row click） */}
+                                        <td className="px-4 py-2.5"
+                                          onClick={(e) => e.stopPropagation()}>
+                                          <div className="flex justify-center gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => openEditFromByTrip(b, g)}
+                                              title="編輯"
+                                              className="rounded p-1 hover:bg-[#b0d0f0] transition-colors"
+                                              style={{ color: "#2a5580" }}
+                                            >
+                                              <Edit3 className="h-3.5 w-3.5" />
+                                            </button>
+                                            {(b.status === "pending" || b.status === "confirmed") && fullB && (
+                                              <button
+                                                type="button"
+                                                onClick={() => cancelBooking(fullB)}
+                                                title="取消訂單"
+                                                className="rounded p-1 hover:bg-[#b0d0f0] transition-colors"
+                                                style={{ color: "#2a5580" }}
+                                              >
+                                                <X className="h-3.5 w-3.5" />
+                                              </button>
+                                            )}
+                                            {fullB && (
+                                              <button
+                                                type="button"
+                                                onClick={() => deleteBooking(fullB)}
+                                                title="永久刪除"
+                                                className="rounded p-1 hover:bg-[var(--color-coral)]/10 transition-colors"
+                                                style={{ color: "var(--color-coral)" }}
+                                              >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
