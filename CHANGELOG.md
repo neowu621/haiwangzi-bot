@@ -2,6 +2,28 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_95 — 2026-05-28 (場次載入修復 + migrate-safety 補全)
+
+### Bug Fix
+- **場次載入失敗**：`GET /api/admin/trips` 因 `diving_trips` 缺少 `meeting_point`、`weather_note`、`cancel_reason` 欄位（`prisma db push` 靜默失敗時未補），導致 Prisma 查詢拋錯
+- **migrate-safety.js** 新增所有可能缺少的欄位 patch：
+  - `diving_trips.meeting_point TEXT`
+  - `diving_trips.weather_note TEXT`
+  - `diving_trips.cancel_reason "CancelReason"` (含 enum type 自動建立)
+  - `site_config.gear_rental_prices JSONB`
+  - `site_config.default_trip_pricing JSONB`
+  - `site_config.default_coach_fee INTEGER`
+  - `site_config.weather_wind_threshold INTEGER`
+  - `site_config.birthday_credit_amount INTEGER`
+  - `site_config.vip_upgrade_credits JSONB`
+- **POST /api/admin/trips** schema 新增：`pricing.otherFee`、`pricing.otherFeeNote`、`status` 欄位（原本被 Zod strip 掉）
+- **PATCH /api/admin/trips/[id]** schema 同步加入 `pricing.otherFee`、`pricing.otherFeeNote`
+
+### 變更管理密碼
+- `ADMIN_WEB_SECRET` 環境變數：在 Zeabur → 專案 → 服務 → Variables 更新，重新部署生效
+
+---
+
 ## 20260528_94 — 2026-05-28 (白牌化重構 + 新客戶初始設定文件)
 
 ### 架構

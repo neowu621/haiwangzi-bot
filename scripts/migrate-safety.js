@@ -12,10 +12,11 @@ const { PrismaClient } = require('@prisma/client');
 
 // 每個 patch 都用 IF NOT EXISTS 或容忍失敗，確保冪等
 const PATCHES = [
+  // ── users ─────────────────────────────────────────────────────────
   // v84: 新增 users.code 欄位（會員編號）
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
-  // v84: 擴大 diving_trips.code 到 12 字元（原 VarChar(8)）
-  // PostgreSQL: 若欄位已是 VARCHAR(12) 或更大，ALTER TYPE 是 no-op
+
+  // ── code VARCHAR 擴充（由 VarChar(8) → 12）──────────────────────────
   `DO $$ BEGIN
      ALTER TABLE diving_trips ALTER COLUMN code TYPE VARCHAR(12);
    EXCEPTION WHEN others THEN NULL;
@@ -28,6 +29,35 @@ const PATCHES = [
      ALTER TABLE bookings ALTER COLUMN code TYPE VARCHAR(12);
    EXCEPTION WHEN others THEN NULL;
    END $$`,
+
+  // ── diving_trips 新欄位（v91+）───────────────────────────────────────
+  // meeting_point: 集合地點
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS meeting_point TEXT`,
+  // weather_note: 天氣取消說明
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS weather_note TEXT`,
+  // cancel_reason: 取消原因 enum — 需先確保 enum type 存在
+  `DO $$ BEGIN
+     CREATE TYPE "CancelReason" AS ENUM ('weather', 'insufficient', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL;
+   END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS cancel_reason "CancelReason";
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
+
+  // ── site_config 新欄位（plan v66+）──────────────────────────────────
+  // 裝備租借費率 (JSON)
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS gear_rental_prices JSONB NOT NULL DEFAULT '{}'`,
+  // 場次預設定價 (JSON)
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS default_trip_pricing JSONB NOT NULL DEFAULT '{}'`,
+  // 教練預設費用
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS default_coach_fee INTEGER NOT NULL DEFAULT 1500`,
+  // 天氣取消風速門檻 (m/s)
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_wind_threshold INTEGER NOT NULL DEFAULT 10`,
+  // 生日禮金金額
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS birthday_credit_amount INTEGER NOT NULL DEFAULT 100`,
+  // VIP 升等獎金 (JSON)
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS vip_upgrade_credits JSONB NOT NULL DEFAULT '{}'`,
 ];
 
 async function main() {

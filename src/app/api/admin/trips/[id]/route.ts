@@ -22,6 +22,8 @@ const PatchSchema = z.object({
       extraTank: z.number().int(),
       nightDive: z.number().int(),
       scooterRental: z.number().int(),
+      otherFee: z.number().int().optional(),
+      otherFeeNote: z.string().nullable().optional(),
     })
     .optional(),
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),

@@ -55,13 +55,16 @@ const CreateSchema = z.object({
   capacity: z.number().int().min(0).nullable().default(8), // null/0 = 無上限
   coachIds: z.array(z.string()).default([]),
   pricing: z.object({
-    baseTrip: z.number().int(),
-    extraTank: z.number().int(),
+    baseTrip: z.number().int().default(0),
+    extraTank: z.number().int().default(0),
     nightDive: z.number().int().default(0),
     scooterRental: z.number().int().default(0),
+    otherFee: z.number().int().default(0).optional(),
+    otherFeeNote: z.string().optional(),
   }),
-  notes: z.string().optional().or(z.literal("")),
-  meetingPoint: z.string().optional().or(z.literal("")),
+  status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
+  notes: z.string().nullable().optional().or(z.literal("")),
+  meetingPoint: z.string().nullable().optional().or(z.literal("")),
   images: z.array(z.string()).default([]),
 });
 
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
         notes: data.notes || null,
         meetingPoint: data.meetingPoint || null,
         images: data.images ?? [],
-        status: "open",
+        status: (data.status ?? "open") as "open" | "full" | "cancelled" | "completed",
       },
     });
     await logAudit({
