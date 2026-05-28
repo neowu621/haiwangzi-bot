@@ -101,7 +101,7 @@ async function handle(req: NextRequest) {
     });
     for (const b of bookings) {
       const dateStr = trip.date.toISOString().slice(0, 10);
-      const siteName = "東北角";
+      const siteName = process.env.APP_DEFAULT_REGION ?? "";
 
       // ── LINE 通道 ────────────────────────
       // 每個 channel 自己用 reminderLog dedupe，所以兩通道可獨立送

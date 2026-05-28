@@ -176,7 +176,7 @@ export default function AdminLoginPage() {
         <div className="mb-6 text-center">
           <div className="mb-2 text-4xl">🤿</div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--color-phosphor)" }}>
-            東北角海王子
+            {process.env.NEXT_PUBLIC_APP_NAME ?? "管理後台"}
           </h1>
           <p className="mt-1 text-sm" style={subStyle}>
             管理後台{" "}

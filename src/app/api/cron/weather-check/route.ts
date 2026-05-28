@@ -204,7 +204,7 @@ async function handle(req: NextRequest) {
         const sites = await prisma.diveSite.findMany({
           where: { id: { in: trip.diveSiteIds } },
         });
-        const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
+        const siteName = sites.map((s) => s.name).join(" · ") || (process.env.APP_DEFAULT_REGION ?? "");
         const dateStr = trip.date.toISOString().slice(0, 10);
 
         const adminUrl = process.env.NEXT_PUBLIC_BASE_URL
@@ -282,7 +282,7 @@ async function handle(req: NextRequest) {
         const sites = await prisma.diveSite.findMany({
           where: { id: { in: trip.diveSiteIds } },
         });
-        const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
+        const siteName = sites.map((s) => s.name).join(" · ") || (process.env.APP_DEFAULT_REGION ?? "");
         const dateStr = trip.date.toISOString().slice(0, 10);
         const reasonStr = `今日 ${maxStation} 風速 ${maxWind} m/s，超過下水安全閾值 ${threshold} m/s`;
         const myUrl = process.env.NEXT_PUBLIC_BASE_URL

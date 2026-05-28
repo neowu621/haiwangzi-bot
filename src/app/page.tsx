@@ -2,8 +2,13 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
 import { APP_VERSION } from "@/lib/version";
 
-// 直接打到根網址（haiwangzi.zeabur.app）時的入口頁
-// 大多數使用者該透過 LIFF 連結進入；這頁是 SEO / 分享連結的友善 fallback
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "潛水團";
+const TAGLINE = process.env.NEXT_PUBLIC_APP_TAGLINE ?? "安全．專業．陪你看見海";
+const LINE_ADD_FRIEND_URL = process.env.NEXT_PUBLIC_LINE_ADD_FRIEND_URL ?? "#";
+const LINE_OA_ID = process.env.NEXT_PUBLIC_LINE_OA_ID ?? "";
+const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+const LIFF_URL = LIFF_ID ? `https://liff.line.me/${LIFF_ID}` : "#";
+
 export default function HomePage() {
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--color-ocean-deep)] text-white">
@@ -11,28 +16,30 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           <Logo size={40} />
           <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold tracking-wider">海王子潛水團</span>
+            <span className="text-base font-bold tracking-wider">{APP_NAME}</span>
             <span className="text-[10px] tracking-[0.2em] opacity-70">
               DIVING TEAM
             </span>
           </div>
         </div>
-        <a
-          href="https://line.me/R/ti/p/@haiwangzi"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-white/20"
-        >
-          加 LINE 好友
-        </a>
+        {LINE_ADD_FRIEND_URL !== "#" && (
+          <a
+            href={LINE_ADD_FRIEND_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium backdrop-blur transition-colors hover:bg-white/20"
+          >
+            加 LINE 好友
+          </a>
+        )}
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 pb-20 pt-8 text-center">
         <h1 className="bg-gradient-to-r from-[var(--color-phosphor)] to-white bg-clip-text text-4xl font-extrabold leading-tight tracking-tight text-transparent sm:text-5xl">
-          東北角海王子潛水團
+          {APP_NAME}
         </h1>
         <p className="mt-3 text-base text-white/80 sm:text-lg">
-          安全．專業．陪你看見海
+          {TAGLINE}
         </p>
 
         <div className="mt-12 w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
@@ -44,20 +51,22 @@ export default function HomePage() {
           </p>
 
           <Link
-            href="https://liff.line.me/2010006458-fyokMnVv"
+            href={LIFF_URL}
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-phosphor)] px-5 py-3 text-sm font-bold text-[var(--color-ocean-deep)] shadow-lg shadow-[var(--color-phosphor)]/30 transition-transform active:scale-[0.97]"
           >
             開啟 LINE 預約
           </Link>
 
-          <p className="mt-4 text-[10px] opacity-50">
-            或 LINE 搜尋官方帳號：
-            <span className="font-mono">@haiwangzi</span>
-          </p>
+          {LINE_OA_ID && (
+            <p className="mt-4 text-[10px] opacity-50">
+              或 LINE 搜尋官方帳號：
+              <span className="font-mono">{LINE_OA_ID}</span>
+            </p>
+          )}
         </div>
 
         <div className="mt-12 grid w-full max-w-md grid-cols-3 gap-3 text-xs">
-          <FeatureCard icon="🌊" title="日潛預約" desc="東北角全潛點" />
+          <FeatureCard icon="🌊" title="日潛預約" desc="全潛點" />
           <FeatureCard icon="✈️" title="旅遊潛水" desc="蘭嶼／綠島／墾丁" />
           <FeatureCard icon="📅" title="行事曆" desc="即時查座位" />
         </div>

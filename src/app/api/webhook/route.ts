@@ -91,11 +91,11 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? "";
   const liffUrl = liffId
     ? `https://liff.line.me/${liffId}`
-    : "https://haiwangzi.zeabur.app";
+    : process.env.NEXT_PUBLIC_BASE_URL ?? "https://liff.line.me";
   const welcomeMsg = buildFlexByKey(
     "welcome",
     { liffUrl, displayName },
-    "歡迎加入東北角海王子潛水",
+    `歡迎加入${process.env.NEXT_PUBLIC_APP_NAME ?? ""}`,
   );
   await client.replyMessage({
     replyToken,

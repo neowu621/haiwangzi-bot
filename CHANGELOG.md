@@ -2,6 +2,33 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260528_94 — 2026-05-28 (白牌化重構 + 新客戶初始設定文件)
+
+### 架構
+全面移除程式碼中的硬碼品牌字串，改由環境變數控制，讓同一套程式碼可直接部署給不同廠商：
+
+| 新增環境變數 | 說明 |
+|---|---|
+| `NEXT_PUBLIC_LINE_OA_ID` | LINE OA 帳號 ID（@xxxxxx），顯示於首頁 |
+| `NEXT_PUBLIC_LINE_ADD_FRIEND_URL` | 加好友連結，首頁按鈕 |
+| `NEXT_PUBLIC_APP_TAGLINE` | 首頁標語（原硬碼「安全．專業．陪你看見海」）|
+| `APP_DEFAULT_REGION` | 通知訊息 fallback 地區名（原硬碼「東北角」）|
+
+### 修改的檔案（10 個）
+- `AdminShell.tsx`：側欄品牌名稱 → `NEXT_PUBLIC_APP_NAME`
+- `admin/layout.tsx`：頁面 title → `NEXT_PUBLIC_APP_NAME`
+- `admin/login/page.tsx`：登入頁標題 → `NEXT_PUBLIC_APP_NAME`
+- `app/layout.tsx`：根 metadata title → `NEXT_PUBLIC_APP_NAME`
+- `app/page.tsx`：首頁全部硬碼字串（APP 名稱、LINE ID、LIFF URL、標語）→ env vars；LINE 好友按鈕 + OA ID 顯示改為 conditional
+- `api/webhook/route.ts`：歡迎訊息 alt text + fallback URL → env vars
+- `api/bookings/daily/route.ts`：黑名單錯誤訊息 → `NEXT_PUBLIC_APP_NAME`
+- `api/cron/reminders/route.ts`：地區名 fallback → `APP_DEFAULT_REGION`
+- `api/cron/weather-check/route.ts`：地區名 fallback（x2）→ `APP_DEFAULT_REGION`
+- `.env.example`：補充 4 個新環境變數說明
+
+### 新增文件
+- `new-customer-initial-setting.md`：新客戶架設完整指南（繁中），含環境變數說明表、部署步驟、初始管理員設定、LINE 後台設定、確認清單
+
 ## 20260528_93 — 2026-05-28 (日潛場次 dialog 修正：API 載入 / 費用 / 教練)
 
 ### 修正

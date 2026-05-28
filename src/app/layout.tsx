@@ -17,7 +17,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "東北角海王子潛水團",
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "潛水預約系統",
   description: "日潛預約 · 旅遊潛水 · LIFF App",
 };
 

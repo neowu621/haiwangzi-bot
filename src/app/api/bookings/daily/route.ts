@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         error: "blacklisted",
         message:
           auth.user.blacklistReason ||
-          "您的帳號被標記為黑名單，請聯絡海王子潛水團處理",
+          `您的帳號被標記為黑名單，請聯絡${process.env.NEXT_PUBLIC_APP_NAME ?? "管理員"}處理`,
       },
       { status: 403 },
     );
