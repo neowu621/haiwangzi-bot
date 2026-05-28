@@ -128,6 +128,7 @@ export default function TripBookingPage({
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | "linepay" | "other">("cash");
   // 禮金折抵：可用餘額 + 本次折抵
   const [creditBalance, setCreditBalance] = useState(0);
+  const [vipLevel, setVipLevel] = useState(1);
   const [creditUsed, setCreditUsed] = useState(0);
 
   // 同伴
@@ -187,6 +188,7 @@ export default function TripBookingPage({
         certNumber: string | null;
         logCount: number;
         creditBalance: number;
+        vipLevel: number;
         emergencyContact: {
           name: string;
           phone: string;
@@ -206,6 +208,11 @@ export default function TripBookingPage({
         }
         setSavedCompanions(me.companions ?? []);
         setCreditBalance(me.creditBalance ?? 0);
+        setVipLevel(me.vipLevel ?? 1);
+        // LV1 不可用現場支付 → 預設改成轉帳
+        if ((me.vipLevel ?? 1) === 1) {
+          setPaymentMethod("bank");
+        }
       })
       .catch(() => {})
       .finally(() => setMeLoaded(true));
@@ -592,7 +599,7 @@ export default function TripBookingPage({
               />
             </div>
 
-            {/* 付款方式 */}
+            {/* 付款方式 — LV1 不可選現場支付 */}
             <div>
               <Label>付款方式</Label>
               <div className="mt-1 grid grid-cols-3 gap-1.5">
@@ -602,25 +609,38 @@ export default function TripBookingPage({
                     ["bank", "🏦 轉帳"],
                     ["linepay", "💚 LINE Pay"],
                   ] as const
-                ).map(([k, label]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setPaymentMethod(k)}
-                    className={
-                      paymentMethod === k
-                        ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
-                        : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
+                ).map(([k, label]) => {
+                  const lv1NoCash = vipLevel === 1 && k === "cash";
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => !lv1NoCash && setPaymentMethod(k)}
+                      disabled={lv1NoCash}
+                      title={lv1NoCash ? "LV1 會員需於出發前 3 天付清，升等後可使用現場支付" : ""}
+                      className={
+                        lv1NoCash
+                          ? "rounded-md border border-[var(--border)] bg-[var(--muted)]/40 px-2 py-1.5 text-xs text-[var(--muted-foreground)] line-through cursor-not-allowed"
+                          : paymentMethod === k
+                          ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
+                          : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
+                      }
+                    >
+                      {label}
+                      {lv1NoCash && " 🔒"}
+                    </button>
+                  );
+                })}
               </div>
               <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                {vipLevel === 1 && (
+                  <div className="mb-1 rounded bg-amber-50 px-2 py-1 text-amber-700">
+                    🔒 LV1 會員需於出發前 3 天付清；升等至 LV2 可解鎖現場支付
+                  </div>
+                )}
                 {paymentMethod === "cash" && "出航當天現場結算"}
                 {paymentMethod === "bank" && "預約後 7 天內匯款保留名額"}
-                {paymentMethod === "linepay" && "（即將開放）目前先選現場或轉帳"}
+                {paymentMethod === "linepay" && "預約後 7 天內完成 LINE Pay 並上傳截圖"}
               </div>
             </div>
 

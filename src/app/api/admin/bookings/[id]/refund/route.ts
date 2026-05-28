@@ -27,8 +27,11 @@ export const dynamic = "force-dynamic";
 // ─────────────────────────────────────────────────────────
 
 const Body = z.object({
-  amount: z.number().int().min(1),
+  amount: z.number().int().min(1),  // 從 paidAmount 扣多少
   method: z.enum(["cash", "credit"]),
+  // method=credit 時，實際發到 creditBalance 的金額（可大於 amount，例如天氣取消 110% 優惠）
+  // 未提供時 default = amount（1:1）
+  creditAmount: z.number().int().min(1).optional(),
   reason: z.string().optional(),
 });
 
@@ -89,20 +92,24 @@ export async function POST(
       },
     });
 
-    // 2. 若 method=credit → 發禮金
-    let creditResult: { newBalance: number; oldBalance: number } | null = null;
+    // 2. 若 method=credit → 發禮金（可自訂金額，例如 110%/80%）
+    let creditResult: { newBalance: number; oldBalance: number; granted: number } | null = null;
     if (data.method === "credit") {
+      const grantAmount = data.creditAmount ?? data.amount;
       const r = await grantCredit({
         userId: booking.userId,
-        amount: data.amount,
+        amount: grantAmount,
         reason: "refund",
         refType: "booking",
         refId: id,
         note:
-          data.reason ?? `預約 ${id.slice(0, 8)} 退費轉禮金`,
+          data.reason ??
+          (grantAmount === data.amount
+            ? `預約 ${id.slice(0, 8)} 退費轉禮金`
+            : `預約 ${id.slice(0, 8)} 退費 NT$${data.amount} 轉禮金 NT$${grantAmount}`),
         createdBy: auth.user.lineUserId,
       });
-      creditResult = { newBalance: r.newBalance, oldBalance: r.oldBalance };
+      creditResult = { newBalance: r.newBalance, oldBalance: r.oldBalance, granted: grantAmount };
     }
 
     await logAudit({

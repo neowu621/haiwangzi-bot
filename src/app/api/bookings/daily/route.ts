@@ -94,6 +94,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // LV1 會員不可選現場支付（必須出發前 3 天付清）
+  if (data.paymentMethod === "cash" && (auth.user.vipLevel ?? 1) === 1) {
+    return NextResponse.json(
+      {
+        error: "lv1_cash_not_allowed",
+        message:
+          "LV1 會員無法使用「現場支付」，請改用轉帳或 LINE Pay，並於出發前 3 天完成付款。升級至 LV2 後即可解鎖此功能。",
+      },
+      { status: 403 },
+    );
+  }
+
   // 計算目前已預約人數
   const booked = await prisma.booking.aggregate({
     where: {

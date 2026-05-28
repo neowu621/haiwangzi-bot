@@ -143,6 +143,153 @@ export default function AdminBookingsPage() {
   const [refundMethod, setRefundMethod] = useState<"cash" | "credit">("credit");
   const [refundReason, setRefundReason] = useState("");
   const [refundBusy, setRefundBusy] = useState(false);
+  const [refundCreditPct, setRefundCreditPct] = useState<number>(100); // 轉禮金 % (例：110 = 退款金額的 110% 轉禮金)
+
+  // 未到場 dialog
+  const [noShowTarget, setNoShowTarget] = useState<AdminBooking | null>(null);
+  const [noShowOption, setNoShowOption] = useState<"none" | "cash100" | "credit_custom">("none");
+  const [noShowCreditPct, setNoShowCreditPct] = useState<number>(80);
+  const [noShowBusy, setNoShowBusy] = useState(false);
+
+  // 完成 quick action
+  const [completing, setCompleting] = useState<string | null>(null);
+
+  // 付款憑證
+  interface PaymentProof {
+    id: string;
+    type: "deposit" | "final" | "refund";
+    amount: number;
+    previewUrl: string | null;
+    uploadedAt: string;
+    verifiedAt: string | null;
+  }
+  const [proofs, setProofs] = useState<PaymentProof[]>([]);
+  const [proofsLoading, setProofsLoading] = useState(false);
+
+  async function loadProofs(bookingId: string) {
+    setProofsLoading(true);
+    setProofs([]);
+    try {
+      const r = await adminFetch<{ proofs: PaymentProof[] }>(`/api/admin/payment-proofs?bookingId=${bookingId}`);
+      setProofs(r.proofs ?? []);
+    } catch (e) {
+      console.error("[load proofs]", e);
+    } finally {
+      setProofsLoading(false);
+    }
+  }
+
+  async function verifyProof(p: PaymentProof) {
+    if (!confirm(`核可此筆 NT$${p.amount.toLocaleString()} 入帳？\n會自動更新 paidAmount + 重算 VIP。`)) return;
+    try {
+      const r = await adminFetch<{ ok: boolean; newPaid: number; newPaymentStatus: string; newBookingStatus: string }>(
+        `/api/admin/payment-proofs/${p.id}/verify`,
+        { method: "POST", body: "{}" },
+      );
+      // 重整 editing + bookings 狀態
+      if (editing) {
+        setEditing({ ...editing, paidAmount: r.newPaid, paymentStatus: r.newPaymentStatus, status: r.newBookingStatus } as AdminBooking);
+        setBookings((arr) => arr.map((x) => x.id === editing.id
+          ? { ...x, paidAmount: r.newPaid, paymentStatus: r.newPaymentStatus as AdminBooking["paymentStatus"], status: r.newBookingStatus as AdminBooking["status"] }
+          : x));
+        await loadProofs(editing.id);
+      }
+    } catch (e) {
+      alert("核可失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function rejectProof(p: PaymentProof) {
+    const reason = window.prompt("拒絕原因（必填）：");
+    if (!reason) return;
+    try {
+      await adminFetch(`/api/admin/payment-proofs/${p.id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      if (editing) await loadProofs(editing.id);
+    } catch (e) {
+      alert("拒絕失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  // 編輯 dialog 打開時自動載入付款憑證
+  useEffect(() => {
+    if (editing) loadProofs(editing.id);
+    else setProofs([]);
+  }, [editing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function quickComplete(b: AdminBooking) {
+    if (!confirm(`標記訂單 ${b.code ?? b.id.slice(0, 8)} 為「已完成」？\n\n會：\n• 訂單狀態 → completed\n• 累計潛水次數（按氣瓶數）\n• 重算 VIP 等級${b.paymentMethod === "cash" && b.paidAmount < b.totalAmount ? `\n• 自動補齊現場款 NT$${(b.totalAmount - b.paidAmount).toLocaleString()}` : ""}`)) return;
+    setCompleting(b.id);
+    try {
+      // 1. 若現場付款且未付清 → 先補齊 paidAmount
+      if (b.paymentMethod === "cash" && b.paidAmount < b.totalAmount) {
+        await adminFetch(`/api/admin/bookings/${b.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            paidAmount: b.totalAmount,
+            paymentStatus: "fully_paid",
+          }),
+        });
+      }
+      // 2. 標記到場 + VIP 累計
+      await adminFetch(`/api/coach/bookings/${b.id}/attendance`, {
+        method: "POST",
+        body: JSON.stringify({ action: "completed" }),
+      });
+      setBookings((arr) => arr.map((x) => x.id === b.id ? {
+        ...x,
+        status: "completed",
+        paidAmount: x.paymentMethod === "cash" ? x.totalAmount : x.paidAmount,
+        paymentStatus: x.paymentMethod === "cash" ? "fully_paid" : x.paymentStatus,
+      } : x));
+    } catch (e) {
+      alert("標記完成失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setCompleting(null);
+    }
+  }
+
+  async function doNoShow() {
+    if (!noShowTarget) return;
+    setNoShowBusy(true);
+    try {
+      // 1. 標記未到場
+      await adminFetch(`/api/coach/bookings/${noShowTarget.id}/attendance`, {
+        method: "POST",
+        body: JSON.stringify({ action: "no_show" }),
+      });
+      // 2. 依選項處理已付款
+      let paymentStatus = noShowTarget.paymentStatus;
+      if (noShowTarget.paidAmount > 0 && noShowOption !== "none") {
+        const refundBody: Record<string, unknown> = {
+          amount: noShowTarget.paidAmount,
+          reason: `未到場退款（${noShowOption === "cash100" ? "退現 100%" : `轉禮金 ${noShowCreditPct}%`}）`,
+        };
+        if (noShowOption === "cash100") {
+          refundBody.method = "cash";
+        } else {
+          refundBody.method = "credit";
+          refundBody.creditAmount = Math.round(noShowTarget.paidAmount * noShowCreditPct / 100);
+        }
+        await adminFetch(`/api/admin/bookings/${noShowTarget.id}/refund`, {
+          method: "POST",
+          body: JSON.stringify(refundBody),
+        });
+        paymentStatus = "refunded";
+      }
+      setBookings((arr) => arr.map((x) => x.id === noShowTarget.id ? {
+        ...x, status: "no_show", paymentStatus,
+      } : x));
+      setNoShowTarget(null);
+      setNoShowOption("none");
+    } catch (e) {
+      alert("未到場處理失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setNoShowBusy(false);
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -303,12 +450,18 @@ export default function AdminBookingsPage() {
     if (!editing) return;
     const n = Number(refundAmount);
     if (!n || n <= 0) { alert("請輸入退款金額"); return; }
-    if (!confirm(`確定退款 NT$${n.toLocaleString()} (${refundMethod === "credit" ? "轉禮金" : "退現金"})?`)) return;
+    const creditAmount = refundMethod === "credit" ? Math.round(n * refundCreditPct / 100) : undefined;
+    const desc = refundMethod === "credit"
+      ? `轉禮金 NT$${creditAmount?.toLocaleString()}${refundCreditPct !== 100 ? `（${refundCreditPct}%）` : ""}`
+      : `退現金 NT$${n.toLocaleString()}`;
+    if (!confirm(`確定退款？\n從已付款扣 NT$${n.toLocaleString()}\n→ ${desc}`)) return;
     setRefundBusy(true);
     try {
+      const body: Record<string, unknown> = { amount: n, method: refundMethod, reason: refundReason || undefined };
+      if (refundMethod === "credit" && creditAmount !== n) body.creditAmount = creditAmount;
       await adminFetch(`/api/admin/bookings/${editing.id}/refund`, {
         method: "POST",
-        body: JSON.stringify({ amount: n, method: refundMethod, reason: refundReason || undefined }),
+        body: JSON.stringify(body),
       });
       setBookings((arr) =>
         arr.map((x) => x.id === editing.id ? { ...x, paymentStatus: "refunded" } : x),
@@ -752,7 +905,31 @@ export default function AdminBookingsPage() {
                         </td>
                         {/* 操作 */}
                         <td className="px-4 py-2.5">
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 flex-wrap">
+                            {/* 待結算（過期+pending/confirmed）→ 快速結算按鈕 */}
+                            {past && (b.status === "pending" || b.status === "confirmed") && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => quickComplete(b)}
+                                  disabled={completing === b.id}
+                                  title="標記已完成（已收齊）"
+                                  className="border-[var(--color-phosphor)] text-[var(--color-phosphor)] hover:bg-[var(--color-phosphor)]/10"
+                                >
+                                  ✓
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => { setNoShowTarget(b); setNoShowOption("none"); setNoShowCreditPct(80); }}
+                                  title="標記未到場"
+                                  className="border-[var(--color-coral)] text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10"
+                                >
+                                  ✗
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -760,6 +937,7 @@ export default function AdminBookingsPage() {
                                 setEditing({ ...b });
                                 setRefundOpen(false);
                                 setRefundAmount(String(b.paidAmount));
+                                setRefundCreditPct(100);
                               }}
                               title="編輯"
                             >
@@ -930,6 +1108,62 @@ export default function AdminBookingsPage() {
                 )}
               </div>
 
+              {/* 付款憑證審核區 */}
+              {(proofs.length > 0 || proofsLoading) && (
+                <div className="rounded-md p-3 space-y-2" style={{ border: "2px solid var(--border)" }}>
+                  <div className="text-sm font-semibold flex items-center gap-2">
+                    📄 付款憑證
+                    <span className="text-[10px] font-normal text-[var(--muted-foreground)]">
+                      ({proofs.filter(p => !p.verifiedAt).length} 筆待審核 / 共 {proofs.length} 筆)
+                    </span>
+                  </div>
+                  {proofsLoading && <p className="text-xs text-[var(--muted-foreground)]">載入中...</p>}
+                  <div className="grid grid-cols-2 gap-2">
+                    {proofs.map((p) => (
+                      <div key={p.id} className="rounded-md border p-2 space-y-1.5" style={{ borderColor: "var(--border)" }}>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono font-semibold">NT$ {p.amount.toLocaleString()}</span>
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
+                          </span>
+                        </div>
+                        {p.previewUrl ? (
+                          <a href={p.previewUrl} target="_blank" rel="noopener noreferrer" className="block">
+                            <img src={p.previewUrl} alt="付款憑證"
+                              className="w-full h-32 object-cover rounded border" style={{ borderColor: "var(--border)" }} />
+                          </a>
+                        ) : (
+                          <div className="h-32 flex items-center justify-center text-xs text-[var(--muted-foreground)] bg-[var(--muted)] rounded">
+                            （已清理 / 30 天前）
+                          </div>
+                        )}
+                        <div className="text-[10px] text-[var(--muted-foreground)]">
+                          {new Date(p.uploadedAt).toLocaleDateString("zh-TW")}
+                        </div>
+                        {p.verifiedAt ? (
+                          <div className="text-[10px] font-semibold text-[var(--color-phosphor)]">
+                            ✓ 已核可 {new Date(p.verifiedAt).toLocaleDateString("zh-TW")}
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            <button onClick={() => verifyProof(p)}
+                              className="flex-1 rounded px-2 py-1 text-[10px] font-semibold text-white"
+                              style={{ background: "var(--color-phosphor)" }}>
+                              ✓ 核可入帳
+                            </button>
+                            <button onClick={() => rejectProof(p)}
+                              className="flex-1 rounded px-2 py-1 text-[10px] font-semibold text-white"
+                              style={{ background: "var(--color-coral)" }}>
+                              ✗ 拒絕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Refund */}
               {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (
                 <div className="rounded-md p-3 space-y-2"
@@ -954,6 +1188,27 @@ export default function AdminBookingsPage() {
                           退現金
                         </button>
                       </div>
+                      {/* 轉禮金 % 快選 (天氣 110% / 一般 100% / 違約 80%) */}
+                      {refundMethod === "credit" && (
+                        <div>
+                          <Label className="text-[10px] text-[var(--muted-foreground)] mb-1 block">轉禮金 %（可自訂）</Label>
+                          <div className="grid grid-cols-4 gap-1 mb-1">
+                            {[80, 100, 110, 120].map((p) => (
+                              <button key={p} type="button" onClick={() => setRefundCreditPct(p)}
+                                className={cn("rounded-md border px-2 py-1 text-xs",
+                                  refundCreditPct === p ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
+                                {p}%
+                              </button>
+                            ))}
+                          </div>
+                          <Input type="number" min={1} max={500} value={refundCreditPct}
+                            onChange={(e) => setRefundCreditPct(Math.max(1, Math.min(500, Number(e.target.value) || 100)))}
+                            placeholder="自訂百分比" />
+                          <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                            退款金額 × {refundCreditPct}% = 實際轉入禮金 NT${Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-2">
                         <Input type="number" min={1} max={editing.paidAmount} value={refundAmount}
                           onChange={(e) => setRefundAmount(e.target.value)} placeholder="退款金額" />
@@ -971,6 +1226,87 @@ export default function AdminBookingsPage() {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
                 <Button onClick={saveEdit} disabled={saving}>{saving ? "儲存中..." : "儲存"}</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 未到場處理 Dialog */}
+      <Dialog open={noShowTarget !== null} onOpenChange={(o) => { if (!o) setNoShowTarget(null); }}>
+        <DialogContent className="max-w-md bg-white text-[var(--foreground)]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">標記為未到場</DialogTitle>
+          </DialogHeader>
+          {noShowTarget && (
+            <div className="space-y-3 pt-2">
+              <div className="rounded-md p-3" style={{ background: "var(--muted)" }}>
+                <div className="text-sm font-medium">{noShowTarget.user.realName ?? noShowTarget.user.displayName}</div>
+                <div className="text-xs text-[var(--muted-foreground)]">
+                  訂單 {noShowTarget.code ?? noShowTarget.id.slice(0, 8)}　|　總額 NT$ {noShowTarget.totalAmount.toLocaleString()}　|　已付 NT$ {noShowTarget.paidAmount.toLocaleString()}
+                </div>
+              </div>
+
+              {noShowTarget.paidAmount > 0 ? (
+                <>
+                  <Label className="text-sm font-medium">已付款處理方式</Label>
+                  <div className="space-y-2">
+                    <label className={cn("flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors",
+                      noShowOption === "none" ? "border-[var(--color-coral)] bg-[var(--color-coral)]/5" : "border-[var(--border)]")}>
+                      <input type="radio" checked={noShowOption === "none"} onChange={() => setNoShowOption("none")} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">🅐 不退款（預設）</div>
+                        <div className="text-xs text-[var(--muted-foreground)]">已付 NT$ {noShowTarget.paidAmount.toLocaleString()} 沒收，作為違約金</div>
+                      </div>
+                    </label>
+                    <label className={cn("flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors",
+                      noShowOption === "cash100" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/5" : "border-[var(--border)]")}>
+                      <input type="radio" checked={noShowOption === "cash100"} onChange={() => setNoShowOption("cash100")} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">🅑 退現金 100%</div>
+                        <div className="text-xs text-[var(--muted-foreground)]">通融客戶（特殊原因如急事），退現 NT$ {noShowTarget.paidAmount.toLocaleString()}</div>
+                      </div>
+                    </label>
+                    <label className={cn("flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors",
+                      noShowOption === "credit_custom" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/5" : "border-[var(--border)]")}>
+                      <input type="radio" checked={noShowOption === "credit_custom"} onChange={() => setNoShowOption("credit_custom")} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">🅒 轉禮金 (自訂%)</div>
+                        {noShowOption === "credit_custom" && (
+                          <div className="mt-2 space-y-1">
+                            <div className="grid grid-cols-4 gap-1">
+                              {[50, 80, 100, 120].map((p) => (
+                                <button key={p} type="button" onClick={() => setNoShowCreditPct(p)}
+                                  className={cn("rounded-md border px-1 py-1 text-xs",
+                                    noShowCreditPct === p ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
+                                  {p}%
+                                </button>
+                              ))}
+                            </div>
+                            <Input type="number" min={1} max={500} value={noShowCreditPct}
+                              onChange={(e) => setNoShowCreditPct(Math.max(1, Math.min(500, Number(e.target.value) || 80)))}
+                              placeholder="自訂百分比" className="h-8 text-xs" />
+                            <p className="text-[10px] text-[var(--muted-foreground)]">
+                              已付 NT$ {noShowTarget.paidAmount.toLocaleString()} × {noShowCreditPct}% = 轉禮金 NT$ {Math.round(noShowTarget.paidAmount * noShowCreditPct / 100).toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  此訂單未收款（paidAmount = 0），標記後不會有金錢處理。
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button variant="outline" onClick={() => setNoShowTarget(null)} disabled={noShowBusy}>取消</Button>
+                <Button onClick={doNoShow} disabled={noShowBusy}
+                  style={{ background: "var(--color-coral)", color: "white" }}>
+                  {noShowBusy ? "處理中..." : "確認未到場"}
+                </Button>
               </div>
             </div>
           )}
