@@ -2,6 +2,266 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260529_119 — 2026-05-29 (VIP 升等只看潛水次數，移除累計消費條件)
+
+### 變更
+- **VIP 升等條件簡化**：之前是「潛次 OR 消費金額」任一達標即升，現在只看 `haiwangziLogCount`（海王子累積潛水次數）
+- `src/lib/vip-tier.ts`：`computeVipLevel` 改為僅 `logCount >= minLogs`；`totalSpend` 參數保留以維持 callsite 相容（但不再影響結果），`VipTier.minSpend` 欄位保留避免 DB 遷移
+- `src/app/admin/vip-tiers/page.tsx`：表格與編輯 dialog 移除「最低消費 (NT$)」欄/輸入，加註「升等僅依海王子累積潛水次數」
+
+### 向下相容
+- DB `SiteConfig.vipTiers` 中的 `minSpend` 仍存在但被忽略；`getNextTierProgress` 仍回 `spendLeft` 供顯示用
+
+---
+
+## 20260529_118 — 2026-05-29 (VIP 等級手動調整只動潛水次數)
+
+### 修正
+- 修正 v117 邏輯：admin 手動改 `vipLevel` 時，自動把 `haiwangziLogCount` 設為該等級 `tier.minLogs`，但**不再自動更新 `totalSpend`**
+- 理由：累計消費是真實付款紀錄，應由付款憑證核可流程累積，不該因人為升等而被調整
+
+---
+
+## 20260529_117 — 2026-05-29 (場次狀態改 select / 潛點詳情面板 / VIP 等級自動設潛次)
+
+### A. 場次狀態
+- `/admin/trips` dialog 場次狀態由 3 顆 pill 改為 select dropdown（🟢 開放 / 🚫 取消 / ✓ 結束）
+- 日期過期時「開放」option 變 disabled 並標註，下方顯示 amber 提示
+
+### B. 潛點選定詳情
+- `Site` 介面擴充 region/difficulty/maxDepth/features/description/locationUrl/cautions
+- 選定潛點後在 chips 下方顯示資訊卡（區域 / 難度 / 最大深度 / 特色 / 描述 / 備註）
+- 潛點有 `locationUrl` 且場次 `meetingPointUrl` 未填時，提供「自動帶入潛點位置 URL」按鈕
+
+### C. VIP 等級自動設潛次（`/api/admin/users` PATCH）
+- admin 指定 `vipLevel` 而未指定 `haiwangziLogCount` 時，自動設為該等級 `tier.minLogs`（v118 進一步調整為不動 `totalSpend`）
+
+---
+
+## 20260529_116 — 2026-05-29 (場次集合地點拆兩欄)
+
+### Schema
+- 新增 `diving_trips.meeting_point_url`（TEXT, nullable）；`meeting_point` 保留作為「地點說明」
+- `migrate-safety.js`：`ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS meeting_point_url TEXT`
+
+### API / UI
+- `POST/PATCH /api/admin/trips` Zod schema 加 `meetingPointUrl`，空字串轉 null
+- dialog 改 grid-cols-2 並排：左欄「地點說明」、右欄「Google Map URL」
+- 向下相容：舊資料只填 `meetingPoint`（混合 URL 文字）仍可顯示；提醒 cron 用空白串接兩欄
+
+---
+
+## 20260529_115 — 2026-05-29 (LIFF 強制加 OA 好友 gate)
+
+### 新增
+- `LiffProvider` 新增 `isFriend` 狀態：mount 後跑 `liff.getFriendship()`（mock 模式 / API 失敗皆 fallback 為 true，避免誤擋）
+- `LiffShell` 好友 gate：`isFriend === false` 且不在 `/liff/add-friend` 時強制導向；提供 `skipFriendGate` prop 防無限重導
+- 新建 `/liff/add-friend`：LINE 加好友大按鈕 + 「重新檢查」+ 4 步驟說明 + OA ID 顯示
+- 根目錄首頁不受影響
+
+> 副作用：LINE OA「Bot link feature」需設為 On；否則 `getFriendship` reject，現行 fallback 為放行。
+
+---
+
+## 20260529_114 — 2026-05-29 (操作說明頁加入實際流程圖)
+
+### 變更
+- 重寫 `/admin/guide` 流程說明：由 inline pill+arrow 改為區塊化視覺流程圖
+- 新增元件：`Node`、`ArrowDown`、`VFlow`、`Branch`、`DiagramBox`、`Legend`
+- 8 個視覺化流程圖：會員生命週期 / 訂單生命週期 / 退款處理 / 場次狀態 / 付款憑證 / VIP 升等 / Cron 任務 / 危險操作
+- ⚠️ 版本日期格式由 `20260528_113` → `20260529_114`（跨日）
+
+---
+
+## 20260528_113 — 2026-05-28 (過期場次自動顯示「結束」+ 禁止改回「開放」)
+
+### 變更
+- 場次列表：`date < 今天` 且 status 為 open/full → 顯示「已完成（自動）」
+- 編輯 dialog：日期已過時「開放」pill 變灰 + disabled + 提示
+- PATCH API 驗證：試圖把 status 改為 `open` 且日期已過 → 回 `400 trip_date_passed`（防前端繞過）
+- DB 內 status 仍可能為 open（過期未動）；未來可加 cron 自動轉 completed（暫不實作）
+
+---
+
+## 20260528_112 — 2026-05-28 (會員軟刪除 + 後台操作說明頁 + LIFF Q&A 關於頁)
+
+### A. 會員軟刪除（保留訂單）
+- Prisma `User` 新增 `deletedAt` / `deletedBy` / `deletedReason`；`migrate-safety.js` 補對應 SQL
+- `src/lib/auth.ts` 在 admin web + LIFF 兩路徑都加 `deletedAt` 檢查（軟刪除後 `403 user_deleted`）
+- 新 API `POST /api/admin/users/[id]/soft-delete`（`?action=restore` 可還原，不能刪自己）
+- `/admin/users`：新增「封存」/「還原」按鈕，封存者姓名顯示刪除線 + 標籤
+
+### B. 後台操作說明頁
+- 新建 `/admin/guide`：整合會員/訂單/場次/付款憑證/VIP/Cron/危險操作文件 + 流程圖 + 排查表格
+- AdminShell 側欄新增「操作說明」入口
+
+### C. LIFF 客戶 Q&A / 關於頁
+- 新建 `/liff/faq`：4 大類 FAQ（預約 / 付款 / VIP / 潛水當天）+ 聯絡資訊 + 摺疊問答 + CTA
+- `/liff/profile` 底部新增入口
+
+---
+
+## 20260528_111 — 2026-05-28 (Dashboard 新增「今日 / 7 天內新增」統計)
+
+### 變更
+- `/api/admin/stats` 新增 `users.todayNew` / `users.last7DaysNew` / `bookings.todayNew` / `bookings.last7DaysNew`
+- `/admin` 主頁新增兩張卡片：會員新增、訂單新增（今日綠 / 7 天藍）
+
+---
+
+## 20260528_110 — 2026-05-28 (場次/潛水團操作欄分離「取消」與「永久刪除」)
+
+### 變更
+- `/admin/trips`：未取消場次同時顯示「取消」(amber) + 「永久刪除」(coral)；已取消場次只顯示「永久刪除」
+- `/admin/tours`：取消按鈕改 `Ban` icon + amber 配色，永久刪除維持 coral
+- 視覺語意：amber = 警告可復原，coral = 不可復原刪除
+
+---
+
+## 20260528_109 — 2026-05-28 (訂單「依場次」展開列加上操作欄)
+
+### 變更
+- 展開場次後每筆訂單新增「操作」欄：✎ 編輯 / ✗ 取消（軟取消，限 pending/confirmed）/ 🗑 永久刪除（cascade PaymentProof + ReminderLog）
+- 按鈕用 `stopPropagation` 防冒泡開 dialog；訂單編號改深色 pill（與 v106 一致）
+
+---
+
+## 20260528_108 — 2026-05-28 (登出按鈕移到頂部使用者資訊欄右側)
+
+### 變更
+- 使用者資訊 chip 右側新增 `LogOut` icon button（coral 警示色），刪除左下角獨佔一行的登出按鈕
+- 行動版頂部 bar 的登出按鈕保留
+
+---
+
+## 20260528_107 — 2026-05-28 (群發通知頁版型重做)
+
+### 變更
+- 重新設計 `/admin/broadcast`：雙預覽（LINE 對話氣泡 + Email 卡片）+ sticky footer + 動態收件人數
+- 發送設定 3 欄佈局（對象 3×2 grid / 管道 / 模板）；進階設定（altText + params JSON）可折疊
+- 新增 `substituteParams()` helper，讓預覽即時替換 `{key}` 變數
+- sticky footer 顯示預估發送對象 N 位 + 「送出後無法取消」提示
+
+---
+
+## 20260528_106 — 2026-05-28 (編號顯示改深色 pill 提升對比)
+
+### 變更
+- 場次/訂單/潛水團/會員編號（D/O/T/M prefix）由 phosphor 亮綠改為深色 pill：`bg-teal-50` + `text-teal-800`（WCAG AA 達標）
+- 影響 `/admin` trips / bookings / tours / users 列表與 dialog；空值統一改 muted 灰字
+- 深色背景處（首頁 hero、liff welcome）保留 phosphor 亮綠
+
+---
+
+## chore — 2026-05-28 (GitHub Actions 每日 cron 觸發)
+
+- 新增 workflow：每天台灣時間 08:00（UTC 00:00）依序呼叫 3 個 cron 端點
+  1. `/api/cron/lv1-prepay-reminder`
+  2. `/api/cron/cleanup-old-payment-proofs`
+  3. `/api/cron/daily-settlement-reminder`
+- `CRON_SECRET` 存為 GitHub Actions repository secret；失敗用 `--fail-with-body` + `if: always()` 不互相拖累；支援 `workflow_dispatch` 手動觸發
+
+---
+
+## 20260528_105 — 2026-05-28 (訂單結算全流程)
+
+### A. 訂單列表 quick actions
+- 「待結算」訂單列加「✓ 完成」「✗ 未到場」按鈕（場次已過 + 訂單仍 pending/confirmed）
+- ✓ 完成：呼叫 attendance API（自動累計 `logCount = tankCount × participants` + VIP 重算；cash 未付清自動補齊）
+- ✗ 未到場：dialog 三選一處理已付款（不退 / 退現 100% / 轉禮金自訂 %）
+
+### B. 付款憑證審核
+- `GET /api/admin/payment-proofs?bookingId=` 列出憑證 + presigned URL（10 分鐘）
+- `POST .../[id]/verify` 一鍵核可（`paidAmount += amount`、`totalSpend` 累計、VIP 重算）
+- `POST .../[id]/reject` 拒絕（刪除紀錄）
+- 編輯訂單 dialog 新增「📄 付款憑證」區（縮圖 + 核可/拒絕）
+
+### C. 退款 dialog 百分比
+- refund API body 新增 `creditAmount`；UI 加 80/100/110/120 快選 + 自訂
+
+### D. LV1 客戶端限制
+- `/api/bookings/daily` 拒絕 LV1 + cash（403）；LIFF 預約頁 LV1 時「現場」按鈕變灰 + 鎖 + 預設改 bank
+
+### E. 3 個 cron（Bearer `CRON_SECRET`）
+1. `daily-settlement-reminder`（建議 09:00）— 推 LINE 給 admin 列待結算清單
+2. `lv1-prepay-reminder`（建議 00:30）— LV1 + 3 天內未付清催繳
+3. `cleanup-old-payment-proofs`（建議 03:00）— 清 R2 上 30 天前已核可憑證
+
+> ⚠️ 後續需在 Zeabur 註冊 3 個 cron schedule。
+
+---
+
+## 20260528_104 — 2026-05-28 (VIP 表格化 + 群發通知擴充)
+
+### VIP 設定頁
+- `/admin/vip-tiers` 由 5 個大 card 改為單一表格（等級 / 最低潛次 / 最低消費 / Key / 福利 / 操作）
+- 編輯按鈕開 light dialog；套用變更需點主頁「儲存 VIP 設定」才寫 DB
+
+### 群發通知
+- audience 新增「單一客戶」（搜尋選一位）與「場次參加者」（選 open 場次/潛水團 → 發給活躍訂單客戶）
+- 9 個訊息模板含預設罐頭文字 + 「填入罐頭文字」重置按鈕
+- API `audience` 枚舉新增 `single`（需 `singleUserId`）/ `trip`（需 `refType` + `refId`）
+
+---
+
+## 20260528_103 — 2026-05-28 (訂單「時序」欄改為「消費」狀態)
+
+### 變更
+- 替換 v102 純時間判斷為消費狀態：✓ 已消費(completed) / ✗ 未到場(no_show) / ⏳ 待消費(未到場次) / ⚠ 待結算(場次已過仍 pending|confirmed) / 已取消
+- admin 可一眼看出哪些訂單需結帳（待結算）、哪些已收尾
+
+---
+
+## 20260528_102 — 2026-05-28 (訂單表格新增「時序」欄)
+
+### 變更
+- 「客戶」與「場次」之間插入一欄：即將（場次 >= 今天，綠）/ 已過（< 今天，灰）/ —（無對應場次）
+- 已過場次訂單文字淡化；延用既有 `isPastDate()` helper
+
+---
+
+## 20260528_101 — 2026-05-28 (補 bookings/dive_sites 漏欄位 + 潛點 dialog 改淺色系)
+
+### Schema 補欄位（migrate-safety.js）
+- `bookings`：site_notes, admin_notes, participant_details, selected_addons, rental_gear, payment_method, cancellation_reason, refund_amount, refunded_at, refund_method, credit_used
+- `tour_packages`：deposit_reminder_days, final_reminder_days, guide_reminder_days
+- `dive_sites`：location_url（新增）
+
+### 潛點管理 dialog
+- 由深色海軍藍改淺色系（白底）；新增「位置 URL」欄；描述/備註移到底部跨整列
+- Prisma `DiveSite.locationUrl` + `/api/admin/sites` POST/PATCH schema 加 `locationUrl`
+
+---
+
+## 20260528_100 — 2026-05-28 (修 DB schema drift — 補齊 migrate-safety 漏掉的 ADD COLUMN)
+
+### Bug Fix
+- Root cause：`diving_trips.code does not exist`；`migrate-safety.js` 只有 `ALTER COLUMN code TYPE`，欄位不存在時被 EXCEPTION 靜默吞掉
+- 修法：三張表（diving_trips / tour_packages / bookings）加 `ADD COLUMN IF NOT EXISTS code VARCHAR(12)` + unique index
+- `/api/admin/bookings` + `/api/admin/tours` 加 try-catch + `tripIds` 空陣列保護
+- `docker-entrypoint.sh` 啟動時序：migrate-safety → prisma db push → backfill-codes → server
+
+---
+
+## 20260528_99 — 2026-05-28 (修 build 失敗 — BigInt 字面量)
+
+### Bug Fix
+- stats route 改用 `BigInt(0)` 取代 `0n` 字面量（ES2017 target 不支援），回傳型別改 `Array<{count: bigint}>` 與 `$queryRaw` 相容
+
+---
+
+## 20260528_98 — 2026-05-28 (系統初始重置 + trip dialog 三行佈局 + 修場次載入錯誤透出)
+
+### 變更
+- 新增 `POST /api/admin/reset-data/system-initial`：清營運資料但保留會員與 SiteConfig，並歸零會員衍生欄位（vipLevel/totalSpend/creditBalance/birthdayCreditYear）
+- 新增 `POST /api/admin/reset-data/orphans`：raw SQL 清孤兒 PaymentProof
+- `/admin/settings` 危險操作區新增「系統初始重置」按鈕
+- `/admin/trips` dialog 改三行佈局（日期+集合時間+狀態 / 潛點 chips / 教練+氣瓶+人數）
+- `GET /api/admin/trips` 加 try-catch；`/api/admin/stats` 改 raw SQL INNER JOIN 過濾孤兒 PaymentProof
+- `new-customer-initial-setting.md`：擴充 LINE 設定 SOP
+
+---
+
 ## 20260528_95 — 2026-05-28 (場次載入修復 + migrate-safety 補全)
 
 ### Bug Fix
