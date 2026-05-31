@@ -8,23 +8,36 @@ export const dynamic = "force-dynamic";
 
 const LIFF_ID = process.env.LINE_LIFF_ID ?? "";
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
+const FB_GROUP_URL = process.env.NEXT_PUBLIC_FB_GROUP_URL ?? "";
 
 // 每個 role 對應的 Rich Menu 結構：6 格 2×3
+// 客戶版佈局：
+//   [日潛水]      [潛水團]     [最新動態]
+//   [我的預約]    [FB 社群]    [個人中心]
 function richMenuSpec(role: "customer" | "coach" | "admin") {
   const linkFor = (p: string) =>
     LIFF_ID
       ? { type: "uri" as const, uri: `https://liff.line.me/${LIFF_ID}${p}` }
       : { type: "message" as const, text: p };
 
+  const externalLink = (uri: string) => ({ type: "uri" as const, uri });
+
   const cells = {
     customer: [
-      { path: "/calendar", text: "🤿 日潛預約" },
-      { path: "/tour", text: "🏝️ 潛水團" },
-      { path: "/my", text: "📋 我的預約" },
-      { path: "/welcome", text: "💰 價目" },
-      { path: "/profile", text: "👤 我的資料" },
-      { path: "/welcome", text: "📞 聯絡教練" },
-    ],
+      // 第一列
+      { action: linkFor("/calendar"), label: "日潛水 → 今日出航" },
+      { action: linkFor("/tour"), label: "潛水團 → 國內外行程" },
+      { action: linkFor("/media"), label: "最新動態 → 影像日誌" },
+      // 第二列
+      { action: linkFor("/my"), label: "我的預約 → 課程紀錄" },
+      {
+        action: FB_GROUP_URL
+          ? externalLink(FB_GROUP_URL)
+          : linkFor("/welcome"),
+        label: "FB 社群專區 → Facebook Group",
+      },
+      { action: linkFor("/profile"), label: "個人中心 → 潛水紀錄" },
+    ] as Array<{ action: { type: "uri"; uri: string } | { type: "message"; text: string }; label: string }>,
     coach: [
       { path: "/coach/today", text: "📅 今日場次" },
       { path: "/coach/schedule", text: "📋 排班" },
@@ -49,15 +62,17 @@ function richMenuSpec(role: "customer" | "coach" | "admin") {
   const areas = list.map((c, i) => {
     const col = i % 3;
     const row = Math.floor(i / 3);
-    return {
-      bounds: {
-        x: Math.round(col * areaW),
-        y: Math.round(row * areaH),
-        width: Math.round(areaW),
-        height: Math.round(areaH),
-      },
-      action: linkFor(c.path),
+    const bounds = {
+      x: Math.round(col * areaW),
+      y: Math.round(row * areaH),
+      width: Math.round(areaW),
+      height: Math.round(areaH),
     };
+    // customer 新版用 c.action（含外連 FB Group），其他 role 沿用 linkFor(c.path)
+    if ("action" in c) {
+      return { bounds, action: c.action };
+    }
+    return { bounds, action: linkFor(c.path) };
   });
 
   return {
