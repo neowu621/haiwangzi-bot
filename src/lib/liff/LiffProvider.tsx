@@ -195,18 +195,26 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
           if (token) {
             headers.set("authorization", `Bearer ${token}`);
           } else {
-            // 沒有 idToken — 觸發 LIFF login (使用者會被導到 LINE 授權頁)
+            // 沒有 idToken — 可能原因：
+            // 1. 未登入 → liff.login() 跳轉 LINE OAuth
+            // 2. 已登入但 LIFF Channel 沒勾 `openid` scope → 強制 logout 重來
             try {
               const liffMod = await import("@line/liff");
               const liff = liffMod.default;
-              if (!liff.isLoggedIn()) {
-                liff.login({ redirectUri: window.location.href });
-                throw new Error("LIFF login required, redirecting...");
+              if (liff.isLoggedIn()) {
+                // 已登入卻拿不到 idToken → scope 設定有問題，logout 重來
+                try { liff.logout(); } catch { /* ignore */ }
               }
+              liff.login({ redirectUri: window.location.href });
+              throw new Error("LIFF login required, redirecting...");
             } catch (e) {
               if (e instanceof Error && e.message.includes("redirecting")) {
                 throw e;
               }
+              // login 也失敗（可能 LIFF Channel scope 完全缺）→ 拋出明確錯誤
+              throw new Error(
+                "LIFF 登入失敗：請確認 LIFF Channel 已勾選 openid + profile scope，或聯絡管理員",
+              );
             }
           }
         }
