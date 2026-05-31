@@ -57,8 +57,7 @@ interface Site {
   cautions?: string | null;
 }
 
-const DIFF_LABELS: Record<string, string> = { easy: "初級", medium: "中級", hard: "進階" };
-const REGION_LABELS: Record<string, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "其他" };
+// DIFF_LABELS / REGION_LABELS 已移除（v153 起無潛點詳情面板）
 
 interface Coach {
   id: string;
@@ -379,7 +378,7 @@ export default function AdminTripsPage() {
       ["日期", "YYYY-MM-DD，例：2026-06-15。必填"],
       ["時間", "HH:MM，例：08:00、18:30。必填"],
       ["夜潛", "Y 或 N。留空時系統會自動依時間判斷（時間 ≥ 16:00 視為夜潛）"],
-      ["潛點名稱", "用後台「潛點管理」內的中文名稱，多個用半形或全形逗號分隔（找不到的會列為錯誤）"],
+      ["潛點名稱", "自由輸入（多個用半形或全形逗號分隔），系統不再強制對照潛點清單"],
       ["氣瓶數", "整數 1-5，留空預設 3"],
       ["人數上限", "整數 ≥ 0；填 0 代表無上限"],
       ["教練姓名", "用後台「教練管理」內的真實姓名，多位用逗號分隔（找不到的會列為錯誤）"],
@@ -415,7 +414,6 @@ export default function AdminTripsPage() {
       if (!ws) throw new Error("Excel 檔內沒有工作表");
 
       // 名稱 → id 對照（前端先解析，後端只認 id）
-      const siteByName = new Map(sites.map((s) => [s.name.trim(), s.id]));
       const coachByName = new Map(coaches.map((c) => [c.realName.trim(), c.id]));
 
       const cellText = (raw: unknown): string => {
@@ -483,14 +481,8 @@ export default function AdminTripsPage() {
         const nightRaw = cell(3);
         const isNightDive = nightRaw ? parseBool(nightRaw) : startTime >= "16:00";
 
-        // 潛點：中文名 → id  (col 4)
-        const siteNames = cell(4).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
-        const diveSiteIds: string[] = [];
-        for (const sn of siteNames) {
-          const sid = siteByName.get(sn);
-          if (sid) diveSiteIds.push(sid);
-          else localErrors.push({ row: idx, date: `${date} ${startTime}`, message: `找不到潛點「${sn}」（請先在「潛點管理」新增）` });
-        }
+        // 潛點：直接存入名稱（v153 起不再對照潛點管理表）
+        const diveSiteIds = cell(4).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
 
         // 教練：姓名 → id  (col 7)
         const coachNames = cell(7).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
@@ -576,9 +568,7 @@ export default function AdminTripsPage() {
     }
   }
 
-  function selectSiteId(id: string) {
-    setForm((f) => ({ ...f, diveSiteIds: f.diveSiteIds[0] === id ? [] : [id] }));
-  }
+  // selectSiteId 已移除（v153 起改文字輸入）
 
   function toggleCoachId(id: string) {
     setForm((f) => ({
@@ -935,72 +925,20 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* Row 2: 潛點（單獨一行，chips 自由換行） */}
+            {/* Row 2: 潛點 — 直接輸入（v153 起，多個用逗號分隔） */}
             <div>
-              <Label className="mb-1 block text-xs">潛點</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {loading ? (
-                  <span className="text-xs text-[var(--muted-foreground)]">載入中...</span>
-                ) : sites.length === 0 ? (
-                  <span className="text-xs text-[var(--muted-foreground)]">
-                    無潛點資料（請先至「潛點管理」新增）
-                  </span>
-                ) : (
-                  sites.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => selectSiteId(s.id)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                        form.diveSiteIds[0] === s.id
-                          ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)] font-semibold"
-                          : "border-[var(--border)] hover:bg-[var(--muted)]",
-                      )}
-                    >
-                      {s.name}
-                    </button>
-                  ))
-                )}
-              </div>
-              {/* 選取潛點後顯示詳情（自潛點管理同步） */}
-              {(() => {
-                const selectedSite = sites.find((s) => s.id === form.diveSiteIds[0]);
-                if (!selectedSite) return null;
-                const parts: string[] = [];
-                if (selectedSite.region) parts.push(`📍 ${REGION_LABELS[selectedSite.region] ?? selectedSite.region}`);
-                if (selectedSite.difficulty) parts.push(`難度 ${DIFF_LABELS[selectedSite.difficulty] ?? selectedSite.difficulty}`);
-                if (selectedSite.maxDepth) parts.push(`最大 ${selectedSite.maxDepth}m`);
-                return (
-                  <div className="mt-1.5 rounded-md bg-[var(--muted)]/40 p-2 text-[10px] space-y-1 border" style={{ borderColor: "var(--border)" }}>
-                    {parts.length > 0 && (
-                      <div className="font-medium text-[var(--foreground)]">{parts.join("　")}</div>
-                    )}
-                    {selectedSite.features && selectedSite.features.length > 0 && (
-                      <div className="text-[var(--muted-foreground)]">✦ {selectedSite.features.join("、")}</div>
-                    )}
-                    {selectedSite.description && (
-                      <div className="text-[var(--muted-foreground)]">{selectedSite.description}</div>
-                    )}
-                    {selectedSite.cautions && (
-                      <div className="text-amber-600">⚠️ {selectedSite.cautions}</div>
-                    )}
-                    {selectedSite.locationUrl && !form.meetingPointUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setForm({
-                          ...form,
-                          meetingPoint: form.meetingPoint || selectedSite.name,
-                          meetingPointUrl: selectedSite.locationUrl ?? "",
-                        })}
-                        className="text-[10px] text-[var(--color-phosphor)] hover:underline font-medium"
-                      >
-                        ↓ 自動帶入潛點位置 URL 到集合地點
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
+              <Label className="mb-1 block text-xs">潛點名稱</Label>
+              <Input
+                value={form.diveSiteIds.join(", ")}
+                onChange={(e) => {
+                  const names = e.target.value
+                    .split(/[,，、]/)
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  setForm({ ...form, diveSiteIds: names });
+                }}
+                placeholder="例：鶯歌石 或 鶯歌石, 深奧（多個用逗號分隔）"
+              />
             </div>
 
             {/* Row 3: 教練 + 氣瓶數 + 可參加人數 (三欄並排，教練佔較寬) */}

@@ -23,8 +23,7 @@ const DEST_FROM_LABEL: Record<string, Dest> = {
   "其他": "other",
 };
 
-// 潛點 minimal 型別（給 Excel 解析名稱用）
-interface SiteRef { id: string; name: string }
+// （v153 起：移除 SiteRef、不再從潛點管理對照）
 
 interface Tour {
   id: string;
@@ -67,9 +66,6 @@ export default function ToursPage() {
   const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
 
-  // 為 Excel 匯入準備的潛點清單（中文名 → id）
-  const [sites, setSites] = useState<SiteRef[]>([]);
-
   // Excel 匯入相關
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -93,10 +89,6 @@ export default function ToursPage() {
 
   useEffect(() => {
     load();
-    // 順便載入潛點清單（Excel 匯入要用）
-    adminFetch<SiteRef[]>("/api/admin/sites")
-      .then((arr) => setSites(Array.isArray(arr) ? arr : []))
-      .catch(() => {});
   }, []);
 
   function openCreate() {
@@ -217,7 +209,7 @@ export default function ToursPage() {
       ["人數上限", "整數，0 = 無上限"],
       ["訂金截止 / 尾款截止", "選填，留空則使用系統預設規則"],
       ["提醒天數", "Cron 自動發 LINE 推播的天數設定（預設 7 / 30 / 2）"],
-      ["潛點名稱", "用「潛點管理」內的中文名稱，多個用逗號分隔；找不到的會列為錯誤"],
+      ["潛點名稱", "自由輸入（多個用半形或全形逗號分隔），系統不再強制對照潛點清單"],
       ["包含 / 不含項目", "用半形或全形逗號、頓號分隔，例：船宿,早午晚餐"],
       ["匯入規則", "全部視為新增（不會更新既有團）；單次最多 100 筆"],
     ].forEach(([k, v]) => help.addRow({ k, v }));
@@ -247,7 +239,7 @@ export default function ToursPage() {
       const ws = wb.getWorksheet("潛水團") ?? wb.worksheets[0];
       if (!ws) throw new Error("Excel 檔內沒有工作表");
 
-      const siteByName = new Map(sites.map((s) => [s.name.trim(), s.id]));
+      // v153 起：不再用潛點清單對照，直接存名稱
 
       // 解析 Excel cell 為文字
       const cellText = (raw: unknown): string => {
@@ -296,14 +288,8 @@ export default function ToursPage() {
           return;
         }
 
-        // 潛點名稱 → id
-        const siteNames = cell(13).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
-        const diveSiteIds: string[] = [];
-        for (const sn of siteNames) {
-          const sid = siteByName.get(sn);
-          if (sid) diveSiteIds.push(sid);
-          else localErrors.push({ row: idx, title, message: `找不到潛點「${sn}」（請先在「潛點管理」新增）` });
-        }
+        // 潛點：直接存入名稱（v153 起不再對照潛點管理表）
+        const diveSiteIds = cell(13).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
 
         const depositDeadline = cell(8);
         const finalDeadline = cell(9);
