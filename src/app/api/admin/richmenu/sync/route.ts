@@ -135,30 +135,38 @@ export async function POST(req: NextRequest) {
   }
   const { richMenuId } = (await createRes.json()) as { richMenuId: string };
 
-  // 2. 上傳圖
-  const imgPath = path.join(
-    process.cwd(),
-    "public",
-    "richmenu",
-    `${target}.png`,
-  );
+  // 2. 上傳圖 — 優先 .jpg（檔案小、品質夠），fallback 到 .png
+  let imgPath = path.join(process.cwd(), "public", "richmenu", `${target}.jpg`);
+  let contentType = "image/jpeg";
+  if (!fs.existsSync(imgPath)) {
+    imgPath = path.join(process.cwd(), "public", "richmenu", `${target}.png`);
+    contentType = "image/png";
+  }
   if (!fs.existsSync(imgPath)) {
     return NextResponse.json(
       {
-        error: "PNG 不存在",
-        hint: `請先執行 npm run richmenu:build 產生 ${imgPath}`,
+        error: "圖片不存在",
+        hint: `請放 public/richmenu/${target}.jpg 或 .png（2500×1686, < 1 MB）`,
       },
       { status: 500 },
     );
   }
   const imgBuf = fs.readFileSync(imgPath);
+  if (imgBuf.length > 1024 * 1024) {
+    return NextResponse.json(
+      {
+        error: `圖片過大 (${(imgBuf.length / 1024).toFixed(0)} KB)，LINE 限制 1 MB`,
+      },
+      { status: 400 },
+    );
+  }
   const uploadRes = await fetch(
     `https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ACCESS_TOKEN}`,
-        "Content-Type": "image/png",
+        "Content-Type": contentType,
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       body: imgBuf as any,
