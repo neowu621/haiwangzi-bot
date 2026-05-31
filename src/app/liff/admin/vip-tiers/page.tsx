@@ -33,6 +33,7 @@ function emptyTier(level: number): VipTier {
     minLogs: 0,
     minSpend: 0,
     benefits: [],
+    upgradeCredit: 0,
     color: "#999999",
   };
 }
