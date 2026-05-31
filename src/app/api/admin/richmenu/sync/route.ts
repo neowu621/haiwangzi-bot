@@ -24,16 +24,18 @@ async function richMenuSpec(role: "customer" | "coach" | "admin") {
   // 故 sync 不再需要直接 inline 外部 URL。
 
   const cells = {
+    // 注意 LINE 規格：每格 action 必須有 label（< 20 字，無空白），
+    // 會出現在 LINE 統計後台 + 螢幕閱讀器
     customer: [
       // 第一列（A B C）
-      { action: linkFor("/calendar"), label: "A 日潛水 → 今日出航" },
-      { action: linkFor("/tour"), label: "B 潛水團 → 國內外行程" },
-      { action: linkFor("/community"), label: "C 最新動態 → FB / IG / YouTube 匯流頁" },
+      { action: { ...linkFor("/calendar"), label: "日潛水今日出航" }, label: "A 日潛水 → 今日出航" },
+      { action: { ...linkFor("/tour"), label: "潛水團國內外行程" }, label: "B 潛水團 → 國內外行程" },
+      { action: { ...linkFor("/community"), label: "最新動態與精彩內容" }, label: "C 最新動態 → FB / IG / YouTube 匯流頁" },
       // 第二列（D E F）
-      { action: linkFor("/my"), label: "D 我的預約 → 課程紀錄" },
-      { action: linkFor("/faq"), label: "E 常見問題 → FAQ / 退款政策 / VIP 福利" },
-      { action: linkFor("/profile"), label: "F 個人中心 → 潛水紀錄" },
-    ] as Array<{ action: { type: "uri"; uri: string } | { type: "message"; text: string }; label: string }>,
+      { action: { ...linkFor("/my"), label: "我的預約課程紀錄" }, label: "D 我的預約 → 課程紀錄" },
+      { action: { ...linkFor("/faq"), label: "常見問題FAQ" }, label: "E 常見問題 → FAQ" },
+      { action: { ...linkFor("/profile"), label: "個人中心潛水紀錄" }, label: "F 個人中心 → 潛水紀錄" },
+    ] as Array<{ action: { type: "uri"; uri: string; label?: string } | { type: "message"; text: string; label?: string }; label: string }>,
     coach: [
       { path: "/coach/today", text: "📅 今日場次" },
       { path: "/coach/schedule", text: "📋 排班" },
