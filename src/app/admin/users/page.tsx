@@ -632,7 +632,7 @@ export default function AdminUsersPage() {
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("totalSpend")}
                     >
-                      消費總計
+                      累計消費
                       <SortIcon k="totalSpend" />
                     </th>
                     <th
@@ -782,7 +782,7 @@ export default function AdminUsersPage() {
                           {u.haiwangziLogCount ?? 0}
                         </button>
                       </td>
-                      {/* 消費總計 */}
+                      {/* 累計消費 */}
                       <td className="px-4 py-3 tabular-nums text-xs">
                         {(u.totalSpend ?? 0) > 0
                           ? `NT$${(u.totalSpend ?? 0).toLocaleString()}`
