@@ -20,15 +20,8 @@ async function richMenuSpec(role: "customer" | "coach" | "admin") {
       ? { type: "uri" as const, uri: `https://liff.line.me/${LIFF_ID}${p}` }
       : { type: "message" as const, text: p };
 
-  const externalLink = (uri: string) => ({ type: "uri" as const, uri });
-
-  // 從 SiteConfig 讀外部連結（env 為 fallback，避免初次部署時 DB 還沒值）
-  const cfg = await prisma.siteConfig
-    .findUnique({ where: { id: "default" } })
-    .catch(() => null);
-  const links = (cfg?.externalLinks as Record<string, string> | null) ?? {};
-  const fbGroupUrl = links.fbGroupUrl || process.env.NEXT_PUBLIC_FB_GROUP_URL || "";
-  const mediaUrl = links.mediaUrl || ""; // 沒設時 fallback 到內部 /liff/media
+  // 外部連結現在透過 /liff/community 內部頁顯示（從 SiteConfig 動態讀），
+  // 故 sync 不再需要直接 inline 外部 URL。
 
   const cells = {
     customer: [
@@ -39,8 +32,9 @@ async function richMenuSpec(role: "customer" | "coach" | "admin") {
       // 第二列
       { action: linkFor("/my"), label: "我的預約 → 課程紀錄" },
       {
-        action: fbGroupUrl ? externalLink(fbGroupUrl) : linkFor("/welcome"),
-        label: "FB 社群專區 → Facebook Group（或 IG 等社群）",
+        // 社群匯流頁（顯示 FB + IG + YouTube + 其他依後台設定動態）
+        action: linkFor("/community"),
+        label: "社群動態 → FB / IG / YouTube 匯流頁",
       },
       { action: linkFor("/profile"), label: "個人中心 → 潛水紀錄" },
     ] as Array<{ action: { type: "uri"; uri: string } | { type: "message"; text: string }; label: string }>,
