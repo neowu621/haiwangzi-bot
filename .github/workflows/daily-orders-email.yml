@@ -1,0 +1,21 @@
+name: Daily Orders Email — 21:00 Asia/Taipei
+
+# 每天台灣時間 21:00 = UTC 13:00
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  send-daily-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 寄出今日訂單摘要 Email
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP %{http_code}\n" \
+            --fail-with-body \
+            https://haiwangzi.zeabur.app/api/cron/daily-orders-email

@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email/send";
 import { bookingConfirmEmail } from "@/lib/email/templates";
 import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
+import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +74,10 @@ const BodySchema = z.object({
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+
+  // Rate limit：30 次/分鐘 per user
+  const limited = checkRateLimit(req, { ...RATE_LIMIT.BOOKING, identifier: auth.lineUserId });
+  if (limited) return limited;
 
   const data = BodySchema.parse(await req.json());
 

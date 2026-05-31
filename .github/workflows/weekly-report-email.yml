@@ -1,0 +1,21 @@
+name: Weekly Report Email — Mon 09:00 Asia/Taipei
+
+# 每週一台灣時間 09:00 = UTC 01:00 (Monday)
+on:
+  schedule:
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+jobs:
+  send-weekly-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 寄出上週週報 Email
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP %{http_code}\n" \
+            --fail-with-body \
+            https://haiwangzi.zeabur.app/api/cron/weekly-report-email

@@ -38,12 +38,19 @@ function getTransporter(): Transporter {
   return _transporter;
 }
 
+export interface SendEmailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+}
+
 export interface SendEmailParams {
   to: string;
   subject: string;
   text?: string;
   html?: string;
   replyTo?: string;
+  attachments?: SendEmailAttachment[];
 }
 
 export interface SendEmailResult {
@@ -88,6 +95,7 @@ export async function sendEmail(
       subject: params.subject,
       text: params.text,
       html: params.html,
+      attachments: params.attachments,
     });
     console.log("[email] sent", {
       to: params.to,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createAdminWebJwt } from "@/lib/auth";
 import { verifyWebPassword } from "@/lib/admin-web-crypto";
 import { logAudit } from "@/lib/audit";
+import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,10 @@ function isAdminOrBoss(user: { role: string; roles: string[] }): boolean {
 // GET /api/admin-web/auth?secret=xxx
 // 列出所有 admin/boss 帳號，並標示每人是否已設個人密碼
 export async function GET(req: NextRequest) {
+  // Rate limit：5 次/分鐘 per IP，防管理密碼暴力破解
+  const limited = checkRateLimit(req, RATE_LIMIT.ADMIN_LOGIN);
+  if (limited) return limited;
+
   const url = new URL(req.url);
   const secret = url.searchParams.get("secret");
 
@@ -63,6 +68,10 @@ export async function GET(req: NextRequest) {
 // body: { secret, lineUserId, password }
 // 驗共用密碼 + 個人密碼 → 發 JWT
 export async function POST(req: NextRequest) {
+  // Rate limit：5 次/分鐘 per IP
+  const limited = checkRateLimit(req, RATE_LIMIT.ADMIN_LOGIN);
+  if (limited) return limited;
+
   let body: { secret?: string; lineUserId?: string; password?: string };
   try {
     body = await req.json();

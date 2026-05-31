@@ -156,6 +156,12 @@ export default function TripBookingPage({
         setTankCount(t.tankCount); // 預設用場次的最大潛次
       })
       .catch((e) => setError(e.message));
+
+    // 記錄瀏覽（高意願客戶分析用）— fire-and-forget
+    void liff.fetchWithAuth("/api/me/page-view", {
+      method: "POST",
+      body: JSON.stringify({ refType: "trip", refId: tripId }),
+    }).catch(() => { /* silent */ });
   }, [tripId, liff]);
 
   // 從後台讀取裝備租借費率（若有設定則覆蓋預設值）

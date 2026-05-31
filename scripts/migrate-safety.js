@@ -20,6 +20,17 @@ const PATCHES = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(64)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_reason TEXT`,
 
+  // v121: PageView 表（瀏覽追蹤 → 高意願客戶分析）
+  `CREATE TABLE IF NOT EXISTS page_views (
+     id TEXT PRIMARY KEY,
+     user_id VARCHAR(64) NOT NULL,
+     ref_type VARCHAR(16) NOT NULL,
+     ref_id VARCHAR(64) NOT NULL,
+     viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS page_views_user_idx ON page_views(user_id, viewed_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS page_views_ref_idx ON page_views(ref_type, ref_id, viewed_at DESC)`,
+
   // ── code 欄位（先 ADD，後 ALTER TYPE 至 VARCHAR(12)）─────────────────
   // 注意：必須先 ADD COLUMN IF NOT EXISTS，否則 ALTER TYPE 在欄位不存在時會靜默失敗
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,

@@ -497,3 +497,16 @@ model AuditLog {
   @@index([action])
   @@index([createdAt(sort: Desc)])
 }
+
+// 客戶瀏覽紀錄（用於「看過但沒下單」高意願客戶分析）
+model PageView {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id") @db.VarChar(64)
+  refType   String   @map("ref_type") @db.VarChar(16)  // "trip" | "tour"
+  refId     String   @map("ref_id") @db.VarChar(64)
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz
+
+  @@map("page_views")
+  @@index([userId, viewedAt(sort: Desc)])
+  @@index([refType, refId, viewedAt(sort: Desc)])
+}
