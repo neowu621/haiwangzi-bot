@@ -742,13 +742,12 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
-                      {/* VIP */}
+                      {/* VIP — 純文字「LV1 鯨鯊」格式，不加背景色 */}
                       <td className="px-4 py-3">
                         {u.vipLevel > 0 ? (
-                          <Badge variant="gold" className="gap-0.5 text-[10px]">
-                            <Crown className="h-2.5 w-2.5" />
-                            {vipLabel(u.vipLevel)}
-                          </Badge>
+                          <span className="text-xs font-medium tabular-nums" style={{ color: "var(--foreground)" }}>
+                            LV{u.vipLevel} {getVipTier(u.vipLevel).name}
+                          </span>
                         ) : (
                           <span className="text-xs text-[var(--muted-foreground)]">
                             —
