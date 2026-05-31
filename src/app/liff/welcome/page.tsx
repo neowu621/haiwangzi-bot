@@ -137,9 +137,13 @@ export default function WelcomePage() {
             </div>
           </div>
 
+          {/* 👋 尚未登入 LINE — 提示加好友 + 手機使用 */}
           {!liff.loggedIn && liff.mode === "real" && liff.ready && (
             <div className="relative mt-5 rounded-lg bg-white/10 p-3 backdrop-blur">
-              <p className="text-sm">尚未登入 LINE，部分功能需登入後使用</p>
+              <p className="text-sm font-semibold">尚未登入 LINE</p>
+              <p className="mt-1 text-[11px] opacity-80">
+                💡 請先用<b className="text-[var(--color-phosphor)]">手機 LINE</b>加我們為好友，再使用預約 / 查詢 / 取得行前通知。
+              </p>
               <Button
                 onClick={liff.login}
                 variant="ocean"
@@ -148,6 +152,30 @@ export default function WelcomePage() {
                 使用 LINE 登入
               </Button>
             </div>
+          )}
+
+          {/* 🔔 已登入但尚未加好友 — 強提示去加好友 */}
+          {liff.loggedIn && liff.mode === "real" && liff.isFriend === false && (
+            <Link href="/liff/add-friend">
+              <div
+                className="relative mt-5 rounded-lg border p-3 backdrop-blur transition-colors hover:opacity-90"
+                style={{
+                  background: "rgba(6,199,85,0.18)",
+                  borderColor: "rgba(6,199,85,0.5)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="text-xl">💚</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold">請先加我們 LINE 好友</div>
+                    <div className="text-[11px] opacity-90">
+                      加好友後才能用手機預約、查訂單、接收行前通知
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 opacity-80" />
+                </div>
+              </div>
+            </Link>
           )}
 
           {/* 首次登入提示填 email */}
