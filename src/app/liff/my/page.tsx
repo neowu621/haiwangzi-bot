@@ -68,7 +68,7 @@ interface MyBooking {
   rentalGear: RentalGear[];
   notes: string | null;
   ref:
-    | { date: string; startTime: string; sites: string[] }
+    | { date: string; startTime: string; sites: string[]; tankCount?: number }
     | { title: string; dateStart: string; dateEnd: string; sites: string[] }
     | null;
   paymentProofs: Array<{
@@ -321,6 +321,12 @@ function BookingCard({
             <Badge variant="muted" className="text-[10px]">
               ×{b.participants} 人
             </Badge>
+            {/* 日潛：顯示氣瓶總數 (人數 × 場次氣瓶) */}
+            {isDaily && ref && "tankCount" in ref && ref.tankCount && (
+              <Badge variant="muted" className="text-[10px]">
+                ×{b.participants * ref.tankCount} 支
+              </Badge>
+            )}
           </div>
           <Badge
             variant={

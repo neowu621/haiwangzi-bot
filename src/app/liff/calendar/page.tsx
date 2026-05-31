@@ -10,6 +10,7 @@ import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
+// capacity / available 可能為 null（場次無上限時）
 interface Trip {
   id: string;
   date: string;
@@ -17,9 +18,9 @@ interface Trip {
   isNightDive: boolean;
   isScooter: boolean;
   tankCount: number;
-  capacity: number;
+  capacity: number | null;    // null = 無上限
   booked: number;
-  available: number;
+  available: number | null;   // null = 無上限
   sites: Array<{ id: string; name: string } | null>;
 }
 
@@ -198,7 +199,8 @@ export default function CalendarPage() {
               (t) => !t.isNightDive && t.startTime >= "14:00",
             );
             const hasNight = dayTrips.some((t) => t.isNightDive);
-            const totalAvail = dayTrips.reduce((s, t) => s + t.available, 0);
+            // available 為 null（無上限）視為 ∞，這裡用 0 累加避免 NaN
+            const totalAvail = dayTrips.reduce((s, t) => s + (t.available ?? 0), 0);
 
             return (
               <Link
@@ -307,14 +309,23 @@ export default function CalendarPage() {
                     )}
                   </div>
                   <div className="text-xs text-[var(--muted-foreground)] tabular">
-                    {t.startTime} · 剩 {t.available}/{t.capacity}
+                    {t.startTime} ·{" "}
+                    {t.capacity == null
+                      ? `已報 ${t.booked} 人`
+                      : t.available === 0
+                      ? "已滿"
+                      : `剩 ${t.available}/${t.capacity}`}
                   </div>
                 </div>
                 <Badge
-                  variant={t.available <= 2 ? "coral" : "muted"}
+                  variant={t.available != null && t.available <= 2 ? "coral" : "muted"}
                   className="tabular"
                 >
-                  {t.available <= 2 ? "即將額滿" : "可預約"}
+                  {t.available === 0
+                    ? "已滿"
+                    : t.available != null && t.available <= 2
+                    ? "即將額滿"
+                    : "可預約"}
                 </Badge>
               </Card>
             </Link>

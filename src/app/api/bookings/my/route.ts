@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
                 date: (ref as typeof trips[number]).date.toISOString().slice(0, 10),
                 startTime: (ref as typeof trips[number]).startTime,
                 sites: refSites,
+                tankCount: (ref as typeof trips[number]).tankCount,
               }
             : {
                 title: (ref as typeof tours[number]).title,
