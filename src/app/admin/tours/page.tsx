@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
@@ -7,11 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Ban } from "lucide-react";
+import { Plus, Edit3, Trash2, Ban, Upload, Download, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ExcelJS from "exceljs";
 
 type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
 const DEST_LABELS: Record<Dest, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "其他" };
+
+// 中文 → 英文 區域對照（Excel 匯入用）
+const DEST_FROM_LABEL: Record<string, Dest> = {
+  "東北角": "northeast", "northeast": "northeast",
+  "綠島": "green_island", "green_island": "green_island",
+  "蘭嶼": "lanyu", "lanyu": "lanyu",
+  "墾丁": "kenting", "kenting": "kenting",
+  "其他": "other", "other": "other",
+};
+
+// 潛點 minimal 型別（給 Excel 解析名稱用）
+interface SiteRef { id: string; name: string }
 
 interface Tour {
   id: string;
@@ -54,6 +67,18 @@ export default function ToursPage() {
   const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
 
+  // 為 Excel 匯入準備的潛點清單（中文名 → id）
+  const [sites, setSites] = useState<SiteRef[]>([]);
+
+  // Excel 匯入相關
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total: number;
+    created: number;
+    errors: { row: number; title: string; message: string }[];
+  } | null>(null);
+
   async function load() {
     try {
       setLoading(true);
@@ -66,7 +91,13 @@ export default function ToursPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // 順便載入潛點清單（Excel 匯入要用）
+    adminFetch<SiteRef[]>("/api/admin/sites")
+      .then((arr) => setSites(Array.isArray(arr) ? arr : []))
+      .catch(() => {});
+  }, []);
 
   function openCreate() {
     setForm(BLANK); setEditingId(null); setDialogMode("create");
@@ -104,6 +135,228 @@ export default function ToursPage() {
       setErr(e instanceof Error ? e.message : "儲存失敗");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Excel 範本下載 + 上傳匯入 ──────────────────────────────────────
+  async function downloadTourTemplate() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("潛水團");
+    ws.columns = [
+      { header: "標題（必填）", key: "title", width: 28 },
+      { header: "目的地（東北角/綠島/蘭嶼/墾丁/其他，必填）", key: "destination", width: 22 },
+      { header: "出發日（YYYY-MM-DD，必填）", key: "dateStart", width: 18 },
+      { header: "結束日（YYYY-MM-DD，必填）", key: "dateEnd", width: 18 },
+      { header: "團費（必填，整數）", key: "basePrice", width: 14 },
+      { header: "訂金（必填，整數）", key: "deposit", width: 12 },
+      { header: "人數上限（0=∞）", key: "capacity", width: 14 },
+      { header: "訂金截止日（YYYY-MM-DD，選填）", key: "depositDeadline", width: 22 },
+      { header: "尾款截止日（YYYY-MM-DD，選填）", key: "finalDeadline", width: 22 },
+      { header: "訂金截止前 N 天提醒", key: "depositReminderDays", width: 18 },
+      { header: "尾款截止前 N 天提醒", key: "finalReminderDays", width: 18 },
+      { header: "出發前 N 天發手冊提醒", key: "guideReminderDays", width: 20 },
+      { header: "潛點名稱（逗號分隔，例：藍洞,雞善嶼）", key: "sites", width: 30 },
+      { header: "包含項目（逗號分隔）", key: "includes", width: 30 },
+      { header: "不含項目（逗號分隔）", key: "excludes", width: 30 },
+    ];
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 32;
+
+    // 範例列
+    ws.addRow({
+      title: "綠島 3 天 2 夜潛水團",
+      destination: "綠島",
+      dateStart: "2026-07-18",
+      dateEnd: "2026-07-20",
+      basePrice: 18500,
+      deposit: 5000,
+      capacity: 12,
+      depositDeadline: "2026-06-20",
+      finalDeadline: "2026-07-10",
+      depositReminderDays: 7,
+      finalReminderDays: 30,
+      guideReminderDays: 2,
+      sites: "大白沙,雞善嶼,柴口",
+      includes: "船宿, 早午晚餐, 接駁, 氣瓶",
+      excludes: "個人裝備, 保險, 行前住宿",
+    });
+    ws.addRow({
+      title: "墾丁 2 天 1 夜深潛體驗",
+      destination: "墾丁",
+      dateStart: "2026-08-15",
+      dateEnd: "2026-08-16",
+      basePrice: 9800,
+      deposit: 3000,
+      capacity: 10,
+      depositDeadline: "",
+      finalDeadline: "",
+      depositReminderDays: 7,
+      finalReminderDays: 30,
+      guideReminderDays: 2,
+      sites: "後壁湖,出水口",
+      includes: "民宿, 早餐, 氣瓶",
+      excludes: "個人裝備",
+    });
+
+    // 欄位說明 worksheet
+    const help = wb.addWorksheet("欄位說明");
+    help.columns = [
+      { header: "欄位", key: "k", width: 22 },
+      { header: "說明", key: "v", width: 70 },
+    ];
+    help.getRow(1).font = { bold: true };
+    [
+      ["標題", "顯示在 LIFF 與後台的團名（建議含目的地 + 天數）"],
+      ["目的地", "東北角 / 綠島 / 蘭嶼 / 墾丁 / 其他（亦可填英文）"],
+      ["出發日 / 結束日", "YYYY-MM-DD"],
+      ["團費", "全程含稅總價（不含個人裝備）"],
+      ["訂金", "訂金金額（NT$）"],
+      ["人數上限", "整數，0 = 無上限"],
+      ["訂金截止 / 尾款截止", "選填，留空則使用系統預設規則"],
+      ["提醒天數", "Cron 自動發 LINE 推播的天數設定（預設 7 / 30 / 2）"],
+      ["潛點名稱", "用「潛點管理」內的中文名稱，多個用逗號分隔；找不到的會列為錯誤"],
+      ["包含 / 不含項目", "用半形或全形逗號、頓號分隔，例：船宿,早午晚餐"],
+      ["匯入規則", "全部視為新增（不會更新既有團）；單次最多 100 筆"],
+    ].forEach(([k, v]) => help.addRow({ k, v }));
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tours_template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleTourFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setErr(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const ws = wb.getWorksheet("潛水團") ?? wb.worksheets[0];
+      if (!ws) throw new Error("Excel 檔內沒有工作表");
+
+      const siteByName = new Map(sites.map((s) => [s.name.trim(), s.id]));
+
+      // 解析 Excel cell 為文字
+      const cellText = (raw: unknown): string => {
+        if (raw == null) return "";
+        if (typeof raw === "string") return raw.trim();
+        if (typeof raw === "number") return String(raw);
+        if (raw instanceof Date) {
+          // 日期：以台北時區轉 YYYY-MM-DD
+          const d = new Date(raw.getTime() + 8 * 60 * 60 * 1000);
+          return d.toISOString().slice(0, 10);
+        }
+        if (typeof raw === "object" && "text" in raw) {
+          return String((raw as { text: string }).text).trim();
+        }
+        return String(raw).trim();
+      };
+      const parseInt0 = (s: string, dflt = 0): number => {
+        const n = parseInt(s.replace(/[^\d-]/g, ""), 10);
+        return Number.isNaN(n) ? dflt : n;
+      };
+
+      const rows: Array<Record<string, unknown>> = [];
+      const localErrors: { row: number; title: string; message: string }[] = [];
+      let rowIdx = 0;
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return; // skip header
+        rowIdx = idx;
+        const cell = (col: number) => cellText(row.getCell(col).value);
+        const title = cell(1);
+        const destRaw = cell(2);
+        const dateStart = cell(3);
+        const dateEnd = cell(4);
+        if (!title) return; // 跳過空白列
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStart)) {
+          localErrors.push({ row: idx, title, message: "出發日格式錯誤，應為 YYYY-MM-DD" });
+          return;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateEnd)) {
+          localErrors.push({ row: idx, title, message: "結束日格式錯誤，應為 YYYY-MM-DD" });
+          return;
+        }
+        const destination = DEST_FROM_LABEL[destRaw];
+        if (!destination) {
+          localErrors.push({ row: idx, title, message: `目的地「${destRaw}」不在 (東北角/綠島/蘭嶼/墾丁/其他)` });
+          return;
+        }
+
+        // 潛點名稱 → id
+        const siteNames = cell(13).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+        const diveSiteIds: string[] = [];
+        for (const sn of siteNames) {
+          const sid = siteByName.get(sn);
+          if (sid) diveSiteIds.push(sid);
+          else localErrors.push({ row: idx, title, message: `找不到潛點「${sn}」（請先在「潛點管理」新增）` });
+        }
+
+        const depositDeadline = cell(8);
+        const finalDeadline = cell(9);
+
+        rows.push({
+          title,
+          destination,
+          dateStart,
+          dateEnd,
+          basePrice: parseInt0(cell(5)),
+          deposit: parseInt0(cell(6)),
+          capacity: parseInt0(cell(7), 10),
+          depositDeadline: depositDeadline && /^\d{4}-\d{2}-\d{2}$/.test(depositDeadline) ? depositDeadline : "",
+          finalDeadline: finalDeadline && /^\d{4}-\d{2}-\d{2}$/.test(finalDeadline) ? finalDeadline : "",
+          depositReminderDays: parseInt0(cell(10), 7),
+          finalReminderDays: parseInt0(cell(11), 30),
+          guideReminderDays: parseInt0(cell(12), 2),
+          diveSiteIds,
+          includes: cell(14).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          excludes: cell(15).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+        });
+      });
+
+      if (rowIdx === 0) {
+        throw new Error("檔案內沒有資料");
+      }
+      if (rows.length === 0 && localErrors.length > 0) {
+        setImportResult({ total: 0, created: 0, errors: localErrors });
+        return;
+      }
+      if (rows.length === 0) {
+        throw new Error("沒有可匯入的資料（請至少填寫標題、出發日、結束日、目的地）");
+      }
+
+      const res = await adminFetch<{
+        ok: boolean; total: number; created: number;
+        errors: { row: number; title: string; message: string }[];
+      }>("/api/admin/tours/bulk-import", {
+        method: "POST",
+        body: JSON.stringify({ rows }),
+      });
+
+      setImportResult({
+        total: res.total + localErrors.length,
+        created: res.created,
+        errors: [...localErrors, ...res.errors],
+      });
+      await load();
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : "Excel 匯入失敗");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -146,10 +399,56 @@ export default function ToursPage() {
             ))}
           </div>
           <div className="flex-1" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleTourFileUpload}
+            className="hidden"
+          />
+          <Button size="sm" variant="outline" onClick={downloadTourTemplate} title="下載 Excel 範本">
+            <Download className="mr-1.5 h-4 w-4" />下載範本
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            <Upload className="mr-1.5 h-4 w-4" />
+            {importing ? "匯入中..." : "Excel 匯入"}
+          </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />新增潛水團
           </Button>
         </div>
+
+        {/* 匯入結果回饋 */}
+        {importResult && (
+          <div className="rounded-lg border p-3 text-sm" style={{
+            borderColor: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.4)" : "rgba(251, 191, 36, 0.4)",
+            background: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.08)" : "rgba(251, 191, 36, 0.08)",
+          }}>
+            <div className="flex items-center gap-2 font-semibold mb-1.5">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>匯入完成：</span>
+              <span className="text-green-700">新增 {importResult.created}</span>
+              {importResult.errors.length > 0 && (
+                <span className="text-amber-700">失敗 {importResult.errors.length}</span>
+              )}
+              <button
+                onClick={() => setImportResult(null)}
+                className="ml-auto text-xs text-[var(--muted-foreground)] hover:underline"
+              >
+                關閉
+              </button>
+            </div>
+            {importResult.errors.length > 0 && (
+              <div className="mt-2 space-y-0.5 max-h-32 overflow-y-auto text-xs">
+                {importResult.errors.map((er, i) => (
+                  <div key={i} className="text-amber-800">
+                    第 {er.row} 列（{er.title || "—"}）：{er.message}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-[var(--muted-foreground)]">載入中...</div>
