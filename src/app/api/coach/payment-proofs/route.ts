@@ -5,7 +5,7 @@ import { authFromRequest, requireRole } from "@/lib/auth";
 import { sendEmail } from "@/lib/email/send";
 import { paymentReceivedEmail } from "@/lib/email/templates";
 import { computeVipLevel, normalizeVipTiers, VIP_TIERS } from "@/lib/vip-tier";
-import { grantCredit, vipUpgradeCreditAmount } from "@/lib/credit";
+import { grantVipUpgradeRewards } from "@/lib/vip-upgrade-rewards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -149,25 +149,16 @@ async function promoteVipIfNeeded(lineUserId: string, addAmount: number) {
   }
   await prisma.user.update({ where: { lineUserId }, data: updates });
 
-  // 升等獎勵 — 對「跨等級」的每一階都發一次（避免一次升 1→3 漏發）
+  // 升等獎勵 — 對「跨等級」的每一階都發一次（從新版 VipTier.upgradeCredit 讀）
   if (isUpgrade) {
-    for (let lv = (user.vipLevel ?? 1) + 1; lv <= newLevel; lv++) {
-      const amount = vipUpgradeCreditAmount(cfg?.vipUpgradeCredits, lv);
-      if (amount > 0) {
-        try {
-          await grantCredit({
-            userId: lineUserId,
-            amount,
-            reason: "vip_upgrade",
-            refType: "vip",
-            refId: String(lv),
-            note: `升等 LV${lv} 獎勵`,
-          });
-          console.log(`[credit] ${lineUserId} 升 LV${lv} 獲 NT$${amount}`);
-        } catch (e) {
-          console.error("[grant vip credit]", e);
-        }
-      }
+    const granted = await grantVipUpgradeRewards(
+      lineUserId,
+      user.vipLevel ?? 1,
+      newLevel,
+      tiers,
+    );
+    if (granted > 0) {
+      console.log(`[credit] ${lineUserId} 升等 → 共發 NT$${granted}`);
     }
   }
 }

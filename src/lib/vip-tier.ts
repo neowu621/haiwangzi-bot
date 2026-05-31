@@ -17,8 +17,10 @@ export interface VipTier {
   minLogs: number;
   /** 達到此等級所需最低累計消費 (NT$) */
   minSpend: number;
-  /** 福利描述（簡短） */
+  /** 福利描述（簡短，也作為客戶端 FAQ 內容） */
   benefits: string[];
+  /** 升級獎勵禮金 (NT$)。會員首次達到此 LV 時自動發放，每個 LV 僅一次 */
+  upgradeCredit: number;
   /** UI 配色 */
   color: string;
 }
@@ -36,6 +38,7 @@ export const VIP_TIERS: VipTier[] = [
       "潛水裝備租借 95 折",
       "基礎會員電子報",
     ],
+    upgradeCredit: 0, // 起始等級不發
     color: "#FFB1B1", // pinkish
   },
   {
@@ -51,6 +54,7 @@ export const VIP_TIERS: VipTier[] = [
       "個人裝備購買專屬折扣",
       "生日當月一般潛水行程 9 折",
     ],
+    upgradeCredit: 200,
     color: "#FF7B5A", // coral (品牌色)
   },
   {
@@ -66,6 +70,7 @@ export const VIP_TIERS: VipTier[] = [
       "免費高氧氣瓶升級（每月限次）",
       "每年免費基礎裝備健檢服務",
     ],
+    upgradeCredit: 500,
     color: "#00D9CB", // phosphor (品牌色)
   },
   {
@@ -81,6 +86,7 @@ export const VIP_TIERS: VipTier[] = [
       "進階潛水課程專屬優惠",
       "熱門海外行程早鳥優先卡位權",
     ],
+    upgradeCredit: 1000,
     color: "#1B3A5C", // ocean (品牌色)
   },
   {
@@ -97,6 +103,7 @@ export const VIP_TIERS: VipTier[] = [
       "海外特殊行程保證名額 + 最高折扣",
       "年底高級 VIP 專屬感恩晚宴",
     ],
+    upgradeCredit: 3000,
     color: "#FFB800", // gold (品牌色)
   },
 ];
@@ -177,6 +184,7 @@ export function normalizeVipTiers(raw: unknown): VipTier[] {
       minLogs: Math.max(0, Number(t.minLogs)),
       minSpend: Math.max(0, Number(t.minSpend)),
       benefits: Array.isArray(t.benefits) ? t.benefits : [],
+      upgradeCredit: Math.max(0, Number(t.upgradeCredit ?? 0)),
       color: t.color,
     }));
   } catch {

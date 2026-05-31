@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { grantCredit, vipUpgradeCreditAmount } from "@/lib/credit";
+import { grantVipUpgradeRewards } from "@/lib/vip-upgrade-rewards";
 import {
   computeVipLevel,
   normalizeVipTiers,
@@ -125,22 +125,11 @@ async function promoteVipIfNeeded(lineUserId: string, addAmount: number) {
   await prisma.user.update({ where: { lineUserId }, data: updates });
 
   if (isUpgrade) {
-    for (let lv = (user.vipLevel ?? 1) + 1; lv <= newLevel; lv++) {
-      const amount = vipUpgradeCreditAmount(cfg?.vipUpgradeCredits, lv);
-      if (amount > 0) {
-        try {
-          await grantCredit({
-            userId: lineUserId,
-            amount,
-            reason: "vip_upgrade",
-            refType: "vip",
-            refId: String(lv),
-            note: `升等 LV${lv} 獎勵`,
-          });
-        } catch (e) {
-          console.error("[grant vip credit]", e);
-        }
-      }
-    }
+    await grantVipUpgradeRewards(
+      lineUserId,
+      user.vipLevel ?? 1,
+      newLevel,
+      tiers,
+    );
   }
 }

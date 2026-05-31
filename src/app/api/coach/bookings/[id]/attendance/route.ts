@@ -7,7 +7,7 @@ import {
   normalizeVipTiers,
   VIP_TIERS,
 } from "@/lib/vip-tier";
-import { grantCredit, vipUpgradeCreditAmount } from "@/lib/credit";
+import { grantVipUpgradeRewards } from "@/lib/vip-upgrade-rewards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,28 +94,14 @@ export async function POST(
             where: { lineUserId: booking.userId },
             data: { vipLevel: newLevel },
           });
-          // 升等 → 發禮金（每跨一階都發）
+          // 升等 → 發禮金（每跨一階都發，從新版 VipTier.upgradeCredit 讀）
           if (newLevel > oldLevel) {
-            for (let lv = oldLevel + 1; lv <= newLevel; lv++) {
-              const amount = vipUpgradeCreditAmount(
-                cfg?.vipUpgradeCredits,
-                lv,
-              );
-              if (amount > 0) {
-                try {
-                  await grantCredit({
-                    userId: booking.userId,
-                    amount,
-                    reason: "vip_upgrade",
-                    refType: "vip",
-                    refId: String(lv),
-                    note: `升等 LV${lv} 獎勵（到場累積）`,
-                  });
-                } catch (e) {
-                  console.error("[grant vip credit / attendance]", e);
-                }
-              }
-            }
+            await grantVipUpgradeRewards(
+              booking.userId,
+              oldLevel,
+              newLevel,
+              tiers,
+            );
           }
         }
       }

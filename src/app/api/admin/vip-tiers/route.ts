@@ -8,6 +8,7 @@ import {
   computeVipLevel,
   type VipTier,
 } from "@/lib/vip-tier";
+import { grantVipUpgradeRewards } from "@/lib/vip-upgrade-rewards";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
@@ -41,6 +42,7 @@ const TierSchema = z.object({
   minLogs: z.number().int().min(0),
   minSpend: z.number().int().min(0),
   benefits: z.array(z.string()).default([]),
+  upgradeCredit: z.number().int().min(0).default(0),
   color: z.string().default("#999"),
 });
 
@@ -90,19 +92,31 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 重算所有 user vipLevel
+    // 重算所有 user vipLevel + 升等者發放禮金
     const users = await prisma.user.findMany({
       select: { lineUserId: true, logCount: true, totalSpend: true, vipLevel: true },
     });
     let promoted = 0;
+    let totalCreditGranted = 0;
     for (const u of users) {
+      const oldLevel = u.vipLevel ?? 1;
       const newLevel = computeVipLevel(u.logCount ?? 0, u.totalSpend ?? 0, tiers);
-      if (newLevel !== u.vipLevel) {
+      if (newLevel !== oldLevel) {
         await prisma.user.update({
           where: { lineUserId: u.lineUserId },
           data: { vipLevel: newLevel },
         });
         promoted++;
+        // 只有升等才發禮金（降等不退錢）
+        if (newLevel > oldLevel) {
+          totalCreditGranted += await grantVipUpgradeRewards(
+            u.lineUserId,
+            oldLevel,
+            newLevel,
+            tiers,
+            auth.user.lineUserId,
+          );
+        }
       }
     }
 
@@ -118,6 +132,7 @@ export async function POST(req: NextRequest) {
       tiers,
       recalculated: users.length,
       promoted,
+      creditGranted: totalCreditGranted,
     });
   } catch (e) {
     console.error("[POST /admin/vip-tiers]", e);
