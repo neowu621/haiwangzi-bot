@@ -665,6 +665,7 @@ export default function AdminBookingsPage() {
                                       <th className="px-6 py-2 font-semibold">姓名</th>
                                       <th className="px-4 py-2 font-semibold">電話</th>
                                       <th className="px-4 py-2 font-semibold text-right">人數</th>
+                                      <th className="px-4 py-2 font-semibold text-right">氣瓶</th>
                                       <th className="px-4 py-2 font-semibold text-right">已付/總額</th>
                                       <th className="px-4 py-2 font-semibold">付款狀態</th>
                                       <th className="px-4 py-2 font-semibold">方式</th>
@@ -704,6 +705,16 @@ export default function AdminBookingsPage() {
                                         </td>
                                         <td className="px-4 py-2.5 text-right tabular-nums font-medium">
                                           ×{b.participants}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right tabular-nums text-xs" style={{ color: "#4a6a88" }}>
+                                          {g.tankCount != null
+                                            ? `${g.tankCount * b.participants} 支`
+                                            : "—"}
+                                          {g.tankCount != null && b.participants > 1 && (
+                                            <span className="ml-1 text-[10px] opacity-60">
+                                              ({b.participants}×{g.tankCount})
+                                            </span>
+                                          )}
                                         </td>
                                         <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: "#4a6a88" }}>
                                           {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
