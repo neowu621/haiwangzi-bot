@@ -37,23 +37,30 @@ interface Stats {
   highIntentLeads?: Array<{ name: string; tripDate: string; tripSite: string; viewedAt: string; refId: string }>;
 }
 
+// 淺色卡片：白底 + 淡灰邊 + 輕微陰影
 const cardStyle: React.CSSProperties = {
-  background: "var(--color-ocean-surface)",
-  border: "1px solid rgba(255,255,255,0.1)",
+  background: "#ffffff",
+  border: "1px solid rgba(10, 35, 66, 0.08)",
+  boxShadow: "0 1px 2px rgba(10, 35, 66, 0.04)",
 };
-const subStyle: React.CSSProperties = { color: "rgba(230,240,255,0.45)" };
+// 標題文字
+const headingStyle: React.CSSProperties = { color: "var(--color-ocean-deep)" };
+// 次要說明文字（對比 4.5+）
+const subStyle: React.CSSProperties = { color: "#64748b" };
+// 主要數字 / 強調文字
+const valueStyle: React.CSSProperties = { color: "var(--color-ocean-deep)" };
 
 const SHORTCUTS = [
-  { href: "/admin/bookings", icon: BookOpen, label: "訂單管理", color: "var(--color-phosphor)" },
-  { href: "/admin/trips",    icon: Waves,    label: "日潛場次", color: "#34d399" },
-  { href: "/admin/tours",    icon: Ship,     label: "潛水團",   color: "#a78bfa" },
-  { href: "/admin/users",    icon: Users,    label: "會員管理", color: "#60a5fa" },
-  { href: "/admin/coaches",  icon: GraduationCap, label: "教練", color: "#f59e0b" },
-  { href: "/admin/sites",    icon: MapPin,   label: "潛點",     color: "#f472b6" },
-  { href: "/admin/reports",  icon: BarChart2,label: "報表",     color: "#4ade80" },
-  { href: "/admin/broadcast",icon: Megaphone,label: "群發通知", color: "#fb923c" },
-  { href: "/admin/vip-tiers",icon: Star,     label: "VIP 設定", color: "#fbbf24" },
-  { href: "/admin/settings", icon: Settings, label: "系統設定", color: "#94a3b8" },
+  { href: "/admin/bookings", icon: BookOpen,      label: "訂單管理", color: "#0891b2" }, // cyan-600
+  { href: "/admin/trips",    icon: Waves,         label: "日潛場次", color: "#059669" }, // emerald-600
+  { href: "/admin/tours",    icon: Ship,          label: "潛水團",   color: "#7c3aed" }, // violet-600
+  { href: "/admin/users",    icon: Users,         label: "會員管理", color: "#2563eb" }, // blue-600
+  { href: "/admin/coaches",  icon: GraduationCap, label: "教練",     color: "#d97706" }, // amber-600
+  { href: "/admin/sites",    icon: MapPin,        label: "潛點",     color: "#db2777" }, // pink-600
+  { href: "/admin/reports",  icon: BarChart2,     label: "報表",     color: "#16a34a" }, // green-600
+  { href: "/admin/broadcast",icon: Megaphone,     label: "群發通知", color: "#ea580c" }, // orange-600
+  { href: "/admin/vip-tiers",icon: Star,          label: "VIP 設定", color: "#ca8a04" }, // yellow-600
+  { href: "/admin/settings", icon: Settings,      label: "系統設定", color: "#475569" }, // slate-600
 ];
 
 export default function AdminDashboard() {
@@ -74,7 +81,7 @@ export default function AdminDashboard() {
       {loading ? (
         <div className="flex h-40 items-center justify-center text-sm" style={subStyle}>載入中...</div>
       ) : err ? (
-        <div className="rounded-xl p-5 text-sm" style={{ ...cardStyle, color: "var(--color-coral)" }}>{err}</div>
+        <div className="rounded-xl p-5 text-sm" style={{ ...cardStyle, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca" }}>{err}</div>
       ) : stats ? (
         <div className="space-y-5">
           {/* ── ① Shortcuts (置頂) ── */}
@@ -84,11 +91,11 @@ export default function AdminDashboard() {
                 <button
                   key={href}
                   onClick={() => router.push(href)}
-                  className="flex flex-col items-center gap-1.5 rounded-lg p-2.5 transition-colors hover:bg-white/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+                  className="flex flex-col items-center gap-1.5 rounded-lg p-2.5 transition-colors hover:bg-slate-100"
+                  style={{ border: "1px solid rgba(10, 35, 66, 0.06)" }}
                 >
                   <Icon className="h-5 w-5" style={{ color }} />
-                  <span className="text-[10px] text-center leading-tight" style={{ color: "rgba(230,240,255,0.75)" }}>{label}</span>
+                  <span className="text-[10px] text-center leading-tight font-medium" style={{ color: "#334155" }}>{label}</span>
                 </button>
               ))}
             </div>
@@ -110,18 +117,18 @@ export default function AdminDashboard() {
             />
             <RevenueCard label="總收入" value={stats.revenue.paid} sub={`預計 ${stats.revenue.booked.toLocaleString()}`} />
             <div className="rounded-xl p-4" style={cardStyle}>
-              <div className="text-[10px] mb-1" style={subStyle}>進行中訂單</div>
-              <div className="text-2xl font-bold" style={{ color: "#e6f0ff" }}>{stats.bookings.active}</div>
-              <div className="text-[10px] mt-1" style={subStyle}>共 {stats.bookings.total} 筆</div>
+              <div className="text-[10px] mb-1 font-semibold uppercase tracking-wider" style={subStyle}>進行中訂單</div>
+              <div className="text-2xl font-bold" style={valueStyle}>{stats.bookings.active}</div>
+              <div className="text-[11px] mt-1" style={subStyle}>共 {stats.bookings.total} 筆</div>
             </div>
           </div>
 
           {/* ── ③ 待辦事項 banner ── */}
           {(stats.pendingProofs + stats.pendingSettlement + stats.pendingRefunds > 0) && (
-            <div className="rounded-xl p-4" style={{ background: "rgba(255,123,90,0.12)", border: "1px solid rgba(255,123,90,0.35)" }}>
+            <div className="rounded-xl p-4" style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
               <div className="flex items-center gap-2 mb-2.5">
-                <AlertCircle className="h-4 w-4" style={{ color: "var(--color-coral)" }} />
-                <span className="text-sm font-semibold" style={{ color: "var(--color-coral)" }}>待辦事項</span>
+                <AlertCircle className="h-4 w-4" style={{ color: "#c2410c" }} />
+                <span className="text-sm font-semibold" style={{ color: "#9a3412" }}>待辦事項</span>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {stats.pendingProofs > 0 && (
@@ -140,12 +147,12 @@ export default function AdminDashboard() {
           {/* ── ④ 開團狀況（接下來 14 天）── */}
           <div className="rounded-xl p-5" style={cardStyle}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: "rgba(230,240,255,0.7)" }}>
+              <h2 className="text-sm font-semibold flex items-center gap-2" style={headingStyle}>
                 <Calendar className="h-4 w-4" />
                 開團狀況（接下來 14 天）
               </h2>
               <button onClick={() => router.push("/admin/trips")}
-                className="text-xs flex items-center gap-1" style={{ color: "var(--color-phosphor)" }}>
+                className="text-xs flex items-center gap-1 font-medium hover:underline" style={{ color: "#0891b2" }}>
                 完整場次 <ChevronRight className="h-3 w-3" />
               </button>
             </div>
@@ -161,30 +168,30 @@ export default function AdminDashboard() {
                   return (
                     <div key={t.id}
                       className="grid grid-cols-12 gap-2 items-center rounded-lg px-3 py-2 text-xs"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                       <div className="col-span-3 tabular-nums">
-                        <div style={{ color: "#e6f0ff" }} className="font-medium">{t.date}</div>
+                        <div style={valueStyle} className="font-semibold">{t.date}</div>
                         <div className="flex items-center gap-1" style={subStyle}>
-                          {t.isNightDive ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3 text-amber-400" />}
+                          {t.isNightDive ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" style={{ color: "#d97706" }} />}
                           {t.startTime}
                         </div>
                       </div>
-                      <div className="col-span-4" style={{ color: "rgba(230,240,255,0.85)" }}>
+                      <div className="col-span-4" style={{ color: "#334155" }}>
                         {t.sites.join("・") || "—"}
                       </div>
-                      <div className="col-span-3 text-[10px]" style={subStyle}>
+                      <div className="col-span-3 text-[11px]" style={subStyle}>
                         {noCoach ? (
-                          <span className="text-amber-400">⚠ 無教練</span>
+                          <span style={{ color: "#b45309" }}>⚠ 無教練</span>
                         ) : (
                           <>👤 {t.coaches.join(", ")}</>
                         )}
                       </div>
                       <div className="col-span-2 text-right">
-                        <span className={`font-semibold ${isFull ? "text-rose-400" : isEmpty ? "text-amber-400" : "text-[#e6f0ff]"}`}>
+                        <span className="font-semibold" style={{ color: isFull ? "#dc2626" : isEmpty ? "#b45309" : "var(--color-ocean-deep)" }}>
                           {t.booked}/{t.capacity ?? "∞"}
                         </span>
-                        {isFull && <div className="text-[9px] text-rose-400">滿</div>}
-                        {isEmpty && fillRate === 0 && <div className="text-[9px] text-amber-400">缺人</div>}
+                        {isFull && <div className="text-[10px]" style={{ color: "#dc2626" }}>滿</div>}
+                        {isEmpty && fillRate === 0 && <div className="text-[10px]" style={{ color: "#b45309" }}>缺人</div>}
                       </div>
                     </div>
                   );
@@ -197,23 +204,23 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* 會員動向 */}
             <div className="rounded-xl p-5" style={cardStyle}>
-              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "rgba(230,240,255,0.7)" }}>
+              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={headingStyle}>
                 <UserCheck className="h-4 w-4" />
                 會員動向
               </h2>
               <div className="grid grid-cols-2 gap-2 mb-3">
-                <MiniStat label="今日新加入" value={`+${stats.users.todayNew}`} color="phosphor" />
+                <MiniStat label="今日新加入" value={`+${stats.users.todayNew}`} color="teal" />
                 <MiniStat label="本週新加入" value={`+${stats.users.last7DaysNew}`} color="blue" />
-                <MiniStat label="本週活躍" value={`${stats.users.activeWeekly}`} color="muted" sub="登入過 LIFF" />
-                <MiniStat label="會員總數" value={`${stats.users.total}`} color="muted" />
+                <MiniStat label="本週活躍" value={`${stats.users.activeWeekly}`} color="dark" sub="登入過 LIFF" />
+                <MiniStat label="會員總數" value={`${stats.users.total}`} color="dark" />
               </div>
               {stats.churningHighVips.length > 0 && (
-                <div className="rounded-lg p-3 mt-2" style={{ background: "rgba(255,123,90,0.08)", border: "1px solid rgba(255,123,90,0.2)" }}>
-                  <div className="text-[10px] font-semibold mb-1.5" style={{ color: "var(--color-coral)" }}>💔 流失警告（VIP4+ 30 天未下單）</div>
+                <div className="rounded-lg p-3 mt-2" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+                  <div className="text-[11px] font-semibold mb-1.5" style={{ color: "#b91c1c" }}>💔 流失警告（VIP4+ 30 天未下單）</div>
                   <div className="space-y-1">
                     {stats.churningHighVips.map((u, i) => (
-                      <div key={i} className="flex items-center justify-between text-[11px]">
-                        <span style={{ color: "rgba(230,240,255,0.85)" }}>{u.name}</span>
+                      <div key={i} className="flex items-center justify-between text-[12px]">
+                        <span style={{ color: "#334155" }}>{u.name}</span>
                         <span style={subStyle}>LV{u.vipLevel}</span>
                       </div>
                     ))}
@@ -221,15 +228,15 @@ export default function AdminDashboard() {
                 </div>
               )}
               {stats.highIntentLeads && stats.highIntentLeads.length > 0 && (
-                <div className="rounded-lg p-3 mt-2" style={{ background: "rgba(99,235,164,0.08)", border: "1px solid rgba(99,235,164,0.2)" }}>
-                  <div className="text-[10px] font-semibold mb-1.5 flex items-center gap-1" style={{ color: "var(--color-phosphor)" }}>
+                <div className="rounded-lg p-3 mt-2" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                  <div className="text-[11px] font-semibold mb-1.5 flex items-center gap-1" style={{ color: "#15803d" }}>
                     <Heart className="h-3 w-3" />
                     高意願客戶（7 天內看過場次但沒下單）
                   </div>
                   <div className="space-y-1">
                     {stats.highIntentLeads.slice(0, 5).map((l, i) => (
-                      <div key={i} className="flex items-center justify-between text-[11px]">
-                        <span style={{ color: "rgba(230,240,255,0.85)" }}>{l.name}</span>
+                      <div key={i} className="flex items-center justify-between text-[12px]">
+                        <span style={{ color: "#334155" }}>{l.name}</span>
                         <span style={subStyle}>{l.tripDate} · {l.tripSite}</span>
                       </div>
                     ))}
@@ -240,7 +247,7 @@ export default function AdminDashboard() {
 
             {/* 業務洞察 */}
             <div className="rounded-xl p-5" style={cardStyle}>
-              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: "rgba(230,240,255,0.7)" }}>
+              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={headingStyle}>
                 <Trophy className="h-4 w-4" />
                 業務洞察（近 30 天）
               </h2>
@@ -249,14 +256,14 @@ export default function AdminDashboard() {
                 <RankList title="🔥 熱門潛點 Top 3" items={stats.topSites.map((s) => ({ name: s.name, value: `${s.participants} 人次 / ${s.trips} 場` }))} />
                 {stats.nearBirthdays.length > 0 && (
                   <div>
-                    <div className="text-[10px] font-semibold mb-1.5 flex items-center gap-1" style={subStyle}>
+                    <div className="text-[11px] font-semibold mb-1.5 flex items-center gap-1" style={subStyle}>
                       <Cake className="h-3 w-3" />
                       近 7 天生日
                     </div>
                     <div className="space-y-0.5">
                       {stats.nearBirthdays.map((b, i) => (
-                        <div key={i} className="flex items-center justify-between text-[11px]">
-                          <span style={{ color: "rgba(230,240,255,0.85)" }}>{b.name}</span>
+                        <div key={i} className="flex items-center justify-between text-[12px]">
+                          <span style={{ color: "#334155" }}>{b.name}</span>
                           <span style={subStyle}>{b.date}</span>
                         </div>
                       ))}
@@ -277,17 +284,17 @@ function RevenueCard({ label, value, sub, big = false, trendUp }: {
 }) {
   return (
     <div className="rounded-xl p-4" style={cardStyle}>
-      <div className="text-[10px] mb-1 flex items-center justify-between" style={subStyle}>
+      <div className="text-[10px] mb-1 flex items-center justify-between font-semibold uppercase tracking-wider" style={subStyle}>
         <span>{label}</span>
         {trendUp !== undefined && (trendUp ?
-          <TrendingUp className="h-3 w-3" style={{ color: "var(--color-phosphor)" }} /> :
-          <TrendingDown className="h-3 w-3" style={{ color: "var(--color-coral)" }} />
+          <TrendingUp className="h-3.5 w-3.5" style={{ color: "#16a34a" }} /> :
+          <TrendingDown className="h-3.5 w-3.5" style={{ color: "#dc2626" }} />
         )}
       </div>
-      <div className={big ? "text-3xl font-bold" : "text-2xl font-bold"} style={{ color: "#e6f0ff" }}>
+      <div className={big ? "text-3xl font-bold" : "text-2xl font-bold"} style={valueStyle}>
         NT$ {value.toLocaleString()}
       </div>
-      <div className="text-[10px] mt-1" style={subStyle}>{sub}</div>
+      <div className="text-[11px] mt-1" style={subStyle}>{sub}</div>
     </div>
   );
 }
@@ -295,28 +302,28 @@ function RevenueCard({ label, value, sub, big = false, trendUp }: {
 function TodoItem({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-white/5"
-      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,123,90,0.2)" }}>
-      <span className="text-xs" style={{ color: "#e6f0ff" }}>
+      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-orange-100"
+      style={{ background: "#ffffff", border: "1px solid #fed7aa" }}>
+      <span className="text-xs font-medium" style={{ color: "#9a3412" }}>
         <span className="mr-1.5">{icon}</span>
         {label}
       </span>
-      <ChevronRight className="h-3 w-3" style={{ color: "var(--color-coral)" }} />
+      <ChevronRight className="h-3.5 w-3.5" style={{ color: "#c2410c" }} />
     </button>
   );
 }
 
-function MiniStat({ label, value, color, sub }: { label: string; value: string; color: "phosphor" | "blue" | "muted"; sub?: string }) {
+function MiniStat({ label, value, color, sub }: { label: string; value: string; color: "teal" | "blue" | "dark"; sub?: string }) {
   const colorMap = {
-    phosphor: "var(--color-phosphor)",
-    blue: "#60a5fa",
-    muted: "rgba(230,240,255,0.7)",
+    teal: "#0891b2",
+    blue: "#2563eb",
+    dark: "var(--color-ocean-deep)",
   };
   return (
-    <div className="rounded-lg p-2.5" style={{ background: "rgba(255,255,255,0.04)" }}>
-      <div className="text-[10px]" style={{ color: "rgba(230,240,255,0.45)" }}>{label}</div>
+    <div className="rounded-lg p-2.5" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+      <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#64748b" }}>{label}</div>
       <div className="text-lg font-bold" style={{ color: colorMap[color] }}>{value}</div>
-      {sub && <div className="text-[9px]" style={{ color: "rgba(230,240,255,0.4)" }}>{sub}</div>}
+      {sub && <div className="text-[10px]" style={{ color: "#94a3b8" }}>{sub}</div>}
     </div>
   );
 }
@@ -324,18 +331,18 @@ function MiniStat({ label, value, color, sub }: { label: string; value: string; 
 function RankList({ title, items }: { title: string; items: Array<{ name: string; value: string }> }) {
   return (
     <div>
-      <div className="text-[10px] font-semibold mb-1.5" style={{ color: "rgba(230,240,255,0.5)" }}>{title}</div>
+      <div className="text-[11px] font-semibold mb-1.5" style={{ color: "#64748b" }}>{title}</div>
       {items.length === 0 ? (
-        <div className="text-[10px]" style={{ color: "rgba(230,240,255,0.35)" }}>尚無資料</div>
+        <div className="text-[11px]" style={{ color: "#94a3b8" }}>尚無資料</div>
       ) : (
         <div className="space-y-0.5">
           {items.map((item, i) => (
-            <div key={i} className="flex items-center justify-between text-[11px]">
-              <span style={{ color: "rgba(230,240,255,0.85)" }}>
-                <span style={{ color: "var(--color-phosphor)" }} className="font-semibold mr-1.5">{i + 1}.</span>
+            <div key={i} className="flex items-center justify-between text-[12px]">
+              <span style={{ color: "#334155" }}>
+                <span style={{ color: "#0891b2" }} className="font-semibold mr-1.5">{i + 1}.</span>
                 {item.name}
               </span>
-              <span style={{ color: "rgba(230,240,255,0.45)" }}>{item.value}</span>
+              <span style={{ color: "#64748b" }}>{item.value}</span>
             </div>
           ))}
         </div>
