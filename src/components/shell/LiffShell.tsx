@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, HelpCircle } from "lucide-react";
 import { Wordmark } from "@/components/brand/Logo";
 import { SplashOverlay } from "@/components/shell/SplashOverlay";
 import { useLiff } from "@/lib/liff/LiffProvider";
@@ -96,6 +96,17 @@ export function LiffShell({
               <ArrowLeft className="h-5 w-5" />
             </button>
           ) : null}
+          {/* FAQ / 關於 — 永遠可達的入口 */}
+          {pathname !== "/liff/faq" && (
+            <Link
+              href="/liff/faq"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-[var(--muted)] active:scale-95"
+              aria-label="常見問題"
+              title="常見問題 / 關於"
+            >
+              <HelpCircle className="h-5 w-5 text-[var(--muted-foreground)]" />
+            </Link>
+          )}
           {rightSlot}
         </div>
       </header>

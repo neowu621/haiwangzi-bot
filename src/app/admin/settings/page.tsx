@@ -33,6 +33,13 @@ interface VipUpgradeCredits {
   "5": number;
 }
 
+interface ExternalLinks {
+  fbGroupUrl?: string;
+  mediaUrl?: string;
+  youtubeChannelUrl?: string;
+  instagramUrl?: string;
+}
+
 interface Config {
   // Homepage
   heroTitle: string;
@@ -51,6 +58,8 @@ interface Config {
   birthdayCreditAmount: number;
   vipUpgradeCredits: Partial<VipUpgradeCredits>;
   weatherWindThreshold: number;
+  // 外部連結（Rich Menu / LIFF 用）
+  externalLinks: ExternalLinks;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -290,6 +299,53 @@ export default function SettingsPage() {
               disabled={saving === "首頁設定"}>
               <Save className="mr-1.5 h-4 w-4" />
               {saving === "首頁設定" ? "儲存中..." : "儲存首頁設定"}
+            </Button>
+          </div>
+        </SectionCard>
+
+        {/* ── A2. 外部連結（Rich Menu / FAQ 用）────── */}
+        <SectionCard title="🔗 外部連結（Rich Menu / 客戶端用）">
+          <p className="mb-3 text-xs text-[var(--muted-foreground)]">
+            這些連結會被 LINE Rich Menu 與 LIFF 引用。修改後需重新同步 Rich Menu 才會生效。
+          </p>
+          <div className="grid grid-cols-1 gap-3">
+            <FieldRow label="Facebook 社團">
+              <Input
+                value={config?.externalLinks?.fbGroupUrl ?? ""}
+                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), fbGroupUrl: e.target.value } } : c)}
+                placeholder="https://www.facebook.com/groups/xxxxx"
+              />
+            </FieldRow>
+            <FieldRow label="最新動態">
+              <Input
+                value={config?.externalLinks?.mediaUrl ?? ""}
+                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), mediaUrl: e.target.value } } : c)}
+                placeholder="https://www.instagram.com/xxx 或 IG/FB/YouTube/部落格網址"
+              />
+            </FieldRow>
+            <FieldRow label="YouTube 頻道">
+              <Input
+                value={config?.externalLinks?.youtubeChannelUrl ?? ""}
+                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), youtubeChannelUrl: e.target.value } } : c)}
+                placeholder="https://www.youtube.com/@xxxxx（選填）"
+              />
+            </FieldRow>
+            <FieldRow label="Instagram">
+              <Input
+                value={config?.externalLinks?.instagramUrl ?? ""}
+                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), instagramUrl: e.target.value } } : c)}
+                placeholder="https://www.instagram.com/xxxxx（選填）"
+              />
+            </FieldRow>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={() => save("外部連結", {
+                externalLinks: config?.externalLinks ?? {},
+              })}
+              disabled={saving === "外部連結"}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {saving === "外部連結" ? "儲存中..." : "儲存外部連結"}
             </Button>
           </div>
         </SectionCard>

@@ -444,6 +444,9 @@ model SiteConfig {
   vipUpgradeCredits Json @default("{}") @map("vip_upgrade_credits")
 
   // 可配置金額設定
+  // 外部連結（Rich Menu / LIFF 用）— admin 後台可編輯
+  // { fbGroupUrl, mediaUrl, youtubeChannelUrl, instagramUrl }
+  externalLinks        Json @default("{}") @map("external_links")
   gearRentalPrices     Json @default("{}") @map("gear_rental_prices")
   // {"BCD":200,"regulator":200,"wetsuit":300,"fins":100,"mask":100,"computer":300,"full_set":800}
   defaultTripPricing   Json @default("{}") @map("default_trip_pricing")

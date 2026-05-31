@@ -50,6 +50,13 @@ const PatchSchema = z.object({
   }).optional(),
   defaultCoachFee: z.number().int().min(0).optional(),
   weatherWindThreshold: z.number().int().min(1).max(50).optional(),
+  // 外部連結（FB 社群、IG、YouTube 等）
+  externalLinks: z.object({
+    fbGroupUrl: z.string().url().optional().or(z.literal("")),
+    mediaUrl: z.string().url().optional().or(z.literal("")),
+    youtubeChannelUrl: z.string().url().optional().or(z.literal("")),
+    instagramUrl: z.string().url().optional().or(z.literal("")),
+  }).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -72,6 +79,7 @@ export async function GET(req: NextRequest) {
         weatherWindThreshold: 10,
         birthdayCreditAmount: 100,
         vipUpgradeCredits: {},
+        externalLinks: {},
       },
       isDefault: true,
     });
@@ -99,6 +107,7 @@ export async function GET(req: NextRequest) {
       weatherWindThreshold: row.weatherWindThreshold,
       birthdayCreditAmount: row.birthdayCreditAmount,
       vipUpgradeCredits: row.vipUpgradeCredits,
+      externalLinks: row.externalLinks ?? {},
     },
     isDefault: false,
     updatedAt: row.updatedAt,

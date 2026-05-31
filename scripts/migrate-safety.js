@@ -130,6 +130,8 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS birthday_credit_amount INTEGER NOT NULL DEFAULT 100`,
   // VIP 升等獎金 (JSON)
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS vip_upgrade_credits JSONB NOT NULL DEFAULT '{}'`,
+  // v126: 外部連結（FB 社群、媒體頻道等）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS external_links JSONB NOT NULL DEFAULT '{}'`,
 ];
 
 async function main() {

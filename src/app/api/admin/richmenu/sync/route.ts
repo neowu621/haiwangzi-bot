@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const LIFF_ID = process.env.LINE_LIFF_ID ?? "";
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
-const FB_GROUP_URL = process.env.NEXT_PUBLIC_FB_GROUP_URL ?? "";
 
 // 每個 role 對應的 Rich Menu 結構：6 格 2×3
 // 客戶版佈局：
 //   [日潛水]      [潛水團]     [最新動態]
 //   [我的預約]    [FB 社群]    [個人中心]
-function richMenuSpec(role: "customer" | "coach" | "admin") {
+async function richMenuSpec(role: "customer" | "coach" | "admin") {
   const linkFor = (p: string) =>
     LIFF_ID
       ? { type: "uri" as const, uri: `https://liff.line.me/${LIFF_ID}${p}` }
@@ -22,18 +22,27 @@ function richMenuSpec(role: "customer" | "coach" | "admin") {
 
   const externalLink = (uri: string) => ({ type: "uri" as const, uri });
 
+  // 從 SiteConfig 讀外部連結（env 為 fallback，避免初次部署時 DB 還沒值）
+  const cfg = await prisma.siteConfig
+    .findUnique({ where: { id: "default" } })
+    .catch(() => null);
+  const links = (cfg?.externalLinks as Record<string, string> | null) ?? {};
+  const fbGroupUrl = links.fbGroupUrl || process.env.NEXT_PUBLIC_FB_GROUP_URL || "";
+  const mediaUrl = links.mediaUrl || ""; // 沒設時 fallback 到內部 /liff/media
+
   const cells = {
     customer: [
       // 第一列
       { action: linkFor("/calendar"), label: "日潛水 → 今日出航" },
       { action: linkFor("/tour"), label: "潛水團 → 國內外行程" },
-      { action: linkFor("/media"), label: "最新動態 → 影像日誌" },
+      {
+        action: mediaUrl ? externalLink(mediaUrl) : linkFor("/media"),
+        label: "最新動態 → 影像日誌",
+      },
       // 第二列
       { action: linkFor("/my"), label: "我的預約 → 課程紀錄" },
       {
-        action: FB_GROUP_URL
-          ? externalLink(FB_GROUP_URL)
-          : linkFor("/welcome"),
+        action: fbGroupUrl ? externalLink(fbGroupUrl) : linkFor("/welcome"),
         label: "FB 社群專區 → Facebook Group",
       },
       { action: linkFor("/profile"), label: "個人中心 → 潛水紀錄" },
@@ -107,7 +116,7 @@ export async function POST(req: NextRequest) {
     | "coach"
     | "admin";
 
-  const spec = richMenuSpec(target);
+  const spec = await richMenuSpec(target);
 
   // 1. 建立 rich menu (取得 richMenuId)
   const createRes = await fetch("https://api.line.me/v2/bot/richmenu", {
