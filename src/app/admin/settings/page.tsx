@@ -311,29 +311,29 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 gap-3">
             <FieldRow label="Facebook 社團">
               <Input
-                value={config?.externalLinks?.fbGroupUrl ?? ""}
-                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), fbGroupUrl: e.target.value } } : c)}
+                value={cfg?.externalLinks?.fbGroupUrl ?? ""}
+                onChange={(e) => setCfg((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), fbGroupUrl: e.target.value } } : c)}
                 placeholder="https://www.facebook.com/groups/xxxxx"
               />
             </FieldRow>
             <FieldRow label="最新動態">
               <Input
-                value={config?.externalLinks?.mediaUrl ?? ""}
-                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), mediaUrl: e.target.value } } : c)}
+                value={cfg?.externalLinks?.mediaUrl ?? ""}
+                onChange={(e) => setCfg((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), mediaUrl: e.target.value } } : c)}
                 placeholder="https://www.instagram.com/xxx 或 IG/FB/YouTube/部落格網址"
               />
             </FieldRow>
             <FieldRow label="YouTube 頻道">
               <Input
-                value={config?.externalLinks?.youtubeChannelUrl ?? ""}
-                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), youtubeChannelUrl: e.target.value } } : c)}
+                value={cfg?.externalLinks?.youtubeChannelUrl ?? ""}
+                onChange={(e) => setCfg((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), youtubeChannelUrl: e.target.value } } : c)}
                 placeholder="https://www.youtube.com/@xxxxx（選填）"
               />
             </FieldRow>
             <FieldRow label="Instagram">
               <Input
-                value={config?.externalLinks?.instagramUrl ?? ""}
-                onChange={(e) => setConfig((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), instagramUrl: e.target.value } } : c)}
+                value={cfg?.externalLinks?.instagramUrl ?? ""}
+                onChange={(e) => setCfg((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), instagramUrl: e.target.value } } : c)}
                 placeholder="https://www.instagram.com/xxxxx（選填）"
               />
             </FieldRow>
@@ -341,7 +341,7 @@ export default function SettingsPage() {
           <div className="mt-4 flex justify-end">
             <Button
               onClick={() => save("外部連結", {
-                externalLinks: config?.externalLinks ?? {},
+                externalLinks: cfg?.externalLinks ?? {},
               })}
               disabled={saving === "外部連結"}>
               <Save className="mr-1.5 h-4 w-4" />
