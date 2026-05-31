@@ -11,9 +11,9 @@ const LIFF_ID = process.env.LINE_LIFF_ID ?? "";
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
 // 每個 role 對應的 Rich Menu 結構：6 格 2×3
-// 客戶版佈局：
-//   [日潛水]      [潛水團]     [最新動態]
-//   [我的預約]    [FB 社群]    [個人中心]
+// 客戶版佈局（A=左上，B=中上，C=右上，D=左下，E=中下，F=右下）：
+//   [A 日潛水]    [B 潛水團]   [C 最新動態]
+//   [D 我的預約]  [E 常見問題] [F 個人中心]
 async function richMenuSpec(role: "customer" | "coach" | "admin") {
   const linkFor = (p: string) =>
     LIFF_ID
@@ -25,18 +25,14 @@ async function richMenuSpec(role: "customer" | "coach" | "admin") {
 
   const cells = {
     customer: [
-      // 第一列
-      { action: linkFor("/calendar"), label: "日潛水 → 今日出航" },
-      { action: linkFor("/tour"), label: "潛水團 → 國內外行程" },
-      { action: linkFor("/faq"), label: "常見問題 → FAQ / 退款政策 / VIP 福利" },
-      // 第二列
-      { action: linkFor("/my"), label: "我的預約 → 課程紀錄" },
-      {
-        // 最新動態（社群匯流頁，顯示 FB + IG + YouTube + 其他依後台設定動態）
-        action: linkFor("/community"),
-        label: "最新動態 → FB / IG / YouTube 匯流頁",
-      },
-      { action: linkFor("/profile"), label: "個人中心 → 潛水紀錄" },
+      // 第一列（A B C）
+      { action: linkFor("/calendar"), label: "A 日潛水 → 今日出航" },
+      { action: linkFor("/tour"), label: "B 潛水團 → 國內外行程" },
+      { action: linkFor("/community"), label: "C 最新動態 → FB / IG / YouTube 匯流頁" },
+      // 第二列（D E F）
+      { action: linkFor("/my"), label: "D 我的預約 → 課程紀錄" },
+      { action: linkFor("/faq"), label: "E 常見問題 → FAQ / 退款政策 / VIP 福利" },
+      { action: linkFor("/profile"), label: "F 個人中心 → 潛水紀錄" },
     ] as Array<{ action: { type: "uri"; uri: string } | { type: "message"; text: string }; label: string }>,
     coach: [
       { path: "/coach/today", text: "📅 今日場次" },
