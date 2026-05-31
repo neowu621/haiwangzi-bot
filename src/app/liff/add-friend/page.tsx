@@ -72,13 +72,18 @@ export default function AddFriendPage() {
           加入 LINE 好友
         </a>
 
-        {/* LINE ID */}
-        <p className="mb-6 text-xs text-[var(--muted-foreground)]">
-          或 LINE 搜尋官方帳號：
-          <span className="ml-1 font-mono font-semibold text-[var(--foreground)]">
-            {LINE_OA}
-          </span>
-        </p>
+        {/* LINE ID — 帶複製按鈕 */}
+        <div className="mb-6 flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+          <span>或 LINE App 搜尋：</span>
+          <span className="font-mono font-semibold text-[var(--foreground)]">{LINE_OA}</span>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(LINE_OA).then(() => alert("✓ ID 已複製"))}
+            className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] hover:bg-[var(--muted)]"
+          >
+            📋 複製
+          </button>
+        </div>
 
         {/* Recheck Button */}
         <button
@@ -104,8 +109,17 @@ export default function AddFriendPage() {
 
         {/* Help */}
         <p className="mt-6 text-center text-[10px] text-[var(--muted-foreground)]">
-          有問題？掃 QR Code 或聯絡客服協助。
+          有問題？聯絡客服協助。<br />
+          若 LINE 顯示「400 / 找不到」，請改用 LINE App 搜尋上方 ID。
         </p>
+
+        {/* 🏠 回首頁逃生口 */}
+        <a
+          href="/"
+          className="mt-4 inline-flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] underline decoration-dotted hover:text-[var(--foreground)]"
+        >
+          🏠 回首頁
+        </a>
       </div>
     </LiffShell>
   );

@@ -93,8 +93,18 @@ function FriendGateBlock() {
           <li>回到本頁，按「重新檢查」</li>
           <li>系統會自動進入預約頁</li>
         </ol>
+        <p className="mt-3 text-[10px] text-[var(--muted-foreground)]">
+          ※ 若 LINE 顯示「400 Bad Request」或「找不到」，請改用 LINE App 搜尋上方 ID，或聯絡客服。
+        </p>
       </div>
 
+      {/* 🏠 回首頁逃生口 */}
+      <a
+        href="/"
+        className="mt-6 inline-flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] underline decoration-dotted hover:text-[var(--foreground)]"
+      >
+        🏠 回首頁
+      </a>
     </div>
   );
 }
