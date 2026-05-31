@@ -32,9 +32,9 @@ async function richMenuSpec(role: "customer" | "coach" | "admin") {
       // 第二列
       { action: linkFor("/my"), label: "我的預約 → 課程紀錄" },
       {
-        // 社群匯流頁（顯示 FB + IG + YouTube + 其他依後台設定動態）
+        // 最新動態（社群匯流頁，顯示 FB + IG + YouTube + 其他依後台設定動態）
         action: linkFor("/community"),
-        label: "社群動態 → FB / IG / YouTube 匯流頁",
+        label: "最新動態 → FB / IG / YouTube 匯流頁",
       },
       { action: linkFor("/profile"), label: "個人中心 → 潛水紀錄" },
     ] as Array<{ action: { type: "uri"; uri: string } | { type: "message"; text: string }; label: string }>,

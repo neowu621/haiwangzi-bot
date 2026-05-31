@@ -74,9 +74,9 @@ export default function CommunityPage() {
           style={{
             background: "linear-gradient(135deg, var(--color-ocean-deep), var(--color-ocean-surface))",
           }}>
-          <h1 className="text-xl font-bold text-white mb-1">📱 社群動態</h1>
+          <h1 className="text-xl font-bold text-white mb-1">📱 最新動態</h1>
           <p className="text-sm text-white/80 leading-relaxed">
-            追蹤 {APP_NAME}，看王教練每天的潛水分享。
+            追蹤 {APP_NAME} 的各平台，看王教練每天的潛水分享。
           </p>
         </div>
 
