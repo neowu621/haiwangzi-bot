@@ -59,7 +59,8 @@ export async function GET(req: NextRequest) {
       tankCount: t.tankCount,
       capacity: t.capacity,
       status: t.status,
-      sites: t.diveSiteIds.map((id) => siteMap.get(id)).filter(Boolean),
+      // v153 起：diveSiteIds 可能直接是中文名稱，找不到 DiveSite 時用 id 本身當顯示
+      sites: t.diveSiteIds.map((id) => siteMap.get(id) ?? id),
       bookings: bookings
         .filter((b) => b.refId === t.id)
         .map((b) => ({

@@ -83,7 +83,8 @@ export async function GET(req: NextRequest) {
       kind: "daily" as const,
       id: t.id,
       title: `${t.date.toISOString().slice(0, 10)} ${t.startTime}`,
-      sites: t.diveSiteIds.map((id) => siteMap.get(id) ?? "—"),
+      // v153：找不到 DiveSite 時用 id 本身（多半就是中文名稱）
+      sites: t.diveSiteIds.map((id) => siteMap.get(id) ?? id),
       tankCount: t.tankCount,
       capacity: t.capacity,
       status: t.status,

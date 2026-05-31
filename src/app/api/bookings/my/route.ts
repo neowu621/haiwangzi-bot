@@ -36,7 +36,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     bookings: await Promise.all(bookings.map(async (b) => {
       const ref = b.type === "daily" ? tripMap.get(b.refId) : tourMap.get(b.refId);
-      const refSites = ref ? ref.diveSiteIds.map((id) => siteMap.get(id)?.name).filter(Boolean) : [];
+      // v153 起：diveSiteIds 可能直接存中文名稱，DiveSite 表內找不到時 fallback 用 id 本身
+      const refSites = ref
+        ? ref.diveSiteIds.map((id) => siteMap.get(id)?.name ?? id).filter(Boolean)
+        : [];
       return {
         id: b.id,
         type: b.type,

@@ -59,7 +59,8 @@ export async function GET(req: NextRequest) {
             ref = {
               date: t.date.toISOString().slice(0, 10),
               startTime: t.startTime, // "08:00" 字串，直接顯示不要走時區轉換
-              sites: t.diveSiteIds.map((id) => siteMap.get(id) ?? "—"),
+              // v153：找不到 DiveSite 時用 id 本身（多半就是中文名稱）
+              sites: t.diveSiteIds.map((id) => siteMap.get(id) ?? id),
             };
           }
         } else {

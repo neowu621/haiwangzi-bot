@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     items: list.map((m) => {
       const trip = m.tripId ? tripMap.get(m.tripId) : null;
       const siteName = trip
-        ? trip.diveSiteIds.map((id) => siteMap.get(id) ?? "—").join(" · ")
+        ? trip.diveSiteIds.map((id) => siteMap.get(id) ?? id).join(" · ")
         : null;
       return {
         id: m.id,
