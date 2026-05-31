@@ -1,53 +1,23 @@
 name: Daily DB Backup — 02:00 Asia/Taipei
 
 # 每天台灣時間 02:00（= UTC 18:00 前一天）
+# 觸發 /api/cron/backup-db endpoint，由 Zeabur 容器內 pg_dump → R2
 on:
   schedule:
     - cron: "0 18 * * *"
   workflow_dispatch:
 
 jobs:
-  backup:
+  trigger-backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
-      - name: Install pg_dump (postgresql-client v17)
+      - name: 觸發 DB 備份
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-common
-          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y postgresql-client-17
-
-      - name: Run pg_dump → gzip
-        run: |
-          DATE=$(TZ=Asia/Taipei date +%Y%m%d)
-          OUTFILE="haiwangzi-db-${DATE}.sql.gz"
-          echo "→ pg_dump to $OUTFILE"
-          pg_dump "${{ secrets.DATABASE_URL }}" \
-            --no-owner --no-privileges \
-            --format=plain \
-            | gzip -9 > "$OUTFILE"
-          ls -lh "$OUTFILE"
-          echo "OUTFILE=$OUTFILE" >> $GITHUB_ENV
-
-      - name: Upload to R2 (S3-compatible)
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
-        run: |
-          aws s3 cp "$OUTFILE" "s3://${R2_BUCKET}/db-backups/$OUTFILE" \
-            --endpoint-url "$R2_ENDPOINT" \
-            --region auto
-          echo "✅ Uploaded to R2: db-backups/$OUTFILE"
-
-      - name: Cleanup local files
-        if: always()
-        run: rm -f *.sql.gz
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "❌ DB backup failed. Check workflow run."
-          # 可選：呼叫 LINE webhook 通知 admin
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP %{http_code}\n" \
+            --fail-with-body \
+            --max-time 540 \
+            https://haiwangzi.zeabur.app/api/cron/backup-db
