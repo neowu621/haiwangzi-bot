@@ -656,10 +656,10 @@ export default function AdminUsersPage() {
                       )}
                       style={{ borderColor: "var(--border)" }}
                     >
-                      {/* 會員編號 */}
-                      <td className="px-4 py-3">
+                      {/* 會員編號 — 縮字 + 不換行 */}
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {u.code ? (
-                          <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
+                          <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-tight text-teal-800 whitespace-nowrap">
                             {u.code}
                           </span>
                         ) : (
