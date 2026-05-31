@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Save, RotateCcw, Edit3, MoreVertical, Gift } from "lucide-react";
+import { Plus, Trash2, Save, RotateCcw, Edit3, MoreVertical } from "lucide-react";
 
 interface VipTier {
   level: number;
@@ -91,59 +91,6 @@ export default function VipTiersPage() {
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "儲存失敗");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // 特殊狀況補發 — 老闆專用
-  async function backfillRewards() {
-    setErr(null); setOk(null);
-    // Step 1: dry-run 預覽
-    let preview;
-    try {
-      preview = await adminFetch<{
-        ok: boolean; totalUsers: number; willGrantTotal: number;
-        previewByLevel: Record<string, { count: number; amount: number }>;
-      }>("/api/admin/vip-tiers/backfill", {
-        method: "POST",
-        body: JSON.stringify({ dryRun: true }),
-      });
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "預覽失敗");
-      return;
-    }
-    if (preview.willGrantTotal === 0) {
-      setOk("所有會員都已領取應得的禮金，無需補發");
-      return;
-    }
-    const detailLines = Object.entries(preview.previewByLevel)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([lv, x]) => `  ${lv}：${x.count} 位 × NT$${x.amount / x.count} = NT$${x.amount.toLocaleString()}`)
-      .join("\n");
-    const ok2 = window.confirm(
-      `⚠️ 特殊狀況補發 VIP 禮金\n\n` +
-      `將為 ${preview.totalUsers} 位會員補發未領取的禮金：\n\n` +
-      `${detailLines}\n\n` +
-      `合計：NT$ ${preview.willGrantTotal.toLocaleString()}\n\n` +
-      `（已領過的會員會自動跳過，不會重複發）\n\n` +
-      `確定要實際發放嗎？`,
-    );
-    if (!ok2) return;
-
-    setSaving(true);
-    try {
-      const result = await adminFetch<{
-        ok: boolean; totalUsers: number; affectedUsers: number; totalGranted: number;
-      }>("/api/admin/vip-tiers/backfill", {
-        method: "POST",
-        body: JSON.stringify({ dryRun: false }),
-      });
-      setOk(
-        `✓ 補發完成：${result.affectedUsers} 位會員共獲 NT$ ${result.totalGranted.toLocaleString()}`,
-      );
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "補發失敗");
     } finally {
       setSaving(false);
     }
@@ -261,22 +208,10 @@ export default function VipTiersPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3 justify-between items-center">
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={resetToDefault} disabled={saving}>
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />還原預設
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={backfillRewards}
-              disabled={saving}
-              className="border-amber-400 text-amber-700 hover:bg-amber-50"
-              title="老闆專用：補發舊會員未領取的 VIP 禮金（dedup 機制保證每人每階僅一次）"
-            >
-              <Gift className="mr-1.5 h-3.5 w-3.5" />特殊狀況補發禮金
-            </Button>
-          </div>
+        <div className="flex gap-3 justify-between">
+          <Button variant="outline" size="sm" onClick={resetToDefault} disabled={saving}>
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />還原預設
+          </Button>
           <Button size="sm" style={primaryBtn} onClick={save} disabled={saving || loading}>
             <Save className="mr-1.5 h-4 w-4" />
             {saving ? "儲存並重算中..." : "儲存 VIP 設定"}
