@@ -603,13 +603,13 @@ export default function AdminUsersPage() {
                   >
                     <th className="px-4 py-3 font-medium">會員編號</th>
                     <th
-                      className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
+                      className="cursor-pointer pl-2 pr-3 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("displayName")}
                     >
                       姓名
                       <SortIcon k="displayName" />
                     </th>
-                    <th className="px-4 py-3 font-medium">角色</th>
+                    <th className="px-2 py-3 font-medium" style={{ width: "1%" }}>角色</th>
                     <th className="px-4 py-3 font-medium">電話</th>
                     <th className="px-4 py-3 font-medium">Email / LINE ID</th>
                     <th className="px-4 py-3 font-medium">證照</th>
@@ -666,8 +666,8 @@ export default function AdminUsersPage() {
                           <span className="text-xs text-[var(--muted-foreground)]">—</span>
                         )}
                       </td>
-                      {/* 姓名 — 強制不換行 + LINE 名字縮字 */}
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      {/* 姓名 — 強制不換行 + LINE 名字縮字（左 padding 縮小靠左） */}
+                      <td className="pl-2 pr-3 py-3 whitespace-nowrap">
                         <div className={cn("font-medium whitespace-nowrap", u.deletedAt && "line-through text-[var(--muted-foreground)]")}>
                           {u.realName ?? u.displayName}
                         </div>
@@ -693,22 +693,22 @@ export default function AdminUsersPage() {
                           </div>
                         )}
                       </td>
-                      {/* 角色 */}
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
+                      {/* 角色 — 縮小欄寬 */}
+                      <td className="px-2 py-3 whitespace-nowrap" style={{ width: "1%" }}>
+                        <div className="flex flex-col gap-0.5">
                           {u.effectiveRoles.map((r) => (
                             <Badge
                               key={r}
                               variant={roleBadgeVariant(r)}
-                              className="text-[9px]"
+                              className="text-[9px] inline-block w-fit"
                             >
                               {r}
                             </Badge>
                           ))}
                         </div>
                       </td>
-                      {/* 電話 */}
-                      <td className="px-4 py-3 tabular-nums text-xs">
+                      {/* 電話 — 不換行 */}
+                      <td className="px-4 py-3 tabular-nums text-xs whitespace-nowrap">
                         {u.phone ?? "—"}
                       </td>
                       {/* Email + LINE ID 合併欄 — 點擊開啟傳送視窗 */}
@@ -742,10 +742,10 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
-                      {/* VIP — 純文字「LV1 鯨鯊」格式，不加背景色 */}
-                      <td className="px-4 py-3">
+                      {/* VIP — 純文字「LV1 鯨鯊」格式，不換行 */}
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {u.vipLevel > 0 ? (
-                          <span className="text-xs font-medium tabular-nums" style={{ color: "var(--foreground)" }}>
+                          <span className="text-xs font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--foreground)" }}>
                             LV{u.vipLevel} {getVipTier(u.vipLevel).name}
                           </span>
                         ) : (
