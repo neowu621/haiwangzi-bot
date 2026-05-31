@@ -2,11 +2,102 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, HelpCircle } from "lucide-react";
+import { ArrowLeft, HelpCircle, Heart, RefreshCw } from "lucide-react";
 import { Wordmark } from "@/components/brand/Logo";
 import { SplashOverlay } from "@/components/shell/SplashOverlay";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
+
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "東北角海王子潛水";
+const LINE_OA = process.env.NEXT_PUBLIC_LINE_OA_ID ?? "@894bpmew";
+const ADD_FRIEND_URL =
+  process.env.NEXT_PUBLIC_LINE_ADD_FRIEND_URL ??
+  `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA)}`;
+
+/**
+ * 非好友硬擋畫面 — 取代任何 children 直接渲染
+ * 中央顯眼提示 + 加入好友按鈕，不讓任何頁面內容流出
+ */
+function FriendGateBlock() {
+  const [rechecking, setRechecking] = React.useState(false);
+
+  async function recheck() {
+    setRechecking(true);
+    try {
+      const liffMod = await import("@line/liff");
+      const friendship = await liffMod.default.getFriendship();
+      if (friendship.friendFlag) {
+        // 重新整理整個 LIFF state；最簡單方式 reload
+        window.location.reload();
+      } else {
+        alert("還沒偵測到好友關係，請確認已在 LINE 加 OA 好友後再試一次");
+      }
+    } catch (e) {
+      alert("檢查失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRechecking(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[var(--background)] px-6 py-8 overflow-y-auto">
+      {/* 大頭 + 標題 */}
+      <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-full" style={{ background: "rgba(6,199,85,0.18)" }}>
+        <Heart className="h-12 w-12" style={{ color: "#06C755" }} fill="#06C755" />
+      </div>
+      <h1 className="mb-2 text-center text-2xl font-bold text-[var(--foreground)]">
+        請先加 LINE 好友
+      </h1>
+      <p className="mb-8 max-w-sm text-center text-sm leading-relaxed text-[var(--muted-foreground)]">
+        加 <b className="text-[var(--foreground)]">{APP_NAME}</b> 為好友後，
+        才能用手機 LINE 預約 / 查詢訂單 / 接收行前通知。
+      </p>
+
+      {/* 大號加好友按鈕 */}
+      <a
+        href={ADD_FRIEND_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-3 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#06C755]/40 transition-transform active:scale-95"
+        style={{ background: "#06C755" }}
+      >
+        <span className="text-2xl">✚</span>
+        加入 LINE 好友
+      </a>
+
+      {/* LINE ID */}
+      <p className="mb-5 text-xs text-[var(--muted-foreground)]">
+        或 LINE 搜尋官方帳號：
+        <span className="ml-1 font-mono font-semibold text-[var(--foreground)]">
+          {LINE_OA}
+        </span>
+      </p>
+
+      {/* 重新檢查 */}
+      <button
+        type="button"
+        onClick={recheck}
+        disabled={rechecking}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-xs text-[var(--foreground)] transition-colors hover:bg-[var(--muted)] disabled:opacity-50"
+      >
+        <RefreshCw className={rechecking ? "h-3 w-3 animate-spin" : "h-3 w-3"} />
+        {rechecking ? "檢查中..." : "我已加入好友，重新檢查"}
+      </button>
+
+      {/* 步驟 */}
+      <div className="mt-6 max-w-sm rounded-xl border border-[var(--border)] bg-white p-4">
+        <p className="mb-2 text-xs font-semibold text-[var(--foreground)]">📝 操作步驟</p>
+        <ol className="list-decimal space-y-1 pl-5 text-xs text-[var(--muted-foreground)]">
+          <li>點上方綠色按鈕跳到 LINE 加好友頁</li>
+          <li>按「加入好友」</li>
+          <li>回到本頁，按「重新檢查」</li>
+          <li>系統會自動進入預約頁</li>
+        </ol>
+      </div>
+
+    </div>
+  );
+}
 
 interface LiffShellProps {
   title?: string;
@@ -33,15 +124,13 @@ export function LiffShell({
   const router = useRouter();
   const pathname = usePathname();
 
-  // 好友 gate：未加 OA 好友 → 強制導到 /liff/add-friend（除非已在該頁）
-  React.useEffect(() => {
-    if (skipFriendGate) return;
-    if (!liff.ready) return;
-    if (liff.mode === "mock") return; // 開發模式跳過
-    if (liff.isFriend === false && pathname !== "/liff/add-friend") {
-      router.replace("/liff/add-friend");
-    }
-  }, [liff.ready, liff.isFriend, liff.mode, pathname, skipFriendGate, router]);
+  // 好友 gate：未加 OA 好友 → 直接渲染加好友畫面（取代 children）
+  // 不再用 router.replace（避免 children 閃一下）
+  const blockedByFriendGate =
+    !skipFriendGate &&
+    liff.ready &&
+    liff.mode !== "mock" &&
+    liff.isFriend === false;
 
   function handleBack() {
     // 永遠優先用瀏覽器歷史（router.back 對 Next.js App Router 客戶端導航是可靠的）
@@ -148,9 +237,15 @@ export function LiffShell({
         </div>
       )}
 
-      <main className="flex-1 pb-24">{children}</main>
-
-      {bottomNav ? bottomNav : null}
+      {/* 非好友：硬擋畫面取代 children；不顯示 bottomNav */}
+      {blockedByFriendGate ? (
+        <FriendGateBlock />
+      ) : (
+        <>
+          <main className="flex-1 pb-24">{children}</main>
+          {bottomNav ? bottomNav : null}
+        </>
+      )}
 
       {/* 版本已搬到 header 左上，footer 留空（讓底部 nav 不被擋） */}
     </div>
