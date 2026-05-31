@@ -33,12 +33,12 @@ async function main() {
 
   // ─── DiveSites ────────────────────────────────────────
   const sites = [
-    { id: "longdong-82.8", name: "龍洞 82.8", region: "northeast" as const, description: "東北角熱門潛點，軟珊瑚豐富，適合進階。", difficulty: "medium" as const, maxDepth: 25, features: ["軟珊瑚", "海蛞蝓"] },
-    { id: "yingge-stone", name: "鶯歌石", region: "northeast" as const, description: "東北角入門潛點。", difficulty: "easy" as const, maxDepth: 18, features: ["軟珊瑚", "豆丁海馬"] },
-    { id: "shen-ao", name: "深奧", region: "northeast" as const, description: "可夜潛的潛點。", difficulty: "easy" as const, maxDepth: 20, features: ["夜潛", "章魚"] },
-    { id: "chaojing-park", name: "潮境公園", region: "northeast" as const, description: "基隆水下保護區。", difficulty: "easy" as const, maxDepth: 22, features: ["魚群", "保護區"] },
-    { id: "green-island-da-bai-sha", name: "綠島大白沙", region: "green_island" as const, description: "綠島經典點。", difficulty: "medium" as const, maxDepth: 30, features: ["水推", "海狼"] },
-    { id: "lanyu-bayan-bay", name: "蘭嶼八代灣", region: "lanyu" as const, description: "蘭嶼東岸代表潛點。", difficulty: "hard" as const, maxDepth: 35, features: ["珊瑚礁", "海龜"] },
+    { id: "longdong-82.8", name: "龍洞 82.8", region: "northeast" as const, description: "東北角熱門潛點，軟珊瑚豐富，適合進階。", difficulty: "medium" as const, maxDepth: "25", features: ["軟珊瑚", "海蛞蝓"] },
+    { id: "yingge-stone", name: "鶯歌石", region: "northeast" as const, description: "東北角入門潛點。", difficulty: "easy" as const, maxDepth: "18", features: ["軟珊瑚", "豆丁海馬"] },
+    { id: "shen-ao", name: "深奧", region: "northeast" as const, description: "可夜潛的潛點。", difficulty: "easy" as const, maxDepth: "20", features: ["夜潛", "章魚"] },
+    { id: "chaojing-park", name: "潮境公園", region: "northeast" as const, description: "基隆水下保護區。", difficulty: "easy" as const, maxDepth: "22", features: ["魚群", "保護區"] },
+    { id: "green-island-da-bai-sha", name: "綠島大白沙", region: "green_island" as const, description: "綠島經典點。", difficulty: "medium" as const, maxDepth: "30", features: ["水推", "海狼"] },
+    { id: "lanyu-bayan-bay", name: "蘭嶼八代灣", region: "lanyu" as const, description: "蘭嶼東岸代表潛點。", difficulty: "hard" as const, maxDepth: "35", features: ["珊瑚礁", "海龜"] },
   ];
   for (const s of sites) {
     await prisma.diveSite.upsert({ where: { id: s.id }, create: s, update: s });

@@ -111,11 +111,11 @@ async function reseedDemo() {
 
   // sites
   const sites = [
-    { id: "longdong-82.8", name: "龍洞 82.8", region: "northeast" as const, description: "東北角熱門潛點。", difficulty: "medium" as const, maxDepth: 25, features: ["軟珊瑚"] },
-    { id: "yingge-stone", name: "鶯歌石", region: "northeast" as const, description: "入門潛點。", difficulty: "easy" as const, maxDepth: 18, features: ["軟珊瑚"] },
-    { id: "shen-ao", name: "深奧", region: "northeast" as const, description: "夜潛潛點。", difficulty: "easy" as const, maxDepth: 20, features: ["夜潛"] },
-    { id: "chaojing-park", name: "潮境公園", region: "northeast" as const, description: "水下保護區。", difficulty: "easy" as const, maxDepth: 22, features: ["魚群"] },
-    { id: "green-island-da-bai-sha", name: "綠島大白沙", region: "green_island" as const, description: "綠島經典點。", difficulty: "medium" as const, maxDepth: 30, features: ["水推"] },
+    { id: "longdong-82.8", name: "龍洞 82.8", region: "northeast" as const, description: "東北角熱門潛點。", difficulty: "medium" as const, maxDepth: "25", features: ["軟珊瑚"] },
+    { id: "yingge-stone", name: "鶯歌石", region: "northeast" as const, description: "入門潛點。", difficulty: "easy" as const, maxDepth: "18", features: ["軟珊瑚"] },
+    { id: "shen-ao", name: "深奧", region: "northeast" as const, description: "夜潛潛點。", difficulty: "easy" as const, maxDepth: "20", features: ["夜潛"] },
+    { id: "chaojing-park", name: "潮境公園", region: "northeast" as const, description: "水下保護區。", difficulty: "easy" as const, maxDepth: "22", features: ["魚群"] },
+    { id: "green-island-da-bai-sha", name: "綠島大白沙", region: "green_island" as const, description: "綠島經典點。", difficulty: "medium" as const, maxDepth: "30", features: ["水推"] },
   ];
   for (const s of sites)
     await prisma.diveSite.upsert({ where: { id: s.id }, create: s, update: s });

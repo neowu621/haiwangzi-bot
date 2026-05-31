@@ -29,7 +29,7 @@ async function main() {
       region: "northeast" as const,
       description: "東北角熱門潛點,軟珊瑚豐富,適合進階潛水員。",
       difficulty: "medium" as const,
-      maxDepth: 25,
+      maxDepth: "25",
       features: ["軟珊瑚", "海蛞蝓", "雀鯛"],
     },
     {
@@ -38,7 +38,7 @@ async function main() {
       region: "northeast" as const,
       description: "東北角入門潛點,地形變化少,適合 OW 新手。",
       difficulty: "easy" as const,
-      maxDepth: 18,
+      maxDepth: "18",
       features: ["軟珊瑚", "豆丁海馬"],
     },
     {
@@ -47,7 +47,7 @@ async function main() {
       region: "northeast" as const,
       description: "可以夜潛的潛點,夜行海葵跟章魚很多。",
       difficulty: "easy" as const,
-      maxDepth: 20,
+      maxDepth: "20",
       features: ["夜潛", "章魚", "海葵"],
     },
     {
@@ -56,7 +56,7 @@ async function main() {
       region: "northeast" as const,
       description: "基隆水下保護區,魚群密度東北角第一。",
       difficulty: "easy" as const,
-      maxDepth: 22,
+      maxDepth: "22",
       features: ["魚群", "保護區"],
     },
     {
@@ -65,7 +65,7 @@ async function main() {
       region: "green_island" as const,
       description: "綠島經典點,水推訓練熱門地。",
       difficulty: "medium" as const,
-      maxDepth: 30,
+      maxDepth: "30",
       features: ["水推", "鯊魚點", "海狼"],
     },
     {
@@ -74,7 +74,7 @@ async function main() {
       region: "lanyu" as const,
       description: "蘭嶼東岸代表潛點。",
       difficulty: "hard" as const,
-      maxDepth: 35,
+      maxDepth: "35",
       features: ["珊瑚礁", "海龜", "軸孔珊瑚"],
     },
   ];
