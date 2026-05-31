@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { SignJWT, jwtVerify, createRemoteJWKSet } from "jose";
 import { prisma } from "./prisma";
 import { genMemberCode } from "./code-gen";
+import { normalizeVipTiers, VIP_TIERS } from "./vip-tier";
+import { grantVipUpgradeRewards } from "./vip-upgrade-rewards";
 import type { User, UserRole } from "@prisma/client";
 
 // LINE 的 JWKS 公開金鑰,用來驗 idToken 的簽章
@@ -158,11 +160,26 @@ async function getOrCreateUser(
     });
   }
   const code = await genMemberCode();
-  return await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { lineUserId },
     create: { lineUserId, displayName, code },
     update: { lastActiveAt: new Date() },
   });
+
+  // 註冊禮金 — 把 LV1 的 upgradeCredit 視為「加入會員紅包」
+  // 重複呼叫安全（grantVipUpgradeRewards 用 CreditTx refType=vip+refId=1 去重）
+  try {
+    const cfg = await prisma.siteConfig
+      .findUnique({ where: { id: "default" } })
+      .catch(() => null);
+    const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : VIP_TIERS;
+    // oldLevel=0 → newLevel=1 讓 LV1 reward 命中
+    await grantVipUpgradeRewards(lineUserId, 0, 1, tiers);
+  } catch (e) {
+    console.error("[signup credit grant]", e);
+  }
+
+  return user;
 }
 
 /**

@@ -38,7 +38,7 @@ export const VIP_TIERS: VipTier[] = [
       "潛水裝備租借 95 折",
       "基礎會員電子報",
     ],
-    upgradeCredit: 0, // 起始等級不發
+    upgradeCredit: 50, // 註冊禮金（新會員首次加入時自動發放）
     color: "#FFB1B1", // pinkish
   },
   {

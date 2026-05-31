@@ -107,17 +107,18 @@ export async function POST(req: NextRequest) {
           data: { vipLevel: newLevel },
         });
         promoted++;
-        // 只有升等才發禮金（降等不退錢）
-        if (newLevel > oldLevel) {
-          totalCreditGranted += await grantVipUpgradeRewards(
-            u.lineUserId,
-            oldLevel,
-            newLevel,
-            tiers,
-            auth.user.lineUserId,
-          );
-        }
       }
+      // 補發禮金 — 從 oldLevel=0 開始嘗試到 currentLevel
+      // dedup 機制（CreditTx refType=vip+refId=lv）會自動跳過已發放的
+      // 這樣可以：1) 升等者拿新階段獎勵 2) 舊會員補拿 LV1 註冊禮金
+      const effLevel = Math.max(oldLevel, newLevel);
+      totalCreditGranted += await grantVipUpgradeRewards(
+        u.lineUserId,
+        0,
+        effLevel,
+        tiers,
+        auth.user.lineUserId,
+      );
     }
 
     await logAudit({
