@@ -501,6 +501,28 @@ model AuditLog {
   @@index([createdAt(sort: Desc)])
 }
 
+// 最新動態（manual 由 admin 後台手動 post，或 future 由 cron 自動抓 YouTube/IG）
+model MediaPost {
+  id          String   @id @default(uuid()) @db.Uuid
+  // 來源：manual / youtube / facebook / instagram ...（未來自動抓用）
+  source      String   @db.VarChar(16)
+  // 自動抓時用，例如 YT video ID，用於 upsert 去重；手動 post 為 null
+  externalId  String?  @map("external_id") @db.VarChar(128)
+  title       String
+  description String?
+  imageUrl    String?  @map("image_url")
+  linkUrl     String   @map("link_url")
+  publishedAt DateTime @map("published_at") @db.Timestamptz
+  visible     Boolean  @default(true)
+  pinned      Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("media_posts")
+  @@index([visible, publishedAt(sort: Desc)])
+  @@index([source, externalId])
+}
+
 // 客戶瀏覽紀錄（用於「看過但沒下單」高意願客戶分析）
 model PageView {
   id        String   @id @default(cuid())

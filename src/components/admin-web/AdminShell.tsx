@@ -21,6 +21,7 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   HelpCircle,
+  Newspaper,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/admin/coaches", icon: GraduationCap, label: "教練管理" },
   { href: "/admin/sites", icon: MapPin, label: "潛點管理" },
   { href: "/admin/vip-tiers", icon: Star, label: "VIP 設定" },
+  { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
   { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
   { href: "/admin/reports", icon: BarChart2, label: "報表" },
   { href: "/admin/settings", icon: Settings, label: "系統設定" },

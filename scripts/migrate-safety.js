@@ -20,6 +20,24 @@ const PATCHES = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(64)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_reason TEXT`,
 
+  // v131: MediaPost 表（最新動態，手動 post + 未來自動抓）
+  `CREATE TABLE IF NOT EXISTS media_posts (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     source VARCHAR(16) NOT NULL,
+     external_id VARCHAR(128),
+     title TEXT NOT NULL,
+     description TEXT,
+     image_url TEXT,
+     link_url TEXT NOT NULL,
+     published_at TIMESTAMPTZ NOT NULL,
+     visible BOOLEAN NOT NULL DEFAULT TRUE,
+     pinned BOOLEAN NOT NULL DEFAULT FALSE,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS media_posts_visible_idx ON media_posts(visible, published_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS media_posts_source_external_idx ON media_posts(source, external_id)`,
+
   // v121: PageView 表（瀏覽追蹤 → 高意願客戶分析）
   `CREATE TABLE IF NOT EXISTS page_views (
      id TEXT PRIMARY KEY,
