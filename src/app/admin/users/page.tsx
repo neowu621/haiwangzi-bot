@@ -1128,10 +1128,37 @@ export default function AdminUsersPage() {
                     onChange={(e) => setCreditAmount(e.target.value)}
                   />
                   <Input
-                    placeholder="原因（選填）"
+                    placeholder="名義（會顯示給會員看，例：客訴補償）"
                     value={creditNote}
                     onChange={(e) => setCreditNote(e.target.value)}
                   />
+                </div>
+                {/* 快捷名義 — 點擊填入「原因」欄 */}
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    "生日紅包",
+                    "活動補償",
+                    "推薦獎勵",
+                    "客訴補償",
+                    "系統錯誤校正",
+                    "老闆贈送",
+                    "競賽獎金",
+                    "潛友見證紅包",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCreditNote(preset)}
+                      className="rounded-full border px-2 py-0.5 text-[10px] transition-colors hover:bg-teal-50"
+                      style={{
+                        borderColor: creditNote === preset ? "var(--color-phosphor)" : "var(--border)",
+                        color: creditNote === preset ? "var(--color-ocean-deep)" : "var(--muted-foreground)",
+                        background: creditNote === preset ? "rgba(0,217,203,0.1)" : "transparent",
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
                 </div>
                 <div className="flex gap-2">
                   <Button

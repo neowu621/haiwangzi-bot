@@ -1192,6 +1192,10 @@ function CreditCard({
                   desc: "",
                 };
                 const positive = t.amount >= 0;
+                // admin_adjust 有 note 時，把 note 當主標題，原本「管理員調整」變副標
+                const isAdminAdjust = t.reason === "admin_adjust";
+                const mainLabel = isAdminAdjust && t.note ? t.note : meta.label;
+                const subLabel = isAdminAdjust && t.note ? meta.label : "";
                 return (
                   <div
                     key={t.id}
@@ -1200,11 +1204,11 @@ function CreditCard({
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg">{meta.emoji}</span>
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold flex items-center gap-1">
-                          {meta.label}
-                          {t.byAdmin && t.reason === "admin_adjust" && (
+                        <div className="text-sm font-semibold flex items-center gap-1 flex-wrap">
+                          {mainLabel}
+                          {t.byAdmin && isAdminAdjust && (
                             <span className="rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
-                              管理員
+                              {subLabel || "管理員"}
                             </span>
                           )}
                           {t.refCode && (
@@ -1215,7 +1219,8 @@ function CreditCard({
                         </div>
                         <div className="text-[10px] text-[var(--muted-foreground)] tabular">
                           {new Date(t.createdAt).toLocaleDateString("zh-TW")}
-                          {t.note ? ` · ${t.note}` : meta.desc ? ` · ${meta.desc}` : ""}
+                          {!isAdminAdjust && t.note ? ` · ${t.note}` : ""}
+                          {!t.note && meta.desc ? ` · ${meta.desc}` : ""}
                         </div>
                       </div>
                     </div>
