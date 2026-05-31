@@ -14,9 +14,15 @@ export async function GET(
   const trip = await prisma.divingTrip.findUnique({ where: { id } });
   if (!trip) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const sites = await prisma.diveSite.findMany({
+  const foundSites = await prisma.diveSite.findMany({
     where: { id: { in: trip.diveSiteIds } },
   });
+  const siteMap = new Map(foundSites.map((s) => [s.id, s]));
+  // v153 起：diveSiteIds 可能直接存中文名，DiveSite 表內找不到時用名稱本身
+  const sites = trip.diveSiteIds.map((id) =>
+    siteMap.get(id) ?? { id, name: id, region: null, description: "", difficulty: null, maxDepth: "", features: [], images: [], youtubeUrl: null, locationUrl: null, cautions: null },
+  );
+
   const coaches = await prisma.coach.findMany({
     where: { id: { in: trip.coachIds } },
   });
@@ -29,9 +35,10 @@ export async function GET(
     ...trip,
     date: trip.date.toISOString().slice(0, 10),
     booked: booked._sum.participants ?? 0,
+    // capacity null = 無上限（available 也給 null，UI 顯示「可預約」）
     available:
       trip.capacity == null
-        ? 999
+        ? null
         : Math.max(0, trip.capacity - (booked._sum.participants ?? 0)),
     sites,
     coaches,

@@ -50,8 +50,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     trips: trips.map((t) => {
       const booked = bookingMap.get(t.id) ?? 0;
-      // capacity null = 無上限
-      const available = t.capacity == null ? 999 : Math.max(0, t.capacity - booked);
+      // capacity null = 無上限（available 給 null，UI 顯示「可預約」不顯示數字）
+      const available = t.capacity == null ? null : Math.max(0, t.capacity - booked);
+      // v153 起：diveSiteIds 可能是直接存的中文名稱，DiveSite 表內找不到時用名稱本身當顯示
+      const sites = t.diveSiteIds.map((id) => {
+        const found = siteMap.get(id);
+        return found ?? { id, name: id }; // fallback：id 本身就是潛點名
+      });
       return {
         id: t.id,
         date: t.date.toISOString().slice(0, 10),
@@ -61,9 +66,9 @@ export async function GET(req: NextRequest) {
         tankCount: t.tankCount,
         capacity: t.capacity, // null = 無上限
         booked,
-        available,
+        available, // null = 無上限
         pricing: t.pricing,
-        sites: t.diveSiteIds.map((id) => siteMap.get(id)).filter(Boolean),
+        sites,
         coachIds: t.coachIds,
         status: t.status,
       };

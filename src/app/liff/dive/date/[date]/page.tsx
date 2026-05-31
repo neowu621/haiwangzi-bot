@@ -14,9 +14,9 @@ interface Trip {
   isNightDive: boolean;
   isScooter: boolean;
   tankCount: number;
-  capacity: number;
+  capacity: number | null;     // null = 無上限
   booked: number;
-  available: number;
+  available: number | null;    // null = 無上限
   sites: Array<{ id: string; name: string } | null>;
   pricing: { baseTrip: number; extraTank: number; nightDive: number; scooterRental: number };
 }
@@ -93,10 +93,7 @@ export default function DiveDateListPage({
                     </div>
                     <div className="mt-2 flex items-center gap-1 text-sm font-semibold">
                       <Anchor className="h-4 w-4 opacity-70" />
-                      {t.sites
-                        .filter((s) => s)
-                        .map((s) => s!.name)
-                        .join(" · ") || "東北角"}
+                      {t.sites.filter((s) => s).map((s) => s!.name).join(" · ") || "—"}
                     </div>
                     <div
                       className={
@@ -111,14 +108,15 @@ export default function DiveDateListPage({
                     <div className="flex items-center justify-end gap-1 text-xs">
                       <Users className="h-3 w-3" />
                       <span className="tabular">
-                        {t.booked}/{t.capacity}
+                        {t.capacity == null ? `${t.booked} 人` : `${t.booked}/${t.capacity}`}
                       </span>
                     </div>
                     <Badge
                       variant={
+                        // available=null 視為「無上限可預約」
                         t.available === 0
                           ? "muted"
-                          : t.available <= 2
+                          : t.available != null && t.available <= 2
                           ? "coral"
                           : "default"
                       }
@@ -126,7 +124,7 @@ export default function DiveDateListPage({
                     >
                       {t.available === 0
                         ? "已滿"
-                        : t.available <= 2
+                        : t.available != null && t.available <= 2
                         ? `剩 ${t.available}`
                         : "可預約"}
                     </Badge>

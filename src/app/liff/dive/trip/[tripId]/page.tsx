@@ -36,9 +36,9 @@ interface TripDetail {
   isNightDive: boolean;
   isScooter: boolean;
   tankCount: number;
-  capacity: number;
+  capacity: number | null;     // null = 無上限
   booked: number;
-  available: number;
+  available: number | null;    // null = 無上限
   pricing: {
     baseTrip: number;
     extraTank: number;
@@ -415,7 +415,14 @@ export default function TripBookingPage({
                 )}
               </div>
               <div className={cn("mt-1 text-xs tabular", trip.isNightDive ? "opacity-70" : "text-[var(--muted-foreground)]")}>
-                {trip.startTime} · 剩 {trip.available}/{trip.capacity}
+                {trip.startTime}
+                {/* capacity null = 無上限 → 顯示「已報 N」；否則「剩 X/Y」 */}
+                {" · "}
+                {trip.capacity == null
+                  ? `已報 ${trip.booked} 人`
+                  : trip.available === 0
+                  ? "已滿"
+                  : `剩 ${trip.available}/${trip.capacity}`}
                 {trip.coaches.length > 0 && (
                   <> · 教練 {trip.coaches.map((c) => c.realName).join("、")}</>
                 )}
@@ -436,7 +443,7 @@ export default function TripBookingPage({
               <Stepper
                 value={participants}
                 min={1}
-                max={trip.available}
+                max={trip.available ?? 99}   // null = 無上限 → 給 99 上限避免無限增加
                 onChange={setParticipants}
               />
             </div>
