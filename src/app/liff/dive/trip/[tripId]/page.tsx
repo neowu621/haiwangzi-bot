@@ -282,10 +282,8 @@ export default function TripBookingPage({
   );
   const extraAmount = useMemo(() => {
     if (!trip) return 0;
-    let amt = trip.pricing.baseTrip;
-    if (trip.isNightDive) amt += trip.pricing.nightDive;
-    if (trip.isScooter) amt += trip.pricing.scooterRental;
-    return amt;
+    // v155：夜潛加價、水上摩托車加價皆已移除（統一價）
+    return trip.pricing.baseTrip;
   }, [trip]);
   const total = divesAmount + extraAmount + gearTotal;
 
@@ -853,20 +851,7 @@ export default function TripBookingPage({
                 </span>
                 <span>NT$ {divesAmount.toLocaleString()}</span>
               </div>
-              {trip.isNightDive && (
-                <div className="flex justify-between text-[10px]">
-                  <span>· 夜潛附加</span>
-                  <span>+ NT$ {trip.pricing.nightDive.toLocaleString()}</span>
-                </div>
-              )}
-              {trip.isScooter && (
-                <div className="flex justify-between text-[10px]">
-                  <span>· 水推附加</span>
-                  <span>
-                    + NT$ {trip.pricing.scooterRental.toLocaleString()}
-                  </span>
-                </div>
-              )}
+              {/* v155：夜潛附加 / 水推附加列已移除（統一價） */}
               {gearTotal > 0 && (
                 <div className="flex justify-between">
                   <span>

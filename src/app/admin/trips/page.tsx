@@ -141,10 +141,8 @@ function estimatedRevenue(trip: Trip): number {
   const p = trip.pricing;
   const tanksPerPerson = trip.tankCount;
   const baseWithTanks = p.baseTrip + (tanksPerPerson - 1) * p.extraTank;
-  const extras =
-    (trip.isNightDive ? p.nightDive : 0) +
-    (trip.isScooter ? p.scooterRental : 0) +
-    (p.otherFee ?? 0);
+  // v155：夜潛 / 水上摩托車加成已移除，僅算氣瓶費 + 其他費用
+  const extras = (p.otherFee ?? 0);
   return trip.booked * (baseWithTanks + extras);
 }
 
@@ -320,7 +318,6 @@ export default function AdminTripsPage() {
       { header: "人數上限（0=無上限）", key: "capacity", width: 14 },
       { header: "教練姓名（逗號分隔）", key: "coaches", width: 20 },
       { header: "氣瓶費/瓶", key: "extraTank", width: 12 },
-      { header: "夜潛加價", key: "nightDive", width: 12 },
       { header: "其他費用", key: "otherFee", width: 12 },
       { header: "其他費用說明", key: "otherFeeNote", width: 18 },
       { header: "集合地點", key: "meetingPoint", width: 22 },
@@ -333,7 +330,7 @@ export default function AdminTripsPage() {
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
     headerRow.height = 32;
 
-    // 兩列範例（白天 + 夜潛）
+    // 兩列範例（白天 + 夜潛，夜潛不再有加價）
     ws.addRow({
       date: "2026-06-15",
       startTime: "08:00",
@@ -343,7 +340,6 @@ export default function AdminTripsPage() {
       capacity: 8,
       coaches: coaches[0]?.realName ?? "王教練",
       extraTank: 500,
-      nightDive: 0,
       otherFee: 0,
       otherFeeNote: "",
       meetingPoint: "龍洞 4 號港",
@@ -359,7 +355,6 @@ export default function AdminTripsPage() {
       capacity: 6,
       coaches: coaches[0]?.realName ?? "王教練",
       extraTank: 500,
-      nightDive: 300,
       otherFee: 0,
       otherFeeNote: "",
       meetingPoint: "龍洞 4 號港",
@@ -413,7 +408,6 @@ export default function AdminTripsPage() {
       { header: "人數上限（0=∞）", key: "capacity", width: 14 },
       { header: "教練姓名（逗號分隔）", key: "coaches", width: 20 },
       { header: "氣瓶費/瓶", key: "extraTank", width: 12 },
-      { header: "夜潛加價", key: "nightDive", width: 12 },
       { header: "其他費用", key: "otherFee", width: 12 },
       { header: "其他費用說明", key: "otherFeeNote", width: 18 },
       { header: "集合地點", key: "meetingPoint", width: 22 },
@@ -444,7 +438,6 @@ export default function AdminTripsPage() {
         capacity: t.capacity ?? 0,
         coaches: t.coachIds.map(coachName).join(", "),
         extraTank: t.pricing.extraTank,
-        nightDive: t.pricing.nightDive,
         otherFee: t.pricing.otherFee ?? 0,
         otherFeeNote: t.pricing.otherFeeNote ?? "",
         meetingPoint: t.meetingPoint ?? "",
@@ -577,14 +570,14 @@ export default function AdminTripsPage() {
           pricing: {
             baseTrip: 0,
             extraTank: parseInt0(cell(8)),
-            nightDive: parseInt0(cell(9)),
+            nightDive: 0,           // v155：夜潛加價已移除
             scooterRental: 0,
-            otherFee: parseInt0(cell(10)),
-            otherFeeNote: cell(11),
+            otherFee: parseInt0(cell(9)),
+            otherFeeNote: cell(10),
           },
-          meetingPoint: cell(12),
-          meetingPointUrl: cell(13),
-          notes: cell(14),
+          meetingPoint: cell(11),
+          meetingPointUrl: cell(12),
+          notes: cell(13),
           status: "open",
         });
       });
@@ -1152,23 +1145,7 @@ export default function AdminTripsPage() {
                   />
                 </div>
               </div>
-              {/* 夜潛費（僅夜潛時顯示） */}
-              {form.isNightDive && (
-                <div className="mt-2 w-28">
-                  <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">夜潛費</div>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={String(form.pricing.nightDive)}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "" || /^\d+$/.test(raw)) {
-                        setForm({ ...form, pricing: { ...form.pricing, nightDive: raw === "" ? 0 : parseInt(raw, 10) } });
-                      }
-                    }}
-                  />
-                </div>
-              )}
+              {/* v155：夜潛加價欄位移除（夜潛與白天統一收費） */}
             </div>
 
             {/* 集合地點 — 分兩欄：地點說明 + Google Map URL */}

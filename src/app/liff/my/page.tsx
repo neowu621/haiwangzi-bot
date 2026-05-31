@@ -1162,18 +1162,7 @@ function EditBookingDialog({
                   ).toLocaleString()}
                 </span>
               </div>
-              {tripPricing.isNightDive && (
-                <div className="flex justify-between text-[var(--muted-foreground)]">
-                  <span>· 夜潛</span>
-                  <span>+ NT$ {tripPricing.nightDive.toLocaleString()}</span>
-                </div>
-              )}
-              {tripPricing.isScooter && (
-                <div className="flex justify-between text-[var(--muted-foreground)]">
-                  <span>· 水推</span>
-                  <span>+ NT$ {tripPricing.scooterRental.toLocaleString()}</span>
-                </div>
-              )}
+              {/* v155：夜潛 / 水推附加列已移除（統一價） */}
               {selectedGear.length > 0 && (
                 <div className="flex justify-between text-[var(--muted-foreground)]">
                   <span>裝備 ({selectedGear.length} 項)</span>
@@ -1192,8 +1181,6 @@ function EditBookingDialog({
                   {(
                     tripPricing.baseTrip +
                     tripPricing.extraTank * tankCount * participants +
-                    (tripPricing.isNightDive ? tripPricing.nightDive : 0) +
-                    (tripPricing.isScooter ? tripPricing.scooterRental : 0) +
                     selectedGear.reduce((s, g) => s + g.price * g.qty, 0)
                   ).toLocaleString()}
                 </span>

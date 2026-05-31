@@ -62,11 +62,10 @@ export default function DiveDateListPage({
         {trips.map((t) => {
           // v48：每人預估費（1 人 × 滿支數），baseTrip 是整單共享所以這只是 lower-bound
           // 公式：baseTrip + extraTank × tanks (此處 1 人) + 夜潛/水推
+          // v155：夜潛加價已移除（夜潛與白天統一價）；水上摩托車欄位前已停用
           const base =
             t.pricing.baseTrip +
-            t.pricing.extraTank * t.tankCount +
-            (t.isNightDive ? t.pricing.nightDive : 0) +
-            (t.isScooter ? t.pricing.scooterRental : 0);
+            t.pricing.extraTank * t.tankCount;
           return (
             <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>
               <Card
