@@ -13,6 +13,8 @@ import {
   Sparkles,
   Compass,
   Waves,
+  HelpCircle,
+  Newspaper,
   ChevronRight,
 } from "lucide-react";
 import { Trident } from "@/components/brand/Logo";
@@ -39,6 +41,8 @@ const ICON_MAP: Record<CardIconName, React.ComponentType<{ className?: string }>
   Sparkles,
   Compass,
   Waves,
+  HelpCircle,
+  Newspaper,
 };
 
 // accent → 漸層 + icon 色
