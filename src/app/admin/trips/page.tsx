@@ -316,7 +316,6 @@ export default function AdminTripsPage() {
       { header: "日期（YYYY-MM-DD，必填）", key: "date", width: 18 },
       { header: "時間（HH:MM，必填）", key: "startTime", width: 14 },
       { header: "夜潛（Y/N，留空自動依時間判斷）", key: "isNightDive", width: 20 },
-      { header: "水上摩托車（Y/N）", key: "isScooter", width: 16 },
       { header: "潛點名稱（逗號分隔，例如：鶯歌石 或 鶯歌石,深奧）", key: "sites", width: 36 },
       { header: "氣瓶數（1-5，預設 3）", key: "tankCount", width: 14 },
       { header: "人數上限（0=無上限）", key: "capacity", width: 14 },
@@ -340,7 +339,6 @@ export default function AdminTripsPage() {
       date: "2026-06-15",
       startTime: "08:00",
       isNightDive: "",
-      isScooter: "N",
       sites: sites[0]?.name ?? "鶯歌石",
       tankCount: 2,
       capacity: 8,
@@ -357,7 +355,6 @@ export default function AdminTripsPage() {
       date: "2026-06-15",
       startTime: "18:00",
       isNightDive: "Y",
-      isScooter: "N",
       sites: sites[0]?.name ?? "鶯歌石",
       tankCount: 1,
       capacity: 6,
@@ -382,7 +379,6 @@ export default function AdminTripsPage() {
       ["日期", "YYYY-MM-DD，例：2026-06-15。必填"],
       ["時間", "HH:MM，例：08:00、18:30。必填"],
       ["夜潛", "Y 或 N。留空時系統會自動依時間判斷（時間 ≥ 16:00 視為夜潛）"],
-      ["水上摩托車", "Y 或 N。留空視為 N"],
       ["潛點名稱", "用後台「潛點管理」內的中文名稱，多個用半形或全形逗號分隔（找不到的會列為錯誤）"],
       ["氣瓶數", "整數 1-5，留空預設 3"],
       ["人數上限", "整數 ≥ 0；填 0 代表無上限"],
@@ -486,10 +482,9 @@ export default function AdminTripsPage() {
         // 夜潛：留空自動由時間判斷
         const nightRaw = cell(3);
         const isNightDive = nightRaw ? parseBool(nightRaw) : startTime >= "16:00";
-        const isScooter = parseBool(cell(4));
 
-        // 潛點：中文名 → id
-        const siteNames = cell(5).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+        // 潛點：中文名 → id  (col 4)
+        const siteNames = cell(4).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
         const diveSiteIds: string[] = [];
         for (const sn of siteNames) {
           const sid = siteByName.get(sn);
@@ -497,8 +492,8 @@ export default function AdminTripsPage() {
           else localErrors.push({ row: idx, date: `${date} ${startTime}`, message: `找不到潛點「${sn}」（請先在「潛點管理」新增）` });
         }
 
-        // 教練：姓名 → id
-        const coachNames = cell(8).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+        // 教練：姓名 → id  (col 7)
+        const coachNames = cell(7).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
         const coachIds: string[] = [];
         for (const cn of coachNames) {
           const cid = coachByName.get(cn);
@@ -510,22 +505,22 @@ export default function AdminTripsPage() {
           date,
           startTime,
           isNightDive,
-          isScooter,
+          isScooter: false, // 已移除水上摩托車欄位
           diveSiteIds,
-          tankCount: parseInt0(cell(6), 3),
-          capacity: parseInt0(cell(7), 0),
+          tankCount: parseInt0(cell(5), 3),
+          capacity: parseInt0(cell(6), 0),
           coachIds,
           pricing: {
             baseTrip: 0,
-            extraTank: parseInt0(cell(9)),
-            nightDive: parseInt0(cell(10)),
+            extraTank: parseInt0(cell(8)),
+            nightDive: parseInt0(cell(9)),
             scooterRental: 0,
-            otherFee: parseInt0(cell(11)),
-            otherFeeNote: cell(12),
+            otherFee: parseInt0(cell(10)),
+            otherFeeNote: cell(11),
           },
-          meetingPoint: cell(13),
-          meetingPointUrl: cell(14),
-          notes: cell(15),
+          meetingPoint: cell(12),
+          meetingPointUrl: cell(13),
+          notes: cell(14),
           status: "open",
         });
       });
