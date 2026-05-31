@@ -35,15 +35,12 @@ async function richMenuSpec(role: "customer" | "coach" | "admin") {
       // 第一列
       { action: linkFor("/calendar"), label: "日潛水 → 今日出航" },
       { action: linkFor("/tour"), label: "潛水團 → 國內外行程" },
-      {
-        action: mediaUrl ? externalLink(mediaUrl) : linkFor("/media"),
-        label: "最新動態 → 影像日誌",
-      },
+      { action: linkFor("/faq"), label: "常見問題 → FAQ / 退款政策 / VIP 福利" },
       // 第二列
       { action: linkFor("/my"), label: "我的預約 → 課程紀錄" },
       {
         action: fbGroupUrl ? externalLink(fbGroupUrl) : linkFor("/welcome"),
-        label: "FB 社群專區 → Facebook Group",
+        label: "FB 社群專區 → Facebook Group（或 IG 等社群）",
       },
       { action: linkFor("/profile"), label: "個人中心 → 潛水紀錄" },
     ] as Array<{ action: { type: "uri"; uri: string } | { type: "message"; text: string }; label: string }>,
