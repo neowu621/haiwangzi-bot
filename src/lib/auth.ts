@@ -198,8 +198,10 @@ export function requireRole<T extends User>(
 ): { ok: true } | { ok: false; status: number; message: string } {
   const effectiveRoles = getUserRoles(user);
   const allowedSet = new Set(allowed);
-  // admin / boss 永遠通過（superuser）
-  if (effectiveRoles.includes("admin") || effectiveRoles.includes("boss")) return { ok: true };
+  // v175 安全修正：移除「admin/boss 永遠通過」的 superuser bypass
+  // 標記為 boss-only 的端點 admin 不應該能呼叫，反之亦然
+  // boss 仍然可以呼叫 admin 端點（因為他是更高的角色）→ 維持向下兼容
+  if (allowed.includes("admin") && effectiveRoles.includes("boss")) return { ok: true };
   const matched = effectiveRoles.some((r) => allowedSet.has(r));
   if (!matched) {
     return {

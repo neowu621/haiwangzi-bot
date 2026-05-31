@@ -15,7 +15,14 @@ const PRICING_DEFAULT = {
 // 一次性 seed endpoint
 // 需要 secret query param: ?secret=<LINE_CHANNEL_SECRET>
 // 跑完會把 kit 範例資料灌進 DB (idempotent,可重複跑)
+// v175 安全：production 環境完全禁止呼叫，避免 secret 外洩污染 DB
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "seed endpoint disabled in production" },
+      { status: 403 },
+    );
+  }
   const url = new URL(req.url);
   const secret = url.searchParams.get("secret");
   const expected = process.env.LINE_CHANNEL_SECRET;

@@ -176,6 +176,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
           // 直接 poll liff SDK 而不是 React state，避免閉包 stale issue
           const liffMod = await import("@line/liff");
           let waited = 0;
+          let sawLoggedIn = false;
           while (waited < 3000) {
             try {
               const t = liffMod.default.getIDToken();
@@ -184,13 +185,26 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
                 if (t !== idToken) setIdToken(t);
                 break;
               }
-              // getIDToken 返回 null 但不丟錯 → LIFF 已 init 但沒登入，跳出
-              if (liffMod.default.isLoggedIn?.() === false) break;
+              const loggedIn = liffMod.default.isLoggedIn?.();
+              // getIDToken 返回 null 但 SDK 已 init
+              if (loggedIn === false) break;             // 未登入，等下面 login()
+              if (loggedIn === true) {
+                // 已登入但 getIDToken 一直 null → 100% 是 LIFF Channel 缺 openid scope
+                // 再寬限一下（init 中可能短暫 true 但 token 還沒 ready），> 500ms 就斷定
+                sawLoggedIn = true;
+                if (waited >= 500) break;
+              }
             } catch {
               /* LIFF SDK 還沒 init，繼續等 */
             }
             await new Promise((r) => setTimeout(r, 100));
             waited += 100;
+          }
+          if (!token && sawLoggedIn) {
+            // 已登入但永遠拿不到 idToken — Channel openid scope 沒勾
+            throw new Error(
+              "LIFF 設定錯誤：請至 LINE Developers Console 為此 LIFF Channel 勾選 openid scope（聯絡管理員）",
+            );
           }
           if (token) {
             headers.set("authorization", `Bearer ${token}`);

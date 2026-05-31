@@ -201,9 +201,11 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
+    // 等 LIFF init 完成才呼叫 API，避免 race 觸發 fetchWithAuth 3 秒乾等
+    if (!liff.ready) return;
     reloadMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liff]);
+  }, [liff.ready]);
 
   // 載完後自動展開未填齊全的卡
   useEffect(() => {

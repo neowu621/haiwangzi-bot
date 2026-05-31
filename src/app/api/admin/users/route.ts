@@ -120,6 +120,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const data = PatchSchema.parse(await req.json());
+
+  // v175 安全：只有 boss 可以授予/取消 boss 身份；admin 不能把任何人（包含自己）升 boss
+  const callerRoles = new Set(auth.user.roles ?? [auth.user.role]);
+  const callerIsBoss = callerRoles.has("boss");
+  const wantsToSetBoss =
+    data.role === "boss" || (data.roles ?? []).includes("boss");
+  if (wantsToSetBoss && !callerIsBoss) {
+    return NextResponse.json(
+      { error: "權限不足：只有 boss 可以授予 boss 身份" },
+      { status: 403 },
+    );
+  }
+
   const patch: Record<string, unknown> = {};
   if (data.roles !== undefined) {
     // 去重 + 至少要有一個角色

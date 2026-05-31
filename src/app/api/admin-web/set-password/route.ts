@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashWebPassword, verifyWebPassword } from "@/lib/admin-web-crypto";
 import { logAudit } from "@/lib/audit";
+import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,10 @@ const Body = z.object({
 // 若已有密碼且提供 oldPassword → 驗舊密碼才改；
 // 若已有密碼且「不」提供 oldPassword → 只要 ADMIN_WEB_SECRET 即可重設（忘記密碼流程）
 export async function POST(req: NextRequest) {
+  // v175 安全：對改密碼端點加 rate limit（防 secret 外洩後被反覆嘗試）
+  const rl = checkRateLimit(req, { ...RATE_LIMIT.ADMIN_LOGIN, scope: "set-password" });
+  if (rl) return rl;
+
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json(
