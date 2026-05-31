@@ -169,6 +169,20 @@ export default function AdminTripsPage() {
     errors: { row: number; date: string; message: string }[];
   } | null>(null);
 
+  // 排序 + 篩選 + 分頁
+  type SortKey = "date" | "code" | "startTime" | "booked" | "revenue" | "status";
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filterRange, setFilterRange] = useState<"week" | "month" | "all">("week");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir(k === "date" ? "desc" : "asc"); }
+    setPage(1);
+  }
+
   useEffect(() => {
     // 用 allSettled：任一 API 失敗不影響其他資料載入
     Promise.allSettled([
@@ -644,6 +658,57 @@ export default function AdminTripsPage() {
     }));
   }
 
+  // ── 衍生列表：filter → sort → paginate ────────────────────────────
+  const filteredTrips = (() => {
+    if (filterRange === "all") return trips;
+    const today = taipeiToday();
+    const todayDate = new Date(`${today}T00:00:00+08:00`);
+    const cutoff = new Date(todayDate);
+    if (filterRange === "week") cutoff.setDate(cutoff.getDate() - 7);
+    else if (filterRange === "month") cutoff.setMonth(cutoff.getMonth() - 1);
+    return trips.filter((t) => {
+      const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
+      return td >= cutoff;
+    });
+  })();
+
+  const sortedTrips = [...filteredTrips].sort((a, b) => {
+    let va: string | number = 0, vb: string | number = 0;
+    switch (sortKey) {
+      case "date":      va = a.date.slice(0, 10); vb = b.date.slice(0, 10); break;
+      case "startTime": va = a.startTime;         vb = b.startTime; break;
+      case "code":      va = a.code ?? "";        vb = b.code ?? ""; break;
+      case "booked":    va = a.booked;            vb = b.booked; break;
+      case "revenue":   va = estimatedRevenue(a); vb = estimatedRevenue(b); break;
+      case "status":    va = effectiveTripStatus(a)[0]; vb = effectiveTripStatus(b)[0]; break;
+    }
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedTrips.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedTrips = sortedTrips.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // 表頭排序按鈕（小箭頭）
+  function SortHeader({ k, children, align = "left" }: { k: SortKey; children: React.ReactNode; align?: "left" | "right" | "center" }) {
+    const active = sortKey === k;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={cn("inline-flex items-center gap-0.5 font-medium hover:text-[var(--foreground)] transition-colors",
+          active && "text-[var(--foreground)]",
+          align === "right" && "justify-end w-full",
+        )}
+      >
+        {children}
+        <span className="text-[10px] opacity-60">{active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}</span>
+      </button>
+    );
+  }
+
   return (
     <AdminShell title="場次管理">
       <div className="space-y-4">
@@ -722,6 +787,33 @@ export default function AdminTripsPage() {
           </div>
         )}
 
+        {/* Filter chips */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-[var(--muted-foreground)]">範圍：</span>
+          {([
+            { k: "week" as const, label: "一週內" },
+            { k: "month" as const, label: "一個月內" },
+            { k: "all" as const, label: "全部" },
+          ]).map(({ k, label }) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => { setFilterRange(k); setPage(1); }}
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors",
+                filterRange === k
+                  ? "bg-[var(--color-ocean-deep)] text-white"
+                  : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="ml-auto text-[var(--muted-foreground)]">
+            共 {sortedTrips.length} 筆 · 每頁 {PAGE_SIZE} 筆 · 第 {currentPage}/{totalPages} 頁
+          </span>
+        </div>
+
         {loading ? (
           <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
             載入中...
@@ -738,164 +830,170 @@ export default function AdminTripsPage() {
                     className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}
                   >
-                    <th className="px-4 py-3 font-medium">編號</th>
-                    <th className="px-4 py-3 font-medium">日期</th>
-                    <th className="px-4 py-3 font-medium">時段</th>
-                    <th className="px-4 py-3 font-medium">地點</th>
-                    <th className="px-4 py-3 font-medium">教練</th>
-                    <th className="px-4 py-3 font-medium text-right">
-                      已報名/可接受
-                    </th>
-                    <th className="px-4 py-3 font-medium text-right">
-                      預估收費
-                    </th>
-                    <th className="px-4 py-3 font-medium">狀態</th>
-                    <th className="px-4 py-3 font-medium">操作</th>
+                    <th className="px-3 py-2 font-medium"><SortHeader k="status">狀態</SortHeader></th>
+                    <th className="px-3 py-2 font-medium"><SortHeader k="code">編號</SortHeader></th>
+                    <th className="px-3 py-2 font-medium"><SortHeader k="date">日期</SortHeader></th>
+                    <th className="px-3 py-2 font-medium"><SortHeader k="startTime">時段</SortHeader></th>
+                    <th className="px-3 py-2 font-medium">地點</th>
+                    <th className="px-3 py-2 font-medium">教練</th>
+                    <th className="px-3 py-2 font-medium text-right"><SortHeader k="booked" align="right">已報名/可接受</SortHeader></th>
+                    <th className="px-3 py-2 font-medium text-right"><SortHeader k="revenue" align="right">預估收費</SortHeader></th>
+                    <th className="px-3 py-2 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {trips.map((trip, i) => (
-                    <tr
-                      key={trip.id}
-                      className={cn(
-                        "border-t",
-                        trip.status === "cancelled" && "opacity-50",
-                      )}
-                      style={{
-                        borderColor: "var(--border)",
-                        background: trip.isNightDive
-                          ? i % 2 === 0 ? "#d4e4f7" : "#c8daf2"
-                          : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
-                      }}
-                    >
-                      <td className="px-4 py-3">
-                        {trip.code ? (
-                          <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
-                            {trip.code}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                  {pagedTrips.map((trip, i) => {
+                    const [effStatus, isAuto] = effectiveTripStatus(trip);
+                    return (
+                      <tr
+                        key={trip.id}
+                        className={cn(
+                          "border-t",
+                          trip.status === "cancelled" && "opacity-50",
                         )}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums font-medium">
-                        <span>{trip.date.slice(0, 10)}</span>
-                        <span className="ml-1.5 text-xs font-normal text-[var(--muted-foreground)]">
-                          ({weekdayLabel(trip.date)})
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 tabular-nums">
-                          {trip.isNightDive ? (
-                            <Moon className="h-3.5 w-3.5 shrink-0" style={{ color: "#6b9fd4" }} />
+                        style={{
+                          borderColor: "var(--border)",
+                          background: trip.isNightDive
+                            ? i % 2 === 0 ? "#d4e4f7" : "#c8daf2"
+                            : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
+                        }}
+                      >
+                        {/* 狀態 — 移到最左邊 */}
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <Badge variant={statusVariant(effStatus)} className="text-[10px]">
+                              {TRIP_STATUS_LABEL[effStatus] ?? effStatus}
+                            </Badge>
+                            {isAuto && (
+                              <span className="text-[9px] text-[var(--muted-foreground)]" title="日期已過，自動視為結束">
+                                自動
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        {/* 編號 */}
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          {trip.code ? (
+                            <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-tight text-teal-800">
+                              {trip.code}
+                            </span>
                           ) : (
-                            <Sun className="h-3.5 w-3.5 shrink-0" style={{ color: "#e8a020" }} />
+                            <span className="text-xs text-[var(--muted-foreground)]">—</span>
                           )}
-                          {trip.startTime}
-                          {trip.isScooter && (
-                            <Anchor className="h-3 w-3 text-[var(--color-phosphor)]" />
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {trip.diveSiteIds.length > 0
-                          ? trip.diveSiteIds.map(siteName).join("・")
-                          : "—"}
-                        <span className="ml-1 text-[var(--muted-foreground)]">
-                          / {trip.tankCount}支
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {trip.coachIds.length > 0
-                          ? trip.coachIds.map(coachName).join("、")
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-xs">
-                        {trip.booked} / {trip.capacity == null ? "∞" : trip.capacity}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {trip.booked === 0
-                          ? "NT$0"
-                          : `NT$${estimatedRevenue(trip).toLocaleString()}`}
-                      </td>
-                      <td className="px-4 py-3">
-                        {(() => {
-                          const [effStatus, isAuto] = effectiveTripStatus(trip);
-                          return (
-                            <div className="flex items-center gap-1">
-                              <Badge
-                                variant={statusVariant(effStatus)}
-                                className="text-[10px]"
-                              >
-                                {TRIP_STATUS_LABEL[effStatus] ?? effStatus}
-                              </Badge>
-                              {isAuto && (
-                                <span className="text-[9px] text-[var(--muted-foreground)]" title="日期已過，自動視為結束">
-                                  自動
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEdit(trip)}
-                            title="編輯"
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
-                          {/* 複製增次 — 一鍵複製所有欄位作為新場次（日期 +1 天），加速排場 */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openDuplicate(trip)}
-                            title="複製此場次 → 新增（日期自動 +1 天）"
-                            className="border-sky-400 text-sky-600 hover:bg-sky-50"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          {/* 取消（軟取消，status → cancelled）— 只有未取消的場次顯示 */}
-                          {trip.status !== "cancelled" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => deleteTrip(trip)}
-                              title="取消場次（保留資料）"
-                              className="border-amber-400 text-amber-600 hover:bg-amber-50"
-                            >
-                              <Ban className="h-3 w-3" />
-                            </Button>
-                          )}
-                          {/* 永久刪除 — 一律顯示，硬刪除整筆資料 */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => hardDeleteTrip(trip)}
-                            title="永久刪除（不可復原）"
-                            className="border-[var(--color-coral)]"
-                          >
-                            <Trash2 className="h-3 w-3 text-[var(--color-coral)]" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {trips.length === 0 && (
+                        </td>
+                        {/* 日期 */}
+                        <td className="px-3 py-1.5 tabular-nums font-medium whitespace-nowrap">
+                          <span>{trip.date.slice(0, 10)}</span>
+                          <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
+                            ({weekdayLabel(trip.date)})
+                          </span>
+                        </td>
+                        {/* 時段 */}
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1 tabular-nums">
+                            {trip.isNightDive ? (
+                              <Moon className="h-3 w-3 shrink-0" style={{ color: "#6b9fd4" }} />
+                            ) : (
+                              <Sun className="h-3 w-3 shrink-0" style={{ color: "#e8a020" }} />
+                            )}
+                            {trip.startTime}
+                            {trip.isScooter && (
+                              <Anchor className="h-3 w-3 text-[var(--color-phosphor)]" />
+                            )}
+                          </div>
+                        </td>
+                        {/* 地點 */}
+                        <td className="px-3 py-1.5 text-xs">
+                          {trip.diveSiteIds.length > 0
+                            ? trip.diveSiteIds.map(siteName).join("・")
+                            : "—"}
+                          <span className="ml-1 text-[var(--muted-foreground)]">
+                            / {trip.tankCount}支
+                          </span>
+                        </td>
+                        {/* 教練 */}
+                        <td className="px-3 py-1.5 text-xs whitespace-nowrap">
+                          {trip.coachIds.length > 0
+                            ? trip.coachIds.map(coachName).join("、")
+                            : "—"}
+                        </td>
+                        {/* 已報名 */}
+                        <td className="px-3 py-1.5 text-right tabular-nums text-xs whitespace-nowrap">
+                          {trip.booked} / {trip.capacity == null ? "∞" : trip.capacity}
+                        </td>
+                        {/* 預估收費 */}
+                        <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
+                          {trip.booked === 0
+                            ? "NT$0"
+                            : `NT$${estimatedRevenue(trip).toLocaleString()}`}
+                        </td>
+                        {/* 操作 — 縮小成 28px icon-only 按鈕 */}
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <div className="flex gap-0.5">
+                            <button onClick={() => openEdit(trip)} title="編輯"
+                              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 transition-colors">
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => openDuplicate(trip)}
+                              title="複製此場次 → 新增（日期自動 +1 天）"
+                              className="rounded p-1.5 text-sky-600 hover:bg-sky-50 transition-colors">
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                            {trip.status !== "cancelled" && (
+                              <button onClick={() => deleteTrip(trip)}
+                                title="取消場次（保留資料）"
+                                className="rounded p-1.5 text-amber-600 hover:bg-amber-50 transition-colors">
+                                <Ban className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button onClick={() => hardDeleteTrip(trip)}
+                              title="永久刪除（不可復原）"
+                              className="rounded p-1.5 text-[var(--color-coral)] hover:bg-rose-50 transition-colors">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {pagedTrips.length === 0 && (
                     <tr>
                       <td
                         colSpan={9}
                         className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
                       >
-                        沒有場次資料
+                        沒有符合條件的場次
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* 分頁器 */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded border border-[var(--border)] px-3 py-1 hover:bg-[var(--muted)] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              上一頁
+            </button>
+            <span className="text-[var(--muted-foreground)]">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded border border-[var(--border)] px-3 py-1 hover:bg-[var(--muted)] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              下一頁
+            </button>
           </div>
         )}
       </div>
