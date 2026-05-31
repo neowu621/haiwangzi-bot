@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban } from "lucide-react";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
 
 interface Pricing {
@@ -100,6 +100,15 @@ function isPastTrip(trip: Trip): boolean {
   return trip.date.slice(0, 10) < taipeiToday();
 }
 
+/** 取得 YYYY-MM-DD 對應的星期顯示，例如 「(週一)」「(週日)」 */
+function weekdayLabel(dateStr: string): string {
+  // 用 T12:00:00+08:00 避免 UTC 偏移把日期推到前一天
+  const d = new Date(`${dateStr.slice(0, 10)}T12:00:00+08:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const map = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+  return map[d.getDay()] ?? "";
+}
+
 const BLANK_PRICING_DEFAULT: Pricing = {
   baseTrip: 0,
   extraTank: 500,
@@ -185,6 +194,30 @@ export default function AdminTripsPage() {
 
   function openCreate() {
     setForm({ ...BLANK_FORM, pricing: { ...defaultPricing } });
+    setEditingId(null);
+    setDialogMode("create");
+  }
+
+  /** 複製某場次的全部欄位作為新場次預填值，預設日期 = 原日期 + 1 天 */
+  function openDuplicate(trip: Trip) {
+    const origDate = new Date(`${trip.date.slice(0, 10)}T12:00:00+08:00`);
+    origDate.setDate(origDate.getDate() + 1);
+    const nextDateStr = origDate.toISOString().slice(0, 10);
+    setForm({
+      date: nextDateStr,
+      startTime: trip.startTime,
+      isNightDive: trip.isNightDive,
+      isScooter: trip.isScooter,
+      diveSiteIds: [...trip.diveSiteIds],
+      tankCount: trip.tankCount,
+      capacity: trip.capacity ?? 0,
+      coachIds: [...trip.coachIds],
+      pricing: { ...BLANK_PRICING_DEFAULT, ...trip.pricing },
+      notes: trip.notes ?? "",
+      meetingPoint: trip.meetingPoint ?? "",
+      meetingPointUrl: trip.meetingPointUrl ?? "",
+      status: "open", // 複製的新場次強制為「開放」
+    });
     setEditingId(null);
     setDialogMode("create");
   }
@@ -372,7 +405,10 @@ export default function AdminTripsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 tabular-nums font-medium">
-                        {trip.date.slice(0, 10)}
+                        <span>{trip.date.slice(0, 10)}</span>
+                        <span className="ml-1.5 text-xs font-normal text-[var(--muted-foreground)]">
+                          ({weekdayLabel(trip.date)})
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 tabular-nums">
@@ -437,6 +473,16 @@ export default function AdminTripsPage() {
                             title="編輯"
                           >
                             <Edit3 className="h-3 w-3" />
+                          </Button>
+                          {/* 複製增次 — 一鍵複製所有欄位作為新場次（日期 +1 天），加速排場 */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openDuplicate(trip)}
+                            title="複製此場次 → 新增（日期自動 +1 天）"
+                            className="border-sky-400 text-sky-600 hover:bg-sky-50"
+                          >
+                            <Copy className="h-3 w-3" />
                           </Button>
                           {/* 取消（軟取消，status → cancelled）— 只有未取消的場次顯示 */}
                           {trip.status !== "cancelled" && (
