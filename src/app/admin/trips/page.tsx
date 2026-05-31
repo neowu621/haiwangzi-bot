@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy } from "lucide-react";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
+import ExcelJS from "exceljs";
 
 interface Pricing {
   baseTrip: number;
@@ -162,6 +163,15 @@ export default function AdminTripsPage() {
   const [saving, setSaving] = useState(false);
   const [defaultPricing, setDefaultPricing] = useState<Pricing>(BLANK_PRICING_DEFAULT);
 
+  // Excel 匯入相關
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total: number;
+    created: number;
+    errors: { row: number; date: string; message: string }[];
+  } | null>(null);
+
   useEffect(() => {
     // 用 allSettled：任一 API 失敗不影響其他資料載入
     Promise.allSettled([
@@ -298,6 +308,265 @@ export default function AdminTripsPage() {
     }
   }
 
+  // ── Excel 範本下載 + 上傳匯入 ──────────────────────────────────────
+  async function downloadTripTemplate() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("日潛場次");
+    ws.columns = [
+      { header: "日期（YYYY-MM-DD，必填）", key: "date", width: 18 },
+      { header: "時間（HH:MM，必填）", key: "startTime", width: 14 },
+      { header: "夜潛（Y/N，留空自動依時間判斷）", key: "isNightDive", width: 20 },
+      { header: "水上摩托車（Y/N）", key: "isScooter", width: 16 },
+      { header: "潛點名稱（逗號分隔，例如：鶯歌石 或 鶯歌石,深奧）", key: "sites", width: 36 },
+      { header: "氣瓶數（1-5，預設 3）", key: "tankCount", width: 14 },
+      { header: "人數上限（0=無上限）", key: "capacity", width: 14 },
+      { header: "教練姓名（逗號分隔）", key: "coaches", width: 20 },
+      { header: "氣瓶費/瓶", key: "extraTank", width: 12 },
+      { header: "夜潛加價", key: "nightDive", width: 12 },
+      { header: "其他費用", key: "otherFee", width: 12 },
+      { header: "其他費用說明", key: "otherFeeNote", width: 18 },
+      { header: "集合地點", key: "meetingPoint", width: 22 },
+      { header: "Google Map URL", key: "meetingPointUrl", width: 32 },
+      { header: "備註", key: "notes", width: 28 },
+    ];
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 32;
+
+    // 兩列範例（白天 + 夜潛）
+    ws.addRow({
+      date: "2026-06-15",
+      startTime: "08:00",
+      isNightDive: "",
+      isScooter: "N",
+      sites: sites[0]?.name ?? "鶯歌石",
+      tankCount: 2,
+      capacity: 8,
+      coaches: coaches[0]?.realName ?? "王教練",
+      extraTank: 500,
+      nightDive: 0,
+      otherFee: 0,
+      otherFeeNote: "",
+      meetingPoint: "龍洞 4 號港",
+      meetingPointUrl: "https://maps.app.goo.gl/xxxx",
+      notes: "請於 07:30 集合",
+    });
+    ws.addRow({
+      date: "2026-06-15",
+      startTime: "18:00",
+      isNightDive: "Y",
+      isScooter: "N",
+      sites: sites[0]?.name ?? "鶯歌石",
+      tankCount: 1,
+      capacity: 6,
+      coaches: coaches[0]?.realName ?? "王教練",
+      extraTank: 500,
+      nightDive: 300,
+      otherFee: 0,
+      otherFeeNote: "",
+      meetingPoint: "龍洞 4 號港",
+      meetingPointUrl: "",
+      notes: "夜潛 — 請自備手電筒",
+    });
+
+    // 加說明工作表
+    const help = wb.addWorksheet("欄位說明");
+    help.columns = [
+      { header: "欄位", key: "k", width: 20 },
+      { header: "說明", key: "v", width: 70 },
+    ];
+    help.getRow(1).font = { bold: true };
+    [
+      ["日期", "YYYY-MM-DD，例：2026-06-15。必填"],
+      ["時間", "HH:MM，例：08:00、18:30。必填"],
+      ["夜潛", "Y 或 N。留空時系統會自動依時間判斷（時間 ≥ 16:00 視為夜潛）"],
+      ["水上摩托車", "Y 或 N。留空視為 N"],
+      ["潛點名稱", "用後台「潛點管理」內的中文名稱，多個用半形或全形逗號分隔（找不到的會列為錯誤）"],
+      ["氣瓶數", "整數 1-5，留空預設 3"],
+      ["人數上限", "整數 ≥ 0；填 0 代表無上限"],
+      ["教練姓名", "用後台「教練管理」內的真實姓名，多位用逗號分隔（找不到的會列為錯誤）"],
+      ["金額類欄位", "純數字。留空視為 0"],
+      ["匯入規則", "全部視為新增（會自動產生編號 DYYYYMMDD-NN）。不會 update 既有場次"],
+      ["上限", "單次最多 200 筆"],
+    ].forEach(([k, v]) => help.addRow({ k, v }));
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "diving_trips_template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleTripFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setErr(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      // 找名為「日潛場次」或第一個 worksheet
+      const ws = wb.getWorksheet("日潛場次") ?? wb.worksheets[0];
+      if (!ws) throw new Error("Excel 檔內沒有工作表");
+
+      // 名稱 → id 對照（前端先解析，後端只認 id）
+      const siteByName = new Map(sites.map((s) => [s.name.trim(), s.id]));
+      const coachByName = new Map(coaches.map((c) => [c.realName.trim(), c.id]));
+
+      const cellText = (raw: unknown): string => {
+        if (raw == null) return "";
+        if (typeof raw === "string") return raw.trim();
+        if (typeof raw === "number") return String(raw);
+        if (raw instanceof Date) {
+          // 日期：以台北時區轉 YYYY-MM-DD
+          const d = new Date(raw.getTime() + 8 * 60 * 60 * 1000);
+          return d.toISOString().slice(0, 10);
+        }
+        if (typeof raw === "object" && "text" in raw) {
+          return String((raw as { text: string }).text).trim();
+        }
+        return String(raw).trim();
+      };
+
+      const cellTime = (raw: unknown): string => {
+        // 接受 "08:00", "8:30", 0.333 (Excel time fraction), Date
+        if (raw == null) return "";
+        if (typeof raw === "string") return raw.trim();
+        if (typeof raw === "number") {
+          // Excel time = 一天的小數分數
+          const totalMin = Math.round(raw * 24 * 60);
+          const h = String(Math.floor(totalMin / 60)).padStart(2, "0");
+          const m = String(totalMin % 60).padStart(2, "0");
+          return `${h}:${m}`;
+        }
+        if (raw instanceof Date) {
+          // 注意：ExcelJS 把時間視為 1900-01-01 的 UTC datetime
+          const utcH = raw.getUTCHours();
+          const utcM = raw.getUTCMinutes();
+          return `${String(utcH).padStart(2, "0")}:${String(utcM).padStart(2, "0")}`;
+        }
+        return String(raw).trim();
+      };
+
+      const parseBool = (s: string): boolean => /^[YT1是]/.test(s) || /^TRUE$/i.test(s);
+      const parseInt0 = (s: string, dflt = 0): number => {
+        const n = parseInt(s.replace(/[^\d-]/g, ""), 10);
+        return Number.isNaN(n) ? dflt : n;
+      };
+
+      const rows: Array<Record<string, unknown>> = [];
+      const localErrors: { row: number; date: string; message: string }[] = [];
+      let rowIdx = 0;
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return; // skip header
+        rowIdx = idx;
+        const cell = (col: number) => cellText(row.getCell(col).value);
+        const date = cell(1);
+        const startTimeRaw = row.getCell(2).value;
+        const startTime = cellTime(startTimeRaw);
+        if (!date || !startTime) return; // 跳過空白列
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          localErrors.push({ row: idx, date, message: "日期格式錯誤，應為 YYYY-MM-DD" });
+          return;
+        }
+        if (!/^\d{2}:\d{2}$/.test(startTime)) {
+          localErrors.push({ row: idx, date: `${date} ${startTime}`, message: "時間格式錯誤，應為 HH:MM" });
+          return;
+        }
+
+        // 夜潛：留空自動由時間判斷
+        const nightRaw = cell(3);
+        const isNightDive = nightRaw ? parseBool(nightRaw) : startTime >= "16:00";
+        const isScooter = parseBool(cell(4));
+
+        // 潛點：中文名 → id
+        const siteNames = cell(5).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+        const diveSiteIds: string[] = [];
+        for (const sn of siteNames) {
+          const sid = siteByName.get(sn);
+          if (sid) diveSiteIds.push(sid);
+          else localErrors.push({ row: idx, date: `${date} ${startTime}`, message: `找不到潛點「${sn}」（請先在「潛點管理」新增）` });
+        }
+
+        // 教練：姓名 → id
+        const coachNames = cell(8).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+        const coachIds: string[] = [];
+        for (const cn of coachNames) {
+          const cid = coachByName.get(cn);
+          if (cid) coachIds.push(cid);
+          else localErrors.push({ row: idx, date: `${date} ${startTime}`, message: `找不到教練「${cn}」（請先在「教練管理」新增）` });
+        }
+
+        rows.push({
+          date,
+          startTime,
+          isNightDive,
+          isScooter,
+          diveSiteIds,
+          tankCount: parseInt0(cell(6), 3),
+          capacity: parseInt0(cell(7), 0),
+          coachIds,
+          pricing: {
+            baseTrip: 0,
+            extraTank: parseInt0(cell(9)),
+            nightDive: parseInt0(cell(10)),
+            scooterRental: 0,
+            otherFee: parseInt0(cell(11)),
+            otherFeeNote: cell(12),
+          },
+          meetingPoint: cell(13),
+          meetingPointUrl: cell(14),
+          notes: cell(15),
+          status: "open",
+        });
+      });
+
+      if (rowIdx === 0) {
+        throw new Error("檔案內沒有資料");
+      }
+      if (rows.length === 0 && localErrors.length > 0) {
+        // 全部錯誤，無有效列
+        setImportResult({ total: 0, created: 0, errors: localErrors });
+        return;
+      }
+      if (rows.length === 0) {
+        throw new Error("沒有可匯入的資料（請至少填寫日期、時間）");
+      }
+
+      const res = await adminFetch<{
+        ok: boolean; total: number; created: number;
+        errors: { row: number; date: string; message: string }[];
+      }>("/api/admin/trips/bulk-import", {
+        method: "POST",
+        body: JSON.stringify({ rows }),
+      });
+
+      setImportResult({
+        total: res.total + localErrors.length,
+        created: res.created,
+        errors: [...localErrors, ...res.errors],
+      });
+
+      // 重新載入
+      const t = await adminFetch<{ trips: Trip[] }>("/api/admin/trips");
+      setTrips(t.trips ?? []);
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : "Excel 匯入失敗");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function hardDeleteTrip(trip: Trip) {
     if (!confirm(`永久刪除場次？無法復原。`)) return;
     const ok2 = prompt("輸入「DELETE」確認：");
@@ -328,13 +597,58 @@ export default function AdminTripsPage() {
   return (
     <AdminShell title="場次管理">
       <div className="space-y-4">
-        <div className="flex justify-between">
-          <div />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleTripFileUpload}
+            className="hidden"
+          />
+          <Button size="sm" variant="outline" onClick={downloadTripTemplate} title="下載 Excel 範本（含潛點/教練名稱對照）">
+            <Download className="mr-1.5 h-4 w-4" />下載範本
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            <Upload className="mr-1.5 h-4 w-4" />
+            {importing ? "匯入中..." : "Excel 匯入"}
+          </Button>
           <Button onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />
             新增場次
           </Button>
         </div>
+
+        {/* 匯入結果回饋 */}
+        {importResult && (
+          <div className="rounded-lg border p-3 text-sm" style={{
+            borderColor: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.4)" : "rgba(251, 191, 36, 0.4)",
+            background: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.08)" : "rgba(251, 191, 36, 0.08)",
+          }}>
+            <div className="flex items-center gap-2 font-semibold mb-1.5">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>匯入完成：</span>
+              <span className="text-green-700">新增 {importResult.created}</span>
+              {importResult.errors.length > 0 && (
+                <span className="text-amber-700">失敗 {importResult.errors.length}</span>
+              )}
+              <button
+                onClick={() => setImportResult(null)}
+                className="ml-auto text-xs text-[var(--muted-foreground)] hover:underline"
+              >
+                關閉
+              </button>
+            </div>
+            {importResult.errors.length > 0 && (
+              <div className="mt-2 space-y-0.5 max-h-32 overflow-y-auto text-xs">
+                {importResult.errors.map((er, i) => (
+                  <div key={i} className="text-amber-800">
+                    第 {er.row} 列（{er.date}）：{er.message}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {err && (
           <div
