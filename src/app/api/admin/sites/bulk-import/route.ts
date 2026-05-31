@@ -30,7 +30,7 @@ const RowSchema = z.object({
 
 const BodySchema = z.object({
   rows: z.array(RowSchema).min(1).max(500),
-  mode: z.enum(["create", "upsert"]).default("upsert"), // upsert: 已存在則更新
+  mode: z.enum(["create", "upsert"]).default("create"), // create: 預設都當新增
 });
 
 // POST /api/admin/sites/bulk-import

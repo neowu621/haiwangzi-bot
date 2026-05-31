@@ -38,18 +38,19 @@ const BLANK: Omit<DiveSite, "id"> = {
   maxDepth: "", features: [], images: [], youtubeUrl: "", locationUrl: "", cautions: "",
 };
 
-// region / difficulty 中文 ↔ 英文 對照（給 Excel 匯入用）
+// region / difficulty 中文 → 內部英文代碼對照（給 Excel 匯入用）
+// 對外只接受中文，內部仍用英文代碼存 DB（不影響既有資料）
 const REGION_FROM_LABEL: Record<string, Region> = {
-  "東北角": "northeast", "northeast": "northeast",
-  "綠島": "green_island", "green_island": "green_island",
-  "蘭嶼": "lanyu", "lanyu": "lanyu",
-  "墾丁": "kenting", "kenting": "kenting",
-  "其他": "other", "other": "other",
+  "東北角": "northeast",
+  "綠島": "green_island",
+  "蘭嶼": "lanyu",
+  "墾丁": "kenting",
+  "其他": "other",
 };
 const DIFF_FROM_LABEL: Record<string, Difficulty> = {
-  "初級": "easy", "easy": "easy",
-  "中級": "medium", "medium": "medium",
-  "進階": "hard", "hard": "hard",
+  "初級": "easy",
+  "中級": "medium",
+  "進階": "hard",
 };
 
 export default function SitesPage() {
@@ -97,8 +98,14 @@ export default function SitesPage() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const body = { ...form, features: featuresInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean), maxDepth: form.maxDepth ?? "" };
+      const body: Record<string, unknown> = {
+        ...form,
+        features: featuresInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean),
+        maxDepth: form.maxDepth ?? "",
+      };
       if (dialogMode === "create") {
+        // 自動產生內部 id（使用者看不見，純內部識別用）
+        body.id = `site_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
         await adminFetch("/api/admin/sites", { method: "POST", body: JSON.stringify(body) });
       } else if (editingId) {
         await adminFetch(`/api/admin/sites/${editingId}`, { method: "PATCH", body: JSON.stringify(body) });
@@ -116,14 +123,13 @@ export default function SitesPage() {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("潛點");
     ws.columns = [
-      { header: "id（英文，必填）", key: "id", width: 22 },
       { header: "名稱（必填）", key: "name", width: 22 },
-      { header: "區域（東北角/綠島/蘭嶼/墾丁/其他，必填）", key: "region", width: 24 },
-      { header: "難度（初級/中級/進階）", key: "difficulty", width: 18 },
+      { header: "區域（東北角／綠島／蘭嶼／墾丁／其他，必填）", key: "region", width: 24 },
+      { header: "難度（初級／中級／進階）", key: "difficulty", width: 18 },
       { header: "最大深度（可填 20 或 20-30）", key: "maxDepth", width: 22 },
       { header: "特色（逗號分隔）", key: "features", width: 30 },
-      { header: "YouTube URL", key: "youtubeUrl", width: 36 },
-      { header: "位置 URL（Google Map）", key: "locationUrl", width: 36 },
+      { header: "YouTube 網址", key: "youtubeUrl", width: 36 },
+      { header: "Google 地圖網址", key: "locationUrl", width: 36 },
       { header: "描述", key: "description", width: 40 },
       { header: "備註（注意事項）", key: "cautions", width: 40 },
     ];
@@ -134,7 +140,6 @@ export default function SitesPage() {
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
     // 範例列
     ws.addRow({
-      id: "northeast_longdong",
       name: "龍洞",
       region: "東北角",
       difficulty: "中級",
@@ -172,6 +177,8 @@ export default function SitesPage() {
       if (!ws) throw new Error("Excel 檔內沒有工作表");
 
       const rows: Array<Record<string, unknown>> = [];
+      // 給每列產生唯一 id（內部用，使用者不可見）
+      const genId = () => `site_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
       ws.eachRow((row, idx) => {
         if (idx === 1) return; // skip header
         const cell = (col: number) => {
@@ -180,27 +187,26 @@ export default function SitesPage() {
           if (typeof v === "object" && "text" in v) return String((v as { text: string }).text);
           return String(v);
         };
-        const id = cell(1).trim();
-        const name = cell(2).trim();
-        if (!id || !name) return; // 跳過空白列
-        const regionRaw = cell(3).trim();
-        const diffRaw = cell(4).trim();
+        const name = cell(1).trim();
+        if (!name) return; // 跳過空白列
+        const regionRaw = cell(2).trim();
+        const diffRaw = cell(3).trim();
         rows.push({
-          id,
+          id: genId(),
           name,
           region: REGION_FROM_LABEL[regionRaw] ?? "other",
           difficulty: DIFF_FROM_LABEL[diffRaw] ?? "medium",
-          maxDepth: cell(5).trim(),
-          features: cell(6).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
-          youtubeUrl: cell(7).trim(),
-          locationUrl: cell(8).trim(),
-          description: cell(9).trim(),
-          cautions: cell(10).trim(),
+          maxDepth: cell(4).trim(),
+          features: cell(5).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          youtubeUrl: cell(6).trim(),
+          locationUrl: cell(7).trim(),
+          description: cell(8).trim(),
+          cautions: cell(9).trim(),
         });
       });
 
       if (rows.length === 0) {
-        throw new Error("檔案內沒有可匯入的資料（id 與 名稱 必填）");
+        throw new Error("檔案內沒有可匯入的資料（名稱必填）");
       }
       if (rows.length > 500) {
         throw new Error(`單次最多 500 筆，此檔有 ${rows.length} 筆`);
@@ -304,7 +310,7 @@ export default function SitesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
-                  {["ID", "名稱", "區域", "難度", "最大深度", "操作"].map(h => (
+                  {["名稱", "區域", "難度", "最大深度", "操作"].map(h => (
                     <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -312,7 +318,6 @@ export default function SitesPage() {
               <tbody>
                 {sites.map((s, i) => (
                   <tr key={s.id} className={`border-t ${i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20"}`} style={{ borderColor: "var(--border)" }}>
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--muted-foreground)]">{s.id}</td>
                     <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{s.name}</td>
                     <td className="px-4 py-3 text-[var(--muted-foreground)]">{REGION_LABELS[s.region]}</td>
                     <td className="px-4 py-3">
@@ -329,7 +334,7 @@ export default function SitesPage() {
                     </td>
                   </tr>
                 ))}
-                {sites.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">沒有潛點資料</td></tr>}
+                {sites.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">沒有潛點資料</td></tr>}
               </tbody>
             </table>
           </div>
@@ -343,12 +348,6 @@ export default function SitesPage() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 pt-2">
-              {dialogMode === "create" && (
-                <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                  <Label className="text-xs text-[var(--muted-foreground)]">ID（英文）</Label>
-                  <Input value={(form as DiveSite & {id?: string}).id ?? ""} onChange={e => setForm(f => ({ ...f, id: e.target.value } as unknown as Omit<DiveSite,"id">))} placeholder="northeast_longdong" />
-                </div>
-              )}
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label className="text-xs text-[var(--muted-foreground)]">名稱</Label>
                 <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />

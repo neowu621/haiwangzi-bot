@@ -14,13 +14,13 @@ import ExcelJS from "exceljs";
 type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
 const DEST_LABELS: Record<Dest, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "其他" };
 
-// 中文 → 英文 區域對照（Excel 匯入用）
+// 中文 → 內部代碼 對照（Excel 匯入用，只接受中文）
 const DEST_FROM_LABEL: Record<string, Dest> = {
-  "東北角": "northeast", "northeast": "northeast",
-  "綠島": "green_island", "green_island": "green_island",
-  "蘭嶼": "lanyu", "lanyu": "lanyu",
-  "墾丁": "kenting", "kenting": "kenting",
-  "其他": "other", "other": "other",
+  "東北角": "northeast",
+  "綠島": "green_island",
+  "蘭嶼": "lanyu",
+  "墾丁": "kenting",
+  "其他": "other",
 };
 
 // 潛點 minimal 型別（給 Excel 解析名稱用）
@@ -144,7 +144,7 @@ export default function ToursPage() {
     const ws = wb.addWorksheet("潛水團");
     ws.columns = [
       { header: "標題（必填）", key: "title", width: 28 },
-      { header: "目的地（東北角/綠島/蘭嶼/墾丁/其他，必填）", key: "destination", width: 22 },
+      { header: "目的地（東北角／綠島／蘭嶼／墾丁／其他，必填）", key: "destination", width: 22 },
       { header: "出發日（YYYY-MM-DD，必填）", key: "dateStart", width: 18 },
       { header: "結束日（YYYY-MM-DD，必填）", key: "dateEnd", width: 18 },
       { header: "團費（必填，整數）", key: "basePrice", width: 14 },
@@ -210,7 +210,7 @@ export default function ToursPage() {
     help.getRow(1).font = { bold: true };
     [
       ["標題", "顯示在 LIFF 與後台的團名（建議含目的地 + 天數）"],
-      ["目的地", "東北角 / 綠島 / 蘭嶼 / 墾丁 / 其他（亦可填英文）"],
+      ["目的地", "東北角 / 綠島 / 蘭嶼 / 墾丁 / 其他"],
       ["出發日 / 結束日", "YYYY-MM-DD"],
       ["團費", "全程含稅總價（不含個人裝備）"],
       ["訂金", "訂金金額（NT$）"],
