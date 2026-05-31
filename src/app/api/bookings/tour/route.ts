@@ -14,6 +14,7 @@ const BodySchema = z.object({
   selectedAddons: z.array(z.string()).default([]),
   notes: z.string().optional(),
   paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).default("bank"),
+  paymentNote: z.string().max(200).optional(), // 客戶選「其他」時填寫的說明
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
   realName: z.string().min(1),
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
       paidAmount,
       paymentStatus,
       paymentMethod: data.paymentMethod,
+      paymentNote: data.paymentNote ?? null,
       creditUsed,
       status,
       agreedToTermsAt: new Date(),

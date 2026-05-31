@@ -40,6 +40,11 @@ interface ExternalLinks {
   instagramUrl?: string;
 }
 
+interface PaymentInfo {
+  bank?: { name?: string; branch?: string; account?: string; holder?: string };
+  linepay?: { qrUrl?: string; liteId?: string };
+}
+
 interface Config {
   // Homepage
   heroTitle: string;
@@ -60,6 +65,8 @@ interface Config {
   weatherWindThreshold: number;
   // 外部連結（Rich Menu / LIFF 用）
   externalLinks: ExternalLinks;
+  // 付款資訊
+  paymentInfo: PaymentInfo;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -346,6 +353,89 @@ export default function SettingsPage() {
               disabled={saving === "外部連結"}>
               <Save className="mr-1.5 h-4 w-4" />
               {saving === "外部連結" ? "儲存中..." : "儲存外部連結"}
+            </Button>
+          </div>
+        </SectionCard>
+
+        {/* ── A3. 付款資訊（銀行 + LINE Pay）─────────── */}
+        <SectionCard title="💳 付款資訊（客戶下單時顯示）">
+          {/* 銀行匯款 */}
+          <div className="mb-5">
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">🏦 銀行匯款</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FieldRow label="銀行名稱">
+                <Input
+                  value={cfg?.paymentInfo?.bank?.name ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), bank: { ...(c.paymentInfo?.bank ?? {}), name: e.target.value } } } : c)}
+                  placeholder="例：中信"
+                />
+              </FieldRow>
+              <FieldRow label="分行代碼">
+                <Input
+                  value={cfg?.paymentInfo?.bank?.branch ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), bank: { ...(c.paymentInfo?.bank ?? {}), branch: e.target.value } } } : c)}
+                  placeholder="例：822"
+                />
+              </FieldRow>
+              <FieldRow label="帳號">
+                <Input
+                  value={cfg?.paymentInfo?.bank?.account ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), bank: { ...(c.paymentInfo?.bank ?? {}), account: e.target.value } } } : c)}
+                  placeholder="例：484540139251"
+                />
+              </FieldRow>
+              <FieldRow label="戶名">
+                <Input
+                  value={cfg?.paymentInfo?.bank?.holder ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), bank: { ...(c.paymentInfo?.bank ?? {}), holder: e.target.value } } } : c)}
+                  placeholder="例：汪承儒"
+                />
+              </FieldRow>
+            </div>
+          </div>
+
+          {/* LINE Pay 半手動 */}
+          <div className="mb-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-1 text-sm font-medium text-[var(--foreground)]">💚 LINE Pay（半手動）</p>
+            <p className="mb-3 text-xs text-[var(--muted-foreground)]">
+              客戶選 LINE Pay 時，會看到下方 QR 圖片 + Lite ID。客戶完成轉帳後需上傳截圖。
+            </p>
+            <div className="space-y-3">
+              <FieldRow label="LINE Pay QR 圖片 URL">
+                <Input
+                  value={cfg?.paymentInfo?.linepay?.qrUrl ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), linepay: { ...(c.paymentInfo?.linepay ?? {}), qrUrl: e.target.value } } } : c)}
+                  placeholder="https://i.imgur.com/xxxxx.png 或其他圖床網址"
+                />
+              </FieldRow>
+              <FieldRow label="LINE Pay Lite ID">
+                <Input
+                  value={cfg?.paymentInfo?.linepay?.liteId ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), linepay: { ...(c.paymentInfo?.linepay ?? {}), liteId: e.target.value } } } : c)}
+                  placeholder="例：@haiwangzi 或您的個人 LINE Pay ID"
+                />
+              </FieldRow>
+              {cfg?.paymentInfo?.linepay?.qrUrl && (
+                <div className="grid grid-cols-[10rem_1fr] items-start gap-3">
+                  <span className="text-sm text-[var(--muted-foreground)]">QR 預覽</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={cfg.paymentInfo.linepay.qrUrl} alt="LINE Pay QR" className="h-32 w-32 rounded border object-contain" style={{ borderColor: "var(--border)" }} />
+                </div>
+              )}
+            </div>
+            <p className="mt-3 text-[11px] text-[var(--muted-foreground)]">
+              💡 取得 QR 步驟：開 LINE Pay → 個人 → 收款 QR → 截圖上傳到 Imgur 等圖床 → 把圖片 URL 貼到上方。
+            </p>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={() => save("付款資訊", {
+                paymentInfo: cfg?.paymentInfo ?? {},
+              })}
+              disabled={saving === "付款資訊"}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {saving === "付款資訊" ? "儲存中..." : "儲存付款資訊"}
             </Button>
           </div>
         </SectionCard>

@@ -163,6 +163,10 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS vip_upgrade_credits JSONB NOT NULL DEFAULT '{}'`,
   // v126: 外部連結（FB 社群、媒體頻道等）
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS external_links JSONB NOT NULL DEFAULT '{}'`,
+  // v160: 付款資訊（銀行 + LINE Pay）— 改用 DB 管理，env vars 降為 fallback
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS payment_info JSONB NOT NULL DEFAULT '{}'`,
+  // v160: bookings.payment_note — 客戶選「其他」付款方式時填寫的說明
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_note TEXT`,
 ];
 
 async function main() {

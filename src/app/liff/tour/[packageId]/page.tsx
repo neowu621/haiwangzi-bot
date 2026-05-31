@@ -66,12 +66,24 @@ export default function TourDetailPage({
   // 禮金折抵
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
+  // 付款方式 — 潛水團預設 bank（轉帳訂金）
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | "linepay" | "other">("bank");
+  const [paymentNote, setPaymentNote] = useState("");
+  // 公開付款資訊
+  const [paymentInfo, setPaymentInfo] = useState<{
+    bank: { name: string; branch: string; account: string; holder: string };
+    linepay: { qrUrl: string; liteId: string };
+  } | null>(null);
 
   useEffect(() => {
     liff
       .fetchWithAuth<TourDetail>(`/api/tours/${packageId}`)
       .then(setTour)
       .catch((e) => setError(e.message));
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setPaymentInfo({ bank: c.bank, linepay: c.linepay }))
+      .catch(() => {});
     // 取自己 creditBalance
     liff
       .fetchWithAuth<{
@@ -121,6 +133,8 @@ export default function TourDetailPage({
           ),
           notes: notes || undefined,
           creditUsed: Math.min(creditUsed, creditBalance, total),
+          paymentMethod,
+          paymentNote: paymentMethod === "other" ? paymentNote : undefined,
           agreedToTerms: true as const,
           realName,
           phone,
@@ -366,6 +380,105 @@ export default function TourDetailPage({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="備註 (飲食 / 房型偏好 / 同行者)"
             />
+          </CardContent>
+        </Card>
+
+        {/* 付款方式（潛水團）— v160 新增 */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="mb-2 text-sm font-semibold">付款方式</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  ["cash", "💵 現場"],
+                  ["bank", "🏦 轉帳"],
+                  ["linepay", "💚 LINE Pay"],
+                  ["other", "📝 其他"],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setPaymentMethod(k)}
+                  className={
+                    paymentMethod === k
+                      ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
+                      : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+              {paymentMethod === "cash" && "現場結算（出發當日）"}
+              {paymentMethod === "bank" && "預約後 7 日內匯訂金保留名額"}
+              {paymentMethod === "linepay" && "預約後 7 日內 LINE Pay 轉帳並上傳截圖"}
+              {paymentMethod === "other" && "請於下方填寫您要使用的付款方式"}
+            </div>
+
+            {/* 轉帳：展開銀行帳號 */}
+            {paymentMethod === "bank" && paymentInfo?.bank?.account && (
+              <div className="mt-2 rounded-lg border bg-blue-50/40 p-3 text-xs" style={{ borderColor: "rgba(96,165,250,0.4)" }}>
+                <div className="mb-1 font-semibold text-blue-900">🏦 匯款資訊</div>
+                <div className="space-y-0.5 text-blue-900">
+                  <div>銀行：{paymentInfo.bank.name} {paymentInfo.bank.branch}</div>
+                  <div>戶名：{paymentInfo.bank.holder}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-base font-mono font-bold tracking-wider">{paymentInfo.bank.account}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(paymentInfo.bank.account).then(() => alert("✓ 帳號已複製"))}
+                      className="rounded bg-blue-600 px-2 py-0.5 text-[10px] text-white hover:bg-blue-700"
+                    >
+                      📋 複製
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* LINE Pay：展開 QR + Lite ID */}
+            {paymentMethod === "linepay" && (paymentInfo?.linepay?.qrUrl || paymentInfo?.linepay?.liteId) && (
+              <div className="mt-2 rounded-lg border bg-green-50/40 p-3 text-xs" style={{ borderColor: "rgba(74,222,128,0.4)" }}>
+                <div className="mb-2 font-semibold text-green-900">💚 LINE Pay 轉帳</div>
+                {paymentInfo.linepay.qrUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={paymentInfo.linepay.qrUrl}
+                    alt="LINE Pay QR"
+                    className="mb-2 h-40 w-40 rounded border bg-white object-contain"
+                  />
+                )}
+                {paymentInfo.linepay.liteId && (
+                  <div className="flex items-center gap-2 text-green-900">
+                    <span>Lite ID：</span>
+                    <span className="font-mono font-bold">{paymentInfo.linepay.liteId}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(paymentInfo.linepay.liteId).then(() => alert("✓ Lite ID 已複製"))}
+                      className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white hover:bg-green-700"
+                    >
+                      📋 複製
+                    </button>
+                  </div>
+                )}
+                <div className="mt-2 text-[10px] text-green-800">
+                  完成轉帳後請至「我的預約」上傳截圖
+                </div>
+              </div>
+            )}
+
+            {/* 其他：文字輸入 */}
+            {paymentMethod === "other" && (
+              <div className="mt-2">
+                <Input
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  placeholder="請說明使用的付款方式（例：街口支付 / 微信支付 / 現金匯款）"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 

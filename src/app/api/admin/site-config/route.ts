@@ -57,6 +57,19 @@ const PatchSchema = z.object({
     youtubeChannelUrl: z.string().url().optional().or(z.literal("")),
     instagramUrl: z.string().url().optional().or(z.literal("")),
   }).optional(),
+  // 付款資訊（銀行 + LINE Pay）— v160 起改用 DB 管理
+  paymentInfo: z.object({
+    bank: z.object({
+      name: z.string().default(""),
+      branch: z.string().default(""),
+      account: z.string().default(""),
+      holder: z.string().default(""),
+    }).optional(),
+    linepay: z.object({
+      qrUrl: z.string().default(""),    // QR code 圖片 URL（個人轉帳 QR）
+      liteId: z.string().default(""),   // LINE Pay Lite ID
+    }).optional(),
+  }).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -80,6 +93,7 @@ export async function GET(req: NextRequest) {
         birthdayCreditAmount: 100,
         vipUpgradeCredits: {},
         externalLinks: {},
+        paymentInfo: {},
       },
       isDefault: true,
     });
@@ -108,6 +122,7 @@ export async function GET(req: NextRequest) {
       birthdayCreditAmount: row.birthdayCreditAmount,
       vipUpgradeCredits: row.vipUpgradeCredits,
       externalLinks: row.externalLinks ?? {},
+      paymentInfo: row.paymentInfo ?? {},
     },
     isDefault: false,
     updatedAt: row.updatedAt,

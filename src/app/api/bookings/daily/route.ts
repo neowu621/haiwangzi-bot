@@ -33,6 +33,8 @@ const BodySchema = z.object({
   notes: z.string().optional(),
   // 付款方式：cash 現場 / bank 轉帳 / linepay / other
   paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).default("cash"),
+  // 「其他」付款方式時客戶填寫的說明
+  paymentNote: z.string().max(200).optional(),
   // 使用禮金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
@@ -243,6 +245,7 @@ export async function POST(req: NextRequest) {
       paidAmount,
       paymentStatus,
       paymentMethod: data.paymentMethod,
+      paymentNote: data.paymentNote ?? null,
       creditUsed,
       status: "confirmed", // 日潛當天現場收費,直接 confirmed
       agreedToTermsAt: new Date(),
