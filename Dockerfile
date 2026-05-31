@@ -21,8 +21,8 @@ RUN npm run build
 
 # ─── Stage 3: runner ──────────────────────────────────────
 FROM node:22-alpine AS runner
-# postgresql-client 提供 pg_dump（DB 備份 cron 用）
-RUN apk add --no-cache libc6-compat openssl postgresql17-client
+# postgresql18-client 提供 pg_dump（DB 備份 cron 用，需與 Zeabur Postgres 18.x 版本相符）
+RUN apk add --no-cache libc6-compat openssl postgresql18-client
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
