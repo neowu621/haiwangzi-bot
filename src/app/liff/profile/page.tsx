@@ -1077,17 +1077,21 @@ interface CreditTx {
   id: string;
   amount: number;
   reason: string;
+  refType?: string | null;
+  refId?: string | null;
+  refCode?: string | null;
   note: string | null;
   balanceAfter: number;
   createdAt: string;
+  byAdmin?: boolean;
 }
 
-const REASON_LABELS: Record<string, { label: string; emoji: string }> = {
-  birthday: { label: "生日禮金", emoji: "🎂" },
-  vip_upgrade: { label: "升等獎勵", emoji: "✨" },
-  refund: { label: "退費補償", emoji: "🔄" },
-  used: { label: "訂單折抵", emoji: "💸" },
-  admin_adjust: { label: "管理員調整", emoji: "🛠" },
+const REASON_LABELS: Record<string, { label: string; emoji: string; desc: string }> = {
+  birthday: { label: "生日禮金", emoji: "🎂", desc: "海王子送您的生日禮物" },
+  vip_upgrade: { label: "升等獎勵", emoji: "✨", desc: "VIP 等級提升獎勵" },
+  refund: { label: "退費補償", emoji: "🔄", desc: "訂單退款轉禮金" },
+  used: { label: "訂單折抵", emoji: "💸", desc: "預約時抵扣金額" },
+  admin_adjust: { label: "管理員調整", emoji: "🛠", desc: "由海王子管理員調整" },
 };
 
 function CreditCard({
@@ -1099,6 +1103,7 @@ function CreditCard({
 }) {
   const [open, setOpen] = useState(false);
   const [txs, setTxs] = useState<CreditTx[] | null>(null);
+  const [totals, setTotals] = useState<{ totalIn: number; totalOut: number }>({ totalIn: 0, totalOut: 0 });
   const [loading, setLoading] = useState(false);
 
   async function openDialog() {
@@ -1108,9 +1113,12 @@ function CreditCard({
       try {
         const r = await liff.fetchWithAuth<{
           balance: number;
+          totalIn: number;
+          totalOut: number;
           txs: CreditTx[];
         }>("/api/me/credits");
         setTxs(r.txs);
+        setTotals({ totalIn: r.totalIn ?? 0, totalOut: r.totalOut ?? 0 });
       } catch {
         setTxs([]);
       } finally {
@@ -1156,6 +1164,16 @@ function CreditCard({
             <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
               NT$ {balance.toLocaleString()}
             </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+              <div className="rounded bg-white/60 p-1.5">
+                <div className="text-[var(--muted-foreground)]">累計收入</div>
+                <div className="font-bold text-[var(--color-phosphor)]">+{totals.totalIn.toLocaleString()}</div>
+              </div>
+              <div className="rounded bg-white/60 p-1.5">
+                <div className="text-[var(--muted-foreground)]">累計支出</div>
+                <div className="font-bold text-[var(--color-coral)]">-{totals.totalOut.toLocaleString()}</div>
+              </div>
+            </div>
           </div>
           {loading ? (
             <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
@@ -1171,6 +1189,7 @@ function CreditCard({
                 const meta = REASON_LABELS[t.reason] ?? {
                   label: t.reason,
                   emoji: "·",
+                  desc: "",
                 };
                 const positive = t.amount >= 0;
                 return (
@@ -1181,12 +1200,22 @@ function CreditCard({
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg">{meta.emoji}</span>
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold">
+                        <div className="text-sm font-semibold flex items-center gap-1">
                           {meta.label}
+                          {t.byAdmin && t.reason === "admin_adjust" && (
+                            <span className="rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
+                              管理員
+                            </span>
+                          )}
+                          {t.refCode && (
+                            <span className="rounded-md bg-teal-50 px-1.5 py-0 font-mono text-[9px] text-teal-800">
+                              {t.refCode}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-[var(--muted-foreground)] tabular">
                           {new Date(t.createdAt).toLocaleDateString("zh-TW")}
-                          {t.note && ` · ${t.note}`}
+                          {t.note ? ` · ${t.note}` : meta.desc ? ` · ${meta.desc}` : ""}
                         </div>
                       </div>
                     </div>

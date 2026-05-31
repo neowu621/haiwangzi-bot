@@ -42,14 +42,29 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
         q: "預約後可以取消嗎？退款規則？",
         a: (
           <>
-            <p>可以取消，但退款比例依距離出發日決定（建議規則）：</p>
-            <ul className="mt-1 list-disc pl-5 text-xs">
-              <li>場次前 <b>7 天以上</b>：退 100% 或轉禮金 100%</li>
-              <li>場次前 <b>3-7 天</b>：退 50% 或轉禮金 80%</li>
-              <li>場次前 <b>3 天內</b>：訂金不退</li>
+            <p className="font-semibold mb-1">📌 客戶自行取消（依距離出發日）：</p>
+            <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
+              <li>場次前 <b>7 天以上</b>：可退 100% 現金，或轉禮金 100%</li>
+              <li>場次前 <b>3-7 天</b>：可退 50% 現金，或轉禮金 80%</li>
+              <li>場次前 <b>3 天內</b>：訂金不退（保留場次成本）</li>
             </ul>
-            <p className="mt-2 text-xs opacity-70">
-              ※ 因天氣因素強制取消的場次 100% 退款，或轉禮金 110%（多 10% 優惠）
+
+            <p className="font-semibold mt-3 mb-1">☔ 因天氣強制取消（店家責任）：</p>
+            <ul className="list-disc pl-5 text-xs space-y-0.5">
+              <li><b>退現金 100%</b>：全額退回原付款帳戶</li>
+              <li><b>轉禮金 110%</b>（推薦）：多 10% 優惠，下次預約折抵</li>
+            </ul>
+
+            <p className="font-semibold mt-3 mb-1">⚠️ 客戶未到場（no-show）：</p>
+            <ul className="list-disc pl-5 text-xs space-y-0.5">
+              <li>原則上：不退款（保留違約金）</li>
+              <li>特殊情況可申請：退現 100% 或轉禮金 80%（依老闆判斷）</li>
+              <li>若家人急事、健康因素等，請主動聯繫客服說明</li>
+            </ul>
+
+            <p className="mt-3 text-[10px] opacity-70">
+              ※ 所有退款處理需 1-3 個工作天；轉禮金即時生效，下次預約立即可用。
+              <br />※ 已使用的禮金折抵額度將原額轉回禮金餘額（不會被沒收）。
             </p>
           </>
         ),

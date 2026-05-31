@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
 import { logAudit } from "@/lib/audit";
+import { sendEmail, emailConfigured } from "@/lib/email/send";
+import { refundEmail } from "@/lib/email/templates";
+import { getLineClient } from "@/lib/line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,6 +122,18 @@ export async function POST(
       targetId: id,
       metadata: { method: data.method, amount: data.amount },
     });
+
+    // ── 通知客戶（fire-and-forget，不阻擋退款主流程）─────────
+    void notifyCustomer({
+      bookingId: id,
+      bookingCode: booking.code ?? id.slice(0, 8),
+      method: data.method,
+      refundAmount: data.amount,
+      creditAmount: creditResult?.granted,
+      newCreditBalance: creditResult?.newBalance,
+      reason: data.reason ?? "退款處理",
+    }).catch((e) => console.error("[refund notify]", e));
+
     return NextResponse.json({
       ok: true,
       booking: updated,
@@ -134,5 +149,99 @@ export async function POST(
       },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * 退款後通知客戶：Email（主，詳細）+ LINE（副，一句話導向 Email）
+ * 失敗不影響退款結果
+ */
+async function notifyCustomer(args: {
+  bookingId: string;
+  bookingCode: string;
+  method: "cash" | "credit";
+  refundAmount: number;
+  creditAmount?: number;
+  newCreditBalance?: number;
+  reason: string;
+}) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: args.bookingId },
+    include: { user: true },
+  });
+  if (!booking) return;
+
+  // 組行程名稱（daily 取場次日期 + 潛點，tour 取 title）
+  let bookingTitle = "";
+  if (booking.type === "daily") {
+    const trip = await prisma.divingTrip.findUnique({
+      where: { id: booking.refId },
+      select: { date: true, startTime: true, diveSiteIds: true },
+    });
+    if (trip) {
+      const date = trip.date.toISOString().slice(0, 10);
+      const sites = trip.diveSiteIds.length > 0
+        ? await prisma.diveSite.findMany({
+            where: { id: { in: trip.diveSiteIds } },
+            select: { name: true },
+          })
+        : [];
+      bookingTitle = `${date} ${trip.startTime} ${sites.map((s) => s.name).join("・") || "日潛"}`;
+    } else {
+      bookingTitle = "日潛場次";
+    }
+  } else {
+    const tour = await prisma.tourPackage.findUnique({
+      where: { id: booking.refId },
+      select: { title: true },
+    });
+    bookingTitle = tour?.title ?? "潛水團";
+  }
+
+  const userName = booking.user.realName ?? booking.user.displayName;
+
+  // ── Email（主要通道）──────────────────────
+  if (booking.user.notifyByEmail && booking.user.email && emailConfigured()) {
+    const tpl = refundEmail({
+      name: userName,
+      bookingCode: args.bookingCode,
+      bookingTitle,
+      refundAmount: args.refundAmount,
+      method: args.method,
+      creditAmount: args.creditAmount,
+      newCreditBalance: args.newCreditBalance,
+      reason: args.reason,
+    });
+    try {
+      await sendEmail({
+        to: booking.user.email,
+        subject: tpl.subject,
+        text: tpl.text,
+        html: tpl.html,
+      });
+    } catch (e) {
+      console.error("[refund email]", e);
+    }
+  }
+
+  // ── LINE（副通道：一句話 + 提示看 Email）──────────────────
+  if (booking.user.notifyByLine && process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    const methodLabel = args.method === "cash" ? "退現金" : "轉禮金";
+    const lineText =
+      `🔄 退款通知\n\n您的訂單 ${args.bookingCode} 已退款：\n` +
+      `${methodLabel} NT$ ${args.refundAmount.toLocaleString()}` +
+      (args.method === "credit" && args.creditAmount
+        ? `（禮金入帳 NT$ ${args.creditAmount.toLocaleString()}）`
+        : "") +
+      `\n\n詳情請查看 Email 通知。`;
+    try {
+      const client = getLineClient();
+      await client.pushMessage({
+        to: booking.userId,
+        messages: [{ type: "text", text: lineText }],
+      });
+    } catch (e) {
+      console.error("[refund line push]", e);
+    }
   }
 }

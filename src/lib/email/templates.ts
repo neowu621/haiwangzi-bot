@@ -394,6 +394,73 @@ export function paymentReceivedEmail(params: {
   return { subject, text, html };
 }
 
+export function refundEmail(params: {
+  name: string;
+  bookingCode: string;
+  bookingTitle: string;
+  refundAmount: number;
+  method: "cash" | "credit";
+  creditAmount?: number; // method=credit 時實際入帳禮金（可能 ≠ refundAmount，例 110%）
+  newCreditBalance?: number;
+  reason: string;
+}): EmailContent {
+  const methodLabel = params.method === "cash" ? "退現金" : "轉禮金";
+  const subject = `🔄 退款通知 NT$ ${params.refundAmount.toLocaleString()}（${methodLabel}）｜${params.bookingCode}`;
+
+  const isBonus = params.method === "credit" && params.creditAmount && params.creditAmount > params.refundAmount;
+  const bonusPct = isBonus ? Math.round((params.creditAmount! / params.refundAmount) * 100) : 100;
+
+  const text =
+    `Hi ${params.name},\n\n您的退款已處理 ✓\n\n` +
+    `訂單編號：${params.bookingCode}\n` +
+    `行程：${params.bookingTitle}\n` +
+    `退款金額：NT$ ${params.refundAmount.toLocaleString()}\n` +
+    `處理方式：${methodLabel}` +
+    (params.method === "credit"
+      ? `\n禮金入帳：NT$ ${params.creditAmount?.toLocaleString()}${isBonus ? `（${bonusPct}% 優惠）` : ""}` +
+        (params.newCreditBalance !== undefined ? `\n目前禮金餘額：NT$ ${params.newCreditBalance.toLocaleString()}` : "") +
+        `\n\n禮金可於下次預約折抵使用。`
+      : `\n\n現金退款將於 1-3 個工作天內處理完成，請留意您的帳戶。`) +
+    `\n\n退款原因：${params.reason}\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:${BRAND_PHOSPHOR};font-weight:bold;">
+      🔄 您的退款已處理
+    </p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:100px;">訂單編號</td><td style="padding:8px 0;font-weight:600;font-family:monospace;">${escapeHtml(params.bookingCode)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">行程</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(params.bookingTitle)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">退款金額</td><td style="padding:8px 0;font-weight:600;font-size:16px;color:${BRAND_PHOSPHOR};">NT$ ${params.refundAmount.toLocaleString()}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">處理方式</td><td style="padding:8px 0;font-weight:600;">${methodLabel}${isBonus ? `（${bonusPct}% 優惠）` : ""}</td></tr>
+      ${
+        params.method === "credit"
+          ? `<tr><td style="padding:8px 0;color:#6b7280;">禮金入帳</td><td style="padding:8px 0;font-weight:600;color:${BRAND_PHOSPHOR};">NT$ ${params.creditAmount?.toLocaleString()}</td></tr>` +
+            (params.newCreditBalance !== undefined
+              ? `<tr><td style="padding:8px 0;color:#6b7280;">目前餘額</td><td style="padding:8px 0;font-weight:600;">NT$ ${params.newCreditBalance.toLocaleString()}</td></tr>`
+              : "")
+          : ""
+      }
+    </table>
+    ${
+      params.method === "credit"
+        ? `<div style="margin:20px 0;padding:14px;background:#e6fffd;border-left:4px solid ${BRAND_PHOSPHOR};border-radius:4px;">
+            <div style="font-size:13px;color:${BRAND_DEEP};">💎 禮金可於下次預約時折抵使用。</div>
+          </div>`
+        : `<div style="margin:20px 0;padding:14px;background:#fff7ed;border-left:4px solid #FF7B5A;border-radius:4px;">
+            <div style="font-size:13px;color:${BRAND_DEEP};">💰 現金退款將於 1-3 個工作天內處理完成。</div>
+          </div>`
+    }
+    <p style="font-size:12px;color:#6b7280;margin:16px 0 0 0;">
+      <span style="color:#374151;">退款原因：</span>${escapeHtml(params.reason)}
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
 export function broadcastEmail(params: {
   name: string;
   subject: string;
