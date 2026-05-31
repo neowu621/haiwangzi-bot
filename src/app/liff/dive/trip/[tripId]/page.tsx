@@ -624,156 +624,6 @@ export default function TripBookingPage({
               />
             </div>
 
-            {/* 付款方式 — LV1 不可選現場支付 */}
-            <div>
-              <Label>付款方式</Label>
-              <div className="mt-1 grid grid-cols-4 gap-1.5">
-                {(
-                  [
-                    ["cash", "💵 現場"],
-                    ["bank", "🏦 轉帳"],
-                    ["linepay", "💚 LINE Pay"],
-                    ["other", "📝 其他"],
-                  ] as const
-                ).map(([k, label]) => {
-                  const lv1NoCash = vipLevel === 1 && k === "cash";
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => !lv1NoCash && setPaymentMethod(k)}
-                      disabled={lv1NoCash}
-                      title={lv1NoCash ? "LV1 會員需於出發前 3 天付清，升等後可使用現場支付" : ""}
-                      className={
-                        lv1NoCash
-                          ? "rounded-md border border-[var(--border)] bg-[var(--muted)]/40 px-2 py-1.5 text-xs text-[var(--muted-foreground)] line-through cursor-not-allowed"
-                          : paymentMethod === k
-                          ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
-                          : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
-                      }
-                    >
-                      {label}
-                      {lv1NoCash && " 🔒"}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-                {vipLevel === 1 && (
-                  <div className="mb-1 rounded bg-amber-50 px-2 py-1 text-amber-700">
-                    🔒 LV1 會員需於出發前 3 天付清；升等至 LV2 可解鎖現場支付
-                  </div>
-                )}
-                {paymentMethod === "cash" && "出航當天現場結算"}
-                {paymentMethod === "bank" && "預約後 7 天內匯款保留名額"}
-                {paymentMethod === "linepay" && "預約後 7 天內完成 LINE Pay 並上傳截圖"}
-                {paymentMethod === "other" && "請於下方填寫您要使用的付款方式"}
-              </div>
-
-              {/* 轉帳：展開銀行帳號 + 一鍵複製 */}
-              {paymentMethod === "bank" && paymentInfo?.bank?.account && (
-                <div className="mt-2 rounded-lg border bg-blue-50/40 p-3 text-xs" style={{ borderColor: "rgba(96,165,250,0.4)" }}>
-                  <div className="mb-1 font-semibold text-blue-900">🏦 匯款資訊</div>
-                  <div className="space-y-0.5 text-blue-900">
-                    <div>銀行：{paymentInfo.bank.name} {paymentInfo.bank.branch}</div>
-                    <div>戶名：{paymentInfo.bank.holder}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-base font-mono font-bold tracking-wider">{paymentInfo.bank.account}</span>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard?.writeText(paymentInfo.bank.account).then(() => alert("✓ 帳號已複製"))}
-                        className="rounded bg-blue-600 px-2 py-0.5 text-[10px] text-white hover:bg-blue-700"
-                      >
-                        📋 複製
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* LINE Pay：展開 QR + Lite ID + 一鍵複製 */}
-              {paymentMethod === "linepay" && (paymentInfo?.linepay?.qrUrl || paymentInfo?.linepay?.liteId) && (
-                <div className="mt-2 rounded-lg border bg-green-50/40 p-3 text-xs" style={{ borderColor: "rgba(74,222,128,0.4)" }}>
-                  <div className="mb-2 font-semibold text-green-900">💚 LINE Pay 轉帳</div>
-                  {paymentInfo.linepay.qrUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={paymentInfo.linepay.qrUrl}
-                      alt="LINE Pay QR"
-                      className="mb-2 h-40 w-40 rounded border bg-white object-contain"
-                    />
-                  )}
-                  {paymentInfo.linepay.liteId && (
-                    <div className="flex items-center gap-2 text-green-900">
-                      <span>Lite ID：</span>
-                      <span className="font-mono font-bold">{paymentInfo.linepay.liteId}</span>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard?.writeText(paymentInfo.linepay.liteId).then(() => alert("✓ Lite ID 已複製"))}
-                        className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white hover:bg-green-700"
-                      >
-                        📋 複製
-                      </button>
-                    </div>
-                  )}
-                  <div className="mt-2 text-[10px] text-green-800">
-                    完成轉帳後請至「我的預約」上傳截圖
-                  </div>
-                </div>
-              )}
-
-              {/* 其他：文字輸入框 */}
-              {paymentMethod === "other" && (
-                <div className="mt-2">
-                  <Input
-                    value={paymentNote}
-                    onChange={(e) => setPaymentNote(e.target.value)}
-                    placeholder="請說明使用的付款方式（例：街口支付 / 微信支付 / 現金匯款）"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 禮金折抵 — 有餘額才顯示 */}
-            {creditBalance > 0 && (
-              <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs">
-                    🎁 使用禮金折抵
-                    <span className="ml-1 font-normal text-[var(--muted-foreground)]">
-                      （餘額 NT$ {creditBalance.toLocaleString()}）
-                    </span>
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCreditUsed(Math.min(creditBalance, total))
-                    }
-                    className="rounded-full bg-[var(--color-coral)] px-2 py-0.5 text-[10px] font-semibold text-white"
-                  >
-                    全部用
-                  </button>
-                </div>
-                <Input
-                  type="number"
-                  min={0}
-                  max={Math.min(creditBalance, total)}
-                  value={creditUsed || ""}
-                  onChange={(e) => {
-                    const v = Math.max(0, Number(e.target.value) || 0);
-                    setCreditUsed(Math.min(v, creditBalance, total));
-                  }}
-                  placeholder="NT$ 0"
-                  className="text-center text-base font-bold"
-                />
-                {creditUsed > 0 && (
-                  <div className="mt-1 text-[10px] tabular text-[var(--color-coral)]">
-                    折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
-                    {(total - creditUsed).toLocaleString()}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </CollapsibleCard>
 
@@ -844,6 +694,157 @@ export default function TripBookingPage({
             </CardContent>
           </Card>
         )}
+
+        {/* 付款方式（永遠展開 — v163 從個人資料卡片搬出來避免被折疊隱藏） */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">付款方式</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  ["cash", "💵 現場"],
+                  ["bank", "🏦 轉帳"],
+                  ["linepay", "💚 LINE Pay"],
+                  ["other", "📝 其他"],
+                ] as const
+              ).map(([k, label]) => {
+                const lv1NoCash = vipLevel === 1 && k === "cash";
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => !lv1NoCash && setPaymentMethod(k)}
+                    disabled={lv1NoCash}
+                    title={lv1NoCash ? "LV1 會員需於出發前 3 天付清，升等後可使用現場支付" : ""}
+                    className={
+                      lv1NoCash
+                        ? "rounded-md border border-[var(--border)] bg-[var(--muted)]/40 px-2 py-1.5 text-xs text-[var(--muted-foreground)] line-through cursor-not-allowed"
+                        : paymentMethod === k
+                        ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
+                        : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
+                    }
+                  >
+                    {label}
+                    {lv1NoCash && " 🔒"}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-[10px] text-[var(--muted-foreground)]">
+              {vipLevel === 1 && (
+                <div className="mb-1 rounded bg-amber-50 px-2 py-1 text-amber-700">
+                  🔒 LV1 會員需於出發前 3 天付清；升等至 LV2 可解鎖現場支付
+                </div>
+              )}
+              {paymentMethod === "cash" && "出航當天現場結算"}
+              {paymentMethod === "bank" && "預約後 7 天內匯款保留名額"}
+              {paymentMethod === "linepay" && "預約後 7 天內完成 LINE Pay 並上傳截圖"}
+              {paymentMethod === "other" && "請於下方填寫您要使用的付款方式"}
+            </div>
+
+            {/* 轉帳：展開銀行帳號 + 一鍵複製 */}
+            {paymentMethod === "bank" && paymentInfo?.bank?.account && (
+              <div className="rounded-lg border bg-blue-50/40 p-3 text-xs" style={{ borderColor: "rgba(96,165,250,0.4)" }}>
+                <div className="mb-1 font-semibold text-blue-900">🏦 匯款資訊</div>
+                <div className="space-y-0.5 text-blue-900">
+                  <div>銀行：{paymentInfo.bank.name} {paymentInfo.bank.branch}</div>
+                  <div>戶名：{paymentInfo.bank.holder}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-base font-mono font-bold tracking-wider">{paymentInfo.bank.account}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(paymentInfo.bank.account).then(() => alert("✓ 帳號已複製"))}
+                      className="rounded bg-blue-600 px-2 py-0.5 text-[10px] text-white hover:bg-blue-700"
+                    >
+                      📋 複製
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* LINE Pay：展開 QR + Lite ID + 一鍵複製 */}
+            {paymentMethod === "linepay" && (paymentInfo?.linepay?.qrUrl || paymentInfo?.linepay?.liteId) && (
+              <div className="rounded-lg border bg-green-50/40 p-3 text-xs" style={{ borderColor: "rgba(74,222,128,0.4)" }}>
+                <div className="mb-2 font-semibold text-green-900">💚 LINE Pay 轉帳</div>
+                {paymentInfo.linepay.qrUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={paymentInfo.linepay.qrUrl}
+                    alt="LINE Pay QR"
+                    className="mb-2 h-40 w-40 rounded border bg-white object-contain"
+                  />
+                )}
+                {paymentInfo.linepay.liteId && (
+                  <div className="flex items-center gap-2 text-green-900">
+                    <span>Lite ID：</span>
+                    <span className="font-mono font-bold">{paymentInfo.linepay.liteId}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(paymentInfo.linepay.liteId).then(() => alert("✓ Lite ID 已複製"))}
+                      className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white hover:bg-green-700"
+                    >
+                      📋 複製
+                    </button>
+                  </div>
+                )}
+                <div className="mt-2 text-[10px] text-green-800">
+                  完成轉帳後請至「我的預約」上傳截圖
+                </div>
+              </div>
+            )}
+
+            {/* 其他：文字輸入框 */}
+            {paymentMethod === "other" && (
+              <Input
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="請說明使用的付款方式（例：街口支付 / 微信支付 / 現金匯款）"
+              />
+            )}
+
+            {/* 禮金折抵 — 有餘額才顯示 */}
+            {creditBalance > 0 && (
+              <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs">
+                    🎁 使用禮金折抵
+                    <span className="ml-1 font-normal text-[var(--muted-foreground)]">
+                      （餘額 NT$ {creditBalance.toLocaleString()}）
+                    </span>
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setCreditUsed(Math.min(creditBalance, total))}
+                    className="rounded-full bg-[var(--color-coral)] px-2 py-0.5 text-[10px] font-semibold text-white"
+                  >
+                    全部用
+                  </button>
+                </div>
+                <Input
+                  type="number"
+                  min={0}
+                  max={Math.min(creditBalance, total)}
+                  value={creditUsed || ""}
+                  onChange={(e) => {
+                    const v = Math.max(0, Number(e.target.value) || 0);
+                    setCreditUsed(Math.min(v, creditBalance, total));
+                  }}
+                  placeholder="NT$ 0"
+                  className="text-center text-base font-bold"
+                />
+                {creditUsed > 0 && (
+                  <div className="mt-1 text-[10px] tabular text-[var(--color-coral)]">
+                    折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
+                    {(total - creditUsed).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 取消政策三層簽署 */}
         <Card>
