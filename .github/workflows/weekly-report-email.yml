@@ -1,9 +1,10 @@
-name: Weekly Report Email — Mon 09:00 Asia/Taipei
+name: Weekly Report Email — Sun 18:00 Asia/Taipei
 
-# 每週一台灣時間 09:00 = UTC 01:00 (Monday)
+# 每週日台灣時間 18:00 = UTC 10:00 (Sunday)
+# 老闆/管理者收到後可在週日晚上規劃下週事項
 on:
   schedule:
-    - cron: "0 1 * * 1"
+    - cron: "0 10 * * 0"
   workflow_dispatch:
 
 jobs:

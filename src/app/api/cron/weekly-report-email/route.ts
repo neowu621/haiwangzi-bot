@@ -25,17 +25,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, note: "Email 未設定，skip" });
   }
 
-  // 上週範圍：上週一 00:00 ~ 上週日 23:59
+  // 本週範圍：本週一 00:00 ~ 本週日 23:59（週日晚上 18:00 寄出時包含週日當日數據）
+  // 推算：若週日寄送（dayOfWeek=0），週一 = -6 天
   const todayTW = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   const now = new Date(`${todayTW}T00:00:00+08:00`);
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
-  const daysBackToLastMon = ((dayOfWeek + 6) % 7) + 7;
-  const lastMon = new Date(now);
-  lastMon.setDate(now.getDate() - daysBackToLastMon);
-  const lastSun = new Date(lastMon);
-  lastSun.setDate(lastMon.getDate() + 6);
-  lastSun.setHours(23, 59, 59, 999);
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+  // 距離本週一的天數（週日寄送 → 6 天前）
+  const daysBackToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMon = new Date(now);
+  thisMon.setDate(now.getDate() - daysBackToMon);
+  const thisSun = new Date(thisMon);
+  thisSun.setDate(thisMon.getDate() + 6);
+  thisSun.setHours(23, 59, 59, 999);
 
+  // 變數名沿用 lastMon/lastSun 避免大改下面邏輯
+  const lastMon = thisMon;
+  const lastSun = thisSun;
   const weekStr = `${lastMon.toISOString().slice(0, 10)} ~ ${lastSun.toISOString().slice(0, 10)}`;
 
   // 撈上週訂單
@@ -294,7 +299,7 @@ function buildWeeklyHtml(p: {
       </p>
     </div>
     <div style="background:#f9fafb;padding:16px 28px;color:#9ca3af;font-size:11px;text-align:center;">
-      ${process.env.NEXT_PUBLIC_APP_NAME ?? "海王子"} · 每週一 09:00 自動寄送
+      ${process.env.NEXT_PUBLIC_APP_NAME ?? "海王子"} · 每週日 18:00 自動寄送（規劃下週用）
     </div>
   </div>
 </body></html>`;
