@@ -1,8 +1,4 @@
-import { redirect } from "next/navigation";
-
-// /liff 入口（沒帶子路徑）→ 自動導到 /liff/welcome
-// 這樣 LIFF Endpoint URL 設為 https://haiwangzi.zeabur.app/liff
-// 時，使用者開 liff.line.me/<id>（無路徑）也能正常進入首頁
-export default function LiffRootRedirect() {
-  redirect("/liff/welcome");
-}
+// /liff 入口直接渲染 welcome 頁（不 redirect，省掉 307 來回）
+// 既保留 /liff/welcome 路徑（其他頁面 backHref 還在用），
+// 也讓使用者用 https://haiwangzi.zeabur.app/liff 直接看到內容。
+export { default } from "./welcome/page";
