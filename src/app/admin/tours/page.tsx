@@ -226,6 +226,71 @@ export default function ToursPage() {
     URL.revokeObjectURL(url);
   }
 
+  /** 匯出目前所有潛水團為 Excel（欄位與下載範本對齊，可直接編輯後再匯入） */
+  async function exportToursExcel() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("潛水團");
+    ws.columns = [
+      { header: "編號", key: "code", width: 16 },
+      { header: "標題", key: "title", width: 28 },
+      { header: "目的地", key: "destination", width: 14 },
+      { header: "出發日（YYYY-MM-DD）", key: "dateStart", width: 18 },
+      { header: "結束日（YYYY-MM-DD）", key: "dateEnd", width: 18 },
+      { header: "團費", key: "basePrice", width: 12 },
+      { header: "訂金", key: "deposit", width: 12 },
+      { header: "人數上限（0=∞）", key: "capacity", width: 14 },
+      { header: "訂金截止日", key: "depositDeadline", width: 16 },
+      { header: "尾款截止日", key: "finalDeadline", width: 16 },
+      { header: "訂金前 N 天提醒", key: "depositReminderDays", width: 16 },
+      { header: "尾款前 N 天提醒", key: "finalReminderDays", width: 16 },
+      { header: "出發前 N 天提醒", key: "guideReminderDays", width: 16 },
+      { header: "狀態", key: "status", width: 10 },
+      { header: "已報名人數", key: "bookings", width: 12 },
+    ];
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 28;
+
+    const STATUS_LABEL: Record<string, string> = {
+      open: "開放", full: "額滿", cancelled: "已取消", completed: "已完成",
+    };
+
+    for (const t of tours) {
+      ws.addRow({
+        code: t.code ?? "",
+        title: t.title,
+        destination: DEST_LABELS[t.destination] ?? t.destination,
+        dateStart: t.dateStart.split("T")[0],
+        dateEnd: t.dateEnd.split("T")[0],
+        basePrice: t.basePrice,
+        deposit: t.deposit,
+        capacity: t.capacity ?? 0,
+        depositDeadline: t.depositDeadline ? t.depositDeadline.split("T")[0] : "",
+        finalDeadline: t.finalDeadline ? t.finalDeadline.split("T")[0] : "",
+        depositReminderDays: t.depositReminderDays,
+        finalReminderDays: t.finalReminderDays,
+        guideReminderDays: t.guideReminderDays,
+        status: STATUS_LABEL[t.status] ?? t.status,
+        bookings: t._count?.bookings ?? 0,
+      });
+    }
+    ws.views = [{ state: "frozen", ySplit: 1 }];
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = today.replace(/-/g, "");
+    a.href = url;
+    a.download = `tours_export_${stamp}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async function handleTourFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -392,8 +457,17 @@ export default function ToursPage() {
             onChange={handleTourFileUpload}
             className="hidden"
           />
-          <Button size="sm" variant="outline" onClick={downloadTourTemplate} title="下載 Excel 範本">
+          <Button size="sm" variant="outline" onClick={downloadTourTemplate} title="下載 Excel 範本（空白格式）">
             <Download className="mr-1.5 h-4 w-4" />下載範本
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportToursExcel}
+            disabled={loading || tours.length === 0}
+            title="把目前所有潛水團匯出 Excel"
+          >
+            <FileSpreadsheet className="mr-1.5 h-4 w-4" />Excel 匯出
           </Button>
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
             <Upload className="mr-1.5 h-4 w-4" />

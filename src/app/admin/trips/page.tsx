@@ -399,6 +399,78 @@ export default function AdminTripsPage() {
     URL.revokeObjectURL(url);
   }
 
+  /** 匯出目前所有日潛場次為 Excel（欄位與下載範本對齊，可直接編輯後再匯入） */
+  async function exportTripsExcel() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("日潛場次");
+    ws.columns = [
+      { header: "編號", key: "code", width: 16 },
+      { header: "日期（YYYY-MM-DD）", key: "date", width: 16 },
+      { header: "時間（HH:MM）", key: "startTime", width: 12 },
+      { header: "夜潛（Y/N）", key: "isNightDive", width: 10 },
+      { header: "潛點名稱（逗號分隔）", key: "sites", width: 30 },
+      { header: "氣瓶數", key: "tankCount", width: 8 },
+      { header: "人數上限（0=∞）", key: "capacity", width: 14 },
+      { header: "教練姓名（逗號分隔）", key: "coaches", width: 20 },
+      { header: "氣瓶費/瓶", key: "extraTank", width: 12 },
+      { header: "夜潛加價", key: "nightDive", width: 12 },
+      { header: "其他費用", key: "otherFee", width: 12 },
+      { header: "其他費用說明", key: "otherFeeNote", width: 18 },
+      { header: "集合地點", key: "meetingPoint", width: 22 },
+      { header: "Google Map URL", key: "meetingPointUrl", width: 32 },
+      { header: "備註", key: "notes", width: 28 },
+      { header: "狀態", key: "status", width: 10 },
+      { header: "已報名", key: "booked", width: 10 },
+      { header: "預估收費 (NT$)", key: "revenue", width: 16 },
+    ];
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 28;
+
+    const STATUS_LABEL: Record<string, string> = {
+      open: "開放", full: "額滿", cancelled: "已取消", completed: "已完成",
+    };
+
+    for (const t of trips) {
+      ws.addRow({
+        code: t.code ?? "",
+        date: t.date.slice(0, 10),
+        startTime: t.startTime,
+        isNightDive: t.isNightDive ? "Y" : "N",
+        sites: t.diveSiteIds.map(siteName).join(", "),
+        tankCount: t.tankCount,
+        capacity: t.capacity ?? 0,
+        coaches: t.coachIds.map(coachName).join(", "),
+        extraTank: t.pricing.extraTank,
+        nightDive: t.pricing.nightDive,
+        otherFee: t.pricing.otherFee ?? 0,
+        otherFeeNote: t.pricing.otherFeeNote ?? "",
+        meetingPoint: t.meetingPoint ?? "",
+        meetingPointUrl: t.meetingPointUrl ?? "",
+        notes: t.notes ?? "",
+        status: STATUS_LABEL[t.status] ?? t.status,
+        booked: t.booked,
+        revenue: estimatedRevenue(t),
+      });
+    }
+    // 凍結首列方便檢視
+    ws.views = [{ state: "frozen", ySplit: 1 }];
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = TODAY.replace(/-/g, "");
+    a.href = url;
+    a.download = `diving_trips_export_${stamp}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async function handleTripFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -590,8 +662,17 @@ export default function AdminTripsPage() {
             onChange={handleTripFileUpload}
             className="hidden"
           />
-          <Button size="sm" variant="outline" onClick={downloadTripTemplate} title="下載 Excel 範本（含潛點/教練名稱對照）">
+          <Button size="sm" variant="outline" onClick={downloadTripTemplate} title="下載 Excel 範本（空白格式）">
             <Download className="mr-1.5 h-4 w-4" />下載範本
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportTripsExcel}
+            disabled={loading || trips.length === 0}
+            title="把目前所有日潛場次匯出 Excel"
+          >
+            <FileSpreadsheet className="mr-1.5 h-4 w-4" />Excel 匯出
           </Button>
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
             <Upload className="mr-1.5 h-4 w-4" />
