@@ -666,13 +666,13 @@ export default function AdminUsersPage() {
                           <span className="text-xs text-[var(--muted-foreground)]">—</span>
                         )}
                       </td>
-                      {/* 姓名 */}
-                      <td className="px-4 py-3">
-                        <div className={cn("font-medium", u.deletedAt && "line-through text-[var(--muted-foreground)]")}>
+                      {/* 姓名 — 強制不換行 + LINE 名字縮字 */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className={cn("font-medium whitespace-nowrap", u.deletedAt && "line-through text-[var(--muted-foreground)]")}>
                           {u.realName ?? u.displayName}
                         </div>
                         {u.realName && (
-                          <div className="text-xs text-[var(--muted-foreground)]">
+                          <div className="text-[10px] text-[var(--muted-foreground)] whitespace-nowrap truncate max-w-[10rem]">
                             {u.displayName}
                           </div>
                         )}
