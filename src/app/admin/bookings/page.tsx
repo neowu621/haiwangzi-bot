@@ -834,7 +834,6 @@ export default function AdminBookingsPage() {
                   <tr className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}>
                     <th className="px-4 py-3 font-medium">訂單編號</th>
-                    <th className="px-4 py-3 font-medium">建單日</th>
                     <th className="px-4 py-3 font-medium">客戶</th>
                     <th className="px-3 py-3 font-medium text-center">消費</th>
                     <th className="px-4 py-3 font-medium">場次</th>
@@ -871,10 +870,6 @@ export default function AdminBookingsPage() {
                           ) : (
                             <span className="text-xs text-[var(--muted-foreground)]">—</span>
                           )}
-                        </td>
-                        {/* 建單日 */}
-                        <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--muted-foreground)] whitespace-nowrap">
-                          {toTaipeiDateString(b.createdAt)}
                         </td>
                         {/* 客戶 — 一行 */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
@@ -1030,7 +1025,7 @@ export default function AdminBookingsPage() {
                   })}
                   {filteredBookings.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
