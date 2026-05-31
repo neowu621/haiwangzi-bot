@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2 } from "lucide-react";
+import { Plus, Edit3, Trash2, Upload, Download, FileSpreadsheet } from "lucide-react";
+import ExcelJS from "exceljs";
 
 type Region = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
 type Difficulty = "easy" | "medium" | "hard";
@@ -21,7 +22,7 @@ interface DiveSite {
   region: Region;
   description: string | null;
   difficulty: Difficulty;
-  maxDepth: number | null;
+  maxDepth: string;  // v137: 改為文字，允許 "20" 或 "20-30"
   features: string[];
   images: string[];
   youtubeUrl: string | null;
@@ -34,7 +35,21 @@ const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", c
 
 const BLANK: Omit<DiveSite, "id"> = {
   name: "", region: "northeast", description: "", difficulty: "easy",
-  maxDepth: null, features: [], images: [], youtubeUrl: "", locationUrl: "", cautions: "",
+  maxDepth: "", features: [], images: [], youtubeUrl: "", locationUrl: "", cautions: "",
+};
+
+// region / difficulty 中文 ↔ 英文 對照（給 Excel 匯入用）
+const REGION_FROM_LABEL: Record<string, Region> = {
+  "東北角": "northeast", "northeast": "northeast",
+  "綠島": "green_island", "green_island": "green_island",
+  "蘭嶼": "lanyu", "lanyu": "lanyu",
+  "墾丁": "kenting", "kenting": "kenting",
+  "其他": "other", "other": "other",
+};
+const DIFF_FROM_LABEL: Record<string, Difficulty> = {
+  "初級": "easy", "easy": "easy",
+  "中級": "medium", "medium": "medium",
+  "進階": "hard", "hard": "hard",
 };
 
 export default function SitesPage() {
@@ -46,6 +61,13 @@ export default function SitesPage() {
   const [form, setForm] = useState<Omit<DiveSite, "id">>(BLANK);
   const [featuresInput, setFeaturesInput] = useState("");
   const [saving, setSaving] = useState(false);
+  // Excel 匯入相關 state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total: number; created: number; updated: number;
+    errors: { row: number; id: string; message: string }[];
+  } | null>(null);
 
   async function load() {
     try {
@@ -66,7 +88,7 @@ export default function SitesPage() {
   }
 
   function openEdit(s: DiveSite) {
-    setForm({ name: s.name, region: s.region, description: s.description ?? "", difficulty: s.difficulty, maxDepth: s.maxDepth, features: s.features, images: s.images, youtubeUrl: s.youtubeUrl ?? "", locationUrl: s.locationUrl ?? "", cautions: s.cautions ?? "" });
+    setForm({ name: s.name, region: s.region, description: s.description ?? "", difficulty: s.difficulty, maxDepth: s.maxDepth ?? "", features: s.features, images: s.images, youtubeUrl: s.youtubeUrl ?? "", locationUrl: s.locationUrl ?? "", cautions: s.cautions ?? "" });
     setFeaturesInput(s.features.join(", "));
     setEditingId(s.id); setDialogMode("edit");
   }
@@ -75,7 +97,7 @@ export default function SitesPage() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const body = { ...form, features: featuresInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean), maxDepth: form.maxDepth ?? null };
+      const body = { ...form, features: featuresInput.split(/[,，、]/).map(s => s.trim()).filter(Boolean), maxDepth: form.maxDepth ?? "" };
       if (dialogMode === "create") {
         await adminFetch("/api/admin/sites", { method: "POST", body: JSON.stringify(body) });
       } else if (editingId) {
@@ -86,6 +108,118 @@ export default function SitesPage() {
       setErr(e instanceof Error ? e.message : "儲存失敗");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Excel 範本下載 + 上傳匯入 ──────────────────────────────────────
+  async function downloadTemplate() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("潛點");
+    ws.columns = [
+      { header: "id（英文，必填）", key: "id", width: 22 },
+      { header: "名稱（必填）", key: "name", width: 22 },
+      { header: "區域（東北角/綠島/蘭嶼/墾丁/其他，必填）", key: "region", width: 24 },
+      { header: "難度（初級/中級/進階）", key: "difficulty", width: 18 },
+      { header: "最大深度（可填 20 或 20-30）", key: "maxDepth", width: 22 },
+      { header: "特色（逗號分隔）", key: "features", width: 30 },
+      { header: "YouTube URL", key: "youtubeUrl", width: 36 },
+      { header: "位置 URL（Google Map）", key: "locationUrl", width: 36 },
+      { header: "描述", key: "description", width: 40 },
+      { header: "備註（注意事項）", key: "cautions", width: 40 },
+    ];
+    // 標題列樣式
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    // 範例列
+    ws.addRow({
+      id: "northeast_longdong",
+      name: "龍洞",
+      region: "東北角",
+      difficulty: "中級",
+      maxDepth: "20-30",
+      features: "珊瑚礁, 軟珊瑚, 魚群",
+      youtubeUrl: "https://www.youtube.com/watch?v=xxx",
+      locationUrl: "https://maps.app.goo.gl/xxx",
+      description: "東北角最熱門潛點之一",
+      cautions: "注意水流方向",
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dive_sites_template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setErr(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const ws = wb.worksheets[0];
+      if (!ws) throw new Error("Excel 檔內沒有工作表");
+
+      const rows: Array<Record<string, unknown>> = [];
+      ws.eachRow((row, idx) => {
+        if (idx === 1) return; // skip header
+        const cell = (col: number) => {
+          const v = row.getCell(col).value;
+          if (v == null) return "";
+          if (typeof v === "object" && "text" in v) return String((v as { text: string }).text);
+          return String(v);
+        };
+        const id = cell(1).trim();
+        const name = cell(2).trim();
+        if (!id || !name) return; // 跳過空白列
+        const regionRaw = cell(3).trim();
+        const diffRaw = cell(4).trim();
+        rows.push({
+          id,
+          name,
+          region: REGION_FROM_LABEL[regionRaw] ?? "other",
+          difficulty: DIFF_FROM_LABEL[diffRaw] ?? "medium",
+          maxDepth: cell(5).trim(),
+          features: cell(6).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          youtubeUrl: cell(7).trim(),
+          locationUrl: cell(8).trim(),
+          description: cell(9).trim(),
+          cautions: cell(10).trim(),
+        });
+      });
+
+      if (rows.length === 0) {
+        throw new Error("檔案內沒有可匯入的資料（id 與 名稱 必填）");
+      }
+      if (rows.length > 500) {
+        throw new Error(`單次最多 500 筆，此檔有 ${rows.length} 筆`);
+      }
+
+      const res = await adminFetch<{
+        ok: boolean; total: number; created: number; updated: number;
+        errors: { row: number; id: string; message: string }[];
+      }>("/api/admin/sites/bulk-import", {
+        method: "POST",
+        body: JSON.stringify({ rows, mode: "upsert" }),
+      });
+      setImportResult(res);
+      await load();
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : "Excel 匯入失敗");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -110,11 +244,58 @@ export default function SitesPage() {
       <div className="space-y-4">
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
 
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button size="sm" variant="outline" onClick={downloadTemplate} title="下載 Excel 範本">
+            <Download className="mr-1.5 h-4 w-4" />下載範本
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            <Upload className="mr-1.5 h-4 w-4" />
+            {importing ? "匯入中..." : "Excel 匯入"}
+          </Button>
           <Button size="sm" style={primaryBtn} onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />新增潛點
           </Button>
         </div>
+
+        {/* 匯入結果回饋 */}
+        {importResult && (
+          <div className="rounded-lg border p-3 text-sm" style={{
+            borderColor: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.4)" : "rgba(251, 191, 36, 0.4)",
+            background: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.08)" : "rgba(251, 191, 36, 0.08)",
+          }}>
+            <div className="flex items-center gap-2 font-semibold mb-1.5">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>匯入完成：</span>
+              <span className="text-green-700">新增 {importResult.created}</span>
+              <span className="text-blue-700">更新 {importResult.updated}</span>
+              {importResult.errors.length > 0 && (
+                <span className="text-amber-700">失敗 {importResult.errors.length}</span>
+              )}
+              <button
+                onClick={() => setImportResult(null)}
+                className="ml-auto text-xs text-[var(--muted-foreground)] hover:underline"
+              >
+                關閉
+              </button>
+            </div>
+            {importResult.errors.length > 0 && (
+              <div className="mt-2 space-y-0.5 max-h-32 overflow-y-auto text-xs">
+                {importResult.errors.map((er, i) => (
+                  <div key={i} className="text-amber-800">
+                    第 {er.row} 列 ({er.id || "—"})：{er.message}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
@@ -188,7 +369,7 @@ export default function SitesPage() {
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label className="text-xs text-[var(--muted-foreground)]">最大深度(m)</Label>
-                <Input type="number" value={form.maxDepth ?? ""} onChange={e => setForm(f => ({ ...f, maxDepth: e.target.value ? parseInt(e.target.value) : null }))} placeholder="選填" />
+                <Input type="text" value={form.maxDepth ?? ""} onChange={e => setForm(f => ({ ...f, maxDepth: e.target.value }))} placeholder="例：20 或 20-30（選填）" />
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label className="text-xs text-[var(--muted-foreground)]">特色（逗號分隔）</Label>

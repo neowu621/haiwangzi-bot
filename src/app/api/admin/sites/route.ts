@@ -35,7 +35,10 @@ const CreateSchema = z.object({
   region: z.enum(["northeast", "green_island", "lanyu", "kenting", "other"]),
   description: z.string().default(""),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-  maxDepth: z.number().int().min(0).default(0),
+  // 允許文字（例如 "20" 或 "20-30"），最多 32 字
+  maxDepth: z.union([z.string().max(32), z.number(), z.null()])
+    .transform((v) => v == null ? "" : String(v))
+    .default(""),
   features: z.array(z.string()).default([]),
   images: z.array(z.string()).default([]),
   youtubeUrl: z.string().url().optional().or(z.literal("")),

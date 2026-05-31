@@ -717,10 +717,22 @@ export default function AdminTripsPage() {
                   <Input
                     type="text"
                     inputMode="numeric"
-                    value={form.tankCount}
-                    onChange={(e) =>
-                      setForm({ ...form, tankCount: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })
-                    }
+                    value={form.tankCount === 0 ? "" : String(form.tankCount)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      // 只允許空 / 純數字（避免奇怪字元）
+                      if (raw === "") {
+                        setForm({ ...form, tankCount: 0 });
+                      } else if (/^\d+$/.test(raw)) {
+                        setForm({ ...form, tankCount: parseInt(raw, 10) });
+                      }
+                      // 其他輸入忽略 → input 自動退回上一個有效值
+                    }}
+                    onBlur={() => {
+                      // 失焦時做範圍校正（1-5）
+                      if (form.tankCount < 1) setForm((f) => ({ ...f, tankCount: 1 }));
+                      else if (form.tankCount > 5) setForm((f) => ({ ...f, tankCount: 5 }));
+                    }}
                   />
                 </div>
                 <div className="col-span-3">
@@ -731,10 +743,15 @@ export default function AdminTripsPage() {
                   <Input
                     type="text"
                     inputMode="numeric"
-                    value={form.capacity}
-                    onChange={(e) =>
-                      setForm({ ...form, capacity: Math.max(0, Number(e.target.value) || 0) })
-                    }
+                    value={String(form.capacity)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        setForm({ ...form, capacity: 0 });
+                      } else if (/^\d+$/.test(raw)) {
+                        setForm({ ...form, capacity: parseInt(raw, 10) });
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -768,10 +785,13 @@ export default function AdminTripsPage() {
                   <Input
                     type="text"
                     inputMode="numeric"
-                    value={form.pricing.extraTank}
-                    onChange={(e) =>
-                      setForm({ ...form, pricing: { ...form.pricing, extraTank: Number(e.target.value) || 0 } })
-                    }
+                    value={String(form.pricing.extraTank)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "" || /^\d+$/.test(raw)) {
+                        setForm({ ...form, pricing: { ...form.pricing, extraTank: raw === "" ? 0 : parseInt(raw, 10) } });
+                      }
+                    }}
                   />
                 </div>
                 {/* 其他費用 金額 */}
@@ -783,10 +803,13 @@ export default function AdminTripsPage() {
                     type="text"
                     inputMode="numeric"
                     placeholder="0"
-                    value={form.pricing.otherFee ?? 0}
-                    onChange={(e) =>
-                      setForm({ ...form, pricing: { ...form.pricing, otherFee: Number(e.target.value) || 0 } })
-                    }
+                    value={String(form.pricing.otherFee ?? 0)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "" || /^\d+$/.test(raw)) {
+                        setForm({ ...form, pricing: { ...form.pricing, otherFee: raw === "" ? 0 : parseInt(raw, 10) } });
+                      }
+                    }}
                   />
                 </div>
                 {/* 其他費用 說明 */}
@@ -808,10 +831,13 @@ export default function AdminTripsPage() {
                   <Input
                     type="text"
                     inputMode="numeric"
-                    value={form.pricing.nightDive}
-                    onChange={(e) =>
-                      setForm({ ...form, pricing: { ...form.pricing, nightDive: Number(e.target.value) || 0 } })
-                    }
+                    value={String(form.pricing.nightDive)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "" || /^\d+$/.test(raw)) {
+                        setForm({ ...form, pricing: { ...form.pricing, nightDive: raw === "" ? 0 : parseInt(raw, 10) } });
+                      }
+                    }}
                   />
                 </div>
               )}

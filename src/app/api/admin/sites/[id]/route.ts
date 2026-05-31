@@ -12,7 +12,9 @@ const PatchSchema = z.object({
   region: z.enum(["northeast", "green_island", "lanyu", "kenting", "other"]).optional(),
   description: z.string().optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
-  maxDepth: z.number().int().min(0).optional(),
+  maxDepth: z.union([z.string().max(32), z.number(), z.null()])
+    .transform((v) => v == null ? "" : String(v))
+    .optional(),
   features: z.array(z.string()).optional(),
   images: z.array(z.string()).optional(),
   youtubeUrl: z.string().nullable().optional(),

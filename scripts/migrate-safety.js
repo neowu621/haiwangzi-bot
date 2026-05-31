@@ -112,6 +112,19 @@ const PATCHES = [
   // ── dive_sites 新欄位 ─────────────────────────────────────────────────
   // Google Maps URL
   `ALTER TABLE dive_sites ADD COLUMN IF NOT EXISTS location_url TEXT`,
+  // v137: max_depth INT → VARCHAR(32) 允許 "20-30" 等範圍寫法
+  // 用 DO 包起來避免重複轉換失敗中斷
+  `DO $$ BEGIN
+     ALTER TABLE dive_sites ALTER COLUMN max_depth TYPE VARCHAR(32) USING COALESCE(max_depth::text, '');
+     ALTER TABLE dive_sites ALTER COLUMN max_depth SET DEFAULT '';
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
+  // 處理舊資料的 NULL（避免 Prisma client schema 衝突）
+  `UPDATE dive_sites SET max_depth = '' WHERE max_depth IS NULL`,
+  `DO $$ BEGIN
+     ALTER TABLE dive_sites ALTER COLUMN max_depth SET NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$`,
 
   // ── tour_packages reminder 天數欄位 ──────────────────────────────────
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS deposit_reminder_days INTEGER DEFAULT 7`,

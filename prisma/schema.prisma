@@ -206,7 +206,7 @@ model DiveSite {
   region      Region
   description String     @default("")
   difficulty  Difficulty @default(medium)
-  maxDepth    Int        @default(0) @map("max_depth")
+  maxDepth    String     @default("") @map("max_depth") @db.VarChar(32)
   features    String[]   @default([])
   images      String[]   @default([])
   youtubeUrl  String?    @map("youtube_url")
