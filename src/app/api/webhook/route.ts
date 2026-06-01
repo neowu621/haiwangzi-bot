@@ -88,7 +88,9 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
   }
 
   // 歡迎 Flex（取代純文字）
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+  // v233：fallback chain — LINE_LIFF_ID → NEXT_PUBLIC_LIFF_ID → BASE_URL
+  // 之前只讀 NEXT_PUBLIC_LIFF_ID，造成 LIFF ID 在 LINE_LIFF_ID 設好時 URL 仍是空的 → 按鈕無反應
+  const liffId = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
   const liffUrl = liffId
     ? `https://liff.line.me/${liffId}`
     : process.env.NEXT_PUBLIC_BASE_URL ?? "https://liff.line.me";
@@ -129,7 +131,8 @@ async function handleTextMessage(
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.zeabur.app";
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+  // v233：fallback chain — 同 follow handler
+  const liffId = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
   const liffBase = liffId ? `https://liff.line.me/${liffId}` : `${baseUrl}/liff`;
 
   // 簡單關鍵字 routing,Phase 2 換成 Rich Menu

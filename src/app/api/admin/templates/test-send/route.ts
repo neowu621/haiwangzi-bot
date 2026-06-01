@@ -90,7 +90,11 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
     url: "https://haiwangzi.zeabur.app/liff/coach/today",
   },
   welcome: {
-    liffUrl: "https://liff.line.me/2010006458-fyokMnVv",
+    // v233：動態從 env 讀，避免寫死舊 LIFF ID
+    liffUrl: (() => {
+      const id = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+      return id ? `https://liff.line.me/${id}` : "https://liff.line.me";
+    })(),
   },
 };
 
