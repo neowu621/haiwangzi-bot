@@ -1033,7 +1033,7 @@ export default function AdminTripsPage() {
                             )}
                           </div>
                         </td>
-                        {/* 地點 + 氣瓶數（兩行）*/}
+                        {/* 地點 + 氣瓶數（兩行；含總量）*/}
                         <td className="px-3 py-1.5 text-xs">
                           <div className="font-medium text-[var(--foreground)]">
                             {trip.diveSiteIds.length > 0
@@ -1041,7 +1041,12 @@ export default function AdminTripsPage() {
                               : "—"}
                           </div>
                           <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
-                            {trip.tankCount} 支
+                            {trip.tankCount} 支/人
+                            {(trip.booked ?? 0) > 0 && (
+                              <span className="ml-1 font-semibold" style={{ color: "#0891b2" }}>
+                                · 需 {(trip.booked ?? 0) * (trip.tankCount ?? 0)} 支
+                              </span>
+                            )}
                           </div>
                         </td>
                         {/* 教練 + 已報名/可接受 合併欄 */}
