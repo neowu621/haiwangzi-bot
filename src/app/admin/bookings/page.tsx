@@ -937,6 +937,83 @@ export default function AdminBookingsPage() {
                 );
               })()}
 
+              {/* ── 💰 退款處理（已付>0 且未退款才顯示）── 移到付款狀態下方，視覺最顯眼 */}
+              {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (
+                <div className="rounded-md p-3 space-y-2"
+                  style={{ border: "2px solid rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.05)" }}>
+                  <button type="button" onClick={() => setRefundOpen(!refundOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold"
+                    style={{ color: "var(--color-coral)" }}>
+                    <span className="flex items-center gap-1.5">
+                      💰 退款處理
+                      <span className="text-[11px] font-normal opacity-80">
+                        （已付 NT$ {editing.paidAmount.toLocaleString()}{editing.paidAmount < editing.totalAmount ? `／總額 NT$ ${editing.totalAmount.toLocaleString()}` : ""}）
+                      </span>
+                    </span>
+                    {refundOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {!refundOpen && (
+                    <p className="text-[11px] text-[var(--color-coral)] opacity-80 pt-0.5">
+                      ↑ 點此展開：可選 <b>轉禮金</b>（永不過期 · 可加成）或 <b>退現金</b>
+                    </p>
+                  )}
+                  {refundOpen && (
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setRefundMethod("credit")}
+                          className={cn("rounded-md border px-2 py-2 text-xs",
+                            refundMethod === "credit" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
+                          🎁 轉禮金
+                        </button>
+                        <button type="button" onClick={() => setRefundMethod("cash")}
+                          className={cn("rounded-md border px-2 py-2 text-xs",
+                            refundMethod === "cash" ? "border-[var(--color-coral)] bg-[var(--color-coral)]/15 font-semibold" : "border-[var(--border)]")}>
+                          💵 退現金
+                        </button>
+                      </div>
+                      {/* 轉禮金 % 快選 (天氣 110% / 一般 100% / 違約 80%) */}
+                      {refundMethod === "credit" && (
+                        <div>
+                          <Label className="text-[10px] text-[var(--muted-foreground)] mb-1 block">轉禮金 %（天氣 110 / 一般 100 / 違約 80）</Label>
+                          <div className="grid grid-cols-4 gap-1 mb-1">
+                            {[80, 100, 110, 120].map((p) => (
+                              <button key={p} type="button" onClick={() => setRefundCreditPct(p)}
+                                className={cn("rounded-md border px-2 py-1 text-xs",
+                                  refundCreditPct === p ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
+                                {p}%
+                              </button>
+                            ))}
+                          </div>
+                          <Input type="number" min={1} max={500} value={refundCreditPct}
+                            onChange={(e) => setRefundCreditPct(Math.max(1, Math.min(500, Number(e.target.value) || 100)))}
+                            placeholder="自訂百分比" />
+                          <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                            退款金額 × {refundCreditPct}% = 實際轉入禮金 NT${Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}（<b>永不過期</b>）
+                          </p>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="number" min={1} max={editing.paidAmount} value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)} placeholder="退款金額" />
+                        <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="原因（選填）" />
+                      </div>
+                      <Button size="sm" className="w-full" style={{ background: "var(--color-coral)", color: "white" }}
+                        disabled={refundBusy} onClick={doRefund}>
+                        {refundBusy ? "處理中..." : `確認退款 NT$${Number(refundAmount || 0).toLocaleString()}`}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* paid=0 提示：沒收到錢就不會有退款流程 */}
+              {editing.paidAmount === 0 && editing.status !== "cancelled_by_user" && editing.status !== "cancelled_by_weather" && (
+                <div className="rounded-md p-2.5 text-[11px] text-slate-600"
+                  style={{ background: "#f1f5f9", border: "1px solid #e2e8f0" }}>
+                  💡 客戶尚未付款 — 若要不參加，請把「訂單狀態」改成「客戶取消」即可，不需要走退款流程。
+                </div>
+              )}
+
               {/* ── 備註區塊 ── */}
               <div className="space-y-2 pt-1">
                 <div
@@ -1047,65 +1124,6 @@ export default function AdminBookingsPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* Refund */}
-              {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (
-                <div className="rounded-md p-3 space-y-2"
-                  style={{ border: "2px solid rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.05)" }}>
-                  <button type="button" onClick={() => setRefundOpen(!refundOpen)}
-                    className="flex w-full items-center justify-between text-sm font-semibold"
-                    style={{ color: "var(--color-coral)" }}>
-                    退款處理（已付 NT$ {editing.paidAmount.toLocaleString()}）
-                    {refundOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
-                  {refundOpen && (
-                    <div className="space-y-2 pt-1">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => setRefundMethod("credit")}
-                          className={cn("rounded-md border px-2 py-2 text-xs",
-                            refundMethod === "credit" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
-                          轉禮金
-                        </button>
-                        <button type="button" onClick={() => setRefundMethod("cash")}
-                          className={cn("rounded-md border px-2 py-2 text-xs",
-                            refundMethod === "cash" ? "border-[var(--color-coral)] bg-[var(--color-coral)]/15 font-semibold" : "border-[var(--border)]")}>
-                          退現金
-                        </button>
-                      </div>
-                      {/* 轉禮金 % 快選 (天氣 110% / 一般 100% / 違約 80%) */}
-                      {refundMethod === "credit" && (
-                        <div>
-                          <Label className="text-[10px] text-[var(--muted-foreground)] mb-1 block">轉禮金 %（可自訂）</Label>
-                          <div className="grid grid-cols-4 gap-1 mb-1">
-                            {[80, 100, 110, 120].map((p) => (
-                              <button key={p} type="button" onClick={() => setRefundCreditPct(p)}
-                                className={cn("rounded-md border px-2 py-1 text-xs",
-                                  refundCreditPct === p ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
-                                {p}%
-                              </button>
-                            ))}
-                          </div>
-                          <Input type="number" min={1} max={500} value={refundCreditPct}
-                            onChange={(e) => setRefundCreditPct(Math.max(1, Math.min(500, Number(e.target.value) || 100)))}
-                            placeholder="自訂百分比" />
-                          <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-                            退款金額 × {refundCreditPct}% = 實際轉入禮金 NT${Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input type="number" min={1} max={editing.paidAmount} value={refundAmount}
-                          onChange={(e) => setRefundAmount(e.target.value)} placeholder="退款金額" />
-                        <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="原因（選填）" />
-                      </div>
-                      <Button size="sm" className="w-full" style={{ background: "var(--color-coral)", color: "white" }}
-                        disabled={refundBusy} onClick={doRefund}>
-                        {refundBusy ? "處理中..." : `確認退款 NT$${Number(refundAmount || 0).toLocaleString()}`}
-                      </Button>
-                    </div>
-                  )}
                 </div>
               )}
 
