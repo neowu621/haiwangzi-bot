@@ -574,15 +574,19 @@ export default function AdminUsersPage() {
                 ["all", `全部 (${users.length})`],
                 [
                   "customer",
-                  `客戶 (${users.filter((u) => u.effectiveRoles?.includes("customer")).length})`,
+                  `會員 (${users.filter((u) => u.effectiveRoles?.includes("customer")).length})`,
                 ],
                 [
                   "coach",
                   `教練 (${users.filter((u) => u.effectiveRoles?.includes("coach")).length})`,
                 ],
                 [
+                  "boss",
+                  `老闆 (${users.filter((u) => u.effectiveRoles?.includes("boss")).length})`,
+                ],
+                [
                   "admin",
-                  `Admin (${users.filter((u) => u.effectiveRoles?.includes("admin")).length})`,
+                  `管理員 (${users.filter((u) => u.effectiveRoles?.includes("admin")).length})`,
                 ],
                 ["vip", `VIP (${users.filter((u) => u.vipLevel > 0).length})`],
                 [
@@ -720,15 +724,18 @@ export default function AdminUsersPage() {
                       {/* 角色 — 縮小欄寬 */}
                       <td className="px-2 py-3 whitespace-nowrap" style={{ width: "1%" }}>
                         <div className="flex flex-col gap-0.5">
-                          {u.effectiveRoles.map((r) => (
-                            <Badge
-                              key={r}
-                              variant={roleBadgeVariant(r)}
-                              className="text-[9px] inline-block w-fit"
-                            >
-                              {r}
-                            </Badge>
-                          ))}
+                          {u.effectiveRoles.map((r) => {
+                            const ROLE_LABELS_CN = { customer: "會員", coach: "教練", boss: "老闆", admin: "管理員" };
+                            return (
+                              <Badge
+                                key={r}
+                                variant={roleBadgeVariant(r)}
+                                className="text-[9px] inline-block w-fit"
+                              >
+                                {ROLE_LABELS_CN[r as keyof typeof ROLE_LABELS_CN] ?? r}
+                              </Badge>
+                            );
+                          })}
                         </div>
                       </td>
                       {/* 電話 — 不換行 */}
@@ -757,8 +764,8 @@ export default function AdminUsersPage() {
                       {/* 證照 */}
                       <td className="px-4 py-3">
                         {u.cert ? (
-                          <Badge variant="muted" className="text-[10px]">
-                            {u.cert}
+                          <Badge variant="muted" className="text-[10px]" title={u.cert}>
+                            {({ OW: "開放水域", AOW: "進階", Rescue: "救援", DM: "潛水長", Instructor: "潛水教練" } as Record<string, string>)[u.cert] ?? u.cert}
                           </Badge>
                         ) : (
                           <span className="text-xs text-[var(--muted-foreground)]">
@@ -938,28 +945,24 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                <Label className="text-xs pt-1">角色（可複選）</Label>
+                <Label className="text-xs pt-1">角色</Label>
                 <div>
                   <div className="flex gap-1">
-                    {ROLES.map((r) => {
-                      const cur = editing.effectiveRoles ?? [editing.role];
-                      const on = cur.includes(r);
+                    {(["customer", "coach", "boss", "admin"] as const).map((r) => {
+                      const cur = editing.role;
+                      const on = cur === r;
+                      const ROLE_LABELS = { customer: "會員", coach: "教練", boss: "老闆", admin: "管理員" };
                       return (
                         <button
                           key={r}
                           type="button"
                           onClick={() => {
-                            const next = on
-                              ? cur.filter((x) => x !== r)
-                              : [...cur, r];
-                            if (next.length === 0) return;
-                            const newRole = (["admin", "boss", "coach", "customer"] as const).find((x) => next.includes(x)) ?? "customer";
+                            // v209：單選（不可複選）
                             setEditing({
                               ...editing,
-                              effectiveRoles: next,
-                              role: newRole,
-                              // v208：第一次設為 coach 時，初始化 coach defaults
-                              coach: newRole === "coach"
+                              effectiveRoles: [r],
+                              role: r,
+                              coach: r === "coach"
                                 ? (editing.coach ?? {
                                     id: editing.lineUserId.slice(0, 32),
                                     cert: "DM",
@@ -978,7 +981,7 @@ export default function AdminUsersPage() {
                               : "bg-[var(--muted)] text-[var(--muted-foreground)]",
                           )}
                         >
-                          {r}
+                          {ROLE_LABELS[r]}
                         </button>
                       );
                     })}
@@ -1085,7 +1088,15 @@ export default function AdminUsersPage() {
                   >
                     無
                   </button>
-                  {CERTS.map((c) => (
+                  {CERTS.map((c) => {
+                    const CERT_LABELS_CN: Record<Cert, string> = {
+                      OW: "開放水域",
+                      AOW: "進階",
+                      Rescue: "救援",
+                      DM: "潛水長",
+                      Instructor: "潛水教練",
+                    };
+                    return (
                     <button
                       key={c}
                       type="button"
@@ -1096,10 +1107,11 @@ export default function AdminUsersPage() {
                           ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
                           : "border-[var(--border)]",
                       )}
+                      title={c}
                     >
-                      {c}
-                    </button>
-                  ))}
+                      {CERT_LABELS_CN[c]}
+                    </button>);
+                  })}
                 </div>
               </div>
 
