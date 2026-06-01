@@ -884,8 +884,8 @@ export default function ToursPage() {
                   </div>
                 </Field>
                 <Row2>
-                  <Field label="潛水支數"><input type="number" value={form.tanksCount}
-                    onChange={(e) => setForm((f) => ({ ...f, tanksCount: parseInt(e.target.value) || 0 }))}
+                  <Field label="潛水支數"><input type="text" inputMode="numeric" value={form.tanksCount}
+                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, tanksCount: c === "" ? 0 : parseInt(c, 10) })); }}
                     placeholder="10" style={inputStyle} /></Field>
                   <Field label="　">
                     <label
@@ -917,16 +917,16 @@ export default function ToursPage() {
 
               <FieldSet title="費用">
                 <Row2>
-                  <Field label="團費 NT$" required><input type="number" value={form.basePrice}
-                    onChange={(e) => setForm((f) => ({ ...f, basePrice: parseInt(e.target.value) || 0 }))}
+                  <Field label="團費 NT$" required><input type="text" inputMode="numeric" value={form.basePrice}
+                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, basePrice: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
-                  <Field label="訂金 NT$"><input type="number" value={form.deposit}
-                    onChange={(e) => setForm((f) => ({ ...f, deposit: parseInt(e.target.value) || 0 }))}
+                  <Field label="訂金 NT$"><input type="text" inputMode="numeric" value={form.deposit}
+                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, deposit: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
                 </Row2>
                 <Row2>
-                  <Field label="人數上限（0=∞）"><input type="number" value={form.capacity}
-                    onChange={(e) => setForm((f) => ({ ...f, capacity: parseInt(e.target.value) || 0 }))}
+                  <Field label="人數上限（0=∞）"><input type="text" inputMode="numeric" value={form.capacity}
+                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, capacity: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
                   <Field label="訂金截止日"><input type="date" value={form.depositDeadline}
                     onChange={(e) => setForm((f) => ({ ...f, depositDeadline: e.target.value }))}
@@ -936,11 +936,11 @@ export default function ToursPage() {
                   <Field label="尾款截止日"><input type="date" value={form.finalDeadline}
                     onChange={(e) => setForm((f) => ({ ...f, finalDeadline: e.target.value }))}
                     style={inputStyle} /></Field>
-                  <Field label="訂金前 N 天提醒"><input type="number" value={form.depositReminderDays}
-                    onChange={(e) => setForm((f) => ({ ...f, depositReminderDays: parseInt(e.target.value) || 0 }))}
+                  <Field label="訂金前 N 天提醒"><input type="text" inputMode="numeric" value={form.depositReminderDays}
+                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, depositReminderDays: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
-                  <Field label="尾款前 N 天提醒"><input type="number" value={form.finalReminderDays}
-                    onChange={(e) => setForm((f) => ({ ...f, finalReminderDays: parseInt(e.target.value) || 0 }))}
+                  <Field label="尾款前 N 天提醒"><input type="text" inputMode="numeric" value={form.finalReminderDays}
+                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, finalReminderDays: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
                 </Row3>
                 <Field label="早鳥 / 加價 / 優惠（每行一條）">

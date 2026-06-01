@@ -5,6 +5,7 @@ import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -910,21 +911,15 @@ export default function AdminBookingsPage() {
                     )}
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">參加人數</Label>
-                      <Input type="number" min={1} max={20} value={editing.participants}
+                      <NumberInput min={1} max={20} value={editing.participants}
                         disabled={locked}
-                        onChange={(e) => {
-                          const n = parseInt(e.target.value, 10);
-                          setEditing({ ...editing, participants: Number.isNaN(n) ? 1 : Math.max(1, n) });
-                        }} />
+                        onChange={(n) => setEditing({ ...editing, participants: Math.max(1, n) })} />
                     </div>
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">總金額</Label>
-                      <Input type="number" min={0} value={editing.totalAmount}
+                      <NumberInput min={0} value={editing.totalAmount}
                         disabled={locked}
-                        onChange={(e) => {
-                          const n = parseInt(e.target.value, 10);
-                          setEditing({ ...editing, totalAmount: Number.isNaN(n) ? 0 : Math.max(0, n) });
-                        }} />
+                        onChange={(n) => setEditing({ ...editing, totalAmount: n })} />
                     </div>
                     <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
                       <Label className="text-xs pt-1.5">已付金額</Label>
@@ -960,16 +955,12 @@ export default function AdminBookingsPage() {
                         <div className="space-y-1.5">
                           <div className="flex gap-2">
                             <Input
-                              type="number"
-                              min={1}
-                              max={editing.totalAmount * 2}
+                              type="text"
+                              inputMode="numeric"
                               value={addPaymentAmount}
                               onChange={(e) => {
-                                // 去掉 leading 0：把字串先 parse 再轉回乾淨字串
-                                const raw = e.target.value;
-                                if (raw === "") { setAddPaymentAmount(""); return; }
-                                const n = parseInt(raw.replace(/[^\d]/g, ""), 10);
-                                setAddPaymentAmount(Number.isNaN(n) || n < 0 ? "" : String(n));
+                                const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
+                                setAddPaymentAmount(clean);
                               }}
                               placeholder={`金額（剩 NT$ ${owed.toLocaleString()}）`}
                               className="flex-1"
@@ -1105,8 +1096,8 @@ export default function AdminBookingsPage() {
                               </button>
                             ))}
                           </div>
-                          <Input type="number" min={1} max={500} value={refundCreditPct}
-                            onChange={(e) => setRefundCreditPct(Math.max(1, Math.min(500, Number(e.target.value) || 100)))}
+                          <NumberInput min={1} max={500} value={refundCreditPct}
+                            onChange={(n) => setRefundCreditPct(Math.max(1, Math.min(500, n || 100)))}
                             placeholder="自訂百分比" />
                           <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
                             退款金額 × {refundCreditPct}% = 實際轉入禮金 NT${Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}（<b>永不過期</b>）
@@ -1114,8 +1105,9 @@ export default function AdminBookingsPage() {
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2">
-                        <Input type="number" min={1} max={editing.paidAmount} value={refundAmount}
-                          onChange={(e) => setRefundAmount(e.target.value)} placeholder="退款金額" />
+                        <Input type="text" inputMode="numeric" value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"))}
+                          placeholder="退款金額" />
                         <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="原因（選填）" />
                       </div>
                       <Button size="sm" className="w-full" style={{ background: "var(--color-coral)", color: "white" }}
@@ -1308,8 +1300,8 @@ export default function AdminBookingsPage() {
                                 </button>
                               ))}
                             </div>
-                            <Input type="number" min={1} max={500} value={noShowCreditPct}
-                              onChange={(e) => setNoShowCreditPct(Math.max(1, Math.min(500, Number(e.target.value) || 80)))}
+                            <NumberInput min={1} max={500} value={noShowCreditPct}
+                              onChange={(n) => setNoShowCreditPct(Math.max(1, Math.min(500, n || 80)))}
                               placeholder="自訂百分比" className="h-8 text-xs" />
                             <p className="text-[10px] text-[var(--muted-foreground)]">
                               已付 NT$ {noShowTarget.paidAmount.toLocaleString()} × {noShowCreditPct}% = 轉禮金 NT$ {Math.round(noShowTarget.paidAmount * noShowCreditPct / 100).toLocaleString()}

@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -265,7 +266,7 @@ export default function CoachesPage() {
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label style={labelStyle}>費用/潛 (NT$)</Label>
-                <Input type="number" className={inputCls} value={form.feePerDive} onChange={e => setForm(f => ({ ...f, feePerDive: parseInt(e.target.value) || 0 }))} />
+                <NumberInput min={0} className={inputCls} value={form.feePerDive} onChange={(n) => setForm(f => ({ ...f, feePerDive: n }))} />
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label style={labelStyle}>LINE User ID</Label>

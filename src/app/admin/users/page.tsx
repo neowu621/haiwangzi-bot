@@ -5,6 +5,7 @@ import { adminFetch } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -1011,15 +1012,11 @@ export default function AdminUsersPage() {
                     <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
                       自填總經驗
                     </div>
-                    <Input
-                      type="number"
+                    <NumberInput
                       min={0}
                       value={editing.logCount}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          logCount: Math.max(0, Number(e.target.value)),
-                        })
+                      onChange={(n) =>
+                        setEditing({ ...editing, logCount: n })
                       }
                     />
                   </div>
@@ -1027,18 +1024,11 @@ export default function AdminUsersPage() {
                     <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
                       潛水次數
                     </div>
-                    <Input
-                      type="number"
+                    <NumberInput
                       min={0}
                       value={editing.haiwangziLogCount ?? 0}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          haiwangziLogCount: Math.max(
-                            0,
-                            Number(e.target.value),
-                          ),
-                        })
+                      onChange={(n) =>
+                        setEditing({ ...editing, haiwangziLogCount: n })
                       }
                     />
                   </div>
@@ -1076,15 +1066,11 @@ export default function AdminUsersPage() {
 
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">累計消費 (NT$)</Label>
-                <Input
-                  type="number"
+                <NumberInput
                   min={0}
                   value={editing.totalSpend ?? 0}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      totalSpend: Math.max(0, Number(e.target.value)),
-                    })
+                  onChange={(n) =>
+                    setEditing({ ...editing, totalSpend: n })
                   }
                 />
               </div>
@@ -1125,11 +1111,11 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Input
-                    type="number"
-                    min={0}
+                    type="text"
+                    inputMode="numeric"
                     placeholder="金額"
                     value={creditAmount}
-                    onChange={(e) => setCreditAmount(e.target.value)}
+                    onChange={(e) => setCreditAmount(e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"))}
                   />
                   <Input
                     placeholder="名義（會顯示給會員看，例：客訴補償）"
@@ -1139,12 +1125,11 @@ export default function AdminUsersPage() {
                 </div>
                 {/* v185：有效天數覆寫 */}
                 <Input
-                  type="number"
-                  min={0}
-                  max={3650}
+                  type="text"
+                  inputMode="numeric"
                   placeholder="有效天數（留空 = 用後台預設值，0 = 永不過期）"
                   value={creditExpiryDays}
-                  onChange={(e) => setCreditExpiryDays(e.target.value)}
+                  onChange={(e) => setCreditExpiryDays(e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"))}
                   className="text-xs"
                 />
                 {/* 快捷名義 — 點擊填入「原因」欄 */}

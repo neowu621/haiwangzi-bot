@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { APP_VERSION } from "@/lib/version";
 import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
@@ -475,11 +476,8 @@ export default function SettingsPage() {
               {(Object.keys(GEAR_LABELS) as Array<keyof GearPrices>).map(key => (
                 <div key={key}>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{GEAR_LABELS[key]}</Label>
-                  <Input type="number" value={gear[key]}
-                    onChange={e => {
-                      const val = parseInt(e.target.value) || 0;
-                      setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: val } } : c);
-                    }} />
+                  <NumberInput min={0} value={gear[key]}
+                    onChange={(n) => setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: n } } : c)} />
                 </div>
               ))}
             </div>
@@ -492,11 +490,8 @@ export default function SettingsPage() {
               {(["baseTrip", "extraTank"] as const).map(key => (
                 <div key={key}>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{TRIP_LABELS[key]}</Label>
-                  <Input type="number" value={trip[key as keyof TripPricing]}
-                    onChange={e => {
-                      const val = parseInt(e.target.value) || 0;
-                      setCfg(c => c ? { ...c, defaultTripPricing: { ...trip, [key]: val } } : c);
-                    }} />
+                  <NumberInput min={0} value={trip[key as keyof TripPricing]}
+                    onChange={(n) => setCfg(c => c ? { ...c, defaultTripPricing: { ...trip, [key]: n } } : c)} />
                 </div>
               ))}
             </div>
@@ -508,23 +503,23 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">教練預設費用/潛（NT$）</Label>
-                <Input type="number" value={cfg.defaultCoachFee}
-                  onChange={e => setCfg(c => c ? { ...c, defaultCoachFee: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} value={cfg.defaultCoachFee}
+                  onChange={(n) => setCfg(c => c ? { ...c, defaultCoachFee: n } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金（NT$，0=停用）</Label>
-                <Input type="number" value={cfg.birthdayCreditAmount}
-                  onChange={e => setCfg(c => c ? { ...c, birthdayCreditAmount: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} value={cfg.birthdayCreditAmount}
+                  onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金有效天數（0=永不過期）</Label>
-                <Input type="number" min={0} value={cfg.birthdayCreditExpiryDays ?? 360}
-                  onChange={e => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} value={cfg.birthdayCreditExpiryDays ?? 360}
+                  onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">天氣取消風速門檻（m/s）</Label>
-                <Input type="number" value={cfg.weatherWindThreshold}
-                  onChange={e => setCfg(c => c ? { ...c, weatherWindThreshold: parseInt(e.target.value) || 10 } : c)} />
+                <NumberInput min={0} value={cfg.weatherWindThreshold}
+                  onChange={(n) => setCfg(c => c ? { ...c, weatherWindThreshold: n || 10 } : c)} />
               </div>
             </div>
           </div>
@@ -537,23 +532,23 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金</Label>
-                <Input type="number" min={0} max={3650} value={cfg.birthdayCreditExpiryDays ?? 360}
-                  onChange={e => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} max={3650} value={cfg.birthdayCreditExpiryDays ?? 360}
+                  onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">VIP 升等獎勵</Label>
-                <Input type="number" min={0} max={3650} value={cfg.vipUpgradeCreditExpiryDays ?? 360}
-                  onChange={e => setCfg(c => c ? { ...c, vipUpgradeCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} max={3650} value={cfg.vipUpgradeCreditExpiryDays ?? 360}
+                  onChange={(n) => setCfg(c => c ? { ...c, vipUpgradeCreditExpiryDays: n } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">Admin 手動發放（預設）</Label>
-                <Input type="number" min={0} max={3650} value={cfg.adminGrantCreditExpiryDays ?? 360}
-                  onChange={e => setCfg(c => c ? { ...c, adminGrantCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} max={3650} value={cfg.adminGrantCreditExpiryDays ?? 360}
+                  onChange={(n) => setCfg(c => c ? { ...c, adminGrantCreditExpiryDays: n } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">退款轉禮金</Label>
-                <Input type="number" min={0} max={3650} value={cfg.refundCreditExpiryDays ?? 0}
-                  onChange={e => setCfg(c => c ? { ...c, refundCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+                <NumberInput min={0} max={3650} value={cfg.refundCreditExpiryDays ?? 0}
+                  onChange={(n) => setCfg(c => c ? { ...c, refundCreditExpiryDays: n } : c)} />
               </div>
             </div>
             <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
@@ -568,11 +563,8 @@ export default function SettingsPage() {
               {(["2","3","4","5"] as const).map(lv => (
                 <div key={lv}>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升到 LV{lv}</Label>
-                  <Input type="number" value={vipCredits[lv] ?? 0}
-                    onChange={e => {
-                      const val = parseInt(e.target.value) || 0;
-                      setCfg(c => c ? { ...c, vipUpgradeCredits: { ...vipCredits, [lv]: val } } : c);
-                    }} />
+                  <NumberInput min={0} value={vipCredits[lv] ?? 0}
+                    onChange={(n) => setCfg(c => c ? { ...c, vipUpgradeCredits: { ...vipCredits, [lv]: n } } : c)} />
                 </div>
               ))}
             </div>
