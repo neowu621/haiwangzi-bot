@@ -111,6 +111,7 @@ export async function POST(
             ? `預約 ${id.slice(0, 8)} 退費轉禮金`
             : `預約 ${id.slice(0, 8)} 退費 NT$${data.amount} 轉禮金 NT$${grantAmount}`),
         createdBy: auth.user.lineUserId,
+        expiresAt: null, // 業務規則：退款轉禮金永不過期
       });
       creditResult = { newBalance: r.newBalance, oldBalance: r.oldBalance, granted: grantAmount };
     }

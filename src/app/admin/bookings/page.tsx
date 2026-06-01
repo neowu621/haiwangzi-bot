@@ -36,6 +36,9 @@ interface AdminBooking {
   paymentMethod?: string;
   totalAmount: number;
   paidAmount: number;
+  refundAmount?: number | null;
+  refundedAt?: string | null;
+  refundMethod?: string | null;
   participants: number;
   overCapacity?: boolean;
   createdAt: string;
@@ -389,11 +392,11 @@ export default function AdminBookingsPage() {
     if (!editing) return;
     setSaving(true);
     try {
-      const r = await adminFetch<{ ok: boolean; booking: AdminBooking }>(
-        `/api/admin/bookings/${editing.id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
+      // v191：已退款訂單僅准許更新 adminNotes，其他欄位不送
+      const isRefunded = editing.paymentStatus === "refunded";
+      const body = isRefunded
+        ? { adminNotes: editing.adminNotes ?? null }
+        : {
             participants: editing.participants,
             totalAmount: editing.totalAmount,
             paidAmount: editing.paidAmount,
@@ -403,8 +406,10 @@ export default function AdminBookingsPage() {
             notes: editing.notes ?? null,
             siteNotes: editing.siteNotes ?? null,
             adminNotes: editing.adminNotes ?? null,
-          }),
-        },
+          };
+      const r = await adminFetch<{ ok: boolean; booking: AdminBooking }>(
+        `/api/admin/bookings/${editing.id}`,
+        { method: "PATCH", body: JSON.stringify(body) },
       );
       setBookings((arr) =>
         arr.map((x) => (x.id === editing.id ? { ...x, ...r.booking } : x)),
@@ -826,52 +831,93 @@ export default function AdminBookingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">參加人數</Label>
-                <Input type="number" min={1} max={20} value={editing.participants}
-                  onChange={(e) => setEditing({ ...editing, participants: Math.max(1, Number(e.target.value)) })} />
-              </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">總金額</Label>
-                <Input type="number" min={0} value={editing.totalAmount}
-                  onChange={(e) => setEditing({ ...editing, totalAmount: Math.max(0, Number(e.target.value)) })} />
-              </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">已付金額</Label>
-                <Input type="number" min={0} value={editing.paidAmount}
-                  onChange={(e) => setEditing({ ...editing, paidAmount: Math.max(0, Number(e.target.value)) })} />
-              </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">付款方式</Label>
-                <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                  value={editing.paymentMethod ?? "cash"}
-                  onChange={(e) => setEditing({ ...editing, paymentMethod: e.target.value })}>
-                  <option value="cash">現場支付</option>
-                  <option value="bank">銀行轉帳</option>
-                  <option value="linepay">LINE Pay</option>
-                  <option value="other">其他</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">付款狀態</Label>
-                <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                  value={editing.paymentStatus}
-                  onChange={(e) => setEditing({ ...editing, paymentStatus: e.target.value })}>
-                  {["pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map((s) => (
-                    <option key={s} value={s}>{PAYMENT_STATUS_LABEL[s]}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">訂單狀態</Label>
-                <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                  value={editing.status}
-                  onChange={(e) => setEditing({ ...editing, status: e.target.value })}>
-                  {["pending", "confirmed", "cancelled_by_user", "cancelled_by_weather", "completed", "no_show"].map((s) => (
-                    <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>
-                  ))}
-                </select>
-              </div>
+              {/* v191：退款後鎖住所有 input（除 adminNotes） */}
+              {(() => {
+                const locked = editing.paymentStatus === "refunded";
+                const owed = Math.max(0, editing.totalAmount - editing.paidAmount);
+                return (
+                  <>
+                    {locked && (
+                      <div className="rounded-md border-2 px-3 py-2 text-xs font-semibold"
+                        style={{ borderColor: "rgba(255,123,90,0.5)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
+                        🔒 此訂單已退款 NT$ {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「管理備註」
+                      </div>
+                    )}
+                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                      <Label className="text-xs">參加人數</Label>
+                      <Input type="number" min={1} max={20} value={editing.participants}
+                        disabled={locked}
+                        onChange={(e) => setEditing({ ...editing, participants: Math.max(1, Number(e.target.value)) })} />
+                    </div>
+                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                      <Label className="text-xs">總金額</Label>
+                      <Input type="number" min={0} value={editing.totalAmount}
+                        disabled={locked}
+                        onChange={(e) => setEditing({ ...editing, totalAmount: Math.max(0, Number(e.target.value)) })} />
+                    </div>
+                    <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                      <Label className="text-xs pt-1.5">已付金額</Label>
+                      <div>
+                        <Input type="number" min={0} value={editing.paidAmount}
+                          disabled={locked}
+                          onChange={(e) => setEditing({ ...editing, paidAmount: Math.max(0, Number(e.target.value)) })} />
+                        {!locked && owed > 0 && editing.paidAmount > 0 && (
+                          <div className="mt-1 text-[11px] font-medium text-amber-700">
+                            ⚠ 已付 NT$ {editing.paidAmount.toLocaleString()} ／ 總額 NT$ {editing.totalAmount.toLocaleString()}
+                            <span className="ml-1">→ 還差 <b>NT$ {owed.toLocaleString()}</b></span>
+                          </div>
+                        )}
+                        {!locked && editing.paidAmount === editing.totalAmount && editing.totalAmount > 0 && (
+                          <div className="mt-1 text-[11px] font-medium text-emerald-700">
+                            ✓ 已付清
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                      <Label className="text-xs">付款方式</Label>
+                      <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
+                        value={editing.paymentMethod ?? "cash"}
+                        disabled={locked}
+                        onChange={(e) => setEditing({ ...editing, paymentMethod: e.target.value })}>
+                        <option value="cash">現場支付</option>
+                        <option value="bank">銀行轉帳</option>
+                        <option value="linepay">LINE Pay</option>
+                        <option value="other">其他</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                      <Label className="text-xs">付款狀態</Label>
+                      {/* v191：dropdown 鎖死，只剩 3 個正常狀態；refunding/refunded 由「退款」按鈕自動寫入 */}
+                      {editing.paymentStatus === "refunded" || editing.paymentStatus === "refunding" ? (
+                        <div className="rounded-md border px-2 py-1.5 text-sm font-semibold"
+                          style={{ borderColor: "var(--color-coral)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
+                          🔒 {PAYMENT_STATUS_LABEL[editing.paymentStatus]}（系統自動）
+                        </div>
+                      ) : (
+                        <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                          value={editing.paymentStatus}
+                          onChange={(e) => setEditing({ ...editing, paymentStatus: e.target.value })}>
+                          <option value="pending">未付款</option>
+                          <option value="deposit_paid">已付訂金</option>
+                          <option value="fully_paid">已付清</option>
+                        </select>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                      <Label className="text-xs">訂單狀態</Label>
+                      <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
+                        value={editing.status}
+                        disabled={locked}
+                        onChange={(e) => setEditing({ ...editing, status: e.target.value })}>
+                        {["pending", "confirmed", "cancelled_by_user", "cancelled_by_weather", "completed", "no_show"].map((s) => (
+                          <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* ── 備註區塊 ── */}
               <div className="space-y-2 pt-1">
@@ -900,10 +946,11 @@ export default function AdminBookingsPage() {
                     <span className="block font-normal text-[10px]" style={{ color: "var(--muted-foreground)" }}>客戶可見</span>
                   </Label>
                   <textarea
-                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
                     rows={2}
                     placeholder="顯示給客戶的公開備註（如：注意帶泳衣）"
                     value={editing.siteNotes ?? ""}
+                    disabled={editing.paymentStatus === "refunded"}
                     onChange={(e) => setEditing({ ...editing, siteNotes: e.target.value })}
                   />
                 </div>
