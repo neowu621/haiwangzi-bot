@@ -94,7 +94,8 @@ interface Me {
   stats: { totalBookings: number; completed: number };
 }
 
-const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
+// v211：UI picker 移除 Rescue（既有資料仍可顯示）
+const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
 
 export default function ProfilePage() {
   const liff = useLiff();
@@ -109,7 +110,8 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [notifyByLine, setNotifyByLine] = useState(true);
   const [notifyByEmail, setNotifyByEmail] = useState(true);
-  const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
+  // v211：state 允許 Rescue（legacy 資料）但 UI 不提供選項
+  const [cert, setCert] = useState<"OW" | "AOW" | "Rescue" | "DM" | "Instructor" | "">("");
   const [certNumber, setCertNumber] = useState("");
   const [logCount, setLogCount] = useState("");
   const [birthday, setBirthday] = useState(""); // YYYY-MM-DD

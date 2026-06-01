@@ -114,7 +114,8 @@ interface DiveBooking {
   ref: DiveBookingRef;
 }
 
-const CERTS: Cert[] = ["OW", "AOW", "Rescue", "DM", "Instructor"];
+// v211：UI picker 移除 Rescue（但既有資料仍可顯示 — see CERT_LABEL_CN）
+const CERTS: Cert[] = ["OW", "AOW", "DM", "Instructor"];
 const ROLES: Role[] = ["customer", "coach", "boss", "admin"];
 
 const REASON_LABELS: Record<string, string> = {

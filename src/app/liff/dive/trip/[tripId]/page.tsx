@@ -76,7 +76,8 @@ const GEAR_LABELS: Record<GearItemType, string> = {
   fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套 (七折)",
 };
 
-const CERTS = ["OW", "AOW", "Rescue", "DM", "Instructor"] as const;
+// v211：UI picker 移除 Rescue（既有資料仍可顯示）
+const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
 
 interface Companion {
   id?: string;

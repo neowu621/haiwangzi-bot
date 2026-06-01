@@ -1019,7 +1019,7 @@ function EditBookingDialog({
                       />
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1">
-                      {(["OW", "AOW", "Rescue", "DM", "Instructor"] as const).map(
+                      {(["OW", "AOW", "DM", "Instructor"] as const).map(
                         (c) => (
                           <button
                             key={c}
