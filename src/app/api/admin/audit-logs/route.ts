@@ -36,5 +36,22 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  return NextResponse.json({ logs, total, page, limit, pages: Math.ceil(total / limit) });
+  // v200：批次補上 actor 的顯示名稱
+  const actorIds = Array.from(new Set(logs.map((l) => l.actorId).filter((x): x is string => !!x && x !== "system")));
+  const actors = actorIds.length === 0 ? [] : await prisma.user.findMany({
+    where: { lineUserId: { in: actorIds } },
+    select: { lineUserId: true, realName: true, displayName: true, role: true },
+  });
+  const actorMap = new Map(actors.map((u) => [u.lineUserId, u]));
+
+  const enriched = logs.map((l) => {
+    const u = l.actorId ? actorMap.get(l.actorId) : undefined;
+    return {
+      ...l,
+      actorName: l.actorName ?? u?.realName ?? u?.displayName ?? null,
+      actorRole: u?.role ?? null,
+    };
+  });
+
+  return NextResponse.json({ logs: enriched, total, page, limit, pages: Math.ceil(total / limit) });
 }

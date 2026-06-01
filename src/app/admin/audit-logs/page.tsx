@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Input } from "@/components/ui/input";
@@ -12,12 +12,20 @@ interface AuditLog {
   createdAt: string;
   actorId: string | null;
   actorName: string | null;
+  actorRole: string | null;
   action: string;
   targetType: string | null;
   targetId: string | null;
   targetLabel: string | null;
   metadata: Record<string, unknown> | null;
 }
+
+const ROLE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  admin:    { label: "Admin",   color: "#7c3aed", bg: "#f3e8ff" },
+  boss:     { label: "老闆",    color: "#dc2626", bg: "#fee2e2" },
+  coach:    { label: "教練",    color: "#0891b2", bg: "#cffafe" },
+  customer: { label: "會員",    color: "#475569", bg: "#f1f5f9" },
+};
 
 interface ApiResponse {
   logs: AuditLog[];
@@ -172,17 +180,32 @@ export default function AuditLogsPage() {
               </thead>
               <tbody>
                 {data?.logs.map((log, i) => (
-                  <>
+                  <React.Fragment key={log.id}>
                     <tr
-                      key={log.id}
                       onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
                       className={`cursor-pointer border-t transition-colors hover:bg-[var(--muted)]/40 ${i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20"}`}
                       style={{ borderColor: "var(--border)" }}
                     >
                       <td className="px-4 py-2.5 font-mono text-[11px] text-[var(--muted-foreground)]">{formatDate(log.createdAt)}</td>
                       <td className="px-4 py-2.5">
-                        <div className="font-medium text-xs text-[var(--foreground)]">{log.actorName ?? "—"}</div>
-                        {log.actorId && <div className="font-mono text-[10px] text-[var(--muted-foreground)]">{log.actorId.slice(0, 14)}…</div>}
+                        {log.actorId === "system" || !log.actorId ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                            🤖 系統
+                          </span>
+                        ) : (
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-xs text-slate-800">{log.actorName ?? "（未知）"}</span>
+                              {log.actorRole && ROLE_LABEL[log.actorRole] && (
+                                <span className="rounded px-1 py-0.5 text-[9px] font-bold"
+                                  style={{ color: ROLE_LABEL[log.actorRole].color, background: ROLE_LABEL[log.actorRole].bg }}>
+                                  {ROLE_LABEL[log.actorRole].label}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[9px] text-slate-400">{log.actorId.slice(0, 10)}…</div>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-sm text-[var(--foreground)]">
                         {ACTION_LABELS[log.action] ?? log.action}
@@ -199,16 +222,13 @@ export default function AuditLogsPage() {
                       </td>
                     </tr>
                     {expandedId === log.id && log.metadata && (
-                      <tr key={`${log.id}-detail`} className="bg-[var(--muted)]/30">
+                      <tr className="bg-slate-50">
                         <td colSpan={6} className="px-4 py-3">
-                          <pre className="overflow-x-auto rounded-lg p-3 text-[11px] font-mono"
-                            style={{ background: "rgba(0,0,0,0.06)", color: "var(--color-phosphor)", maxHeight: 200 }}>
-                            {JSON.stringify(log.metadata, null, 2)}
-                          </pre>
+                          <MetadataDisplay metadata={log.metadata} />
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
                 {(!data || data.logs.length === 0) && (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
@@ -236,5 +256,85 @@ export default function AuditLogsPage() {
         )}
       </div>
     </AdminShell>
+  );
+}
+
+// v200：metadata 改用 key-value table + 高對比配色
+const META_KEY_LABELS: Record<string, string> = {
+  notes: "客戶備註",
+  siteNotes: "網站備註",
+  adminNotes: "管理備註",
+  paidAmount: "已付金額",
+  totalAmount: "總金額",
+  participants: "參加人數",
+  paymentMethod: "付款方式",
+  paymentStatus: "付款狀態",
+  status: "訂單狀態",
+  refundAmount: "退款金額",
+  refundMethod: "退款方式",
+  reason: "原因",
+  amount: "金額",
+  method: "方式",
+  title: "標題",
+  date: "日期",
+  startTime: "時間",
+  capacity: "容量",
+  basePrice: "基本費用",
+  deposit: "訂金",
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: "現場支付", bank: "銀行轉帳", linepay: "LINE Pay", other: "其他",
+};
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending: "未付款", deposit_paid: "已付訂金", fully_paid: "已付清",
+  refunding: "退款中", refunded: "已退款",
+};
+const BOOKING_STATUS_LABELS: Record<string, string> = {
+  pending: "待確認", confirmed: "已確認", completed: "已完成",
+  no_show: "未到場", cancelled_by_user: "客戶取消", cancelled_by_weather: "天氣取消",
+};
+
+function formatValue(key: string, val: unknown): React.ReactNode {
+  if (val === null || val === undefined) return <span className="italic text-slate-400">空值</span>;
+  if (typeof val === "boolean") return val ? "✓ 是" : "✗ 否";
+  if (typeof val === "number") {
+    if (/amount|price|deposit/i.test(key)) return <span className="font-mono font-bold">NT$ {val.toLocaleString()}</span>;
+    return <span className="font-mono">{val.toLocaleString()}</span>;
+  }
+  if (typeof val === "string") {
+    if (key === "paymentMethod") return PAYMENT_METHOD_LABELS[val] ?? val;
+    if (key === "paymentStatus") return PAYMENT_STATUS_LABELS[val] ?? val;
+    if (key === "status") return BOOKING_STATUS_LABELS[val] ?? val;
+    if (/^\d{4}-\d{2}-\d{2}/.test(val)) return <span className="font-mono">{val}</span>;
+    return val;
+  }
+  return <pre className="text-[11px] font-mono whitespace-pre-wrap">{JSON.stringify(val, null, 2)}</pre>;
+}
+
+function MetadataDisplay({ metadata }: { metadata: Record<string, unknown> }) {
+  const entries = Object.entries(metadata);
+  if (entries.length === 0) return <span className="text-xs text-slate-500">（無詳情）</span>;
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+      <div className="px-3 py-2 border-b border-slate-100 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        詳細變更內容（{entries.length} 個欄位）
+      </div>
+      <table className="w-full text-xs">
+        <tbody>
+          {entries.map(([k, v], i) => (
+            <tr key={k} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+              <td className="px-3 py-1.5 font-semibold text-slate-700 w-32 align-top whitespace-nowrap border-r border-slate-100">
+                {META_KEY_LABELS[k] ?? k}
+                <span className="block font-mono text-[9px] font-normal text-slate-400">{k}</span>
+              </td>
+              <td className="px-3 py-1.5 text-slate-800">
+                {formatValue(k, v)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
