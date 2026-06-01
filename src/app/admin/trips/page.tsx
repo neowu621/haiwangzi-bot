@@ -1099,8 +1099,24 @@ export default function AdminTripsPage() {
                               <div className="py-4 text-center text-xs text-rose-600">訂單載入失敗</div>
                             ) : !tripBks || tripBks.length === 0 ? (
                               <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">此場次目前沒有訂單</div>
-                            ) : (
+                            ) : (() => {
+                              // v222：明確區分活躍 vs 取消
+                              const isCancelled = (s: string) => s === "cancelled_by_user" || s === "cancelled_by_weather";
+                              const active = tripBks.filter((b) => !isCancelled(b.status));
+                              const cancelled = tripBks.filter((b) => isCancelled(b.status));
+                              const activeParticipants = active.reduce((s, b) => s + b.participants, 0);
+                              const activeRevenue = active.reduce((s, b) => s + b.totalAmount, 0);
+                              const activePaid = active.reduce((s, b) => s + b.paidAmount, 0);
+                              return (
                               <div className="overflow-x-auto px-3 py-2">
+                                {/* summary */}
+                                <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md bg-white/70 px-2.5 py-1.5 text-[11px]">
+                                  <span><b style={{ color: "#1a4a70" }}>{active.length}</b> 筆有效訂單 ・ <b className="text-emerald-700">{activeParticipants}</b> 人 ・ <b className="text-emerald-700">{activeParticipants * (trip.tankCount ?? 0)}</b> 支氣瓶</span>
+                                  <span className="text-slate-500">應收 <b className="text-slate-700 tabular-nums">{activeRevenue.toLocaleString()}</b> · 實收 <b className="text-slate-700 tabular-nums">{activePaid.toLocaleString()}</b></span>
+                                  {cancelled.length > 0 && (
+                                    <span className="text-rose-600">已取消 <b>{cancelled.length}</b> 筆（不計入）</span>
+                                  )}
+                                </div>
                                 <table className="w-full text-xs">
                                   <thead>
                                     <tr className="text-left" style={{ color: "#2a5580" }}>
@@ -1116,12 +1132,18 @@ export default function AdminTripsPage() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {tripBks.map((b, j) => (
+                                    {tripBks.map((b, j) => {
+                                      const cancelledRow = isCancelled(b.status);
+                                      return (
                                       <tr
                                         key={b.id}
+                                        className={cancelledRow ? "opacity-50" : ""}
                                         style={{
-                                          background: j % 2 === 0 ? "transparent" : "rgba(255,255,255,0.4)",
+                                          background: cancelledRow
+                                            ? "rgba(248,113,113,0.06)"
+                                            : j % 2 === 0 ? "transparent" : "rgba(255,255,255,0.4)",
                                           borderTop: "1px solid rgba(192,216,240,0.5)",
+                                          textDecoration: cancelledRow ? "line-through" : "none",
                                         }}
                                       >
                                         <td className="px-2 py-1 whitespace-nowrap">
@@ -1138,7 +1160,7 @@ export default function AdminTripsPage() {
                                         <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">
                                           {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap">
+                                        <td className="px-2 py-1 whitespace-nowrap" style={{ textDecoration: "none" }}>
                                           <Badge variant="muted" className="text-[9px]">
                                             {PAY_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
                                           </Badge>
@@ -1146,17 +1168,19 @@ export default function AdminTripsPage() {
                                         <td className="px-2 py-1 text-[var(--muted-foreground)] text-[10px] whitespace-nowrap">
                                           {b.paymentMethod === "cash" ? "現場" : b.paymentMethod === "bank" ? "轉帳" : b.paymentMethod === "linepay" ? "LINE Pay" : b.paymentMethod === "other" ? "其他" : "—"}
                                         </td>
-                                        <td className="px-2 py-1 whitespace-nowrap">
-                                          <Badge variant="muted" className="text-[9px]">
+                                        <td className="px-2 py-1 whitespace-nowrap" style={{ textDecoration: "none" }}>
+                                          <Badge variant={cancelledRow ? "coral" : "muted"} className="text-[9px]">
                                             {BOOK_STATUS_LABEL[b.status] ?? b.status}
                                           </Badge>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
-                            )}
+                              );
+                            })()}
                           </td>
                         </tr>
                       )}
