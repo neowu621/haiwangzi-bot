@@ -265,13 +265,28 @@ export default function VipTiersPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數（升等唯一條件）</Label>
-                  <Input type="number" value={editDraft.minLogs}
-                    onChange={e => updateDraft({ minLogs: parseInt(e.target.value) || 0 })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={String(editDraft.minLogs)}
+                    onChange={(e) => {
+                      // v204：純數字（去掉非數字）+ 去 leading 0
+                      const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
+                      updateDraft({ minLogs: clean === "" ? 0 : parseInt(clean, 10) });
+                    }}
+                  />
                 </div>
                 <div>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升級獎勵禮金 (NT$)</Label>
-                  <Input type="number" min="0" value={editDraft.upgradeCredit}
-                    onChange={e => updateDraft({ upgradeCredit: parseInt(e.target.value) || 0 })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={String(editDraft.upgradeCredit)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
+                      updateDraft({ upgradeCredit: clean === "" ? 0 : parseInt(clean, 10) });
+                    }}
+                  />
                 </div>
               </div>
               <p className="text-[10px] text-[var(--muted-foreground)]">
