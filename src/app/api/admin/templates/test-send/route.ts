@@ -154,11 +154,33 @@ export async function POST(req: NextRequest) {
   }
   const override = await prisma.messageTemplate.findUnique({ where: { key } });
   const subject = `（測試）${override?.title ?? label}`;
+  // v234：body 不再 dump params JSON；若無 override 就用簡單說明
   const bodyText =
     override?.bodyText ??
     override?.subtitle ??
-    `這是 ${label} 的試送 Email。動態欄位會在正式寄送時自動帶入。\n\n動態欄位範例：${JSON.stringify(params, null, 2)}`;
-  const buttonLabel = override?.buttonLabel;
+    `這是 ${label} 的試送 Email。正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。`;
+  const buttonLabel = override?.buttonLabel ?? "開啟預約 App";
+  // v234：button URL 取自 params（welcome 用 liffUrl，其他用 url）
+  // 若都沒有 → 用 BASE_URL 或預設 LIFF
+  const buttonUrl = (() => {
+    const p = params as Record<string, string>;
+    if (p.liffUrl) return p.liffUrl;
+    if (p.url) return p.url;
+    const id = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+    return id ? `https://liff.line.me/${id}` : "https://haiwangzi.zeabur.app";
+  })();
+
+  // 動態資料區（SHOW_DATA 模板才顯示）
+  const showData = ["booking_confirm", "d1_reminder", "deposit_notice", "deposit_confirm", "final_reminder", "trip_guide", "weather_cancel", "overcap_alert"].includes(key);
+  const showAmount = ["deposit_notice", "final_reminder"].includes(key);
+  const dataHtml = showData ? `
+    <div style="background:#f4f9f8;border:1px solid #e2efed;border-radius:9px;padding:11px 13px;margin:16px 0;font-size:13px;color:#516268">
+      <div style="margin:3px 0"><b style="color:#0a2027">客戶姓名</b>　${params.name ?? params.customerName ?? "王小明"}</div>
+      <div style="margin:3px 0"><b style="color:#0a2027">預約場次</b>　${params.site ?? params.tourTitle ?? "鶯歌石"}</div>
+      <div style="margin:3px 0"><b style="color:#0a2027">出發時間</b>　${params.date ?? params.tripDate ?? "—"} ${params.time ?? params.tripTime ?? ""}</div>
+      ${showAmount ? `<div style="margin:3px 0"><b style="color:#0a2027">應繳金額</b>　NT$ ${params.total ?? params.deposit ?? params.remaining ?? "—"}</div>` : ""}
+    </div>
+  ` : "";
 
   const html = `<!DOCTYPE html><html><body style="font-family:'Noto Sans TC',sans-serif;background:#f5f8f8;padding:24px">
     <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.06)">
@@ -168,8 +190,9 @@ export async function POST(req: NextRequest) {
       </div>
       <div style="padding:24px">
         <h1 style="font-size:18px;color:#0a2027;margin:0 0 12px">${subject}</h1>
-        <p style="font-size:13px;color:#516268;line-height:1.7;white-space:pre-wrap">${bodyText}</p>
-        ${buttonLabel ? `<a style="display:inline-block;background:#13b5a6;color:#fff;padding:10px 24px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:12px">${buttonLabel} →</a>` : ""}
+        <p style="font-size:13px;color:#516268;line-height:1.7;white-space:pre-wrap;margin:0">${bodyText}</p>
+        ${dataHtml}
+        <a href="${buttonUrl}" style="display:inline-block;background:#13b5a6;color:#fff;padding:10px 24px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px">${buttonLabel} →</a>
       </div>
       <div style="padding:14px 24px;border-top:1px solid #eef2f2;font-size:11px;color:#9aabae;text-align:center">
         系統自動通知信 · 此為試送，正式寄送時動態欄位會自動帶入
