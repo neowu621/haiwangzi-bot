@@ -116,7 +116,7 @@ export default function AdminBookingsPage() {
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
-  const [filterRange, setFilterRange] = useState<"today" | "tomorrow" | "week" | "month" | "all">("week");
+  const [filterRange, setFilterRange] = useState<"today" | "3days" | "week" | "month" | "all">("week");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -325,20 +325,18 @@ export default function AdminBookingsPage() {
     }
   }
 
-  // v183：日期區間 filter（今天/明天/一週/一個月/全部）
+  // v206：日期區間 filter（今天 / 3 天內 / 一週內 / 一個月內 / 全部）
   function isInRange(dateStr?: string): boolean {
     if (filterRange === "all") return true;
     if (!dateStr) return true;
     const d = dateStr.slice(0, 10);
     const today = new Date().toISOString().slice(0, 10);
     const t = new Date(today + "T00:00:00+08:00");
-    const tomorrow = new Date(t); tomorrow.setDate(t.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
     if (filterRange === "today") return d === today;
-    if (filterRange === "tomorrow") return d === tomorrowStr;
-    // week / month：今天起 N 天內（含今天）
+    // 3days / week / month：今天起 N 天內（含今天）
     const cutoff = new Date(t);
-    cutoff.setDate(t.getDate() + (filterRange === "week" ? 7 : 30));
+    const days = filterRange === "3days" ? 3 : filterRange === "week" ? 7 : 30;
+    cutoff.setDate(t.getDate() + days);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
     return d >= today && d <= cutoffStr;
   }
@@ -542,7 +540,7 @@ export default function AdminBookingsPage() {
       {/* v183: 移除『依場次』分頁，僅留全部訂單視圖 + 強化 filter / sort / pagination */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
         <span className="text-sm text-[var(--muted-foreground)]">範圍：</span>
-        {(["today", "tomorrow", "week", "month", "all"] as const).map((r) => (
+        {(["today", "3days", "week", "month", "all"] as const).map((r) => (
           <button
             key={r}
             type="button"
@@ -554,7 +552,7 @@ export default function AdminBookingsPage() {
                 : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
             )}
           >
-            {r === "today" ? "今天" : r === "tomorrow" ? "明天" : r === "week" ? "一週內" : r === "month" ? "一個月內" : "全部"}
+            {r === "today" ? "今天" : r === "3days" ? "3 天內" : r === "week" ? "一週內" : r === "month" ? "一個月內" : "全部"}
           </button>
         ))}
         <span className="ml-auto text-xs text-[var(--muted-foreground)]">
@@ -906,7 +904,7 @@ export default function AdminBookingsPage() {
                     {locked && (
                       <div className="rounded-md border-2 px-3 py-2 text-xs font-semibold"
                         style={{ borderColor: "rgba(255,123,90,0.5)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
-                        🔒 此訂單已退款 NT$ {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「管理備註」
+                        🔒 此訂單已退款 {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「管理備註」
                       </div>
                     )}
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
@@ -927,12 +925,12 @@ export default function AdminBookingsPage() {
                         {/* v199：read-only 顯示，避免直接修改累計金額 */}
                         <div className="flex h-9 items-center rounded-md border border-[var(--border)] bg-slate-50 px-3 text-sm tabular-nums font-bold"
                           style={{ color: editing.paidAmount === editing.totalAmount && editing.totalAmount > 0 ? "#16a34a" : editing.paidAmount > 0 ? "#0a2342" : "#64748b" }}>
-                          NT$ {editing.paidAmount.toLocaleString()}
+                          {editing.paidAmount.toLocaleString()}
                         </div>
                         {!locked && owed > 0 && editing.paidAmount > 0 && (
                           <div className="mt-1 text-[11px] font-medium text-amber-700">
-                            ⚠ 已付 NT$ {editing.paidAmount.toLocaleString()} ／ 總額 NT$ {editing.totalAmount.toLocaleString()}
-                            <span className="ml-1">→ 還差 <b>NT$ {owed.toLocaleString()}</b></span>
+                            ⚠ 已付 {editing.paidAmount.toLocaleString()} ／ 總額 {editing.totalAmount.toLocaleString()}
+                            <span className="ml-1">→ 還差 <b>{owed.toLocaleString()}</b></span>
                           </div>
                         )}
                         {!locked && editing.paidAmount === editing.totalAmount && editing.totalAmount > 0 && (
@@ -962,7 +960,7 @@ export default function AdminBookingsPage() {
                                 const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
                                 setAddPaymentAmount(clean);
                               }}
-                              placeholder={`金額（剩 NT$ ${owed.toLocaleString()}）`}
+                              placeholder={`金額（剩 ${owed.toLocaleString()}）`}
                               className="flex-1"
                               disabled={addingPayment}
                             />
@@ -987,17 +985,17 @@ export default function AdminBookingsPage() {
                             <button type="button"
                               onClick={() => setAddPaymentAmount(String(Math.round(editing.totalAmount * 0.3)))}
                               className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-cyan-400 hover:text-cyan-600">
-                              訂金 30% (NT$ {Math.round(editing.totalAmount * 0.3).toLocaleString()})
+                              訂金 30% ({Math.round(editing.totalAmount * 0.3).toLocaleString()})
                             </button>
                             <button type="button"
                               onClick={() => setAddPaymentAmount(String(Math.round(editing.totalAmount * 0.5)))}
                               className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-cyan-400 hover:text-cyan-600">
-                              訂金 50% (NT$ {Math.round(editing.totalAmount * 0.5).toLocaleString()})
+                              訂金 50% ({Math.round(editing.totalAmount * 0.5).toLocaleString()})
                             </button>
                             <button type="button"
                               onClick={() => setAddPaymentAmount(String(owed))}
                               className="rounded-md border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 hover:bg-cyan-100">
-                              補齊剩餘 NT$ {owed.toLocaleString()}
+                              補齊剩餘 {owed.toLocaleString()}
                             </button>
                           </div>
                         </div>
@@ -1059,7 +1057,7 @@ export default function AdminBookingsPage() {
                     <span className="flex items-center gap-1.5">
                       💰 退款處理
                       <span className="text-[11px] font-normal opacity-80">
-                        （已付 NT$ {editing.paidAmount.toLocaleString()}{editing.paidAmount < editing.totalAmount ? `／總額 NT$ ${editing.totalAmount.toLocaleString()}` : ""}）
+                        （已付 {editing.paidAmount.toLocaleString()}{editing.paidAmount < editing.totalAmount ? `／總額 ${editing.totalAmount.toLocaleString()}` : ""}）
                       </span>
                     </span>
                     {refundOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1100,7 +1098,7 @@ export default function AdminBookingsPage() {
                             onChange={(n) => setRefundCreditPct(Math.max(1, Math.min(500, n || 100)))}
                             placeholder="自訂百分比" />
                           <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-                            退款金額 × {refundCreditPct}% = 實際轉入禮金 NT${Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}（<b>永不過期</b>）
+                            退款金額 × {refundCreditPct}% = 實際轉入禮金 {Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}（<b>永不過期</b>）
                           </p>
                         </div>
                       )}
@@ -1112,7 +1110,7 @@ export default function AdminBookingsPage() {
                       </div>
                       <Button size="sm" className="w-full" style={{ background: "var(--color-coral)", color: "white" }}
                         disabled={refundBusy} onClick={doRefund}>
-                        {refundBusy ? "處理中..." : `確認退款 NT$${Number(refundAmount || 0).toLocaleString()}`}
+                        {refundBusy ? "處理中..." : `確認退款 ${Number(refundAmount || 0).toLocaleString()}`}
                       </Button>
                     </div>
                   )}
@@ -1198,7 +1196,7 @@ export default function AdminBookingsPage() {
                     {proofs.map((p) => (
                       <div key={p.id} className="rounded-md border p-2 space-y-1.5" style={{ borderColor: "var(--border)" }}>
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-mono font-semibold">NT$ {p.amount.toLocaleString()}</span>
+                          <span className="font-mono font-semibold">{p.amount.toLocaleString()}</span>
                           <span className="text-[10px] text-[var(--muted-foreground)]">
                             {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
                           </span>
@@ -1260,7 +1258,7 @@ export default function AdminBookingsPage() {
               <div className="rounded-md p-3" style={{ background: "var(--muted)" }}>
                 <div className="text-sm font-medium">{noShowTarget.user.realName ?? noShowTarget.user.displayName}</div>
                 <div className="text-xs text-[var(--muted-foreground)]">
-                  訂單 {noShowTarget.code ?? noShowTarget.id.slice(0, 8)}　|　總額 NT$ {noShowTarget.totalAmount.toLocaleString()}　|　已付 NT$ {noShowTarget.paidAmount.toLocaleString()}
+                  訂單 {noShowTarget.code ?? noShowTarget.id.slice(0, 8)}　|　總額 {noShowTarget.totalAmount.toLocaleString()}　|　已付 {noShowTarget.paidAmount.toLocaleString()}
                 </div>
               </div>
 
@@ -1273,7 +1271,7 @@ export default function AdminBookingsPage() {
                       <input type="radio" checked={noShowOption === "none"} onChange={() => setNoShowOption("none")} className="mt-0.5" />
                       <div className="flex-1">
                         <div className="text-sm font-medium">🅐 不退款（預設）</div>
-                        <div className="text-xs text-[var(--muted-foreground)]">已付 NT$ {noShowTarget.paidAmount.toLocaleString()} 沒收，作為違約金</div>
+                        <div className="text-xs text-[var(--muted-foreground)]">已付 {noShowTarget.paidAmount.toLocaleString()} 沒收，作為違約金</div>
                       </div>
                     </label>
                     <label className={cn("flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors",
@@ -1281,7 +1279,7 @@ export default function AdminBookingsPage() {
                       <input type="radio" checked={noShowOption === "cash100"} onChange={() => setNoShowOption("cash100")} className="mt-0.5" />
                       <div className="flex-1">
                         <div className="text-sm font-medium">🅑 退現金 100%</div>
-                        <div className="text-xs text-[var(--muted-foreground)]">通融客戶（特殊原因如急事），退現 NT$ {noShowTarget.paidAmount.toLocaleString()}</div>
+                        <div className="text-xs text-[var(--muted-foreground)]">通融客戶（特殊原因如急事），退現 {noShowTarget.paidAmount.toLocaleString()}</div>
                       </div>
                     </label>
                     <label className={cn("flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors",
@@ -1304,7 +1302,7 @@ export default function AdminBookingsPage() {
                               onChange={(n) => setNoShowCreditPct(Math.max(1, Math.min(500, n || 80)))}
                               placeholder="自訂百分比" className="h-8 text-xs" />
                             <p className="text-[10px] text-[var(--muted-foreground)]">
-                              已付 NT$ {noShowTarget.paidAmount.toLocaleString()} × {noShowCreditPct}% = 轉禮金 NT$ {Math.round(noShowTarget.paidAmount * noShowCreditPct / 100).toLocaleString()}
+                              已付 {noShowTarget.paidAmount.toLocaleString()} × {noShowCreditPct}% = 轉禮金 {Math.round(noShowTarget.paidAmount * noShowCreditPct / 100).toLocaleString()}
                             </p>
                           </div>
                         )}
