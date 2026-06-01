@@ -358,7 +358,8 @@ export default function AdminUsersPage() {
           method: "POST",
           body: JSON.stringify({
             lineUserId: editing.lineUserId,
-            roles: editing.effectiveRoles ?? [editing.role],
+            // v217：強制單一角色（不再傳整個 effectiveRoles 陣列）
+            roles: [editing.role],
             realName: editing.realName,
             phone: editing.phone,
             email: editing.email,
