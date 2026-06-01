@@ -6,6 +6,8 @@ import { publicUrl, isPrivate, type R2Prefix } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// v228：允許上到 10MB（fallback 用 base64 時放大圖片才不會被擋）
+export const maxDuration = 60;
 
 // 兩種輸入皆受支援：
 //  - r2Key   (推薦：client 透過 /api/uploads/presign 拿 URL 直傳 R2)

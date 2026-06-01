@@ -73,9 +73,51 @@ export default function PaymentUploadPage({
       .then((c: Config) => setBank(c.bank));
   }, [bookingId, liff]);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  // v228：壓縮圖片到 max 1600px width + JPEG 0.85（避免 base64 太大）
+  async function compressImage(f: File): Promise<File> {
+    if (!f.type.startsWith("image/")) return f;
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(f);
+      img.onload = () => {
+        const MAX = 1600;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) {
+            height = Math.round((height * MAX) / width);
+            width = MAX;
+          } else {
+            width = Math.round((width * MAX) / height);
+            height = MAX;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); resolve(f); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(url);
+            if (!blob) { resolve(f); return; }
+            // 比原檔大就用原檔
+            if (blob.size >= f.size) { resolve(f); return; }
+            resolve(new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+          },
+          "image/jpeg",
+          0.85,
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
+      img.src = url;
+    });
+  }
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.files?.[0];
+    if (!raw) return;
+    const f = await compressImage(raw);
     setFile(f);
     const reader = new FileReader();
     reader.onload = () => setPreview(String(reader.result));
@@ -93,9 +135,11 @@ export default function PaymentUploadPage({
           ? booking.depositAmount - booking.paidAmount
           : booking.totalAmount - booking.paidAmount;
 
-      // 嘗試 presign → R2 直傳
+      // v228：嘗試 presign → R2 直傳；若 R2 沒設定就走 base64 + 加 30s timeout
       let r2Key: string | undefined;
       try {
+        const ctrl1 = new AbortController();
+        const t1 = setTimeout(() => ctrl1.abort(), 15000);
         const presign = await liff.fetchWithAuth<{
           url: string;
           key: string;
@@ -106,31 +150,56 @@ export default function PaymentUploadPage({
             filename: file.name,
             contentType: file.type || "image/jpeg",
           }),
+          signal: ctrl1.signal,
         });
+        clearTimeout(t1);
+        const ctrl2 = new AbortController();
+        const t2 = setTimeout(() => ctrl2.abort(), 30000);
         const putRes = await fetch(presign.url, {
           method: "PUT",
           body: file,
           headers: { "Content-Type": file.type || "image/jpeg" },
+          signal: ctrl2.signal,
         });
+        clearTimeout(t2);
         if (putRes.ok) r2Key = presign.key;
-      } catch {
-        // R2 沒設定 → fallback 走 base64
+      } catch (e) {
+        // R2 沒設定或失敗 → fallback 走 base64
+        console.warn("[upload] R2 presign/PUT failed, fallback to base64:", e);
       }
 
-      await liff.fetchWithAuth(`/api/bookings/${bookingId}/payment-proofs`, {
-        method: "POST",
-        body: JSON.stringify({
-          type: paymentType,
-          amount: expectedAmount,
-          r2Key,
-          imageDataUrl: r2Key ? undefined : preview,
-          last5: last5 || undefined,
-        }),
-      });
+      // Fallback base64 — 確認 preview 大小不超過 8 MB
+      if (!r2Key) {
+        const bytes = (preview.length * 0.75); // base64 → 原 binary 約 75%
+        if (bytes > 8 * 1024 * 1024) {
+          throw new Error(`圖片太大（${Math.round(bytes / 1024 / 1024)}MB）— 請改拍小一點再上傳`);
+        }
+      }
+
+      const ctrl3 = new AbortController();
+      const t3 = setTimeout(() => ctrl3.abort(), 30000);
+      try {
+        await liff.fetchWithAuth(`/api/bookings/${bookingId}/payment-proofs`, {
+          method: "POST",
+          body: JSON.stringify({
+            type: paymentType,
+            amount: expectedAmount,
+            r2Key,
+            imageDataUrl: r2Key ? undefined : preview,
+            last5: last5 || undefined,
+          }),
+          signal: ctrl3.signal,
+        });
+      } finally {
+        clearTimeout(t3);
+      }
       setUploaded(true);
       setTimeout(() => router.push("/liff/my"), 1500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error
+        ? (e.name === "AbortError" ? "上傳超時（30 秒）— 請檢查網路或圖片大小" : e.message)
+        : String(e);
+      setError(msg);
     } finally {
       setUploading(false);
     }
