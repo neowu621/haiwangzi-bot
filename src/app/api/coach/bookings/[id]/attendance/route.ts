@@ -94,7 +94,7 @@ export async function POST(
             where: { lineUserId: booking.userId },
             data: { vipLevel: newLevel },
           });
-          // 升等 → 發禮金（每跨一階都發，從新版 VipTier.upgradeCredit 讀）
+          // 升等 → 發抵用金（每跨一階都發，從新版 VipTier.upgradeCredit 讀）
           if (newLevel > oldLevel) {
             await grantVipUpgradeRewards(
               booking.userId,

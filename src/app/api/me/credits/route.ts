@@ -5,7 +5,7 @@ import { authFromRequest } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/me/credits — 自己的禮金 / 補償金 紀錄
+// GET /api/me/credits — 自己的抵用金 / 補償金 紀錄
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)

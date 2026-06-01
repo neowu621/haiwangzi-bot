@@ -35,7 +35,7 @@ const BodySchema = z.object({
   paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).default("cash"),
   // 「其他」付款方式時客戶填寫的說明
   paymentNote: z.string().max(200).optional(),
-  // 使用禮金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount
+  // 使用抵用金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
   // 客戶資料補完
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 禮金折抵：不能超過 user 餘額也不能超過總金額
+  // 抵用金折抵：不能超過 user 餘額也不能超過總金額
   const creditUsed = Math.max(
     0,
     Math.min(
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // 扣禮金（用 grantCredit 寫 audit + 同步 balance）
+  // 扣抵用金（用 grantCredit 寫 audit + 同步 balance）
   if (creditUsed > 0) {
     try {
       await grantCredit({
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
         note: `日潛預約折抵`,
       });
     } catch (e) {
-      // 扣禮金失敗 → 把 booking 回滾（保護資料一致性）
+      // 扣抵用金失敗 → 把 booking 回滾（保護資料一致性）
       console.error("[booking credit deduct]", e);
       await prisma.booking.delete({ where: { id: booking.id } });
       return NextResponse.json(

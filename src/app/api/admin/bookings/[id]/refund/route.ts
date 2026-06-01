@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 //
 //   body:
 //     amount: number          退款金額（NT$）
-//     method: "cash" | "credit"  現金退 / 轉成禮金
+//     method: "cash" | "credit"  現金退 / 轉成抵用金
 //     reason: string?         備註
 //
 //   邏輯：
@@ -95,7 +95,7 @@ export async function POST(
       },
     });
 
-    // 2. 若 method=credit → 發禮金（可自訂金額，例如 110%/80%）
+    // 2. 若 method=credit → 發抵用金（可自訂金額，例如 110%/80%）
     let creditResult: { newBalance: number; oldBalance: number; granted: number } | null = null;
     if (data.method === "credit") {
       const grantAmount = data.creditAmount ?? data.amount;
@@ -108,10 +108,10 @@ export async function POST(
         note:
           data.reason ??
           (grantAmount === data.amount
-            ? `預約 ${id.slice(0, 8)} 退費轉禮金`
-            : `預約 ${id.slice(0, 8)} 退費 NT$${data.amount} 轉禮金 NT$${grantAmount}`),
+            ? `預約 ${id.slice(0, 8)} 退費轉抵用金`
+            : `預約 ${id.slice(0, 8)} 退費 NT$${data.amount} 轉抵用金 NT$${grantAmount}`),
         createdBy: auth.user.lineUserId,
-        expiresAt: null, // 業務規則：退款轉禮金永不過期
+        expiresAt: null, // 業務規則：退款轉抵用金永不過期
       });
       creditResult = { newBalance: r.newBalance, oldBalance: r.oldBalance, granted: grantAmount };
     }
@@ -227,12 +227,12 @@ async function notifyCustomer(args: {
 
   // ── LINE（副通道：一句話 + 提示看 Email）──────────────────
   if (booking.user.notifyByLine && process.env.LINE_CHANNEL_ACCESS_TOKEN) {
-    const methodLabel = args.method === "cash" ? "退現金" : "轉禮金";
+    const methodLabel = args.method === "cash" ? "退現金" : "轉抵用金";
     const lineText =
       `🔄 退款通知\n\n您的訂單 ${args.bookingCode} 已退款：\n` +
       `${methodLabel} NT$ ${args.refundAmount.toLocaleString()}` +
       (args.method === "credit" && args.creditAmount
-        ? `（禮金入帳 NT$ ${args.creditAmount.toLocaleString()}）`
+        ? `（抵用金入帳 NT$ ${args.creditAmount.toLocaleString()}）`
         : "") +
       `\n\n詳情請查看 Email 通知。`;
     try {

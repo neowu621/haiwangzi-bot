@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // 禮金折抵：不能超過 user 餘額也不能超過總金額
+  // 抵用金折抵：不能超過 user 餘額也不能超過總金額
   const creditUsed = Math.max(
     0,
     Math.min(

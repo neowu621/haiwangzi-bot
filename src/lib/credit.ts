@@ -1,11 +1,11 @@
 /**
- * 補償金 / 禮金 (CreditTx) helper
+ * 補償金 / 抵用金 (CreditTx) helper
  *
  * 設計：
  *  - User.creditBalance 是 denormalized 餘額（讀取時快）
  *  - CreditTx 是 audit trail，每筆紀錄變動 + balanceAfter
  *  - 寫入時用 prisma.$transaction 同步更新兩邊
- *  - amount 正 = 增加禮金 / 負 = 使用禮金
+ *  - amount 正 = 增加抵用金 / 負 = 使用抵用金
  */
 import { prisma } from "./prisma";
 import type { Prisma } from "@prisma/client";
@@ -13,7 +13,7 @@ import type { Prisma } from "@prisma/client";
 export type CreditReason =
   | "birthday"        // 生日自動發
   | "vip_upgrade"     // VIP 升等獎勵
-  | "refund"          // 退款轉禮金
+  | "refund"          // 退款轉抵用金
   | "used"            // 訂單使用（負數）
   | "admin_adjust";   // admin 手動調整
 

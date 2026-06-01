@@ -18,7 +18,7 @@ interface VipTier {
   minLogs: number;
   minSpend: number;
   benefits: string[];
-  upgradeCredit: number; // 升級獎勵禮金 (NT$)
+  upgradeCredit: number; // 升級獎勵抵用金 (NT$)
 }
 
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
@@ -161,7 +161,7 @@ export default function VipTiersPage() {
                     <td className="px-4 py-3 text-right tabular-nums font-medium">
                       {tier.minLogs}
                     </td>
-                    {/* 升級獎勵禮金 */}
+                    {/* 升級獎勵抵用金 */}
                     <td className="px-4 py-3 text-right tabular-nums">
                       {tier.upgradeCredit > 0 ? (
                         <span className="font-semibold" style={{ color: "var(--color-phosphor)" }}>
@@ -277,7 +277,7 @@ export default function VipTiersPage() {
                   />
                 </div>
                 <div>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升級獎勵禮金 (NT$)</Label>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升級獎勵抵用金 (NT$)</Label>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -290,7 +290,7 @@ export default function VipTiersPage() {
                 </div>
               </div>
               <p className="text-[10px] text-[var(--muted-foreground)]">
-                ※ 升等僅依「海王子累積潛水次數」。會員首次達到此 LV 時自動發放禮金，每個 LV 僅一次。
+                ※ 升等僅依「海王子累積潛水次數」。會員首次達到此 LV 時自動發放抵用金，每個 LV 僅一次。
               </p>
 
               {/* 會員福利 */}

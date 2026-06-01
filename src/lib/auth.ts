@@ -166,7 +166,7 @@ async function getOrCreateUser(
     update: { lastActiveAt: new Date() },
   });
 
-  // 註冊禮金 — 把 LV1 的 upgradeCredit 視為「加入會員紅包」
+  // 註冊抵用金 — 把 LV1 的 upgradeCredit 視為「加入會員紅包」
   // 重複呼叫安全（grantVipUpgradeRewards 用 CreditTx refType=vip+refId=1 去重）
   try {
     const cfg = await prisma.siteConfig

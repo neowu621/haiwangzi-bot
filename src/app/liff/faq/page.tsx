@@ -44,27 +44,27 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
           <>
             <p className="font-semibold mb-1">📌 客戶自行取消（依距離出發日）：</p>
             <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
-              <li>場次前 <b>7 天以上</b>：可退 100% 現金，或轉禮金 100%</li>
-              <li>場次前 <b>3-7 天</b>：可退 50% 現金，或轉禮金 80%</li>
+              <li>場次前 <b>7 天以上</b>：可退 100% 現金，或轉抵用金 100%</li>
+              <li>場次前 <b>3-7 天</b>：可退 50% 現金，或轉抵用金 80%</li>
               <li>場次前 <b>3 天內</b>：訂金不退（保留場次成本）</li>
             </ul>
 
             <p className="font-semibold mt-3 mb-1">☔ 因天氣強制取消（店家責任）：</p>
             <ul className="list-disc pl-5 text-xs space-y-0.5">
               <li><b>退現金 100%</b>：全額退回原付款帳戶</li>
-              <li><b>轉禮金 110%</b>（推薦）：多 10% 優惠，下次預約折抵</li>
+              <li><b>轉抵用金 110%</b>（推薦）：多 10% 優惠，下次預約折抵</li>
             </ul>
 
             <p className="font-semibold mt-3 mb-1">⚠️ 客戶未到場（no-show）：</p>
             <ul className="list-disc pl-5 text-xs space-y-0.5">
               <li>原則上：不退款（保留違約金）</li>
-              <li>特殊情況可申請：退現 100% 或轉禮金 80%（依老闆判斷）</li>
+              <li>特殊情況可申請：退現 100% 或轉抵用金 80%（依老闆判斷）</li>
               <li>若家人急事、健康因素等，請主動聯繫客服說明</li>
             </ul>
 
             <p className="mt-3 text-[10px] opacity-70">
-              ※ 所有退款處理需 1-3 個工作天；轉禮金即時生效，下次預約立即可用。
-              <br />※ 已使用的禮金折抵額度將原額轉回禮金餘額（不會被沒收）。
+              ※ 所有退款處理需 1-3 個工作天；轉抵用金即時生效，下次預約立即可用。
+              <br />※ 已使用的抵用金折抵額度將原額轉回抵用金餘額（不會被沒收）。
             </p>
           </>
         ),
@@ -97,11 +97,11 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
         ),
       },
       {
-        q: "禮金（Credit）是什麼？怎麼用？",
+        q: "抵用金（Credit）是什麼？怎麼用？",
         a: (
           <>
-            禮金是 NT$ 1:1 的折抵點數，來源包括：生日禮金、VIP 升等獎勵、
-            退款轉禮金等。預約時可在「使用禮金折抵」勾選，
+            抵用金是 NT$ 1:1 的折抵點數，來源包括：生日抵用金、VIP 升等獎勵、
+            退款轉抵用金等。預約時可在「使用抵用金折抵」勾選，
             折抵金額會直接從總額扣除。
           </>
         ),
@@ -134,8 +134,8 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
         q: "升等有獎勵嗎？",
         a: (
           <>
-            有！每次跨等級升等都會自動發禮金到你的帳戶，
-            獎勵金額依等級而定。生日當月也會自動發放生日禮金。
+            有！每次跨等級升等都會自動發抵用金到你的帳戶，
+            獎勵金額依等級而定。生日當月也會自動發放生日抵用金。
           </>
         ),
       },
@@ -183,7 +183,7 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
         a: (
           <>
             如風速超過安全門檻，系統會在前一天或當天早上自動發訊息通知取消。
-            您可選擇退款 100% 或轉禮金 110%（多 10% 優惠）。
+            您可選擇退款 100% 或轉抵用金 110%（多 10% 優惠）。
             場次取消不影響其他天的預約。
           </>
         ),

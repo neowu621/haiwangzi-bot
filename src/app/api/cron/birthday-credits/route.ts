@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // ─────────────────────────────────────────────────────────────
 //
 // 每日跑一次（建議台灣時間早上 8 點）。
-// 找出今天生日的人，發放 SiteConfig.birthdayCreditAmount 的禮金。
+// 找出今天生日的人，發放 SiteConfig.birthdayCreditAmount 的抵用金。
 // 透過 user.birthdayCreditYear 紀錄當年是否已發，避免重發。
 //
 // 認證：Authorization: Bearer <CRON_SECRET>
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     .findUnique({ where: { id: "default" } })
     .catch(() => null);
   const amount = cfg?.birthdayCreditAmount ?? 100;
-  // v184：生日禮金有效天數（0 = 永不過期）
+  // v184：生日抵用金有效天數（0 = 永不過期）
   const expiryDays = cfg?.birthdayCreditExpiryDays ?? 360;
   if (amount <= 0) {
     return NextResponse.json({ ok: true, skipped: true, reason: "amount=0" });
@@ -75,8 +75,8 @@ export async function GET(req: NextRequest) {
         refType: "birthday",
         refId: String(year),
         note: expiryDays > 0
-          ? `${year} 生日禮金（${expiryDays} 天內有效）`
-          : `${year} 生日禮金`,
+          ? `${year} 生日抵用金（${expiryDays} 天內有效）`
+          : `${year} 生日抵用金`,
         expiresAt,
       });
       // 標記今年已發

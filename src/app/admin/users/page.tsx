@@ -119,7 +119,7 @@ const CERTS: Cert[] = ["OW", "AOW", "DM", "Instructor"];
 const ROLES: Role[] = ["customer", "coach", "boss", "admin"];
 
 const REASON_LABELS: Record<string, string> = {
-  birthday: "生日禮金",
+  birthday: "生日抵用金",
   vip_upgrade: "VIP升等",
   refund: "退款",
   used: "使用",
@@ -156,7 +156,7 @@ export default function AdminUsersPage() {
   const [creditExpiryDays, setCreditExpiryDays] = useState("");  // v185：發放有效天數覆寫（空＝用 default 360）
   const [creditBusy, setCreditBusy] = useState(false);
 
-  // ── 禮金紀錄 popup ──────────────────────────────────────────────────────────
+  // ── 抵用金紀錄 popup ──────────────────────────────────────────────────────────
   const [creditHistUser, setCreditHistUser] = useState<AdminUser | null>(null);
   const [creditTxs, setCreditTxs] = useState<CreditTx[]>([]);
   const [creditTxsLoading, setCreditTxsLoading] = useState(false);
@@ -442,7 +442,7 @@ export default function AdminUsersPage() {
     }
   }
 
-  // ── 禮金紀錄 popup ──────────────────────────────────────────────────────────
+  // ── 抵用金紀錄 popup ──────────────────────────────────────────────────────────
   async function openCreditHistory(u: AdminUser) {
     setCreditHistUser(u);
     setCreditTxsLoading(true);
@@ -453,7 +453,7 @@ export default function AdminUsersPage() {
       );
       setCreditTxs(d.txs);
     } catch (e) {
-      alert("載入禮金紀錄失敗：" + (e instanceof Error ? e.message : String(e)));
+      alert("載入抵用金紀錄失敗：" + (e instanceof Error ? e.message : String(e)));
       setCreditHistUser(null);
     } finally {
       setCreditTxsLoading(false);
@@ -648,7 +648,7 @@ export default function AdminUsersPage() {
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("creditBalance")}
                     >
-                      禮金
+                      抵用金
                       <SortIcon k="creditBalance" />
                     </th>
                     <th
@@ -787,7 +787,7 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
-                      {/* 禮金 — 點擊看紀錄 */}
+                      {/* 抵用金 — 點擊看紀錄 */}
                       <td className="px-4 py-3 tabular-nums text-xs">
                         <button
                           type="button"
@@ -796,7 +796,7 @@ export default function AdminUsersPage() {
                           style={{
                             color: u.creditBalance > 0 ? "var(--color-coral)" : "inherit",
                           }}
-                          title="點擊查看禮金紀錄"
+                          title="點擊查看抵用金紀錄"
                         >
                           {u.creditBalance > 0
                             ? `NT$${u.creditBalance.toLocaleString()}`
@@ -1226,7 +1226,7 @@ export default function AdminUsersPage() {
               >
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold" style={{ color: "var(--color-coral)" }}>
-                    禮金餘額
+                    抵用金餘額
                   </Label>
                   <span
                     className="text-base font-bold tabular-nums"
@@ -1371,7 +1371,7 @@ export default function AdminUsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── 禮金紀錄 dialog ───────────────────────────────────────────────────── */}
+      {/* ── 抵用金紀錄 dialog ───────────────────────────────────────────────────── */}
       <Dialog
         open={creditHistUser !== null}
         onOpenChange={(o) => !o && setCreditHistUser(null)}
@@ -1379,7 +1379,7 @@ export default function AdminUsersPage() {
         <DialogContent className="max-h-[80vh] overflow-y-auto max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              禮金紀錄 —{" "}
+              抵用金紀錄 —{" "}
               {creditHistUser?.realName ?? creditHistUser?.displayName}
             </DialogTitle>
           </DialogHeader>
@@ -1389,7 +1389,7 @@ export default function AdminUsersPage() {
             </div>
           ) : creditTxs.length === 0 ? (
             <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-              無禮金紀錄
+              無抵用金紀錄
             </div>
           ) : (
             <div>

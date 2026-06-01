@@ -400,11 +400,11 @@ export function refundEmail(params: {
   bookingTitle: string;
   refundAmount: number;
   method: "cash" | "credit";
-  creditAmount?: number; // method=credit 時實際入帳禮金（可能 ≠ refundAmount，例 110%）
+  creditAmount?: number; // method=credit 時實際入帳抵用金（可能 ≠ refundAmount，例 110%）
   newCreditBalance?: number;
   reason: string;
 }): EmailContent {
-  const methodLabel = params.method === "cash" ? "退現金" : "轉禮金";
+  const methodLabel = params.method === "cash" ? "退現金" : "轉抵用金";
   const subject = `🔄 退款通知 NT$ ${params.refundAmount.toLocaleString()}（${methodLabel}）｜${params.bookingCode}`;
 
   const isBonus = params.method === "credit" && params.creditAmount && params.creditAmount > params.refundAmount;
@@ -417,9 +417,9 @@ export function refundEmail(params: {
     `退款金額：NT$ ${params.refundAmount.toLocaleString()}\n` +
     `處理方式：${methodLabel}` +
     (params.method === "credit"
-      ? `\n禮金入帳：NT$ ${params.creditAmount?.toLocaleString()}${isBonus ? `（${bonusPct}% 優惠）` : ""}` +
-        (params.newCreditBalance !== undefined ? `\n目前禮金餘額：NT$ ${params.newCreditBalance.toLocaleString()}` : "") +
-        `\n\n禮金可於下次預約折抵使用。`
+      ? `\n抵用金入帳：NT$ ${params.creditAmount?.toLocaleString()}${isBonus ? `（${bonusPct}% 優惠）` : ""}` +
+        (params.newCreditBalance !== undefined ? `\n目前抵用金餘額：NT$ ${params.newCreditBalance.toLocaleString()}` : "") +
+        `\n\n抵用金可於下次預約折抵使用。`
       : `\n\n現金退款將於 1-3 個工作天內處理完成，請留意您的帳戶。`) +
     `\n\n退款原因：${params.reason}\n\n— 海王子潛水團`;
 
@@ -437,7 +437,7 @@ export function refundEmail(params: {
       <tr><td style="padding:8px 0;color:#6b7280;">處理方式</td><td style="padding:8px 0;font-weight:600;">${methodLabel}${isBonus ? `（${bonusPct}% 優惠）` : ""}</td></tr>
       ${
         params.method === "credit"
-          ? `<tr><td style="padding:8px 0;color:#6b7280;">禮金入帳</td><td style="padding:8px 0;font-weight:600;color:${BRAND_PHOSPHOR};">NT$ ${params.creditAmount?.toLocaleString()}</td></tr>` +
+          ? `<tr><td style="padding:8px 0;color:#6b7280;">抵用金入帳</td><td style="padding:8px 0;font-weight:600;color:${BRAND_PHOSPHOR};">NT$ ${params.creditAmount?.toLocaleString()}</td></tr>` +
             (params.newCreditBalance !== undefined
               ? `<tr><td style="padding:8px 0;color:#6b7280;">目前餘額</td><td style="padding:8px 0;font-weight:600;">NT$ ${params.newCreditBalance.toLocaleString()}</td></tr>`
               : "")
@@ -447,7 +447,7 @@ export function refundEmail(params: {
     ${
       params.method === "credit"
         ? `<div style="margin:20px 0;padding:14px;background:#e6fffd;border-left:4px solid ${BRAND_PHOSPHOR};border-radius:4px;">
-            <div style="font-size:13px;color:${BRAND_DEEP};">💎 禮金可於下次預約時折抵使用。</div>
+            <div style="font-size:13px;color:${BRAND_DEEP};">💎 抵用金可於下次預約時折抵使用。</div>
           </div>`
         : `<div style="margin:20px 0;padding:14px;background:#fff7ed;border-left:4px solid #FF7B5A;border-radius:4px;">
             <div style="font-size:13px;color:${BRAND_DEEP};">💰 現金退款將於 1-3 個工作天內處理完成。</div>

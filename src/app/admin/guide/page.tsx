@@ -221,7 +221,7 @@ export default function AdminGuidePage() {
               </Branch>
               <ArrowDown label="✓ 完成 → logCount += tankCount + VIP 重算" />
               <Node color="purple">VIP 等級可能升等</Node>
-              <ArrowDown label="升等 → 自動發禮金到 creditBalance" />
+              <ArrowDown label="升等 → 自動發抵用金到 creditBalance" />
               <Node color="phosphor">🎁 客戶收升等獎勵</Node>
             </VFlow>
           </DiagramBox>
@@ -233,7 +233,7 @@ export default function AdminGuidePage() {
               <Branch labels={["違約沒收", "原路退回", "鼓勵留客"]}>
                 <Node color="muted">🅐 不退款</Node>
                 <Node color="coral">🅑 退現金 100%</Node>
-                <Node color="phosphor">🅒 轉禮金 N%</Node>
+                <Node color="phosphor">🅒 轉抵用金 N%</Node>
               </Branch>
               <ArrowDown label="C 路線：%可調" />
               <Branch labels={["天氣取消", "客戶失約"]}>
@@ -246,7 +246,7 @@ export default function AdminGuidePage() {
           </DiagramBox>
 
           <p className="mt-2 rounded-md p-2 text-xs" style={{ background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
-            ⚠️ <b>已收款的訂單不可直接刪除</b>，先退款（退現或轉禮金）再刪。否則會員財務紀錄會失蹤。
+            ⚠️ <b>已收款的訂單不可直接刪除</b>，先退款（退現或轉抵用金）再刪。否則會員財務紀錄會失蹤。
           </p>
         </Section>
 
@@ -330,7 +330,7 @@ export default function AdminGuidePage() {
                 <Node color="muted" small>維持原等級</Node>
               </Branch>
               <ArrowDown label="跨等級各發一次（避免 LV1→3 漏發中間）" />
-              <Node color="phosphor">🎁 每跨一階發禮金到 creditBalance</Node>
+              <Node color="phosphor">🎁 每跨一階發抵用金到 creditBalance</Node>
             </VFlow>
           </DiagramBox>
           <ul className="list-disc space-y-1 pl-5 text-xs">
@@ -365,7 +365,7 @@ export default function AdminGuidePage() {
           <ul className="list-disc space-y-1 pl-5 text-xs">
             <li><code>/api/cron/weather-check</code> — 中央氣象局風速 → 超過門檻自動取消場次</li>
             <li><code>/api/cron/reminders</code> — D-1 提醒、付款催繳</li>
-            <li><code>/api/cron/birthday-credits</code> — 本月生日會員自動發禮金</li>
+            <li><code>/api/cron/birthday-credits</code> — 本月生日會員自動發抵用金</li>
           </ul>
         </Section>
 
@@ -387,7 +387,7 @@ export default function AdminGuidePage() {
                 <div className="mt-2 text-xs space-y-1" style={subStyle}>
                   <div>✗ 訂單 / 場次 / 潛水團 / 付款憑證</div>
                   <div>✗ 教練 / 潛點 / 訊息範本</div>
-                  <div>✗ 會員 VIP / 累計 / 禮金歸零</div>
+                  <div>✗ 會員 VIP / 累計 / 抵用金歸零</div>
                   <div>✓ 會員帳號保留</div>
                   <div>✓ SiteConfig 保留</div>
                 </div>

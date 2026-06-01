@@ -63,7 +63,7 @@ export default function TourDetailPage({
   const [notes, setNotes] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  // 禮金折抵
+  // 抵用金折抵
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
   // 付款方式 — 潛水團預設 bank（轉帳訂金）
@@ -524,13 +524,13 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
-        {/* 禮金折抵 — 有餘額才顯示 */}
+        {/* 抵用金折抵 — 有餘額才顯示 */}
         {creditBalance > 0 && (
           <Card className="border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-sm font-semibold">
-                  🎁 使用禮金折抵
+                  🎁 使用抵用金折抵
                   <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
                     （餘額 NT$ {creditBalance.toLocaleString()}）
                   </span>

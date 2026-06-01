@@ -141,7 +141,7 @@ export default function TripBookingPage({
       .then((c) => setPaymentInfo({ bank: c.bank, linepay: c.linepay }))
       .catch(() => {});
   }, []);
-  // 禮金折抵：可用餘額 + 本次折抵
+  // 抵用金折抵：可用餘額 + 本次折抵
   const [creditBalance, setCreditBalance] = useState(0);
   const [vipLevel, setVipLevel] = useState(1);
   const [creditUsed, setCreditUsed] = useState(0);
@@ -818,12 +818,12 @@ export default function TripBookingPage({
               />
             )}
 
-            {/* 禮金折抵 — 有餘額才顯示 */}
+            {/* 抵用金折抵 — 有餘額才顯示 */}
             {creditBalance > 0 && (
               <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs">
-                    🎁 使用禮金折抵
+                    🎁 使用抵用金折抵
                     <span className="ml-1 font-normal text-[var(--muted-foreground)]">
                       （餘額 NT$ {creditBalance.toLocaleString()}）
                     </span>

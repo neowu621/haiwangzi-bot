@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/admin/credits
 //   - 帶 ?userId=Uxxx → 查單一 user 紀錄
-//   - 無 userId → 全站禮金紀錄 + 統計（v185 禮金管理頁用）
+//   - 無 userId → 全站抵用金紀錄 + 統計（v185 抵用金管理頁用）
 //     可選 query：?reason=admin_adjust&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=200
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // === Mode 2：全站禮金紀錄（管理頁用）===
+  // === Mode 2：全站抵用金紀錄（管理頁用）===
   const reason = url.searchParams.get("reason"); // birthday / vip_upgrade / admin_adjust / refund / used / null=all
   const from = url.searchParams.get("from");     // YYYY-MM-DD
   const to = url.searchParams.get("to");         // YYYY-MM-DD
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// POST /api/admin/credits — 手動調整禮金（admin/boss 可發 / 扣）
+// POST /api/admin/credits — 手動調整抵用金（admin/boss 可發 / 扣）
 const GrantSchema = z.object({
   userId: z.string(),
   amount: z.number().int(), // 正 = 增 / 負 = 扣

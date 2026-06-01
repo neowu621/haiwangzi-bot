@@ -1,5 +1,5 @@
 /**
- * v185 禮金有效天數 helper
+ * v185 抵用金有效天數 helper
  *
  * 各類別預設天數從 SiteConfig 讀，未設則用 fallback
  *   - birthday        → birthdayCreditExpiryDays (預設 360)

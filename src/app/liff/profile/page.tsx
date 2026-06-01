@@ -84,9 +84,9 @@ interface Me {
   roles: Array<"customer" | "coach" | "boss" | "admin">;
   vipLevel: number;
   totalSpend: number;
-  // 生日 — 用於生日禮金
+  // 生日 — 用於生日抵用金
   birthday: string | null;
-  // 補償金 / 禮金 餘額
+  // 補償金 / 抵用金 餘額
   creditBalance: number;
   notes: string | null;
   emergencyContact: { name: string; phone: string; relationship: string } | null;
@@ -491,7 +491,7 @@ export default function ProfilePage() {
           totalSpend={me.totalSpend ?? 0}
         />
 
-        {/* 補償金 / 禮金 卡 */}
+        {/* 補償金 / 抵用金 卡 */}
         <CreditCard balance={me.creditBalance ?? 0} liff={liff} />
 
         {/* Admin / Boss / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
@@ -651,7 +651,7 @@ export default function ProfilePage() {
               <Label>
                 生日
                 <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                  （生日當天自動發放禮金 🎂）
+                  （生日當天自動發放抵用金 🎂）
                 </span>
               </Label>
               <Input
@@ -1076,7 +1076,7 @@ function BookingHistoryList({
   );
 }
 
-// ── 補償金 / 禮金 卡 ─────────────────────────────────────
+// ── 補償金 / 抵用金 卡 ─────────────────────────────────────
 interface CreditTx {
   id: string;
   amount: number;
@@ -1091,9 +1091,9 @@ interface CreditTx {
 }
 
 const REASON_LABELS: Record<string, { label: string; emoji: string; desc: string }> = {
-  birthday: { label: "生日禮金", emoji: "🎂", desc: "海王子送您的生日禮物" },
+  birthday: { label: "生日抵用金", emoji: "🎂", desc: "海王子送您的生日禮物" },
   vip_upgrade: { label: "升等獎勵", emoji: "✨", desc: "VIP 等級提升獎勵" },
-  refund: { label: "退費補償", emoji: "🔄", desc: "訂單退款轉禮金" },
+  refund: { label: "退費補償", emoji: "🔄", desc: "訂單退款轉抵用金" },
   used: { label: "訂單折抵", emoji: "💸", desc: "預約時抵扣金額" },
   admin_adjust: { label: "管理員調整", emoji: "🛠", desc: "由海王子管理員調整" },
 };
@@ -1143,13 +1143,13 @@ function CreditCard({
           </div>
           <div className="flex-1">
             <div className="text-[11px] text-[var(--muted-foreground)]">
-              我的補償金 / 禮金
+              我的補償金 / 抵用金
             </div>
             <div className="text-xl font-bold tabular text-[var(--color-coral)]">
               NT$ {balance.toLocaleString()}
             </div>
             <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
-              生日 +100、升等 LV2 +200、退費可轉禮金
+              生日 +100、升等 LV2 +200、退費可轉抵用金
             </div>
           </div>
           <span className="text-[var(--color-coral)]">▸</span>
@@ -1159,7 +1159,7 @@ function CreditCard({
       <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>禮金紀錄</DialogTitle>
+            <DialogTitle>抵用金紀錄</DialogTitle>
           </DialogHeader>
           <div className="rounded-md bg-[var(--color-coral)]/10 p-3 text-center">
             <div className="text-[11px] text-[var(--muted-foreground)]">
@@ -1185,7 +1185,7 @@ function CreditCard({
             </div>
           ) : !txs || txs.length === 0 ? (
             <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-              尚無紀錄。生日當天或會員升等時系統會自動發放禮金。
+              尚無紀錄。生日當天或會員升等時系統會自動發放抵用金。
             </div>
           ) : (
             <div className="space-y-2">

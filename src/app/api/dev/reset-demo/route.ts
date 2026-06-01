@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * 精簡 demo reseed（從 prisma/seed-demo.ts 抽出共用核心）
- * 灌：sites / coaches / trips / 1 個 tour / customer_2 一筆完成歷史 + 200 禮金
+ * 灌：sites / coaches / trips / 1 個 tour / customer_2 一筆完成歷史 + 200 抵用金
  */
 async function reseedDemo() {
   const PRICING = {
@@ -185,7 +185,7 @@ async function reseedDemo() {
     },
   });
 
-  // customer_2 預存 300 禮金（重設 birthdayCreditYear 與 creditBalance）
+  // customer_2 預存 300 抵用金（重設 birthdayCreditYear 與 creditBalance）
   await prisma.user.update({
     where: { lineUserId: "U_dev_customer_2" },
     data: { creditBalance: 300, totalSpend: 1800, vipLevel: 2, haiwangziLogCount: 3 },
@@ -206,12 +206,12 @@ async function reseedDemo() {
       userId: "U_dev_customer_2",
       amount: 100,
       reason: "birthday",
-      note: "去年生日禮金",
+      note: "去年生日抵用金",
       balanceAfter: 300,
     },
   });
 
-  // admin 預存 5000 禮金
+  // admin 預存 5000 抵用金
   await prisma.user.update({
     where: { lineUserId: "U_dev_admin" },
     data: { creditBalance: 5000 },
@@ -221,7 +221,7 @@ async function reseedDemo() {
       userId: "U_dev_admin",
       amount: 5000,
       reason: "admin_adjust",
-      note: "Demo 預設禮金",
+      note: "Demo 預設抵用金",
       balanceAfter: 5000,
     },
   });

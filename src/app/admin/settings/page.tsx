@@ -63,10 +63,10 @@ interface Config {
   defaultTripPricing: Partial<TripPricing>;
   defaultCoachFee: number;
   birthdayCreditAmount: number;
-  birthdayCreditExpiryDays: number;       // v184：生日禮金有效天數（0 = 永不過期）
-  vipUpgradeCreditExpiryDays: number;     // v185：VIP 升等獎勵禮金有效天數
-  adminGrantCreditExpiryDays: number;     // v185：admin 手動發禮金的預設有效天數
-  refundCreditExpiryDays: number;         // v185：退款轉禮金有效天數
+  birthdayCreditExpiryDays: number;       // v184：生日抵用金有效天數（0 = 永不過期）
+  vipUpgradeCreditExpiryDays: number;     // v185：VIP 升等獎勵抵用金有效天數
+  adminGrantCreditExpiryDays: number;     // v185：admin 手動發抵用金的預設有效天數
+  refundCreditExpiryDays: number;         // v185：退款轉抵用金有效天數
   vipUpgradeCredits: Partial<VipUpgradeCredits>;
   weatherWindThreshold: number;
   // 外部連結（Rich Menu / LIFF 用）
@@ -182,7 +182,7 @@ export default function SettingsPage() {
 
   async function resetToInitial() {
     const typed = window.prompt(
-      "🚨 系統初始重置：將清空所有營運資料（訂單、場次、潛水團、付款憑證、教練、潛點、提醒紀錄、訊息範本、操作紀錄、媒體照片）並把會員的衍生欄位（VIP 等級、累計消費、禮金餘額）歸零。\n\n保留：會員帳號（lineUserId, displayName, role 等）+ 系統設定。\n\n此操作不可復原！請輸入「系統初始重置」繼續："
+      "🚨 系統初始重置：將清空所有營運資料（訂單、場次、潛水團、付款憑證、教練、潛點、提醒紀錄、訊息範本、操作紀錄、媒體照片）並把會員的衍生欄位（VIP 等級、累計消費、抵用金餘額）歸零。\n\n保留：會員帳號（lineUserId, displayName, role 等）+ 系統設定。\n\n此操作不可復原！請輸入「系統初始重置」繼續："
     );
     if (typed !== "系統初始重置") {
       alert("取消操作，未刪除任何資料。");
@@ -207,12 +207,12 @@ export default function SettingsPage() {
         `• 付款憑證 ${r.deleted.paymentProofs} 筆`,
         `• 教練 ${r.deleted.coaches} 位`,
         `• 潛點 ${r.deleted.sites} 個`,
-        `• 禮金交易 ${r.deleted.creditTxs} 筆`,
+        `• 抵用金交易 ${r.deleted.creditTxs} 筆`,
         `• 提醒紀錄 ${r.deleted.reminderLogs} 筆`,
         `• 訊息範本 ${r.deleted.templates} 筆`,
         `• 操作紀錄 ${r.deleted.audits} 筆`,
         `• 媒體照片 ${r.deleted.tripPhotos + r.deleted.tripMedia} 張`,
-        `• 已重設 ${r.deleted.usersReset} 位會員的衍生欄位（VIP/累計/禮金）`,
+        `• 已重設 ${r.deleted.usersReset} 位會員的衍生欄位（VIP/累計/抵用金）`,
       ];
       setResetInitialResult(lines.join("\n"));
     } catch (e) {
@@ -507,12 +507,12 @@ export default function SettingsPage() {
                   onChange={(n) => setCfg(c => c ? { ...c, defaultCoachFee: n } : c)} />
               </div>
               <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金（NT$，0=停用）</Label>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日抵用金（NT$，0=停用）</Label>
                 <NumberInput min={0} value={cfg.birthdayCreditAmount}
                   onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} />
               </div>
               <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金有效天數（0=永不過期）</Label>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日抵用金有效天數（0=永不過期）</Label>
                 <NumberInput min={0} value={cfg.birthdayCreditExpiryDays ?? 360}
                   onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
               </div>
@@ -524,14 +524,14 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* B3.5 禮金有效天數 — v185 */}
+          {/* B3.5 抵用金有效天數 — v185 */}
           <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">
-              🎁 禮金有效天數（從發放日起算，0 = 永不過期）
+              🎁 抵用金有效天數（從發放日起算，0 = 永不過期）
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金</Label>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日抵用金</Label>
                 <NumberInput min={0} max={3650} value={cfg.birthdayCreditExpiryDays ?? 360}
                   onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
               </div>
@@ -546,13 +546,13 @@ export default function SettingsPage() {
                   onChange={(n) => setCfg(c => c ? { ...c, adminGrantCreditExpiryDays: n } : c)} />
               </div>
               <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">退款轉禮金</Label>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">退款轉抵用金</Label>
                 <NumberInput min={0} max={3650} value={cfg.refundCreditExpiryDays ?? 0}
                   onChange={(n) => setCfg(c => c ? { ...c, refundCreditExpiryDays: n } : c)} />
               </div>
             </div>
             <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
-              ※ 設 0 = 永不過期。退款轉禮金通常設 0（不限期）。Admin 手動發放可在發放時個別覆寫。
+              ※ 設 0 = 永不過期。退款轉抵用金通常設 0（不限期）。Admin 手動發放可在發放時個別覆寫。
             </p>
           </div>
 
@@ -624,13 +624,13 @@ export default function SettingsPage() {
               </p>
             )}
 
-            {/* 系統初始重置 — 更徹底，連教練/潛點/禮金紀錄/訊息範本/操作紀錄都清掉，
-                並把會員 VIP/累計/禮金歸零（保留會員帳號本身） */}
+            {/* 系統初始重置 — 更徹底，連教練/潛點/抵用金紀錄/訊息範本/操作紀錄都清掉，
+                並把會員 VIP/累計/抵用金歸零（保留會員帳號本身） */}
             <div className="flex items-center justify-between gap-4 rounded-lg border p-3" style={{ borderColor: "var(--color-coral)" }}>
               <div>
                 <div className="text-sm font-medium">系統初始重置（保留會員帳號）</div>
                 <div className="text-xs text-[var(--muted-foreground)]">
-                  把系統回到剛部署狀態：清空所有營運資料 + 教練/潛點 + 禮金紀錄 + 訊息範本 + 操作紀錄 + 媒體照片，並把會員的 VIP/累計消費/禮金餘額歸零。會員帳號本身保留。
+                  把系統回到剛部署狀態：清空所有營運資料 + 教練/潛點 + 抵用金紀錄 + 訊息範本 + 操作紀錄 + 媒體照片，並把會員的 VIP/累計消費/抵用金餘額歸零。會員帳號本身保留。
                 </div>
               </div>
               <Button

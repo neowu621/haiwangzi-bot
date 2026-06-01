@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         code: b.code ?? b.id.slice(0, 8),
         user: b.user.realName ?? b.user.displayName,
         refundAmount: b.refundAmount ?? 0,
-        method: b.refundMethod === "cash" ? "現金" : "禮金",
+        method: b.refundMethod === "cash" ? "現金" : "抵用金",
         reason: b.cancellationReason ?? "",
       })),
     },

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 重算所有 user vipLevel + 升等者發放禮金
+    // 重算所有 user vipLevel + 升等者發放抵用金
     const users = await prisma.user.findMany({
       select: { lineUserId: true, logCount: true, totalSpend: true, vipLevel: true },
     });
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
           data: { vipLevel: newLevel },
         });
         promoted++;
-        // 只有實際升等才發禮金（降等不退、不補發舊獎勵）
+        // 只有實際升等才發抵用金（降等不退、不補發舊獎勵）
         if (newLevel > oldLevel) {
           totalCreditGranted += await grantVipUpgradeRewards(
             u.lineUserId,

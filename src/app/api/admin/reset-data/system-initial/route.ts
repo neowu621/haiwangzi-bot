@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const coaches = await tx.coach.deleteMany({});
     const sites = await tx.diveSite.deleteMany({});
 
-    // 4. 會員衍生資料（保留 User，清掉禮金紀錄並重設衍生欄位）
+    // 4. 會員衍生資料（保留 User，清掉抵用金紀錄並重設衍生欄位）
     const creditTxs = await tx.creditTx.deleteMany({});
     const userReset = await tx.user.updateMany({
       data: {

@@ -43,7 +43,7 @@ const TEMPLATES = [
   { key: "tour_guide", label: "行前說明" },
   { key: "weather_cancel", label: "天氣取消" },
   { key: "vip_upgrade", label: "VIP 升等" },
-  { key: "birthday_credit", label: "生日禮金" },
+  { key: "birthday_credit", label: "生日抵用金" },
 ];
 
 // 罐頭訊息（每個模板的預設文字）
@@ -86,9 +86,9 @@ const TEMPLATE_DEFAULTS: Record<string, { altText: string; text: string; emailSu
   },
   weather_cancel: {
     altText: "場次因天氣取消",
-    text: "⚠️ 場次取消通知\n\n非常抱歉，{tripDate} {siteName} 場次因{reason}必須取消。\n\n已付款項可選：\n🅐 退現金 100%\n🅑 轉禮金 110%（多 10% 優惠）\n\n請從 LINE 回覆選擇，或聯繫客服。",
+    text: "⚠️ 場次取消通知\n\n非常抱歉，{tripDate} {siteName} 場次因{reason}必須取消。\n\n已付款項可選：\n🅐 退現金 100%\n🅑 轉抵用金 110%（多 10% 優惠）\n\n請從 LINE 回覆選擇，或聯繫客服。",
     emailSubject: "場次取消通知",
-    emailBody: "{tripDate} {siteName} 場次因{reason}取消。\n\n退款選項：退現 100% / 轉禮金 110%",
+    emailBody: "{tripDate} {siteName} 場次因{reason}取消。\n\n退款選項：退現 100% / 轉抵用金 110%",
     params: '{"tripDate":"06/01","siteName":"龍洞","reason":"風速超過 10m/s"}',
   },
   vip_upgrade: {
@@ -99,10 +99,10 @@ const TEMPLATE_DEFAULTS: Record<string, { altText: string; text: string; emailSu
     params: '{"newLevel":"2","tierName":"龍蝦","benefits":"生日當月 9 折"}',
   },
   birthday_credit: {
-    altText: "生日禮金通知",
-    text: "🎂 生日快樂！\n\n感謝您一直以來的支持，海王子送您 NT${amount} 生日禮金，已存入您的帳戶。\n\n禮金可於下次預約時折抵，期待與您在海中相見！",
-    emailSubject: "生日禮金通知",
-    emailBody: "您的生日禮金 NT${amount} 已存入帳戶，下次預約可折抵。",
+    altText: "生日抵用金通知",
+    text: "🎂 生日快樂！\n\n感謝您一直以來的支持，海王子送您 NT${amount} 生日抵用金，已存入您的帳戶。\n\n抵用金可於下次預約時折抵，期待與您在海中相見！",
+    emailSubject: "生日抵用金通知",
+    emailBody: "您的生日抵用金 NT${amount} 已存入帳戶，下次預約可折抵。",
     params: '{"amount":"100"}',
   },
 };

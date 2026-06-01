@@ -30,7 +30,7 @@ interface Stats {
 }
 
 const REASON_LABEL: Record<string, string> = {
-  birthday: "🎂 生日禮金",
+  birthday: "🎂 生日抵用金",
   vip_upgrade: "⭐ VIP 升等",
   admin_adjust: "🛠 管理員調整",
   refund: "💰 退款",
@@ -79,7 +79,7 @@ export default function CreditsPage() {
   }
 
   return (
-    <AdminShell title="禮金管理">
+    <AdminShell title="抵用金管理">
       <div className="space-y-4">
         {/* 統計卡 */}
         {stats && (
@@ -103,7 +103,7 @@ export default function CreditsPage() {
                 className="ml-2 rounded-md border border-[var(--border)] px-2 py-1 text-sm"
               >
                 <option value="all">全部</option>
-                <option value="birthday">生日禮金</option>
+                <option value="birthday">生日抵用金</option>
                 <option value="vip_upgrade">VIP 升等</option>
                 <option value="admin_adjust">管理員調整</option>
                 <option value="refund">退款</option>

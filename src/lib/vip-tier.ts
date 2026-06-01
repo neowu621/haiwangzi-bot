@@ -19,7 +19,7 @@ export interface VipTier {
   minSpend: number;
   /** 福利描述（簡短，也作為客戶端 FAQ 內容） */
   benefits: string[];
-  /** 升級獎勵禮金 (NT$)。會員首次達到此 LV 時自動發放，每個 LV 僅一次 */
+  /** 升級獎勵抵用金 (NT$)。會員首次達到此 LV 時自動發放，每個 LV 僅一次 */
   upgradeCredit: number;
   /** UI 配色 */
   color: string;
@@ -38,7 +38,7 @@ export const VIP_TIERS: VipTier[] = [
       "潛水裝備租借 95 折",
       "基礎會員電子報",
     ],
-    upgradeCredit: 50, // 註冊禮金（新會員首次加入時自動發放）
+    upgradeCredit: 50, // 註冊抵用金（新會員首次加入時自動發放）
     color: "#FFB1B1", // pinkish
   },
   {

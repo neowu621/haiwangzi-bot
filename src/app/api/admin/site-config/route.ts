@@ -49,7 +49,7 @@ const PatchSchema = z.object({
     scooterRental: z.number().int().min(0),
   }).optional(),
   defaultCoachFee: z.number().int().min(0).optional(),
-  // v184/v185：禮金有效天數系列（0 = 永不過期）
+  // v184/v185：抵用金有效天數系列（0 = 永不過期）
   birthdayCreditExpiryDays: z.number().int().min(0).max(3650).optional(),
   vipUpgradeCreditExpiryDays: z.number().int().min(0).max(3650).optional(),
   adminGrantCreditExpiryDays: z.number().int().min(0).max(3650).optional(),

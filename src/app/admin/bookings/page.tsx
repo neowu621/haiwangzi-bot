@@ -131,7 +131,7 @@ export default function AdminBookingsPage() {
   const [refundMethod, setRefundMethod] = useState<"cash" | "credit">("credit");
   const [refundReason, setRefundReason] = useState("");
   const [refundBusy, setRefundBusy] = useState(false);
-  const [refundCreditPct, setRefundCreditPct] = useState<number>(100); // 轉禮金 % (例：110 = 退款金額的 110% 轉禮金)
+  const [refundCreditPct, setRefundCreditPct] = useState<number>(100); // 轉抵用金 % (例：110 = 退款金額的 110% 轉抵用金)
   // v199：新增一筆付款
   const [addPaymentAmount, setAddPaymentAmount] = useState<string>("");
   const [addPaymentNote, setAddPaymentNote] = useState<string>("");
@@ -273,7 +273,7 @@ export default function AdminBookingsPage() {
       if (noShowTarget.paidAmount > 0 && noShowOption !== "none") {
         const refundBody: Record<string, unknown> = {
           amount: noShowTarget.paidAmount,
-          reason: `未到場退款（${noShowOption === "cash100" ? "退現 100%" : `轉禮金 ${noShowCreditPct}%`}）`,
+          reason: `未到場退款（${noShowOption === "cash100" ? "退現 100%" : `轉抵用金 ${noShowCreditPct}%`}）`,
         };
         if (noShowOption === "cash100") {
           refundBody.method = "cash";
@@ -514,7 +514,7 @@ export default function AdminBookingsPage() {
     if (!n || n <= 0) { alert("請輸入退款金額"); return; }
     const creditAmount = refundMethod === "credit" ? Math.round(n * refundCreditPct / 100) : undefined;
     const desc = refundMethod === "credit"
-      ? `轉禮金 NT$${creditAmount?.toLocaleString()}${refundCreditPct !== 100 ? `（${refundCreditPct}%）` : ""}`
+      ? `轉抵用金 NT$${creditAmount?.toLocaleString()}${refundCreditPct !== 100 ? `（${refundCreditPct}%）` : ""}`
       : `退現金 NT$${n.toLocaleString()}`;
     if (!confirm(`確定退款？\n從已付款扣 NT$${n.toLocaleString()}\n→ ${desc}`)) return;
     setRefundBusy(true);
@@ -1067,7 +1067,7 @@ export default function AdminBookingsPage() {
                   </button>
                   {!refundOpen && (
                     <p className="text-[11px] text-[var(--color-coral)] opacity-80 pt-0.5">
-                      ↑ 點此展開：可選 <b>轉禮金</b>（永不過期 · 可加成）或 <b>退現金</b>
+                      ↑ 點此展開：可選 <b>轉抵用金</b>（永不過期 · 可加成）或 <b>退現金</b>
                     </p>
                   )}
                   {refundOpen && (
@@ -1076,7 +1076,7 @@ export default function AdminBookingsPage() {
                         <button type="button" onClick={() => setRefundMethod("credit")}
                           className={cn("rounded-md border px-2 py-2 text-xs",
                             refundMethod === "credit" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/15 font-semibold" : "border-[var(--border)]")}>
-                          🎁 轉禮金
+                          🎁 轉抵用金
                         </button>
                         <button type="button" onClick={() => setRefundMethod("cash")}
                           className={cn("rounded-md border px-2 py-2 text-xs",
@@ -1084,10 +1084,10 @@ export default function AdminBookingsPage() {
                           💵 退現金
                         </button>
                       </div>
-                      {/* 轉禮金 % 快選 (天氣 110% / 一般 100% / 違約 80%) */}
+                      {/* 轉抵用金 % 快選 (天氣 110% / 一般 100% / 違約 80%) */}
                       {refundMethod === "credit" && (
                         <div>
-                          <Label className="text-[10px] text-[var(--muted-foreground)] mb-1 block">轉禮金 %（天氣 110 / 一般 100 / 違約 80）</Label>
+                          <Label className="text-[10px] text-[var(--muted-foreground)] mb-1 block">轉抵用金 %（天氣 110 / 一般 100 / 違約 80）</Label>
                           <div className="grid grid-cols-4 gap-1 mb-1">
                             {[80, 100, 110, 120].map((p) => (
                               <button key={p} type="button" onClick={() => setRefundCreditPct(p)}
@@ -1101,7 +1101,7 @@ export default function AdminBookingsPage() {
                             onChange={(n) => setRefundCreditPct(Math.max(1, Math.min(500, n || 100)))}
                             placeholder="自訂百分比" />
                           <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-                            退款金額 × {refundCreditPct}% = 實際轉入禮金 {Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}（<b>永不過期</b>）
+                            退款金額 × {refundCreditPct}% = 實際轉入抵用金 {Math.round(Number(refundAmount || 0) * refundCreditPct / 100).toLocaleString()}（<b>永不過期</b>）
                           </p>
                         </div>
                       )}
@@ -1289,7 +1289,7 @@ export default function AdminBookingsPage() {
                       noShowOption === "credit_custom" ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/5" : "border-[var(--border)]")}>
                       <input type="radio" checked={noShowOption === "credit_custom"} onChange={() => setNoShowOption("credit_custom")} className="mt-0.5" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium">🅒 轉禮金 (自訂%)</div>
+                        <div className="text-sm font-medium">🅒 轉抵用金 (自訂%)</div>
                         {noShowOption === "credit_custom" && (
                           <div className="mt-2 space-y-1">
                             <div className="grid grid-cols-4 gap-1">
@@ -1305,7 +1305,7 @@ export default function AdminBookingsPage() {
                               onChange={(n) => setNoShowCreditPct(Math.max(1, Math.min(500, n || 80)))}
                               placeholder="自訂百分比" className="h-8 text-xs" />
                             <p className="text-[10px] text-[var(--muted-foreground)]">
-                              已付 {noShowTarget.paidAmount.toLocaleString()} × {noShowCreditPct}% = 轉禮金 {Math.round(noShowTarget.paidAmount * noShowCreditPct / 100).toLocaleString()}
+                              已付 {noShowTarget.paidAmount.toLocaleString()} × {noShowCreditPct}% = 轉抵用金 {Math.round(noShowTarget.paidAmount * noShowCreditPct / 100).toLocaleString()}
                             </p>
                           </div>
                         )}
