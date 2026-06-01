@@ -140,12 +140,15 @@ const BLANK_FORM = {
 type TripForm = typeof BLANK_FORM;
 
 function estimatedRevenue(trip: Trip): number {
-  const p = trip.pricing;
-  const tanksPerPerson = trip.tankCount;
-  const baseWithTanks = p.baseTrip + (tanksPerPerson - 1) * p.extraTank;
+  const p = trip.pricing ?? { baseTrip: 0, extraTank: 0, nightDive: 0, scooterRental: 0 };
+  const tanksPerPerson = trip.tankCount ?? 1;
+  const baseTrip = p.baseTrip ?? 0;
+  const extraTank = p.extraTank ?? 0;
+  const booked = trip.booked ?? 0;
+  const baseWithTanks = baseTrip + (tanksPerPerson - 1) * extraTank;
   // v155：夜潛 / 水上摩托車加成已移除，僅算氣瓶費 + 其他費用
   const extras = (p.otherFee ?? 0);
-  return trip.booked * (baseWithTanks + extras);
+  return booked * (baseWithTanks + extras);
 }
 
 export default function AdminTripsPage() {
@@ -174,14 +177,15 @@ export default function AdminTripsPage() {
   // 排序 + 篩選 + 分頁
   type SortKey = "date" | "code" | "startTime" | "booked" | "revenue" | "status";
   const [sortKey, setSortKey] = useState<SortKey>("date");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // v180：日期預設 asc（近的在最上面）
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [filterRange, setFilterRange] = useState<"week" | "month" | "all">("week");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(k); setSortDir(k === "date" ? "desc" : "asc"); }
+    else { setSortKey(k); setSortDir(k === "date" ? "asc" : "asc"); }
     setPage(1);
   }
 
@@ -677,13 +681,35 @@ export default function AdminTripsPage() {
     });
   })();
 
+  // v180 排序策略：
+  // - 「日期」排序時，未來場次永遠在前、已過去的放最後
+  //   未來場次內：依 sortDir 排（預設 asc → 近的在前）
+  //   過去場次內：永遠 desc（最近過去的在前）
+  // - 其他欄位排序：照原本邏輯（不分過去/未來）
+  const today = taipeiToday();
   const sortedTrips = [...filteredTrips].sort((a, b) => {
+    if (sortKey === "date") {
+      const aDate = a.date.slice(0, 10);
+      const bDate = b.date.slice(0, 10);
+      const aPast = aDate < today;
+      const bPast = bDate < today;
+      if (aPast !== bPast) return aPast ? 1 : -1; // 過去的丟後面
+      if (aPast && bPast) {
+        // 兩個都過去 → 永遠最近的在前（desc）
+        if (aDate < bDate) return 1;
+        if (aDate > bDate) return -1;
+        return 0;
+      }
+      // 兩個都未來 → 依 sortDir
+      if (aDate < bDate) return sortDir === "asc" ? -1 : 1;
+      if (aDate > bDate) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    }
     let va: string | number = 0, vb: string | number = 0;
     switch (sortKey) {
-      case "date":      va = a.date.slice(0, 10); vb = b.date.slice(0, 10); break;
       case "startTime": va = a.startTime;         vb = b.startTime; break;
       case "code":      va = a.code ?? "";        vb = b.code ?? ""; break;
-      case "booked":    va = a.booked;            vb = b.booked; break;
+      case "booked":    va = a.booked ?? 0;       vb = b.booked ?? 0; break;
       case "revenue":   va = estimatedRevenue(a); vb = estimatedRevenue(b); break;
       case "status":    va = effectiveTripStatus(a)[0]; vb = effectiveTripStatus(b)[0]; break;
     }
@@ -922,15 +948,15 @@ export default function AdminTripsPage() {
                             ? trip.coachIds.map(coachName).join("、")
                             : "—"}
                         </td>
-                        {/* 已報名 */}
+                        {/* 已報名 — 防呆 undefined → 0 */}
                         <td className="px-3 py-1.5 text-right tabular-nums text-xs whitespace-nowrap">
-                          {trip.booked} / {trip.capacity == null ? "∞" : trip.capacity}
+                          {(trip.booked ?? 0)} / {trip.capacity == null ? "∞" : trip.capacity}
                         </td>
                         {/* 預估收費 */}
                         <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-                          {trip.booked === 0
+                          {(trip.booked ?? 0) === 0
                             ? "NT$0"
-                            : `NT$${estimatedRevenue(trip).toLocaleString()}`}
+                            : `NT$${(estimatedRevenue(trip) || 0).toLocaleString()}`}
                         </td>
                         {/* 操作 — 縮小成 28px icon-only 按鈕 */}
                         <td className="px-3 py-1.5 whitespace-nowrap">
