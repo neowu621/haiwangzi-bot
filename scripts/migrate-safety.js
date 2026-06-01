@@ -135,6 +135,9 @@ const PATCHES = [
   `ALTER TABLE credit_txs ADD COLUMN IF NOT EXISTS code VARCHAR(16)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS credit_txs_code_key ON credit_txs(code) WHERE code IS NOT NULL`,
 
+  // ── v227 site_config 加取消政策欄位 ──────────────────────────────────
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS cancellation_policy TEXT NOT NULL DEFAULT ''`,
+
   // ── v196 message_templates 加管道開關 ───────────────────────────────
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS line_enabled BOOLEAN`,
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN`,

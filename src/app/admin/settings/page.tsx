@@ -73,6 +73,8 @@ interface Config {
   externalLinks: ExternalLinks;
   // 付款資訊
   paymentInfo: PaymentInfo;
+  // v227：取消政策（純文字，FAQ + 預約頁同步顯示）
+  cancellationPolicy: string;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -587,6 +589,32 @@ export default function SettingsPage() {
               disabled={saving === "金額設定"}>
               <Save className="mr-1.5 h-4 w-4" />
               {saving === "金額設定" ? "儲存中..." : "儲存金額設定"}
+            </Button>
+          </div>
+        </SectionCard>
+
+        {/* ── B5. 取消政策（v227） ───────────────── */}
+        <SectionCard title="📋 取消政策">
+          <p className="-mt-2 mb-2 text-[11px] text-[var(--muted-foreground)]">此文字會顯示在「常見問題」與「日潛預約頁」，admin 可自由編輯。</p>
+          <div>
+            <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">政策內容（純文字，支援多行）</Label>
+            <textarea
+              className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm font-mono"
+              rows={14}
+              placeholder="請輸入取消政策..."
+              value={cfg.cancellationPolicy ?? ""}
+              onChange={(e) => setCfg(c => c ? { ...c, cancellationPolicy: e.target.value } : c)}
+            />
+            <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+              ※ 留空會用系統預設政策。建議用 📌 ☔ ⚠️ 等 emoji 區分條款分組。
+            </p>
+          </div>
+          <div className="flex justify-end pt-3">
+            <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+              onClick={() => save("取消政策", { cancellationPolicy: cfg.cancellationPolicy ?? "" })}
+              disabled={saving === "取消政策"}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {saving === "取消政策" ? "儲存中..." : "儲存取消政策"}
             </Button>
           </div>
         </SectionCard>

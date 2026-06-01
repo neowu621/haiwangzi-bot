@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { ChevronDown, ChevronUp, HelpCircle, Anchor, Waves, Phone, Mail } from "lucide-react";
@@ -13,7 +13,9 @@ type FaqItem = {
   a: React.ReactNode;
 };
 
-const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
+// v227：FAQS 改為 builder function，吃 cancellationPolicy
+function buildFaqs(cancellationPolicy: string): { category: string; icon: React.ReactNode; items: FaqItem[] }[] {
+  return [
   {
     category: "預約相關",
     icon: <Anchor className="h-4 w-4" />,
@@ -41,32 +43,9 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
       {
         q: "預約後可以取消嗎？退款規則？",
         a: (
-          <>
-            <p className="font-semibold mb-1">📌 客戶自行取消（依距離出發日）：</p>
-            <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
-              <li>場次前 <b>7 天以上</b>：可退 100% 現金，或轉抵用金 100%</li>
-              <li>場次前 <b>3-7 天</b>：可退 50% 現金，或轉抵用金 80%</li>
-              <li>場次前 <b>3 天內</b>：訂金不退（保留場次成本）</li>
-            </ul>
-
-            <p className="font-semibold mt-3 mb-1">☔ 因天氣強制取消（店家責任）：</p>
-            <ul className="list-disc pl-5 text-xs space-y-0.5">
-              <li><b>退現金 100%</b>：全額退回原付款帳戶</li>
-              <li><b>轉抵用金 110%</b>（推薦）：多 10% 優惠，下次預約折抵</li>
-            </ul>
-
-            <p className="font-semibold mt-3 mb-1">⚠️ 客戶未到場（no-show）：</p>
-            <ul className="list-disc pl-5 text-xs space-y-0.5">
-              <li>原則上：不退款（保留違約金）</li>
-              <li>特殊情況可申請：退現 100% 或轉抵用金 80%（依老闆判斷）</li>
-              <li>若家人急事、健康因素等，請主動聯繫客服說明</li>
-            </ul>
-
-            <p className="mt-3 text-[10px] opacity-70">
-              ※ 所有退款處理需 1-3 個工作天；轉抵用金即時生效，下次預約立即可用。
-              <br />※ 已使用的抵用金折抵額度將原額轉回抵用金餘額（不會被沒收）。
-            </p>
-          </>
+          <pre className="whitespace-pre-wrap font-sans text-xs leading-6">
+            {cancellationPolicy}
+          </pre>
         ),
       },
     ],
@@ -191,6 +170,7 @@ const FAQS: { category: string; icon: React.ReactNode; items: FaqItem[] }[] = [
     ],
   },
 ];
+}
 
 function FaqAccordion({ item, defaultOpen = false }: { item: FaqItem; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -215,6 +195,14 @@ function FaqAccordion({ item, defaultOpen = false }: { item: FaqItem; defaultOpe
 }
 
 export default function FaqPage() {
+  const [cancellationPolicy, setCancellationPolicy] = useState<string>("");
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setCancellationPolicy(c.cancellationPolicy ?? ""))
+      .catch(() => { /* fall back to empty - buildFaqs handles */ });
+  }, []);
+  const FAQS = buildFaqs(cancellationPolicy);
   return (
     <LiffShell>
       <div className="pb-20">
