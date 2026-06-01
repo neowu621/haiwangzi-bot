@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
       take: 200,
     });
 
-    // 算 booked（trips 為空時直接跳過）
+    // v224：除了 booked 人數，再算實際收費總額（用真實 booking.totalAmount 加總）
+    //   排除：取消 / no_show / 退款中 / 已退款
     const tripIds = trips.map((t) => t.id);
     const bookings = tripIds.length === 0
       ? []
@@ -35,16 +36,33 @@ export async function GET(req: NextRequest) {
             status: {
               notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"],
             },
+            paymentStatus: {
+              notIn: ["refunding", "refunded"],
+            },
           },
-          _sum: { participants: true },
+          _sum: { participants: true, totalAmount: true, paidAmount: true },
         });
-    const bookingMap = new Map(bookings.map((b) => [b.refId, b._sum.participants ?? 0]));
+    const bookingMap = new Map(
+      bookings.map((b) => [
+        b.refId,
+        {
+          participants: b._sum.participants ?? 0,
+          revenue: b._sum.totalAmount ?? 0,
+          paid: b._sum.paidAmount ?? 0,
+        },
+      ]),
+    );
 
     return NextResponse.json({
-      trips: trips.map((t) => ({
-        ...t,
-        booked: bookingMap.get(t.id) ?? 0,
-      })),
+      trips: trips.map((t) => {
+        const stats = bookingMap.get(t.id);
+        return {
+          ...t,
+          booked: stats?.participants ?? 0,
+          revenue: stats?.revenue ?? 0,
+          paid: stats?.paid ?? 0,
+        };
+      }),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

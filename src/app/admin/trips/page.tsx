@@ -31,6 +31,8 @@ interface Trip {
   tankCount: number;
   capacity: number | null;
   booked: number;
+  revenue?: number;  // v224：實際 booking totalAmount 加總（排除取消/退款）
+  paid?: number;     // v224：實際已收
   coachIds: string[];
   pricing: Pricing;
   notes: string | null;
@@ -175,13 +177,16 @@ const BLANK_FORM = {
 type TripForm = typeof BLANK_FORM;
 
 function estimatedRevenue(trip: Trip): number {
+  // v224：優先用 API 回傳的實際 booking 加總（更準確）
+  //   排除取消、no_show、退款中、已退款
+  if (typeof trip.revenue === "number") return trip.revenue;
+  // fallback：沒拿到 revenue 時用 booked × 預估單價（舊邏輯）
   const p = trip.pricing ?? { baseTrip: 0, extraTank: 0, nightDive: 0, scooterRental: 0 };
   const tanksPerPerson = trip.tankCount ?? 1;
   const baseTrip = p.baseTrip ?? 0;
   const extraTank = p.extraTank ?? 0;
   const booked = trip.booked ?? 0;
   const baseWithTanks = baseTrip + (tanksPerPerson - 1) * extraTank;
-  // v155：夜潛 / 水上摩托車加成已移除，僅算氣瓶費 + 其他費用
   const extras = (p.otherFee ?? 0);
   return booked * (baseWithTanks + extras);
 }
@@ -1105,10 +1110,11 @@ export default function AdminTripsPage() {
                             ) : !tripBks || tripBks.length === 0 ? (
                               <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">此場次目前沒有訂單</div>
                             ) : (() => {
-                              // v222：明確區分活躍 vs 取消
-                              const isCancelled = (s: string) => s === "cancelled_by_user" || s === "cancelled_by_weather";
-                              const active = tripBks.filter((b) => !isCancelled(b.status));
-                              const cancelled = tripBks.filter((b) => isCancelled(b.status));
+                              // v224：明確區分活躍 vs 取消/退款（與 trip.revenue 一致）
+                              const isCancelled = (s: string) => s === "cancelled_by_user" || s === "cancelled_by_weather" || s === "no_show";
+                              const isRefunding = (p: string) => p === "refunding" || p === "refunded";
+                              const active = tripBks.filter((b) => !isCancelled(b.status) && !isRefunding(b.paymentStatus));
+                              const cancelled = tripBks.filter((b) => isCancelled(b.status) || isRefunding(b.paymentStatus));
                               const activeParticipants = active.reduce((s, b) => s + b.participants, 0);
                               const activeRevenue = active.reduce((s, b) => s + b.totalAmount, 0);
                               const activePaid = active.reduce((s, b) => s + b.paidAmount, 0);
@@ -1138,7 +1144,7 @@ export default function AdminTripsPage() {
                                   </thead>
                                   <tbody>
                                     {tripBks.map((b, j) => {
-                                      const cancelledRow = isCancelled(b.status);
+                                      const cancelledRow = isCancelled(b.status) || isRefunding(b.paymentStatus);
                                       return (
                                       <tr
                                         key={b.id}
