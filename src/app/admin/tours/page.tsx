@@ -493,12 +493,12 @@ export default function ToursPage() {
 
   return (
     <AdminShell title="潛水團管理">
-      <div style={{ background: BG, minHeight: "calc(100vh - 80px)", margin: "-1rem", padding: 0 }}>
+      <div style={{ background: BG, height: "calc(100vh - 56px)", margin: "-1rem", padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* topbar */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 16, padding: "16px 24px", borderBottom: `1px solid ${LINE}`,
-          background: "#fff", position: "sticky", top: 56, zIndex: 5,
+          background: "#fff", flexShrink: 0,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: AQUA, boxShadow: `0 0 14px ${AQUA}` }} />
@@ -528,7 +528,9 @@ export default function ToursPage() {
           display: "grid",
           gridTemplateColumns: "1fr 460px",
           gap: 0,
-          minHeight: "calc(100vh - 138px)",
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
         }}>
           {/* LEFT: list */}
           <div style={{ borderRight: `1px solid ${LINE}`, display: "flex", flexDirection: "column", minHeight: 0 }}>
