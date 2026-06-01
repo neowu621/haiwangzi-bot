@@ -6,12 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+// v192：Dialog 已改為固定右側面板，不再需要
 import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
 import ExcelJS from "exceljs";
@@ -199,7 +194,8 @@ export default function AdminTripsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   // Dialog state
-  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  // v192：panel 永遠顯示；初始預設為 create 模式
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TripForm>({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
@@ -379,7 +375,8 @@ export default function AdminTripsPage() {
           arr.map((x) => (x.id === editingId ? { ...x, ...r.trip } : x)),
         );
       }
-      setDialogMode(null);
+      // v192：儲存成功後回到「新增場次」空白狀態，方便連續輸入
+      openCreate();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // 把後端的英文錯誤碼換成中文友善訊息
@@ -822,8 +819,11 @@ export default function AdminTripsPage() {
 
   return (
     <AdminShell title="場次管理">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-end gap-2">
+      {/* v192：與潛水團相同的 雙欄佈局；外層固定高度 + overflow:hidden 讓左右各自獨立 scroll */}
+      <div style={{ height: "calc(100vh - 56px)", margin: "-1rem", display: "flex", flexDirection: "column", overflow: "hidden", background: "#EEF1F5" }}>
+        {/* 共用 topbar */}
+        <div className="flex flex-wrap items-center justify-end gap-2"
+          style={{ padding: "12px 24px", borderBottom: "1px solid #E4E8ED", background: "#fff", flexShrink: 0 }}>
           <input
             ref={fileInputRef}
             type="file"
@@ -852,6 +852,12 @@ export default function AdminTripsPage() {
             新增場次
           </Button>
         </div>
+
+        {/* main: 1fr 列表 / 460px 表單 */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 460px", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          {/* LEFT — 列表（獨立 scroll） */}
+          <div style={{ overflowY: "auto", padding: "1rem", minWidth: 0 }}>
+            <div className="space-y-4">
 
         {/* 匯入結果回饋 */}
         {importResult && (
@@ -1189,34 +1195,45 @@ export default function AdminTripsPage() {
             </button>
           </div>
         )}
-      </div>
+            </div>
+          </div>
+          {/* /LEFT */}
 
-      {/* Create / Edit Dialog */}
-      <Dialog
-        open={dialogMode !== null}
-        onOpenChange={(o) => !o && setDialogMode(null)}
-      >
-        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span>{form.isNightDive ? "🌙" : "☀️"}{" "}
-              {dialogMode === "create" ? "新增日潛水場次" : "編輯日潛水場次"}</span>
-              {dialogMode === "edit" && editingId && (() => {
-                const t = trips.find(x => x.id === editingId);
-                return t?.code ? (
-                  <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-normal text-teal-800">
-                    {t.code}
-                  </span>
-                ) : null;
-              })()}
-              {dialogMode === "create" && (
-                <span className="text-[10px] font-normal text-[var(--muted-foreground)]">
-                  建立後自動產生 D{new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }).replace(/-/g, "")}-XX 編號
+          {/* RIGHT — 新增 / 編輯 panel（獨立 scroll） */}
+          <div style={{
+            background: "#fff",
+            borderLeft: "1px solid #E4E8ED",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}>
+            {/* panel header */}
+            <div style={{
+              padding: "16px 24px", borderBottom: "1px solid #E4E8ED",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              flexShrink: 0, background: "#fff",
+            }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>
+                  {form.isNightDive ? "🌙" : "☀️"}{" "}
+                  {dialogMode === "edit" ? "編輯日潛水場次" : "新增日潛水場次"}
                 </span>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
+                {dialogMode === "edit" && editingId && (() => {
+                  const t = trips.find((x) => x.id === editingId);
+                  return t?.code ? (
+                    <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-normal text-teal-800">
+                      {t.code}
+                    </span>
+                  ) : null;
+                })()}
+              </h2>
+              <span style={{ fontSize: 12, color: "#0E9E91", fontFamily: "monospace", letterSpacing: ".14em" }}>
+                {dialogMode === "edit" ? "EDIT" : "NEW"}
+              </span>
+            </div>
+            {/* /panel header */}
+            <div className="space-y-3" style={{ padding: "16px 24px", overflowY: "auto", flex: 1, minHeight: 0 }}>
             {/* Row 1: 日期 + 集合時間 + 場次狀態 (三欄並排) */}
             <div className="grid grid-cols-12 gap-3">
               <div className="col-span-4">
@@ -1490,18 +1507,25 @@ export default function AdminTripsPage() {
                 placeholder="天氣/裝備/注意事項..."
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Button variant="outline" onClick={() => setDialogMode(null)}>
-                取消
+            </div>
+            {/* sticky 底部操作列 */}
+            <div style={{
+              borderTop: "1px solid #E4E8ED", background: "#fff",
+              padding: "14px 24px", display: "flex", gap: 10, flexShrink: 0,
+            }}>
+              <Button variant="outline" onClick={openCreate} style={{ flex: "0 0 auto" }}>
+                {dialogMode === "edit" ? "取消編輯" : "清空"}
               </Button>
-              <Button onClick={saveForm} disabled={saving}>
-                {saving ? "儲存中..." : "儲存"}
+              <Button onClick={saveForm} disabled={saving} style={{ flex: 1 }}>
+                {saving ? "儲存中..." : (dialogMode === "edit" ? "儲存變更" : "新增場次")}
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          {/* /RIGHT */}
+        </div>
+        {/* /grid */}
+      </div>
+      {/* /outer */}
     </AdminShell>
   );
 }
