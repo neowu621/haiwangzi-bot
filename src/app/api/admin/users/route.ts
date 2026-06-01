@@ -121,36 +121,71 @@ export async function POST(req: NextRequest) {
 
   const data = PatchSchema.parse(await req.json());
 
-  // v175 安全：只有 boss 可以授予/取消 boss 身份；admin 不能把任何人（包含自己）升 boss
+  // v176 角色階層：Admin > Boss > Coach > Member (customer)
+  // - Admin 角色：只能透過 script / bootstrap 設定，不能透過 UI/API 設
+  // - 只有 Admin 可以把人設成 Boss
+  // - Boss 只能把人設成 Member (customer)
+  // - Coach 不能改任何人的角色
+  // - 一個人只能有一個角色
   const callerRoles = new Set(auth.user.roles ?? [auth.user.role]);
-  const callerIsBoss = callerRoles.has("boss");
-  const wantsToSetBoss =
-    data.role === "boss" || (data.roles ?? []).includes("boss");
-  if (wantsToSetBoss && !callerIsBoss) {
-    return NextResponse.json(
-      { error: "權限不足：只有 boss 可以授予 boss 身份" },
-      { status: 403 },
-    );
-  }
+  const callerPrimary = callerRoles.has("admin") ? "admin"
+    : callerRoles.has("boss") ? "boss"
+    : callerRoles.has("coach") ? "coach"
+    : "customer";
 
-  const patch: Record<string, unknown> = {};
+  // 提取目標角色（roles[] 取第一個 / 或 data.role）
+  let targetRole: string | undefined = undefined;
   if (data.roles !== undefined) {
-    // 去重 + 至少要有一個角色
     const uniq = Array.from(new Set(data.roles));
     if (uniq.length === 0) {
+      return NextResponse.json({ error: "roles 不能為空" }, { status: 400 });
+    }
+    if (uniq.length > 1) {
       return NextResponse.json(
-        { error: "roles 至少要有一個角色（customer / coach / admin）" },
+        { error: "一個人只能有一個角色，請只傳一個 role" },
         { status: 400 },
       );
     }
-    patch.roles = uniq;
-    // 同步 primary role (backwards compat)：admin > boss > coach > customer 優先順序
-    const priority = ["admin", "boss", "coach", "customer"] as const;
-    patch.role = priority.find((r) => uniq.includes(r)) ?? "customer";
+    targetRole = uniq[0];
   } else if (data.role !== undefined) {
-    // 沒帶 roles 但有帶 role：當作單一角色處理，並同步 roles
-    patch.role = data.role;
-    patch.roles = [data.role];
+    targetRole = data.role;
+  }
+
+  if (targetRole !== undefined) {
+    // 規則 1：UI/API 完全禁止設定 Admin
+    if (targetRole === "admin") {
+      return NextResponse.json(
+        { error: "Admin 角色只能透過系統腳本設定，不能透過介面授予" },
+        { status: 403 },
+      );
+    }
+    // 規則 2：只有 Admin 可以設定 Boss
+    if (targetRole === "boss" && callerPrimary !== "admin") {
+      return NextResponse.json(
+        { error: "權限不足：只有 Admin 可以授予 Boss 身份" },
+        { status: 403 },
+      );
+    }
+    // 規則 3：Boss 只能將人設成 Member (customer)
+    if (callerPrimary === "boss" && targetRole !== "customer") {
+      return NextResponse.json(
+        { error: "權限不足：Boss 只能將人設為 Member（customer）" },
+        { status: 403 },
+      );
+    }
+    // 規則 4：Coach / Member 完全不能改角色（其實到不了這裡，因為 requireRole 已擋）
+    if (callerPrimary !== "admin" && callerPrimary !== "boss") {
+      return NextResponse.json(
+        { error: "權限不足" },
+        { status: 403 },
+      );
+    }
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (targetRole !== undefined) {
+    patch.role = targetRole;
+    patch.roles = [targetRole]; // 單一角色：roles[] 永遠長度為 1
   }
   if (data.realName !== undefined)
     patch.realName = data.realName === "" ? null : data.realName;
