@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const filterUserId = url.searchParams.get("userId") ?? undefined;
     const filterRefId = url.searchParams.get("refId") ?? undefined; // v183: 按場次 ID 過濾
 
-    const where: Parameters<typeof prisma.booking.findMany>[0]["where"] =
+    const where: Prisma.BookingWhereInput =
       filterUserId ? { userId: filterUserId }
       : filterRefId ? { refId: filterRefId }
       : {};

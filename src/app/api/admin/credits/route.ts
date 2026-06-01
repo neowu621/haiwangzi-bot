@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { grantCredit, type CreditReason } from "@/lib/credit";
 import { computeExpiry } from "@/lib/credit-expiry";
@@ -51,8 +52,8 @@ export async function GET(req: NextRequest) {
   const to = url.searchParams.get("to");         // YYYY-MM-DD
   const limit = Math.min(500, Math.max(50, parseInt(url.searchParams.get("limit") ?? "200")));
 
-  const where: Parameters<typeof prisma.creditTx.findMany>[0]["where"] = {};
-  if (reason) where.reason = reason;
+  const where: Prisma.CreditTxWhereInput = {};
+  if (reason) where.reason = reason as Prisma.CreditTxWhereInput["reason"];
   if (from || to) {
     where.createdAt = {};
     if (from) (where.createdAt as Record<string, Date>).gte = new Date(from + "T00:00:00+08:00");
