@@ -307,7 +307,13 @@ export default function AdminTripsPage() {
       }
       setDialogMode(null);
     } catch (e) {
-      alert("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      // 把後端的英文錯誤碼換成中文友善訊息
+      let friendly = msg;
+      if (msg.includes("trip_date_passed")) {
+        friendly = "場次日期已過，無法設為「開放」。請把『場次狀態』改為『結束』或『取消』後再儲存。";
+      }
+      alert("儲存失敗：" + friendly);
     } finally {
       setSaving(false);
     }
@@ -1062,7 +1068,15 @@ export default function AdminTripsPage() {
                 <Input
                   type="date"
                   value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    // v181：選到過去日期時，若狀態還是「開放」自動切為「結束」
+                    // 避免 API 擋下「trip_date_passed」錯誤
+                    const isPast = newDate < taipeiToday();
+                    const newStatus =
+                      isPast && form.status === "open" ? "completed" : form.status;
+                    setForm({ ...form, date: newDate, status: newStatus });
+                  }}
                 />
               </div>
               <div className="col-span-4">
