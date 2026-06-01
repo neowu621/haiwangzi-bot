@@ -24,8 +24,21 @@ interface Coach {
   active: boolean;
 }
 
+// v203：三級教練體系（中文化）
 const CERT_LABELS: Record<Cert, string> = {
-  DM: "DM", Instructor: "Instructor", CourseDirector: "Course Director",
+  DM: "潛水長",
+  Instructor: "潛水教練",
+  CourseDirector: "課程總監",
+};
+const CERT_ROLE_DESC: Record<Cert, string> = {
+  DM: "助教 / 協助",
+  Instructor: "導潛 / OW・AOW 開課",
+  CourseDirector: "培訓・考核新教練",
+};
+const CERT_COLOR: Record<Cert, { bg: string; color: string }> = {
+  DM:             { bg: "rgba(8,145,178,0.12)",  color: "#0891b2" }, // cyan
+  Instructor:     { bg: "rgba(124,58,237,0.12)", color: "#7c3aed" }, // violet
+  CourseDirector: { bg: "rgba(220,38,38,0.12)",  color: "#dc2626" }, // red
 };
 
 const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
@@ -147,7 +160,7 @@ export default function CoachesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
-                  {["姓名", "證照", "特長", "費用/潛", "LINE", "狀態", "操作"].map(h => (
+                  {["姓名", "等級 / 角色", "特長", "費用/潛", "LINE", "狀態", "操作"].map(h => (
                     <th key={h} className="px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -156,7 +169,17 @@ export default function CoachesPage() {
                 {visible.map((c, i) => (
                   <tr key={c.id} className={`border-t ${i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20"}`} style={{ borderColor: "var(--border)", opacity: c.active ? 1 : 0.5 }}>
                     <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{c.realName}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{CERT_LABELS[c.cert]}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-bold w-fit"
+                          style={{ background: CERT_COLOR[c.cert].bg, color: CERT_COLOR[c.cert].color }}>
+                          {CERT_LABELS[c.cert]}
+                        </span>
+                        <span className="text-[10px] text-[var(--muted-foreground)]">
+                          {CERT_ROLE_DESC[c.cert]}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {c.specialty.slice(0, 3).map(s => (
@@ -205,14 +228,36 @@ export default function CoachesPage() {
                 <Label style={labelStyle}>姓名</Label>
                 <Input className={inputCls} value={form.realName} onChange={e => setForm(f => ({ ...f, realName: e.target.value }))} autoFocus />
               </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>證照等級</Label>
-                <select value={form.cert} onChange={e => setForm(f => ({ ...f, cert: e.target.value as Cert }))}
-                  className="rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}>
-                  {(["DM", "Instructor", "CourseDirector"] as Cert[]).map(c => (
-                    <option key={c} value={c} style={{ background: "#0a1628" }}>{CERT_LABELS[c]}</option>
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-3">
+                <Label style={labelStyle} className="pt-2">教練等級</Label>
+                <div className="space-y-2">
+                  {(["DM", "Instructor", "CourseDirector"] as Cert[]).map((c) => (
+                    <label
+                      key={c}
+                      onClick={() => setForm((f) => ({ ...f, cert: c }))}
+                      className="flex items-start gap-2 cursor-pointer rounded-lg border p-2 transition-colors"
+                      style={{
+                        borderColor: form.cert === c ? "var(--color-phosphor)" : "rgba(255,255,255,0.15)",
+                        background: form.cert === c ? "rgba(74,222,189,0.08)" : "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        checked={form.cert === c}
+                        onChange={() => setForm((f) => ({ ...f, cert: c }))}
+                        className="mt-0.5 h-3.5 w-3.5 accent-[var(--color-phosphor)]"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold" style={{ color: "#e6f0ff" }}>
+                          {CERT_LABELS[c]}
+                        </div>
+                        <div className="text-[11px]" style={{ color: "rgba(230,240,255,0.55)" }}>
+                          {CERT_ROLE_DESC[c]}
+                        </div>
+                      </div>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label style={labelStyle}>特長（逗號分隔）</Label>
