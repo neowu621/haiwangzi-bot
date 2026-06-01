@@ -246,7 +246,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="text-[10px] text-rose-700 truncate">{b.when} · {b.what}</div>
                       </div>
-                      <span className="font-mono font-bold text-rose-700 tabular-nums shrink-0">NT$ {b.totalAmount.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-rose-700 tabular-nums shrink-0">{b.totalAmount.toLocaleString()}</span>
                     </button>
                   ))}
                 </div>
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
                           上傳 {new Date(p.uploadedAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }).slice(5, 16)}
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-amber-700 tabular-nums shrink-0">NT$ {p.amount.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-amber-700 tabular-nums shrink-0">{p.amount.toLocaleString()}</span>
                     </button>
                   ))}
                 </div>
