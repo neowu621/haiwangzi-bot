@@ -14,8 +14,15 @@ const LIFF_URL = LIFF_ID ? `https://liff.line.me/${LIFF_ID}` : "#";
 export default function HomePage() {
   // 好友狀態：null = 還在偵測 / 無法偵測（桌面瀏覽器）/ true = 已是好友 / false = 尚未加好友
   const [isFriend, setIsFriend] = useState<boolean | null>(null);
+  const [qrUrl, setQrUrl] = useState<string>("");
 
   useEffect(() => {
+    // 載入 LINE OA QR URL（後台設定）
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setQrUrl(c.externalLinks?.lineOaQrUrl ?? ""))
+      .catch(() => {});
+
     // 嘗試用 LIFF SDK 偵測好友關係（只有在 LINE in-app 瀏覽器中才會成功）
     if (!LIFF_ID) return;
     (async () => {
@@ -26,7 +33,6 @@ export default function HomePage() {
           const friendship = await liffMod.default.getFriendship();
           setIsFriend(friendship.friendFlag);
         }
-        // 沒登入也不主動推進 login，桌面 / 一般瀏覽器情境留 null
       } catch {
         // 桌面瀏覽器或其他無法初始化 LIFF 的環境 → 保持 null
       }
@@ -66,7 +72,7 @@ export default function HomePage() {
             </span>
           </div>
         ) : (
-          // 未加 / 未知 — 預設顯示「請加入好友」+ 大按鈕
+          // 未加 / 未知 — 預設顯示「請加入好友」+ QR + 大按鈕
           <div className="mt-10 flex flex-col items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-3xl">🤿</span>
@@ -77,6 +83,19 @@ export default function HomePage() {
             <p className="text-sm leading-relaxed text-white/80 max-w-sm">
               加好友後才能用手機 LINE 預約 / 查詢訂單 / 接收行前通知
             </p>
+            {/* QR Code (admin 後台有設才顯示) */}
+            {qrUrl && (
+              <div className="flex flex-col items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrUrl}
+                  alt="LINE OA QR"
+                  className="h-44 w-44 rounded-xl border-2 bg-white p-2 shadow-lg"
+                  style={{ borderColor: "rgba(6,199,85,0.5)" }}
+                />
+                <p className="mt-1.5 text-[11px] text-white/70">📱 用 LINE 掃 QR 直接加好友</p>
+              </div>
+            )}
             {LINE_ADD_FRIEND_URL !== "#" && (
               <a
                 href={LINE_ADD_FRIEND_URL}

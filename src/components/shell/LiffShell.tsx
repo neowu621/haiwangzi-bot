@@ -20,6 +20,15 @@ const ADD_FRIEND_URL =
  */
 function FriendGateBlock() {
   const [rechecking, setRechecking] = React.useState(false);
+  const [qrUrl, setQrUrl] = React.useState<string>("");
+
+  React.useEffect(() => {
+    // 從 /api/config 拿 LINE OA QR 圖片 URL（admin 在後台設定的）
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setQrUrl(c.externalLinks?.lineOaQrUrl ?? ""))
+      .catch(() => {});
+  }, []);
 
   async function recheck() {
     setRechecking(true);
@@ -52,6 +61,20 @@ function FriendGateBlock() {
         加 <b className="text-[var(--foreground)]">{APP_NAME}</b> 為好友後，
         才能用手機 LINE 預約 / 查詢訂單 / 接收行前通知。
       </p>
+
+      {/* QR Code (若 admin 後台有設) */}
+      {qrUrl && (
+        <div className="mb-4 flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrUrl}
+            alt="LINE OA QR Code"
+            className="h-44 w-44 rounded-lg border-2 bg-white p-2 shadow-sm"
+            style={{ borderColor: "rgba(6,199,85,0.3)" }}
+          />
+          <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">📱 用 LINE 掃 QR 直接加好友</p>
+        </div>
+      )}
 
       {/* 大號加好友按鈕 */}
       <a

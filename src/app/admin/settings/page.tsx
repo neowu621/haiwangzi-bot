@@ -38,6 +38,7 @@ interface ExternalLinks {
   mediaUrl?: string;
   youtubeChannelUrl?: string;
   instagramUrl?: string;
+  lineOaQrUrl?: string;       // LINE OA 加好友 QR Code 圖片 URL
 }
 
 interface PaymentInfo {
@@ -344,6 +345,25 @@ export default function SettingsPage() {
                 placeholder="https://www.instagram.com/xxxxx（選填）"
               />
             </FieldRow>
+            <FieldRow label="LINE OA QR 圖片">
+              <Input
+                value={cfg?.externalLinks?.lineOaQrUrl ?? ""}
+                onChange={(e) => setCfg((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), lineOaQrUrl: e.target.value } } : c)}
+                placeholder="https://i.imgur.com/xxxx.png（首頁 / 加好友頁顯示用）"
+              />
+            </FieldRow>
+            {cfg?.externalLinks?.lineOaQrUrl && (
+              <div className="grid grid-cols-[10rem_1fr] items-start gap-3">
+                <span className="text-sm text-[var(--muted-foreground)]">QR 預覽</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cfg.externalLinks.lineOaQrUrl}
+                  alt="LINE OA QR"
+                  className="h-32 w-32 rounded border object-contain bg-white"
+                  style={{ borderColor: "var(--border)" }}
+                />
+              </div>
+            )}
           </div>
           <div className="mt-4 flex justify-end">
             <Button

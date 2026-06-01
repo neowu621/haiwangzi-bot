@@ -50,12 +50,13 @@ const PatchSchema = z.object({
   }).optional(),
   defaultCoachFee: z.number().int().min(0).optional(),
   weatherWindThreshold: z.number().int().min(1).max(50).optional(),
-  // 外部連結（FB 社群、IG、YouTube 等）
+  // 外部連結（FB 社群、IG、YouTube、LINE OA QR 等）
   externalLinks: z.object({
     fbGroupUrl: z.string().url().optional().or(z.literal("")),
     mediaUrl: z.string().url().optional().or(z.literal("")),
     youtubeChannelUrl: z.string().url().optional().or(z.literal("")),
     instagramUrl: z.string().url().optional().or(z.literal("")),
+    lineOaQrUrl: z.string().url().optional().or(z.literal("")),  // LINE OA QR 圖片 URL
   }).optional(),
   // 付款資訊（銀行 + LINE Pay）— v160 起改用 DB 管理
   paymentInfo: z.object({

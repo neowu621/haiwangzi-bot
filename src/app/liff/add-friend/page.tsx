@@ -15,6 +15,14 @@ export default function AddFriendPage() {
   const liff = useLiff();
   const router = useRouter();
   const [rechecking, setRechecking] = React.useState(false);
+  const [qrUrl, setQrUrl] = React.useState<string>("");
+
+  React.useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setQrUrl(c.externalLinks?.lineOaQrUrl ?? ""))
+      .catch(() => {});
+  }, []);
 
   // 已是好友 → 自動導回首頁
   React.useEffect(() => {
@@ -59,6 +67,20 @@ export default function AddFriendPage() {
             請先加 <b className="text-[var(--foreground)]">{APP_NAME}</b> 為 LINE 好友後再使用本服務。
           </p>
         </div>
+
+        {/* QR Code (若後台有設) */}
+        {qrUrl && (
+          <div className="mb-5 flex flex-col items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrUrl}
+              alt="LINE OA QR"
+              className="h-44 w-44 rounded-lg border-2 bg-white p-2 shadow-sm"
+              style={{ borderColor: "rgba(6,199,85,0.3)" }}
+            />
+            <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">📱 用 LINE 掃 QR 直接加好友</p>
+          </div>
+        )}
 
         {/* Add Friend Button */}
         <a
