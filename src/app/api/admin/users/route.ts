@@ -59,6 +59,15 @@ export async function GET(req: NextRequest) {
     stats.set(a.userId, s);
   }
 
+  // v208：批次撈出所有 coach 角色的 Coach record
+  const coachLineIds = users
+    .filter((u) => (u.roles?.includes("coach") || u.role === "coach"))
+    .map((u) => u.lineUserId);
+  const coaches = coachLineIds.length === 0 ? [] : await prisma.coach.findMany({
+    where: { lineUserId: { in: coachLineIds } },
+  });
+  const coachMap = new Map(coaches.map((c) => [c.lineUserId, c]));
+
   return NextResponse.json({
     users: users.map((u) => ({
       ...u,
@@ -72,6 +81,17 @@ export async function GET(req: NextRequest) {
         revenue: 0,
         potential: 0,
       },
+      // v208：coach 資料（若該 user 是 coach 且有 Coach record）
+      coach: coachMap.get(u.lineUserId)
+        ? {
+            id: coachMap.get(u.lineUserId)!.id,
+            cert: coachMap.get(u.lineUserId)!.cert,
+            specialty: coachMap.get(u.lineUserId)!.specialty,
+            feePerDive: coachMap.get(u.lineUserId)!.feePerDive,
+            note: coachMap.get(u.lineUserId)!.note,
+            active: coachMap.get(u.lineUserId)!.active,
+          }
+        : null,
     })),
   });
 }
@@ -106,6 +126,14 @@ const PatchSchema = z.object({
   haiwangziLogCount: z.number().int().min(0).optional(),
   // 生日（YYYY-MM-DD）
   birthday: z.string().nullable().optional(),
+  // v208：教練資料（當 user 角色 = coach 時生效）
+  coach: z.object({
+    cert: z.enum(["DM", "Instructor", "CourseDirector"]).optional(),
+    specialty: z.array(z.string()).optional(),
+    feePerDive: z.number().int().min(0).optional(),
+    note: z.string().nullable().optional(),
+    active: z.boolean().optional(),
+  }).optional(),
 });
 
 // POST /api/admin/users
@@ -258,5 +286,66 @@ export async function POST(req: NextRequest) {
     where: { lineUserId: data.lineUserId },
     data: patch,
   });
-  return NextResponse.json({ ok: true, user: updated });
+
+  // v208：自動同步 Coach record
+  // - 目標角色 = coach → 確保 Coach record 存在（auto upsert）+ 套用 coach 欄位
+  // - 目標角色 ≠ coach 且之前是 coach → 把 Coach.active 設 false（保留資料，不刪除）
+  let coachRow = null;
+  if (updated.role === "coach") {
+    const existingCoach = await prisma.coach.findUnique({
+      where: { lineUserId: data.lineUserId },
+    });
+    if (existingCoach) {
+      // update
+      coachRow = await prisma.coach.update({
+        where: { lineUserId: data.lineUserId },
+        data: {
+          realName: updated.realName ?? updated.displayName,
+          ...(data.coach?.cert !== undefined && { cert: data.coach.cert }),
+          ...(data.coach?.specialty !== undefined && { specialty: data.coach.specialty }),
+          ...(data.coach?.feePerDive !== undefined && { feePerDive: data.coach.feePerDive }),
+          ...(data.coach?.note !== undefined && { note: data.coach.note }),
+          // 從 customer 變回 coach 時，自動 active
+          active: data.coach?.active ?? true,
+        },
+      });
+    } else {
+      // create with defaults
+      // 從 lineUserId 截出短 id（最多 32 字元）
+      const newId = data.lineUserId.slice(0, 32);
+      coachRow = await prisma.coach.create({
+        data: {
+          id: newId,
+          lineUserId: data.lineUserId,
+          realName: updated.realName ?? updated.displayName,
+          cert: data.coach?.cert ?? "DM",
+          specialty: data.coach?.specialty ?? [],
+          feePerDive: data.coach?.feePerDive ?? 0,
+          note: data.coach?.note ?? null,
+          active: data.coach?.active ?? true,
+        },
+      });
+    }
+  } else {
+    // 不是 coach → 若有舊 Coach record 就標記停用（保留歷史資料）
+    await prisma.coach.updateMany({
+      where: { lineUserId: data.lineUserId },
+      data: { active: false },
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    user: updated,
+    coach: coachRow
+      ? {
+          id: coachRow.id,
+          cert: coachRow.cert,
+          specialty: coachRow.specialty,
+          feePerDive: coachRow.feePerDive,
+          note: coachRow.note,
+          active: coachRow.active,
+        }
+      : null,
+  });
 }

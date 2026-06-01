@@ -72,6 +72,15 @@ interface AdminUser {
     revenue: number;
     potential: number;
   };
+  // v208：教練資料（當 role = coach 時有值）
+  coach?: {
+    id: string;
+    cert: "DM" | "Instructor" | "CourseDirector";
+    specialty: string[];
+    feePerDive: number;
+    note: string | null;
+    active: boolean;
+  } | null;
 }
 
 interface CreditTx {
@@ -364,6 +373,16 @@ export default function AdminUsersPage() {
             blacklistReason: editing.blacklistReason,
             vipLevel: editing.vipLevel,
             totalSpend: editing.totalSpend,
+            // v208：若 role 是 coach，帶上 coach 設定
+            ...((editing.effectiveRoles ?? [editing.role]).includes("coach") && editing.coach
+              ? { coach: {
+                  cert: editing.coach.cert,
+                  specialty: editing.coach.specialty,
+                  feePerDive: editing.coach.feePerDive,
+                  note: editing.coach.note,
+                  active: editing.coach.active,
+                }}
+              : {}),
           }),
         },
       );
@@ -934,13 +953,22 @@ export default function AdminUsersPage() {
                               ? cur.filter((x) => x !== r)
                               : [...cur, r];
                             if (next.length === 0) return;
+                            const newRole = (["admin", "boss", "coach", "customer"] as const).find((x) => next.includes(x)) ?? "customer";
                             setEditing({
                               ...editing,
                               effectiveRoles: next,
-                              role:
-                                (
-                                  ["admin", "boss", "coach", "customer"] as const
-                                ).find((x) => next.includes(x)) ?? "customer",
+                              role: newRole,
+                              // v208：第一次設為 coach 時，初始化 coach defaults
+                              coach: newRole === "coach"
+                                ? (editing.coach ?? {
+                                    id: editing.lineUserId.slice(0, 32),
+                                    cert: "DM",
+                                    specialty: [],
+                                    feePerDive: 0,
+                                    note: null,
+                                    active: true,
+                                  })
+                                : editing.coach,
                             });
                           }}
                           className={cn(
@@ -957,6 +985,90 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
               </div>
+
+              {/* v208：教練設定（角色含 coach 時顯示）*/}
+              {(editing.effectiveRoles ?? [editing.role]).includes("coach") && editing.coach && (
+                <div className="rounded-lg border-2 p-3 space-y-2.5"
+                  style={{ borderColor: "rgba(8,145,178,0.35)", background: "rgba(8,145,178,0.05)" }}>
+                  <div className="flex items-center gap-2 text-sm font-bold text-cyan-700">
+                    🤿 教練設定
+                    <span className="ml-auto text-[10px] font-normal text-slate-500">儲存後自動同步教練清單</span>
+                  </div>
+
+                  <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                    <Label className="text-xs pt-1">教練等級</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(["DM", "Instructor", "CourseDirector"] as const).map((c) => {
+                        const labels: Record<typeof c, { title: string; desc: string }> = {
+                          DM:             { title: "潛水長",   desc: "助教 / 協助" },
+                          Instructor:     { title: "潛水教練", desc: "導潛 / OW・AOW" },
+                          CourseDirector: { title: "課程總監", desc: "培訓・考核" },
+                        };
+                        const sel = editing.coach!.cert === c;
+                        return (
+                          <button
+                            key={c} type="button"
+                            onClick={() => setEditing({ ...editing, coach: { ...editing.coach!, cert: c } })}
+                            className={cn(
+                              "rounded-md border-2 p-1.5 text-left",
+                              sel ? "border-cyan-500 bg-cyan-50" : "border-slate-200 bg-white hover:border-slate-300",
+                            )}>
+                            <div className="text-xs font-bold">{labels[c].title}</div>
+                            <div className="text-[10px] text-slate-500">{labels[c].desc}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                    <Label className="text-xs">特長</Label>
+                    <Input
+                      value={editing.coach.specialty.join(", ")}
+                      onChange={(e) => setEditing({
+                        ...editing,
+                        coach: { ...editing.coach!, specialty: e.target.value.split(/[,，、]/).map((s) => s.trim()).filter(Boolean) },
+                      })}
+                      placeholder="攝影、夜潛、技術潛水（逗號分隔）"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                    <Label className="text-xs">費用/潛 (NT$)</Label>
+                    <NumberInput
+                      min={0}
+                      value={editing.coach.feePerDive}
+                      onChange={(n) => setEditing({ ...editing, coach: { ...editing.coach!, feePerDive: n } })}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                    <Label className="text-xs pt-1">教練備註</Label>
+                    <textarea
+                      value={editing.coach.note ?? ""}
+                      onChange={(e) => setEditing({ ...editing, coach: { ...editing.coach!, note: e.target.value || null } })}
+                      rows={2}
+                      placeholder="排班限制、特殊狀況..."
+                      className="w-full rounded-md border border-[var(--border)] bg-white px-2 py-1.5 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                    <Label className="text-xs">啟用</Label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editing.coach.active}
+                        onChange={(e) => setEditing({ ...editing, coach: { ...editing.coach!, active: e.target.checked } })}
+                        className="h-3.5 w-3.5 accent-cyan-600"
+                      />
+                      <span className="text-xs text-slate-600">{editing.coach.active ? "可排班" : "暫停（不出現在場次教練選單）"}</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">證照等級</Label>
