@@ -1029,14 +1029,16 @@ export default function AdminTripsPage() {
                             )}
                           </div>
                         </td>
-                        {/* 地點 */}
+                        {/* 地點 + 氣瓶數（兩行）*/}
                         <td className="px-3 py-1.5 text-xs">
-                          {trip.diveSiteIds.length > 0
-                            ? trip.diveSiteIds.map(siteName).join("・")
-                            : "—"}
-                          <span className="ml-1 text-[var(--muted-foreground)]">
-                            / {trip.tankCount}支
-                          </span>
+                          <div className="font-medium text-[var(--foreground)]">
+                            {trip.diveSiteIds.length > 0
+                              ? trip.diveSiteIds.map(siteName).join("・")
+                              : "—"}
+                          </div>
+                          <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
+                            {trip.tankCount} 支
+                          </div>
                         </td>
                         {/* 教練 + 已報名/可接受 合併欄 */}
                         <td className="px-3 py-1.5 text-xs whitespace-nowrap">
