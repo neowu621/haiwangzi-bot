@@ -131,6 +131,17 @@ const PATCHES = [
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS final_reminder_days INTEGER DEFAULT 30`,
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS guide_reminder_days INTEGER DEFAULT 2`,
 
+  // ── v186 tour_packages 行銷欄位 ─────────────────────────────────────
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS subtitle TEXT`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS duration_label TEXT`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS room_label TEXT`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS dive_styles TEXT[] NOT NULL DEFAULT '{}'`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS beginner_friendly BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS tanks_count INTEGER`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS site_list TEXT`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS pricing_notes TEXT`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS extra_note TEXT`,
+
   // ── diving_trips 新欄位（v91+）───────────────────────────────────────
   // meeting_point: 集合地點
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS meeting_point TEXT`,

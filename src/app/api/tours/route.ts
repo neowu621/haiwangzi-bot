@@ -33,9 +33,16 @@ export async function GET() {
       booked: bookedMap.get(t.id) ?? 0,
       available:
         t.capacity == null
-          ? 999
+          ? null
           : Math.max(0, t.capacity - (bookedMap.get(t.id) ?? 0)),
       status: t.status,
+      // v186 行銷欄位
+      subtitle: t.subtitle,
+      durationLabel: t.durationLabel,
+      diveStyles: t.diveStyles,
+      beginnerFriendly: t.beginnerFriendly,
+      tanksCount: t.tanksCount,
+      extraNote: t.extraNote,
     })),
   });
 }

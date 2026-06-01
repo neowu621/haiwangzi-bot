@@ -23,10 +23,22 @@ const PatchSchema = z.object({
   finalReminderDays: z.number().int().optional(),
   guideReminderDays: z.number().int().optional(),
   itinerary: z.array(z.unknown()).optional(),
+  diveSiteIds: z.array(z.string()).optional(),
   includes: z.array(z.string()).optional(),
   excludes: z.array(z.string()).optional(),
+  addons: z.array(z.unknown()).optional(),
   images: z.array(z.string()).optional(),
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
+  // v186 行銷欄位
+  subtitle: z.string().nullable().optional(),
+  durationLabel: z.string().nullable().optional(),
+  roomLabel: z.string().nullable().optional(),
+  diveStyles: z.array(z.string()).optional(),
+  beginnerFriendly: z.boolean().optional(),
+  tanksCount: z.number().int().min(0).nullable().optional(),
+  siteList: z.string().nullable().optional(),
+  pricingNotes: z.string().nullable().optional(),
+  extraNote: z.string().nullable().optional(),
 });
 
 // PATCH /api/admin/tours/[id]
@@ -72,10 +84,21 @@ export async function PATCH(
   if (data.guideReminderDays !== undefined)
     patch.guideReminderDays = data.guideReminderDays;
   if (data.itinerary) patch.itinerary = data.itinerary;
+  if (data.diveSiteIds) patch.diveSiteIds = data.diveSiteIds;
   if (data.includes) patch.includes = data.includes;
   if (data.excludes) patch.excludes = data.excludes;
+  if (data.addons) patch.addons = data.addons;
   if (data.images) patch.images = data.images;
   if (data.status) patch.status = data.status;
+  if (data.subtitle !== undefined) patch.subtitle = data.subtitle;
+  if (data.durationLabel !== undefined) patch.durationLabel = data.durationLabel;
+  if (data.roomLabel !== undefined) patch.roomLabel = data.roomLabel;
+  if (data.diveStyles !== undefined) patch.diveStyles = data.diveStyles;
+  if (data.beginnerFriendly !== undefined) patch.beginnerFriendly = data.beginnerFriendly;
+  if (data.tanksCount !== undefined) patch.tanksCount = data.tanksCount;
+  if (data.siteList !== undefined) patch.siteList = data.siteList;
+  if (data.pricingNotes !== undefined) patch.pricingNotes = data.pricingNotes;
+  if (data.extraNote !== undefined) patch.extraNote = data.extraNote;
 
   try {
     const tour = await prisma.tourPackage.update({ where: { id }, data: patch });

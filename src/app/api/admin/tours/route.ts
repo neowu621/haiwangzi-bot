@@ -27,6 +27,16 @@ const CreateSchema = z.object({
   excludes: z.array(z.string()).default([]),
   addons: z.array(z.unknown()).default([]),
   images: z.array(z.string()).default([]),
+  // v186 行銷欄位
+  subtitle: z.string().nullable().optional(),
+  durationLabel: z.string().nullable().optional(),
+  roomLabel: z.string().nullable().optional(),
+  diveStyles: z.array(z.string()).default([]),
+  beginnerFriendly: z.boolean().default(false),
+  tanksCount: z.number().int().min(0).nullable().optional(),
+  siteList: z.string().nullable().optional(),
+  pricingNotes: z.string().nullable().optional(),
+  extraNote: z.string().nullable().optional(),
 });
 
 // GET /api/admin/tours
@@ -95,6 +105,15 @@ export async function POST(req: NextRequest) {
         addons: data.addons as never,
         images: data.images,
         status: "open",
+        subtitle: data.subtitle ?? null,
+        durationLabel: data.durationLabel ?? null,
+        roomLabel: data.roomLabel ?? null,
+        diveStyles: data.diveStyles,
+        beginnerFriendly: data.beginnerFriendly,
+        tanksCount: data.tanksCount ?? null,
+        siteList: data.siteList ?? null,
+        pricingNotes: data.pricingNotes ?? null,
+        extraNote: data.extraNote ?? null,
       },
     });
     await logAudit({

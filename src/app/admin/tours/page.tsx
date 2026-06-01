@@ -1,20 +1,28 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Ban, Upload, Download, FileSpreadsheet } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, Edit3, Trash2, Ban, Upload, Download, FileSpreadsheet, X, Copy } from "lucide-react";
 import ExcelJS from "exceljs";
 
-type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
-const DEST_LABELS: Record<Dest, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "其他" };
+// v186 後台「行程資料庫」配色（對應 mockup）
+const AQUA = "#0E9E91";
+const AQUA_DIM = "#0a6f64";
+const CORAL = "#F2603C";
+const BG = "#EEF1F5";
+const LINE = "#E4E8ED";
+const LINE2 = "#D2D9E0";
+const MUTED = "#6B7682";
+const MUTED2 = "#9AA6B2";
 
-// 中文 → 內部代碼 對照（Excel 匯入用，只接受中文）
+type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
+const DEST_LABELS: Record<Dest, string> = {
+  northeast: "東北角",
+  green_island: "綠島",
+  lanyu: "蘭嶼",
+  kenting: "墾丁",
+  other: "其他",
+};
 const DEST_FROM_LABEL: Record<string, Dest> = {
   "東北角": "northeast",
   "綠島": "green_island",
@@ -22,16 +30,23 @@ const DEST_FROM_LABEL: Record<string, Dest> = {
   "墾丁": "kenting",
   "其他": "other",
 };
+const ALL_STYLES = ["水推", "岸潛", "船潛", "夜潛", "沉船潛水"];
 
-// （v153 起：移除 SiteRef、不再從潛點管理對照）
+interface ItineraryDay {
+  t: string;
+  c: string;
+}
 
 interface Tour {
   id: string;
   code?: string | null;
   title: string;
+  subtitle?: string | null;
   destination: Dest;
   dateStart: string;
   dateEnd: string;
+  durationLabel?: string | null;
+  roomLabel?: string | null;
   basePrice: number;
   deposit: number;
   capacity: number | null;
@@ -40,20 +55,60 @@ interface Tour {
   depositReminderDays: number;
   finalReminderDays: number;
   guideReminderDays: number;
+  diveStyles?: string[];
+  beginnerFriendly?: boolean;
+  tanksCount?: number | null;
+  siteList?: string | null;
+  pricingNotes?: string | null;
+  extraNote?: string | null;
+  itinerary?: ItineraryDay[];
+  diveSiteIds?: string[];
+  includes?: string[];
+  excludes?: string[];
   status: string;
   _count?: { bookings: number };
 }
 
-const labelStyle: React.CSSProperties = { color: "rgba(230,240,255,0.8)" };
-const inputCls = "border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:border-[var(--color-phosphor)]";
-
 const today = new Date().toISOString().split("T")[0];
-const BLANK = {
-  title: "", destination: "northeast" as Dest,
+
+interface FormState {
+  title: string;
+  subtitle: string;
+  destination: Dest;
+  dateStart: string;
+  dateEnd: string;
+  durationLabel: string;
+  roomLabel: string;
+  basePrice: number;
+  deposit: number;
+  capacity: number;
+  depositDeadline: string;
+  finalDeadline: string;
+  depositReminderDays: number;
+  finalReminderDays: number;
+  guideReminderDays: number;
+  diveStyles: string[];
+  beginnerFriendly: boolean;
+  tanksCount: number;
+  siteList: string;
+  pricingNotes: string;
+  extraNote: string;
+  includes: string;
+  excludes: string;
+  itinerary: ItineraryDay[];
+}
+
+const BLANK: FormState = {
+  title: "", subtitle: "", destination: "northeast",
   dateStart: today, dateEnd: today,
+  durationLabel: "", roomLabel: "",
   basePrice: 15000, deposit: 5000, capacity: 10,
   depositDeadline: "", finalDeadline: "",
   depositReminderDays: 7, finalReminderDays: 30, guideReminderDays: 2,
+  diveStyles: [], beginnerFriendly: false, tanksCount: 0,
+  siteList: "", pricingNotes: "", extraNote: "",
+  includes: "", excludes: "",
+  itinerary: [],
 };
 
 export default function ToursPage() {
@@ -61,19 +116,19 @@ export default function ToursPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "open" | "cancelled">("all");
-  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [destFilter, setDestFilter] = useState<"all" | "taiwan" | "overseas">("all");
+  const [keyword, setKeyword] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(BLANK);
+  const [form, setForm] = useState<FormState>(BLANK);
   const [saving, setSaving] = useState(false);
-
-  // Excel 匯入相關
+  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{
-    total: number;
-    created: number;
-    errors: { row: number; title: string; message: string }[];
-  } | null>(null);
+
+  function showToast(msg: string, isErr = false) {
+    setToast({ msg, err: isErr });
+    setTimeout(() => setToast(null), 2600);
+  }
 
   async function load() {
     try {
@@ -87,546 +142,865 @@ export default function ToursPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  function openCreate() {
-    setForm(BLANK); setEditingId(null); setDialogMode("create");
+  function newTrip() {
+    setForm(BLANK);
+    setEditingId(null);
   }
 
-  function openEdit(t: Tour) {
+  function loadTour(t: Tour) {
     setForm({
-      title: t.title, destination: t.destination,
-      dateStart: t.dateStart.split("T")[0], dateEnd: t.dateEnd.split("T")[0],
-      basePrice: t.basePrice, deposit: t.deposit, capacity: t.capacity ?? 10,
+      title: t.title,
+      subtitle: t.subtitle ?? "",
+      destination: t.destination,
+      dateStart: t.dateStart.split("T")[0],
+      dateEnd: t.dateEnd.split("T")[0],
+      durationLabel: t.durationLabel ?? "",
+      roomLabel: t.roomLabel ?? "",
+      basePrice: t.basePrice,
+      deposit: t.deposit,
+      capacity: t.capacity ?? 10,
       depositDeadline: t.depositDeadline ? t.depositDeadline.split("T")[0] : "",
       finalDeadline: t.finalDeadline ? t.finalDeadline.split("T")[0] : "",
-      depositReminderDays: t.depositReminderDays, finalReminderDays: t.finalReminderDays,
+      depositReminderDays: t.depositReminderDays,
+      finalReminderDays: t.finalReminderDays,
       guideReminderDays: t.guideReminderDays,
+      diveStyles: t.diveStyles ?? [],
+      beginnerFriendly: t.beginnerFriendly ?? false,
+      tanksCount: t.tanksCount ?? 0,
+      siteList: t.siteList ?? (t.diveSiteIds ?? []).join("\n"),
+      pricingNotes: t.pricingNotes ?? "",
+      extraNote: t.extraNote ?? "",
+      includes: (t.includes ?? []).join("\n"),
+      excludes: (t.excludes ?? []).join("\n"),
+      itinerary: t.itinerary ?? [],
     });
-    setEditingId(t.id); setDialogMode("edit");
+    setEditingId(t.id);
+    if (typeof document !== "undefined") {
+      document.querySelector(".form-col")?.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   async function save() {
-    if (!form.title.trim()) return;
+    if (!form.title.trim()) return showToast("請填寫行程名稱", true);
+    if (!form.basePrice) return showToast("請填寫團費", true);
     setSaving(true);
     try {
       const body = {
-        ...form,
+        title: form.title.trim(),
+        subtitle: form.subtitle.trim() || null,
+        destination: form.destination,
+        dateStart: form.dateStart,
+        dateEnd: form.dateEnd,
+        durationLabel: form.durationLabel.trim() || null,
+        roomLabel: form.roomLabel.trim() || null,
+        basePrice: form.basePrice,
+        deposit: form.deposit,
+        capacity: form.capacity === 0 ? null : form.capacity,
         depositDeadline: form.depositDeadline || null,
         finalDeadline: form.finalDeadline || null,
+        depositReminderDays: form.depositReminderDays,
+        finalReminderDays: form.finalReminderDays,
+        guideReminderDays: form.guideReminderDays,
+        diveStyles: form.diveStyles,
+        beginnerFriendly: form.beginnerFriendly,
+        tanksCount: form.tanksCount || null,
+        siteList: form.siteList || null,
+        diveSiteIds: form.siteList.split("\n").map((s) => s.trim()).filter(Boolean),
+        pricingNotes: form.pricingNotes || null,
+        extraNote: form.extraNote || null,
+        includes: form.includes.split("\n").map((s) => s.trim()).filter(Boolean),
+        excludes: form.excludes.split("\n").map((s) => s.trim()).filter(Boolean),
+        itinerary: form.itinerary.filter((d) => d.t || d.c),
       };
-      if (dialogMode === "create") {
-        await adminFetch("/api/admin/tours", { method: "POST", body: JSON.stringify(body) });
-      } else if (editingId) {
+      if (editingId) {
         await adminFetch(`/api/admin/tours/${editingId}`, { method: "PATCH", body: JSON.stringify(body) });
+        showToast(`已更新「${form.title}」`);
+      } else {
+        await adminFetch("/api/admin/tours", { method: "POST", body: JSON.stringify(body) });
+        showToast(`已新增「${form.title}」`);
+        newTrip();
       }
-      setDialogMode(null); await load();
+      await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "儲存失敗");
+      showToast(e instanceof Error ? e.message : "儲存失敗", true);
     } finally {
       setSaving(false);
     }
   }
 
-  // ── Excel 範本下載 + 上傳匯入 ──────────────────────────────────────
-  async function downloadTourTemplate() {
+  function addDay() {
+    setForm((f) => ({ ...f, itinerary: [...f.itinerary, { t: `Day ${f.itinerary.length + 1}`, c: "" }] }));
+  }
+  function removeDay(idx: number) {
+    setForm((f) => ({ ...f, itinerary: f.itinerary.filter((_, i) => i !== idx) }));
+  }
+  function updateDay(idx: number, key: "t" | "c", val: string) {
+    setForm((f) => ({
+      ...f,
+      itinerary: f.itinerary.map((d, i) => (i === idx ? { ...d, [key]: val } : d)),
+    }));
+  }
+  function toggleStyle(s: string) {
+    setForm((f) => ({
+      ...f,
+      diveStyles: f.diveStyles.includes(s)
+        ? f.diveStyles.filter((x) => x !== s)
+        : [...f.diveStyles, s],
+    }));
+  }
+
+  async function cancelTour(t: Tour) {
+    if (!confirm(`取消「${t.title}」？`)) return;
+    try {
+      await adminFetch(`/api/admin/tours/${t.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) });
+      await load();
+      showToast("已取消潛水團");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "操作失敗", true);
+    }
+  }
+
+  async function deleteTour(t: Tour) {
+    if (!confirm(`永久刪除「${t.title}」？此操作不可復原`)) return;
+    if (prompt('輸入 "DELETE" 確認') !== "DELETE") return;
+    try {
+      await adminFetch(`/api/admin/tours/${t.id}?permanent=true`, { method: "DELETE" });
+      if (editingId === t.id) newTrip();
+      await load();
+      showToast("已刪除");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "刪除失敗", true);
+    }
+  }
+
+  async function dupTour(t: Tour) {
+    if (!confirm(`複製「${t.title}」一份？`)) return;
+    try {
+      const body = {
+        title: t.title,
+        subtitle: (t.subtitle ?? "") + "（複製）",
+        destination: t.destination,
+        dateStart: t.dateStart.split("T")[0],
+        dateEnd: t.dateEnd.split("T")[0],
+        durationLabel: t.durationLabel ?? null,
+        roomLabel: t.roomLabel ?? null,
+        basePrice: t.basePrice,
+        deposit: t.deposit,
+        capacity: t.capacity,
+        depositDeadline: t.depositDeadline ? t.depositDeadline.split("T")[0] : null,
+        finalDeadline: t.finalDeadline ? t.finalDeadline.split("T")[0] : null,
+        depositReminderDays: t.depositReminderDays,
+        finalReminderDays: t.finalReminderDays,
+        guideReminderDays: t.guideReminderDays,
+        diveStyles: t.diveStyles ?? [],
+        beginnerFriendly: t.beginnerFriendly ?? false,
+        tanksCount: t.tanksCount,
+        siteList: t.siteList ?? null,
+        diveSiteIds: t.diveSiteIds ?? [],
+        pricingNotes: t.pricingNotes ?? null,
+        extraNote: t.extraNote ?? null,
+        includes: t.includes ?? [],
+        excludes: t.excludes ?? [],
+        itinerary: t.itinerary ?? [],
+      };
+      await adminFetch("/api/admin/tours", { method: "POST", body: JSON.stringify(body) });
+      await load();
+      showToast("已複製行程");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "複製失敗", true);
+    }
+  }
+
+  // ─── Excel ───────────────────────────────────────────
+  async function downloadTemplate() {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("潛水團");
     ws.columns = [
       { header: "標題（必填）", key: "title", width: 28 },
-      { header: "目的地（東北角／綠島／蘭嶼／墾丁／其他，必填）", key: "destination", width: 22 },
-      { header: "出發日（YYYY-MM-DD，必填）", key: "dateStart", width: 18 },
-      { header: "結束日（YYYY-MM-DD，必填）", key: "dateEnd", width: 18 },
-      { header: "團費（必填，整數）", key: "basePrice", width: 14 },
-      { header: "訂金（必填，整數）", key: "deposit", width: 12 },
-      { header: "人數上限（0=∞）", key: "capacity", width: 14 },
-      { header: "訂金截止日（YYYY-MM-DD，選填）", key: "depositDeadline", width: 22 },
-      { header: "尾款截止日（YYYY-MM-DD，選填）", key: "finalDeadline", width: 22 },
-      { header: "訂金截止前 N 天提醒", key: "depositReminderDays", width: 18 },
-      { header: "尾款截止前 N 天提醒", key: "finalReminderDays", width: 18 },
-      { header: "出發前 N 天發手冊提醒", key: "guideReminderDays", width: 20 },
-      { header: "潛點名稱（逗號分隔，例：藍洞,雞善嶼）", key: "sites", width: 30 },
-      { header: "包含項目（逗號分隔）", key: "includes", width: 30 },
-      { header: "不含項目（逗號分隔）", key: "excludes", width: 30 },
-    ];
-    const headerRow = ws.getRow(1);
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-    headerRow.height = 32;
-
-    // 範例列
-    ws.addRow({
-      title: "綠島 3 天 2 夜潛水團",
-      destination: "綠島",
-      dateStart: "2026-07-18",
-      dateEnd: "2026-07-20",
-      basePrice: 18500,
-      deposit: 5000,
-      capacity: 12,
-      depositDeadline: "2026-06-20",
-      finalDeadline: "2026-07-10",
-      depositReminderDays: 7,
-      finalReminderDays: 30,
-      guideReminderDays: 2,
-      sites: "大白沙,雞善嶼,柴口",
-      includes: "船宿, 早午晚餐, 接駁, 氣瓶",
-      excludes: "個人裝備, 保險, 行前住宿",
-    });
-    ws.addRow({
-      title: "墾丁 2 天 1 夜深潛體驗",
-      destination: "墾丁",
-      dateStart: "2026-08-15",
-      dateEnd: "2026-08-16",
-      basePrice: 9800,
-      deposit: 3000,
-      capacity: 10,
-      depositDeadline: "",
-      finalDeadline: "",
-      depositReminderDays: 7,
-      finalReminderDays: 30,
-      guideReminderDays: 2,
-      sites: "後壁湖,出水口",
-      includes: "民宿, 早餐, 氣瓶",
-      excludes: "個人裝備",
-    });
-
-    // 欄位說明 worksheet
-    const help = wb.addWorksheet("欄位說明");
-    help.columns = [
-      { header: "欄位", key: "k", width: 22 },
-      { header: "說明", key: "v", width: 70 },
-    ];
-    help.getRow(1).font = { bold: true };
-    [
-      ["標題", "顯示在 LIFF 與後台的團名（建議含目的地 + 天數）"],
-      ["目的地", "東北角 / 綠島 / 蘭嶼 / 墾丁 / 其他"],
-      ["出發日 / 結束日", "YYYY-MM-DD"],
-      ["團費", "全程含稅總價（不含個人裝備）"],
-      ["訂金", "訂金金額（NT$）"],
-      ["人數上限", "整數，0 = 無上限"],
-      ["訂金截止 / 尾款截止", "選填，留空則使用系統預設規則"],
-      ["提醒天數", "Cron 自動發 LINE 推播的天數設定（預設 7 / 30 / 2）"],
-      ["潛點名稱", "自由輸入（多個用半形或全形逗號分隔），系統不再強制對照潛點清單"],
-      ["包含 / 不含項目", "用半形或全形逗號、頓號分隔，例：船宿,早午晚餐"],
-      ["匯入規則", "全部視為新增（不會更新既有團）；單次最多 100 筆"],
-    ].forEach(([k, v]) => help.addRow({ k, v }));
-
-    const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "tours_template.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  /** 匯出目前所有潛水團為 Excel（欄位與下載範本對齊，可直接編輯後再匯入） */
-  async function exportToursExcel() {
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("潛水團");
-    ws.columns = [
-      { header: "編號", key: "code", width: 16 },
-      { header: "標題", key: "title", width: 28 },
-      { header: "目的地", key: "destination", width: 14 },
-      { header: "出發日（YYYY-MM-DD）", key: "dateStart", width: 18 },
-      { header: "結束日（YYYY-MM-DD）", key: "dateEnd", width: 18 },
+      { header: "副標", key: "subtitle", width: 14 },
+      { header: "目的地（東北角／綠島／蘭嶼／墾丁／其他）", key: "destination", width: 22 },
+      { header: "出發日（YYYY-MM-DD）", key: "dateStart", width: 16 },
+      { header: "結束日（YYYY-MM-DD）", key: "dateEnd", width: 16 },
+      { header: "天數標籤（例 4天3夜）", key: "durationLabel", width: 18 },
+      { header: "住宿", key: "roomLabel", width: 16 },
+      { header: "潛水型態（逗號分隔：水推,岸潛,船潛,夜潛,沉船潛水）", key: "diveStyles", width: 30 },
+      { header: "新手可參加（是/否）", key: "beginner", width: 14 },
+      { header: "潛水支數", key: "tanksCount", width: 10 },
       { header: "團費", key: "basePrice", width: 12 },
       { header: "訂金", key: "deposit", width: 12 },
       { header: "人數上限（0=∞）", key: "capacity", width: 14 },
-      { header: "訂金截止日", key: "depositDeadline", width: 16 },
-      { header: "尾款截止日", key: "finalDeadline", width: 16 },
-      { header: "訂金前 N 天提醒", key: "depositReminderDays", width: 16 },
-      { header: "尾款前 N 天提醒", key: "finalReminderDays", width: 16 },
-      { header: "出發前 N 天提醒", key: "guideReminderDays", width: 16 },
-      { header: "狀態", key: "status", width: 10 },
-      { header: "已報名人數", key: "bookings", width: 12 },
+      { header: "潛點（逗號分隔）", key: "sites", width: 30 },
+      { header: "包含項目（逗號分隔）", key: "includes", width: 30 },
+      { header: "不含項目（逗號分隔）", key: "excludes", width: 30 },
+      { header: "備註", key: "extraNote", width: 24 },
     ];
     const headerRow = ws.getRow(1);
     headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A2342" } };
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0E9E91" } };
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
-    headerRow.height = 28;
+    headerRow.height = 32;
+    ws.addRow({
+      title: "綠島三天兩夜水推團", subtitle: "平日團", destination: "綠島",
+      dateStart: "2026-07-18", dateEnd: "2026-07-20",
+      durationLabel: "3天2夜", roomLabel: "四人房",
+      diveStyles: "水推,岸潛", beginner: "是", tanksCount: 7,
+      basePrice: 14500, deposit: 7000, capacity: 12,
+      sites: "海馬郵筒,大香菇,十字架",
+      includes: "氣瓶,四人房住宿,每日早餐", excludes: "",
+      extraNote: "新手可參加",
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "tours_template.xlsx";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
-    const STATUS_LABEL: Record<string, string> = {
-      open: "開放", full: "額滿", cancelled: "已取消", completed: "已完成",
-    };
-
+  async function exportExcel() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("潛水團");
+    ws.columns = [
+      { header: "編號", key: "code", width: 14 },
+      { header: "標題", key: "title", width: 24 },
+      { header: "副標", key: "sub", width: 14 },
+      { header: "目的地", key: "dest", width: 12 },
+      { header: "出發日", key: "ds", width: 14 },
+      { header: "結束日", key: "de", width: 14 },
+      { header: "天數", key: "dur", width: 12 },
+      { header: "型態", key: "styles", width: 18 },
+      { header: "新手OK", key: "beg", width: 8 },
+      { header: "支數", key: "tk", width: 8 },
+      { header: "團費", key: "price", width: 12 },
+      { header: "訂金", key: "dep", width: 12 },
+      { header: "容量", key: "cap", width: 8 },
+      { header: "已報", key: "bk", width: 8 },
+      { header: "狀態", key: "st", width: 10 },
+    ];
+    ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0E9E91" } };
+    const ST: Record<string, string> = { open: "開放", full: "額滿", cancelled: "已取消", completed: "已完成" };
     for (const t of tours) {
       ws.addRow({
-        code: t.code ?? "",
-        title: t.title,
-        destination: DEST_LABELS[t.destination] ?? t.destination,
-        dateStart: t.dateStart.split("T")[0],
-        dateEnd: t.dateEnd.split("T")[0],
-        basePrice: t.basePrice,
-        deposit: t.deposit,
-        capacity: t.capacity ?? 0,
-        depositDeadline: t.depositDeadline ? t.depositDeadline.split("T")[0] : "",
-        finalDeadline: t.finalDeadline ? t.finalDeadline.split("T")[0] : "",
-        depositReminderDays: t.depositReminderDays,
-        finalReminderDays: t.finalReminderDays,
-        guideReminderDays: t.guideReminderDays,
-        status: STATUS_LABEL[t.status] ?? t.status,
-        bookings: t._count?.bookings ?? 0,
+        code: t.code ?? "", title: t.title, sub: t.subtitle ?? "",
+        dest: DEST_LABELS[t.destination], ds: t.dateStart.split("T")[0], de: t.dateEnd.split("T")[0],
+        dur: t.durationLabel ?? "", styles: (t.diveStyles ?? []).join("/"),
+        beg: t.beginnerFriendly ? "是" : "", tk: t.tanksCount ?? "",
+        price: t.basePrice, dep: t.deposit, cap: t.capacity ?? 0,
+        bk: t._count?.bookings ?? 0, st: ST[t.status] ?? t.status,
       });
     }
     ws.views = [{ state: "frozen", ySplit: 1 }];
-
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const stamp = today.replace(/-/g, "");
-    a.href = url;
-    a.download = `tours_export_${stamp}.xlsx`;
-    document.body.appendChild(a);
+    a.href = URL.createObjectURL(blob);
+    a.download = `tours_export_${today.replace(/-/g, "")}.xlsx`;
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(a.href);
   }
 
-  async function handleTourFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
-    setImportResult(null);
-    setErr(null);
     try {
       const buf = await file.arrayBuffer();
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(buf);
       const ws = wb.getWorksheet("潛水團") ?? wb.worksheets[0];
-      if (!ws) throw new Error("Excel 檔內沒有工作表");
+      if (!ws) throw new Error("檔內無工作表");
 
-      // v153 起：不再用潛點清單對照，直接存名稱
-
-      // 解析 Excel cell 為文字
       const cellText = (raw: unknown): string => {
         if (raw == null) return "";
         if (typeof raw === "string") return raw.trim();
         if (typeof raw === "number") return String(raw);
         if (raw instanceof Date) {
-          // 日期：以台北時區轉 YYYY-MM-DD
           const d = new Date(raw.getTime() + 8 * 60 * 60 * 1000);
           return d.toISOString().slice(0, 10);
         }
-        if (typeof raw === "object" && "text" in raw) {
-          return String((raw as { text: string }).text).trim();
-        }
+        if (typeof raw === "object" && "text" in raw) return String((raw as { text: string }).text).trim();
         return String(raw).trim();
       };
-      const parseInt0 = (s: string, dflt = 0): number => {
+      const pInt = (s: string, d = 0) => {
         const n = parseInt(s.replace(/[^\d-]/g, ""), 10);
-        return Number.isNaN(n) ? dflt : n;
+        return Number.isNaN(n) ? d : n;
       };
-
       const rows: Array<Record<string, unknown>> = [];
-      const localErrors: { row: number; title: string; message: string }[] = [];
-      let rowIdx = 0;
       ws.eachRow((row, idx) => {
-        if (idx === 1) return; // skip header
-        rowIdx = idx;
-        const cell = (col: number) => cellText(row.getCell(col).value);
-        const title = cell(1);
-        const destRaw = cell(2);
-        const dateStart = cell(3);
-        const dateEnd = cell(4);
-        if (!title) return; // 跳過空白列
-
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStart)) {
-          localErrors.push({ row: idx, title, message: "出發日格式錯誤，應為 YYYY-MM-DD" });
-          return;
-        }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateEnd)) {
-          localErrors.push({ row: idx, title, message: "結束日格式錯誤，應為 YYYY-MM-DD" });
-          return;
-        }
-        const destination = DEST_FROM_LABEL[destRaw];
-        if (!destination) {
-          localErrors.push({ row: idx, title, message: `目的地「${destRaw}」不在 (東北角/綠島/蘭嶼/墾丁/其他)` });
-          return;
-        }
-
-        // 潛點：直接存入名稱（v153 起不再對照潛點管理表）
-        const diveSiteIds = cell(13).split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
-
-        const depositDeadline = cell(8);
-        const finalDeadline = cell(9);
-
+        if (idx === 1) return;
+        const c = (n: number) => cellText(row.getCell(n).value);
+        const title = c(1);
+        if (!title) return;
+        const dest = DEST_FROM_LABEL[c(3)];
+        if (!dest) return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(c(4))) return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(c(5))) return;
         rows.push({
-          title,
-          destination,
-          dateStart,
-          dateEnd,
-          basePrice: parseInt0(cell(5)),
-          deposit: parseInt0(cell(6)),
-          capacity: parseInt0(cell(7), 10),
-          depositDeadline: depositDeadline && /^\d{4}-\d{2}-\d{2}$/.test(depositDeadline) ? depositDeadline : "",
-          finalDeadline: finalDeadline && /^\d{4}-\d{2}-\d{2}$/.test(finalDeadline) ? finalDeadline : "",
-          depositReminderDays: parseInt0(cell(10), 7),
-          finalReminderDays: parseInt0(cell(11), 30),
-          guideReminderDays: parseInt0(cell(12), 2),
-          diveSiteIds,
-          includes: cell(14).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
-          excludes: cell(15).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          title, subtitle: c(2) || null, destination: dest,
+          dateStart: c(4), dateEnd: c(5),
+          durationLabel: c(6) || null, roomLabel: c(7) || null,
+          diveStyles: c(8).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          beginnerFriendly: /^(是|true|yes|1|Y)$/i.test(c(9)),
+          tanksCount: pInt(c(10), 0) || null,
+          basePrice: pInt(c(11)), deposit: pInt(c(12)), capacity: pInt(c(13), 10),
+          diveSiteIds: c(14).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          siteList: c(14).split(/[,，、]/).map((s) => s.trim()).filter(Boolean).join("\n"),
+          includes: c(15).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          excludes: c(16).split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+          extraNote: c(17) || null,
         });
       });
-
-      if (rowIdx === 0) {
-        throw new Error("檔案內沒有資料");
-      }
-      if (rows.length === 0 && localErrors.length > 0) {
-        setImportResult({ total: 0, created: 0, errors: localErrors });
-        return;
-      }
-      if (rows.length === 0) {
-        throw new Error("沒有可匯入的資料（請至少填寫標題、出發日、結束日、目的地）");
-      }
-
-      const res = await adminFetch<{
-        ok: boolean; total: number; created: number;
-        errors: { row: number; title: string; message: string }[];
-      }>("/api/admin/tours/bulk-import", {
-        method: "POST",
-        body: JSON.stringify({ rows }),
-      });
-
-      setImportResult({
-        total: res.total + localErrors.length,
-        created: res.created,
-        errors: [...localErrors, ...res.errors],
-      });
+      if (!rows.length) throw new Error("檔內無有效資料");
+      const res = await adminFetch<{ ok: boolean; created: number }>(
+        "/api/admin/tours/bulk-import",
+        { method: "POST", body: JSON.stringify({ rows }) },
+      );
+      showToast(`已匯入 ${res.created ?? rows.length} 筆`);
       await load();
     } catch (er) {
-      setErr(er instanceof Error ? er.message : "Excel 匯入失敗");
+      showToast(er instanceof Error ? er.message : "匯入失敗", true);
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
-  async function cancelTour(t: Tour) {
-    if (!window.confirm(`取消「${t.title}」？`)) return;
-    try {
-      await adminFetch(`/api/admin/tours/${t.id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) });
-      await load();
-    } catch (e) { setErr(e instanceof Error ? e.message : "操作失敗"); }
-  }
-
-  async function deleteTour(t: Tour) {
-    if (!window.confirm(`永久刪除「${t.title}」？`)) return;
-    if (window.prompt('輸入 "DELETE" 確認') !== "DELETE") return;
-    try {
-      await adminFetch(`/api/admin/tours/${t.id}`, { method: "DELETE" });
-      await load();
-    } catch (e) { setErr(e instanceof Error ? e.message : "刪除失敗"); }
-  }
-
-  const visible = tours.filter(t => filter === "all" ? true : t.status === filter);
+  // 排序：未來 > 今日 > 過去
+  const visible = useMemo(() => {
+    const k = keyword.toLowerCase();
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    return tours
+      .filter((t) => (filter === "all" ? true : t.status === filter))
+      .filter((t) => {
+        if (destFilter === "all") return true;
+        if (destFilter === "overseas") return t.destination === "other";
+        return t.destination !== "other";
+      })
+      .filter((t) => !k || (t.title + (t.subtitle ?? "")).toLowerCase().includes(k))
+      .sort((a, b) => {
+        const da = new Date(a.dateStart).getTime();
+        const db = new Date(b.dateStart).getTime();
+        const af = da >= now.getTime(), bf = db >= now.getTime();
+        if (af && !bf) return -1;
+        if (!af && bf) return 1;
+        return af ? da - db : db - da;
+      });
+  }, [tours, filter, destFilter, keyword]);
 
   return (
-    <AdminShell>
-      <div className="space-y-4">
-        {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
-
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2">
-            {(["all", "open", "cancelled"] as const).map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={cn(
-                  "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                  filter === f
-                    ? "bg-[var(--color-ocean-deep)] text-white"
-                    : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-                )}>
-                {f === "all" ? "全部" : f === "open" ? "進行中" : "已取消"}
-              </button>
-            ))}
+    <AdminShell title="潛水團管理">
+      <div style={{ background: BG, minHeight: "calc(100vh - 80px)", margin: "-1rem", padding: 0 }}>
+        {/* topbar */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 16, padding: "16px 24px", borderBottom: `1px solid ${LINE}`,
+          background: "#fff", position: "sticky", top: 56, zIndex: 5,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: AQUA, boxShadow: `0 0 14px ${AQUA}` }} />
+            <h1 style={{ fontSize: 16, fontWeight: 900 }}>行程資料庫</h1>
+            <span style={{ fontFamily: "monospace", letterSpacing: ".22em", color: MUTED, fontSize: 12 }}>
+              {tours.length} TRIPS
+            </span>
           </div>
-          <div className="flex-1" />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={handleTourFileUpload}
-            className="hidden"
-          />
-          <Button size="sm" variant="outline" onClick={downloadTourTemplate} title="下載 Excel 範本（空白格式）">
-            <Download className="mr-1.5 h-4 w-4" />下載範本
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportToursExcel}
-            disabled={loading || tours.length === 0}
-            title="把目前所有潛水團匯出 Excel"
-          >
-            <FileSpreadsheet className="mr-1.5 h-4 w-4" />Excel 匯出
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-            <Upload className="mr-1.5 h-4 w-4" />
-            {importing ? "匯入中..." : "Excel 匯入"}
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1.5 h-4 w-4" />新增潛水團
-          </Button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleUpload} style={{ display: "none" }} />
+            <TopBtn onClick={downloadTemplate}>⬇ 範本</TopBtn>
+            <TopBtn onClick={exportExcel} disabled={!tours.length}>⬇ 匯出 Excel</TopBtn>
+            <TopBtn onClick={() => fileInputRef.current?.click()} disabled={importing}>
+              {importing ? "匯入中..." : "⬆ 匯入 Excel"}
+            </TopBtn>
+            <TopBtn primary onClick={newTrip}>＋ 新增行程</TopBtn>
+          </div>
         </div>
 
-        {/* 匯入結果回饋 */}
-        {importResult && (
-          <div className="rounded-lg border p-3 text-sm" style={{
-            borderColor: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.4)" : "rgba(251, 191, 36, 0.4)",
-            background: importResult.errors.length === 0 ? "rgba(74, 222, 128, 0.08)" : "rgba(251, 191, 36, 0.08)",
-          }}>
-            <div className="flex items-center gap-2 font-semibold mb-1.5">
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>匯入完成：</span>
-              <span className="text-green-700">新增 {importResult.created}</span>
-              {importResult.errors.length > 0 && (
-                <span className="text-amber-700">失敗 {importResult.errors.length}</span>
-              )}
-              <button
-                onClick={() => setImportResult(null)}
-                className="ml-auto text-xs text-[var(--muted-foreground)] hover:underline"
-              >
-                關閉
-              </button>
+        {err && (
+          <div style={{ margin: "12px 24px", padding: 12, borderRadius: 8, background: "#FFE9E3", color: CORAL, fontSize: 13 }}>
+            {err}
+          </div>
+        )}
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 460px",
+          gap: 0,
+          minHeight: "calc(100vh - 138px)",
+        }}>
+          {/* LEFT: list */}
+          <div style={{ borderRight: `1px solid ${LINE}`, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ padding: "16px 24px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700 }}>行程列表</h2>
+              <span style={{ fontFamily: "monospace", color: AQUA, fontSize: 20, fontWeight: 700 }}>
+                {visible.length}
+              </span>
             </div>
-            {importResult.errors.length > 0 && (
-              <div className="mt-2 space-y-0.5 max-h-32 overflow-y-auto text-xs">
-                {importResult.errors.map((er, i) => (
-                  <div key={i} className="text-amber-800">
-                    第 {er.row} 列（{er.title || "—"}）：{er.message}
+
+            {/* toolbar */}
+            <div style={{ display: "flex", gap: 8, padding: "0 24px 12px", flexWrap: "wrap" }}>
+              <Seg value={destFilter} onChange={setDestFilter} options={[
+                { v: "all", l: "全部" },
+                { v: "taiwan", l: "台灣離島" },
+                { v: "overseas", l: "海外潛旅" },
+              ]} />
+              <Seg value={filter} onChange={setFilter} options={[
+                { v: "all", l: "全狀態" },
+                { v: "open", l: "進行中" },
+                { v: "cancelled", l: "已取消" },
+              ]} />
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="搜尋行程名稱…"
+                  style={{
+                    width: "100%", background: "#fff", border: `1px solid ${LINE}`,
+                    borderRadius: 8, padding: "7px 12px", fontSize: 13,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* table */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 16px 20px" }}>
+              {loading ? (
+                <div style={{ padding: 40, textAlign: "center", color: MUTED2, fontSize: 13 }}>載入中...</div>
+              ) : visible.length === 0 ? (
+                <div style={{ padding: 40, textAlign: "center", color: MUTED2, fontSize: 13 }}>無符合資料</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      {["行程", "日期 / 支數", "價格", ""].map((h) => (
+                        <th key={h} style={{
+                          position: "sticky", top: 0, background: BG, textAlign: "left",
+                          fontSize: 11, letterSpacing: ".06em", color: MUTED2, textTransform: "uppercase",
+                          padding: 8, fontWeight: 700,
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((t) => (
+                      <tr
+                        key={t.id}
+                        onClick={() => loadTour(t)}
+                        style={{
+                          cursor: "pointer",
+                          borderBottom: `1px solid ${LINE}`,
+                          background: t.id === editingId ? "rgba(14,158,145,.08)" : "transparent",
+                          boxShadow: t.id === editingId ? `inset 3px 0 0 ${AQUA}` : "none",
+                          opacity: t.status === "cancelled" ? 0.5 : 1,
+                        }}
+                      >
+                        <td style={{ padding: "11px 8px", verticalAlign: "top" }}>
+                          <div style={{ fontWeight: 700, fontSize: 13.5 }}>
+                            {t.title}
+                            {t.subtitle && <span style={{ color: MUTED, fontWeight: 400, fontSize: 12, marginLeft: 4 }}>{t.subtitle}</span>}
+                          </div>
+                          <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
+                            <MiniBadge color={t.destination === "other" ? "ov" : "tw"}>
+                              {t.destination === "other" ? "海外" : "台灣"}
+                            </MiniBadge>
+                            {t.code && (
+                              <span style={{
+                                fontFamily: "monospace", fontSize: 10, padding: "2px 6px",
+                                borderRadius: 4, background: "#F4F6F8", color: MUTED,
+                              }}>{t.code}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: "11px 8px", verticalAlign: "top" }}>
+                          <div style={{ fontSize: 11, color: MUTED2 }}>{t.dateStart.split("T")[0]}</div>
+                          <div style={{ fontSize: 11, color: MUTED2 }}>
+                            {t.durationLabel ?? `${Math.round((+new Date(t.dateEnd) - +new Date(t.dateStart)) / 86400000) + 1}天`}
+                            {t.tanksCount != null && t.tanksCount > 0 && ` · ${t.tanksCount}支`}
+                          </div>
+                        </td>
+                        <td style={{ padding: "11px 8px", verticalAlign: "top" }}>
+                          <span style={{
+                            fontFamily: "monospace", fontSize: 17, fontWeight: 700,
+                            color: t.destination === "other" ? CORAL : AQUA,
+                          }}>
+                            {t.basePrice.toLocaleString()}
+                          </span>
+                        </td>
+                        <td style={{ padding: "11px 8px", verticalAlign: "top" }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: "flex", gap: 5 }}>
+                            <Mini onClick={() => dupTour(t)} title="複製"><Copy size={12} /></Mini>
+                            {t.status === "open" && (
+                              <Mini onClick={() => cancelTour(t)} title="取消" color="#D88E1E"><Ban size={12} /></Mini>
+                            )}
+                            <Mini onClick={() => deleteTour(t)} title="刪除" color={CORAL}><Trash2 size={12} /></Mini>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT: form */}
+          <div className="form-col" style={{ background: "#fff", overflowY: "auto", minHeight: 0, position: "relative" }}>
+            <div style={{
+              padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between",
+              position: "sticky", top: 0, background: "#fff", zIndex: 5, borderBottom: `1px solid ${LINE}`,
+            }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700 }}>
+                {editingId ? "編輯行程" : "新增行程"}
+              </h2>
+              <span style={{ fontSize: 12, color: AQUA, fontFamily: "monospace", letterSpacing: ".14em" }}>
+                {editingId ? "EDIT" : "NEW"}
+              </span>
+            </div>
+
+            <div style={{ padding: "8px 24px 90px" }}>
+              <FieldSet title="基本資料">
+                <Field label="行程名稱" required>
+                  <input
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="蘭嶼四天三夜潛旅"
+                    style={inputStyle}
+                  />
+                </Field>
+                <Row2>
+                  <Field label="副標 / 團別">
+                    <input value={form.subtitle} onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
+                      placeholder="端午團" style={inputStyle} />
+                  </Field>
+                  <Field label="目的地" required>
+                    <select value={form.destination}
+                      onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value as Dest }))}
+                      style={inputStyle}>
+                      {(Object.keys(DEST_LABELS) as Dest[]).map((d) => (
+                        <option key={d} value={d}>{DEST_LABELS[d]}{d === "other" && "（海外）"}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </Row2>
+                <Row3>
+                  <Field label="出發日"><input type="date" value={form.dateStart}
+                    onChange={(e) => setForm((f) => ({ ...f, dateStart: e.target.value }))} style={inputStyle} /></Field>
+                  <Field label="結束日"><input type="date" value={form.dateEnd}
+                    onChange={(e) => setForm((f) => ({ ...f, dateEnd: e.target.value }))} style={inputStyle} /></Field>
+                  <Field label="天數標籤"><input value={form.durationLabel}
+                    onChange={(e) => setForm((f) => ({ ...f, durationLabel: e.target.value }))}
+                    placeholder="4天3夜" style={inputStyle} /></Field>
+                </Row3>
+                <Field label="住宿">
+                  <input value={form.roomLabel} onChange={(e) => setForm((f) => ({ ...f, roomLabel: e.target.value }))}
+                    placeholder="四人房套房" style={inputStyle} />
+                </Field>
+              </FieldSet>
+
+              <FieldSet title="潛水資訊">
+                <Field label="潛水型態">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {ALL_STYLES.map((s) => {
+                      const on = form.diveStyles.includes(s);
+                      return (
+                        <label key={s}
+                          onClick={() => toggleStyle(s)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            border: `1px solid ${on ? CORAL : LINE}`,
+                            padding: "6px 12px", borderRadius: 8, cursor: "pointer",
+                            fontSize: 13, userSelect: "none",
+                            background: on ? "rgba(242,96,60,.12)" : "transparent",
+                            color: on ? CORAL : "#1B2733",
+                          }}>
+                          {s}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </Field>
+                <Row2>
+                  <Field label="潛水支數"><input type="number" value={form.tanksCount}
+                    onChange={(e) => setForm((f) => ({ ...f, tanksCount: parseInt(e.target.value) || 0 }))}
+                    placeholder="10" style={inputStyle} /></Field>
+                  <Field label="　">
+                    <label
+                      onClick={() => setForm((f) => ({ ...f, beginnerFriendly: !f.beginnerFriendly }))}
+                      style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                      <span style={{
+                        width: 42, height: 24, borderRadius: 99, position: "relative",
+                        background: form.beginnerFriendly ? AQUA : LINE2,
+                        transition: "background .2s", flexShrink: 0,
+                      }}>
+                        <span style={{
+                          position: "absolute", top: 3, left: 3,
+                          width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                          transform: form.beginnerFriendly ? "translateX(18px)" : "translateX(0)",
+                          transition: "transform .2s",
+                        }} />
+                      </span>
+                      <span style={{ fontSize: 13 }}>新手可參加</span>
+                    </label>
+                  </Field>
+                </Row2>
+                <Field label="潛點（每行一個）">
+                  <textarea value={form.siteList}
+                    onChange={(e) => setForm((f) => ({ ...f, siteList: e.target.value }))}
+                    placeholder="八代灣沉船&#10;機場外礁&#10;椰油大斷層"
+                    style={{ ...inputStyle, minHeight: 80, fontFamily: "inherit", resize: "vertical" }} />
+                </Field>
+              </FieldSet>
+
+              <FieldSet title="費用">
+                <Row2>
+                  <Field label="團費 NT$" required><input type="number" value={form.basePrice}
+                    onChange={(e) => setForm((f) => ({ ...f, basePrice: parseInt(e.target.value) || 0 }))}
+                    style={inputStyle} /></Field>
+                  <Field label="訂金 NT$"><input type="number" value={form.deposit}
+                    onChange={(e) => setForm((f) => ({ ...f, deposit: parseInt(e.target.value) || 0 }))}
+                    style={inputStyle} /></Field>
+                </Row2>
+                <Row2>
+                  <Field label="人數上限（0=∞）"><input type="number" value={form.capacity}
+                    onChange={(e) => setForm((f) => ({ ...f, capacity: parseInt(e.target.value) || 0 }))}
+                    style={inputStyle} /></Field>
+                  <Field label="訂金截止日"><input type="date" value={form.depositDeadline}
+                    onChange={(e) => setForm((f) => ({ ...f, depositDeadline: e.target.value }))}
+                    style={inputStyle} /></Field>
+                </Row2>
+                <Row3>
+                  <Field label="尾款截止日"><input type="date" value={form.finalDeadline}
+                    onChange={(e) => setForm((f) => ({ ...f, finalDeadline: e.target.value }))}
+                    style={inputStyle} /></Field>
+                  <Field label="訂金前 N 天提醒"><input type="number" value={form.depositReminderDays}
+                    onChange={(e) => setForm((f) => ({ ...f, depositReminderDays: parseInt(e.target.value) || 0 }))}
+                    style={inputStyle} /></Field>
+                  <Field label="尾款前 N 天提醒"><input type="number" value={form.finalReminderDays}
+                    onChange={(e) => setForm((f) => ({ ...f, finalReminderDays: parseInt(e.target.value) || 0 }))}
+                    style={inputStyle} /></Field>
+                </Row3>
+                <Field label="早鳥 / 加價 / 優惠（每行一條）">
+                  <textarea value={form.pricingNotes}
+                    onChange={(e) => setForm((f) => ({ ...f, pricingNotes: e.target.value }))}
+                    placeholder="雙人房：+300/人/晚&#10;自備水推：折3,500&#10;4月底前報名折1,000"
+                    style={{ ...inputStyle, minHeight: 70, fontFamily: "inherit", resize: "vertical" }} />
+                </Field>
+              </FieldSet>
+
+              <FieldSet title="費用包含 / 不包含">
+                <Row2>
+                  <Field label="費用包含（每行一項）">
+                    <textarea value={form.includes}
+                      onChange={(e) => setForm((f) => ({ ...f, includes: e.target.value }))}
+                      placeholder="氣瓶&#10;住宿&#10;早餐"
+                      style={{ ...inputStyle, minHeight: 90, fontFamily: "inherit", resize: "vertical" }} />
+                  </Field>
+                  <Field label="費用不包含（每行一項）">
+                    <textarea value={form.excludes}
+                      onChange={(e) => setForm((f) => ({ ...f, excludes: e.target.value }))}
+                      placeholder="國際機票&#10;簽證&#10;裝備租借"
+                      style={{ ...inputStyle, minHeight: 90, fontFamily: "inherit", resize: "vertical" }} />
+                  </Field>
+                </Row2>
+              </FieldSet>
+
+              <FieldSet title="行程內容">
+                {form.itinerary.map((d, i) => (
+                  <div key={i} style={{
+                    border: `1px solid ${LINE}`, borderRadius: 10, padding: 12,
+                    marginBottom: 10, background: BG,
+                  }}>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                      <input value={d.t} onChange={(e) => updateDay(i, "t", e.target.value)}
+                        placeholder="Day 1" style={{ ...inputStyle, flex: 1 }} />
+                      <button onClick={() => removeDay(i)}
+                        style={{ ...miniStyle, width: 34, color: CORAL, borderColor: LINE }}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                    <textarea value={d.c} onChange={(e) => updateDay(i, "c", e.target.value)}
+                      placeholder="09:00 搭船...&#10;13:00 下水兩支"
+                      style={{ ...inputStyle, minHeight: 60, fontFamily: "inherit", resize: "vertical" }} />
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
+                <button onClick={addDay} style={{
+                  width: "100%", border: `1px dashed ${LINE2}`, background: "transparent",
+                  color: MUTED, padding: 10, borderRadius: 9, cursor: "pointer", fontSize: 13,
+                }}>＋ 新增一天</button>
+              </FieldSet>
 
-        {loading ? (
-          <div className="flex h-40 items-center justify-center text-sm text-[var(--muted-foreground)]">載入中...</div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
-                  {["編號", "主題", "目的地", "出發日", "結束日", "定價", "訂金", "已報名/可接受", "狀態", "操作"].map(h => (
-                    <th key={h} className="px-4 py-3 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((t, i) => (
-                  <tr key={t.id} className={cn("border-t", i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20")} style={{ opacity: t.status === "cancelled" ? 0.5 : 1 }}>
-                    <td className="px-4 py-3">
-                      {t.code ? (
-                        <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
-                          {t.code}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-[var(--muted-foreground)]">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-semibold max-w-[180px]" style={{ color: "var(--foreground)" }}>{t.title}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{DEST_LABELS[t.destination]}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{t.dateStart.split("T")[0]}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{t.dateEnd.split("T")[0]}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">NT$ {t.basePrice.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">NT$ {t.deposit.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{t._count?.bookings ?? 0} / {t.capacity ?? "∞"}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={t.status === "open" ? "ocean" : "muted"}>{t.status === "open" ? "進行中" : "已取消"}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button onClick={() => openEdit(t)} className="rounded p-1.5 hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯"><Edit3 className="h-3.5 w-3.5" /></button>
-                        {t.status === "open" && (
-                          <button onClick={() => cancelTour(t)}
-                            className="rounded p-1.5 hover:bg-amber-50 text-amber-600"
-                            title="取消潛水團（保留資料）"><Ban className="h-3.5 w-3.5" /></button>
-                        )}
-                        <button onClick={() => deleteTour(t)}
-                          className="rounded p-1.5 hover:bg-[var(--color-coral)]/10"
-                          style={{ color: "var(--color-coral)" }}
-                          title="永久刪除（不可復原）"><Trash2 className="h-3.5 w-3.5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {visible.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">沒有潛水團資料</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <Dialog open={dialogMode !== null} onOpenChange={open => { if (!open) setDialogMode(null); }}>
-          <DialogContent style={{ background: "var(--color-ocean-deep)", border: "1px solid rgba(255,255,255,0.15)", color: "#e6f0ff", maxWidth: "560px", maxHeight: "85vh", overflowY: "auto" }}>
-            <DialogHeader>
-              <DialogTitle style={{ color: "var(--color-phosphor)" }}>{dialogMode === "create" ? "新增潛水團" : "編輯潛水團"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 pt-2">
-              {[
-                { label: "主題名稱", field: "title" as const, type: "text" },
-              ].map(({ label, field, type }) => (
-                <div key={field} className="grid grid-cols-[8rem_1fr] items-center gap-3">
-                  <Label style={labelStyle}>{label}</Label>
-                  <Input type={type} className={inputCls} value={String(form[field])} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} autoFocus={field === "title"} />
-                </div>
-              ))}
-              <div className="grid grid-cols-[8rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>目的地</Label>
-                <select value={form.destination} onChange={e => setForm(f => ({ ...f, destination: e.target.value as Dest }))}
-                  className="rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.2)", color: "#e6f0ff" }}>
-                  {(Object.keys(DEST_LABELS) as Dest[]).map(d => <option key={d} value={d} style={{ background: "#0a1628" }}>{DEST_LABELS[d]}</option>)}
-                </select>
-              </div>
-              {[
-                { label: "出發日期", field: "dateStart" as const },
-                { label: "結束日期", field: "dateEnd" as const },
-              ].map(({ label, field }) => (
-                <div key={field} className="grid grid-cols-[8rem_1fr] items-center gap-3">
-                  <Label style={labelStyle}>{label}</Label>
-                  <Input type="date" className={inputCls} value={String(form[field])} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} />
-                </div>
-              ))}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="mb-1 block text-xs" style={{ color: "rgba(230,240,255,0.5)" }}>定價 (NT$)</Label>
-                  <Input type="number" className={inputCls} value={form.basePrice} onChange={e => setForm(f => ({ ...f, basePrice: parseInt(e.target.value) || 0 }))} />
-                </div>
-                <div>
-                  <Label className="mb-1 block text-xs" style={{ color: "rgba(230,240,255,0.5)" }}>訂金 (NT$)</Label>
-                  <Input type="number" className={inputCls} value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: parseInt(e.target.value) || 0 }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-[8rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>容量</Label>
-                <Input type="number" className={inputCls} value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: parseInt(e.target.value) || 0 }))} />
-              </div>
-              {[
-                { label: "訂金截止日", field: "depositDeadline" as const },
-                { label: "全款截止日", field: "finalDeadline" as const },
-              ].map(({ label, field }) => (
-                <div key={field} className="grid grid-cols-[8rem_1fr] items-center gap-3">
-                  <Label style={labelStyle}>{label}</Label>
-                  <Input type="date" className={inputCls} value={String(form[field])} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} />
-                </div>
-              ))}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => setDialogMode(null)} style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(230,240,255,0.7)" }}>取消</Button>
-                <Button size="sm" onClick={save} disabled={saving || !form.title.trim()}>{saving ? "儲存中..." : "儲存"}</Button>
-              </div>
+              <FieldSet title="備註">
+                <Field label="">
+                  <textarea value={form.extraNote}
+                    onChange={(e) => setForm((f) => ({ ...f, extraNote: e.target.value }))}
+                    placeholder="新手可參加；潛點視海況安排；船票教練代訂..."
+                    style={{ ...inputStyle, minHeight: 80, fontFamily: "inherit", resize: "vertical" }} />
+                </Field>
+              </FieldSet>
             </div>
-          </DialogContent>
-        </Dialog>
+
+            {/* sticky save */}
+            <div style={{
+              position: "sticky", bottom: 0, background: "#fff",
+              borderTop: `1px solid ${LINE}`, padding: "14px 24px",
+              display: "flex", gap: 10,
+            }}>
+              <button onClick={() => (editingId ? loadTour(tours.find((x) => x.id === editingId)!) : newTrip())}
+                style={{
+                  border: `1px solid ${LINE2}`, background: "transparent", color: MUTED,
+                  fontSize: 13, padding: "10px 16px", borderRadius: 9, cursor: "pointer",
+                }}>
+                {editingId ? "重置" : "清空"}
+              </button>
+              <button onClick={save} disabled={saving}
+                style={{
+                  flex: 1, border: "none",
+                  background: `linear-gradient(135deg,${AQUA},${AQUA_DIM})`,
+                  color: "#fff", fontWeight: 700, fontSize: 14,
+                  padding: 12, borderRadius: 10, cursor: saving ? "wait" : "pointer",
+                }}>
+                {saving ? "儲存中..." : "儲存行程"}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: "#fff", border: `1px solid ${toast.err ? CORAL : AQUA}`,
+          borderRadius: 10, padding: "13px 22px", fontSize: 13.5, zIndex: 60,
+          color: toast.err ? CORAL : "#1B2733",
+          boxShadow: "0 16px 40px -12px rgba(0,0,0,.3)",
+        }}>
+          {toast.msg}
+        </div>
+      )}
     </AdminShell>
   );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%", background: BG, border: `1px solid ${LINE}`,
+  borderRadius: 8, padding: "9px 11px", color: "#1B2733",
+  fontFamily: "inherit", fontSize: 13.5, outline: "none",
+};
+
+const miniStyle: React.CSSProperties = {
+  width: 26, height: 26, border: `1px solid ${LINE}`,
+  background: "transparent", borderRadius: 6, cursor: "pointer",
+  color: MUTED, fontSize: 12,
+  display: "flex", alignItems: "center", justifyContent: "center",
+};
+
+function TopBtn({
+  children, onClick, disabled, primary,
+}: { children: React.ReactNode; onClick: () => void; disabled?: boolean; primary?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{
+        border: `1px solid ${primary ? AQUA : LINE2}`,
+        background: primary ? AQUA : "transparent",
+        color: primary ? "#fff" : "#1B2733",
+        fontSize: 13, fontWeight: 500, padding: "8px 16px",
+        borderRadius: 9, cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function Seg<T extends string>({
+  value, onChange, options,
+}: { value: T; onChange: (v: T) => void; options: { v: T; l: string }[] }) {
+  return (
+    <div style={{ display: "flex", border: `1px solid ${LINE}`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+      {options.map((o) => (
+        <button key={o.v} onClick={() => onChange(o.v)}
+          style={{
+            border: "none", background: value === o.v ? AQUA : "transparent",
+            color: value === o.v ? "#fff" : MUTED, fontSize: 12, padding: "6px 13px", cursor: "pointer",
+          }}>
+          {o.l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Mini({
+  children, onClick, color, title,
+}: { children: React.ReactNode; onClick: () => void; color?: string; title?: string }) {
+  return (
+    <button onClick={onClick} title={title}
+      style={{
+        ...miniStyle,
+        color: color ?? MUTED,
+        borderColor: color ?? LINE,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+function MiniBadge({ color, children }: { color: "tw" | "ov"; children: React.ReactNode }) {
+  const map = {
+    tw: { bg: "rgba(14,158,145,.13)", color: AQUA },
+    ov: { bg: "rgba(242,96,60,.13)", color: CORAL },
+  };
+  const c = map[color];
+  return (
+    <span style={{
+      display: "inline-block", fontSize: 10.5, fontWeight: 700,
+      padding: "2px 7px", borderRadius: 5,
+      background: c.bg, color: c.color,
+    }}>
+      {children}
+    </span>
+  );
+}
+
+function FieldSet({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset style={{ border: "none", margin: "22px 0 0" }}>
+      <legend style={{
+        fontSize: 12, fontWeight: 700, color: AQUA,
+        letterSpacing: ".1em", textTransform: "uppercase",
+        display: "flex", alignItems: "center", gap: 8,
+        width: "100%", marginBottom: 14,
+      }}>
+        {title}
+        <span style={{ flex: 1, height: 1, background: LINE }} />
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function Field({
+  label, required, children,
+}: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {label && (
+        <label style={{ display: "block", fontSize: 12, color: MUTED, marginBottom: 5, fontWeight: 500 }}>
+          {label}
+          {required && <span style={{ color: CORAL }}> *</span>}
+        </label>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Row2({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>{children}</div>;
+}
+function Row3({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>{children}</div>;
 }

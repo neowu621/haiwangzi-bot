@@ -287,6 +287,16 @@ model TourPackage {
   images                String[]   @default([])
   youtubeUrl            String?    @map("youtube_url")
   status                TripStatus @default(open)
+  // v186：新增「潛水團行銷頁」用的欄位（對應 mockup）
+  subtitle              String?    // 副標 / 團別（端午團、中秋團、海之星）
+  durationLabel         String?    @map("duration_label")   // "4天3夜"
+  roomLabel             String?    @map("room_label")       // "四人房套房"
+  diveStyles            String[]   @default([]) @map("dive_styles")  // ["水推","岸潛","船潛","夜潛","沉船潛水"]
+  beginnerFriendly      Boolean    @default(false) @map("beginner_friendly")
+  tanksCount            Int?       @map("tanks_count")      // 總潛水支數
+  siteList              String?    @map("site_list")        // 潛點清單（每行一個）
+  pricingNotes          String?    @map("pricing_notes")    // 早鳥/加價說明
+  extraNote             String?    @map("extra_note")       // 自由備註
   // 提醒天數設定（開團時可調）
   // 規則：訂金確認後 7 天內付款保留名額；尾款出發前 30 天繳清；行前 2 天再次通知
   depositReminderDays   Int        @default(7) @map("deposit_reminder_days")  // 訂金截止前 N 天推

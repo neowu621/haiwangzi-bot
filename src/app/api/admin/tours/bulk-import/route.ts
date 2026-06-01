@@ -25,6 +25,15 @@ const RowSchema = z.object({
   diveSiteIds: z.array(z.string()).default([]),
   includes: z.array(z.string()).default([]),
   excludes: z.array(z.string()).default([]),
+  // v186 行銷欄位（選填）
+  subtitle: z.string().nullable().optional(),
+  durationLabel: z.string().nullable().optional(),
+  roomLabel: z.string().nullable().optional(),
+  diveStyles: z.array(z.string()).default([]),
+  beginnerFriendly: z.boolean().default(false),
+  tanksCount: z.number().int().min(0).nullable().optional(),
+  siteList: z.string().nullable().optional(),
+  extraNote: z.string().nullable().optional(),
 });
 
 const BodySchema = z.object({
@@ -78,6 +87,14 @@ export async function POST(req: NextRequest) {
           addons: [] as never,
           images: [],
           status: "open",
+          subtitle: r.subtitle ?? null,
+          durationLabel: r.durationLabel ?? null,
+          roomLabel: r.roomLabel ?? null,
+          diveStyles: r.diveStyles,
+          beginnerFriendly: r.beginnerFriendly,
+          tanksCount: r.tanksCount ?? null,
+          siteList: r.siteList ?? null,
+          extraNote: r.extraNote ?? null,
         },
       });
       created++;
