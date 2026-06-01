@@ -16,11 +16,17 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const filterUserId = url.searchParams.get("userId") ?? undefined;
+    const filterRefId = url.searchParams.get("refId") ?? undefined; // v183: 按場次 ID 過濾
+
+    const where: Parameters<typeof prisma.booking.findMany>[0]["where"] =
+      filterUserId ? { userId: filterUserId }
+      : filterRefId ? { refId: filterRefId }
+      : {};
 
     const bookings = await prisma.booking.findMany({
-      where: filterUserId ? { userId: filterUserId } : {},
+      where,
       orderBy: { createdAt: "desc" },
-      take: filterUserId ? 500 : 200,
+      take: filterUserId || filterRefId ? 500 : 200,
       include: { user: { select: { displayName: true, realName: true, phone: true } } },
     });
 

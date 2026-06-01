@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet } from "lucide-react";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
 import ExcelJS from "exceljs";
 
@@ -101,6 +101,46 @@ function isPastTrip(trip: Trip): boolean {
   return trip.date.slice(0, 10) < taipeiToday();
 }
 
+// v183：展開查看訂單用的型別
+interface AdminBookingMini {
+  id: string;
+  code?: string | null;
+  participants: number;
+  totalAmount: number;
+  paidAmount: number;
+  status: string;
+  paymentStatus: string;
+  paymentMethod?: string;
+  user: { displayName: string; realName: string | null; phone: string | null };
+}
+interface TripBookingRow {
+  id: string;
+  code?: string | null;
+  userName: string;
+  phone: string | null;
+  participants: number;
+  totalAmount: number;
+  paidAmount: number;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+}
+const PAY_STATUS_LABEL: Record<string, string> = {
+  pending: "待付款",
+  deposit_paid: "已付訂金",
+  fully_paid: "已付清",
+  refunding: "退款中",
+  refunded: "已退款",
+};
+const BOOK_STATUS_LABEL: Record<string, string> = {
+  pending: "待確認",
+  confirmed: "已確認",
+  cancelled_by_user: "客戶取消",
+  cancelled_by_weather: "天候取消",
+  completed: "已完成",
+  no_show: "未到",
+};
+
 /** 取得 YYYY-MM-DD 對應的星期顯示，例如 「(週一)」「(週日)」 */
 function weekdayLabel(dateStr: string): string {
   // 用 T12:00:00+08:00 避免 UTC 偏移把日期推到前一天
@@ -164,6 +204,40 @@ export default function AdminTripsPage() {
   const [form, setForm] = useState<TripForm>({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
   const [defaultPricing, setDefaultPricing] = useState<Pricing>(BLANK_PRICING_DEFAULT);
+
+  // v183：展開查看訂單
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
+  const [tripBookings, setTripBookings] = useState<Record<string, TripBookingRow[] | "loading" | "error">>({});
+
+  async function toggleExpand(tripId: string) {
+    if (expandedTripId === tripId) {
+      setExpandedTripId(null);
+      return;
+    }
+    setExpandedTripId(tripId);
+    if (tripBookings[tripId] && tripBookings[tripId] !== "error") return;
+    setTripBookings((m) => ({ ...m, [tripId]: "loading" }));
+    try {
+      const r = await adminFetch<{ bookings: AdminBookingMini[] }>(
+        `/api/admin/bookings?refId=${tripId}`,
+      );
+      const rows: TripBookingRow[] = r.bookings.map((b) => ({
+        id: b.id,
+        code: b.code,
+        userName: b.user.realName ?? b.user.displayName,
+        phone: b.user.phone,
+        participants: b.participants,
+        totalAmount: b.totalAmount,
+        paidAmount: b.paidAmount,
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        paymentMethod: b.paymentMethod ?? "",
+      }));
+      setTripBookings((m) => ({ ...m, [tripId]: rows }));
+    } catch {
+      setTripBookings((m) => ({ ...m, [tripId]: "error" }));
+    }
+  }
 
   // Excel 匯入相關
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -881,9 +955,11 @@ export default function AdminTripsPage() {
                 <tbody>
                   {pagedTrips.map((trip, i) => {
                     const [effStatus, isAuto] = effectiveTripStatus(trip);
+                    const isExpanded = expandedTripId === trip.id;
+                    const tripBks = tripBookings[trip.id];
                     return (
+                      <React.Fragment key={trip.id}>
                       <tr
-                        key={trip.id}
                         className={cn(
                           "border-t",
                           trip.status === "cancelled" && "opacity-50",
@@ -895,9 +971,17 @@ export default function AdminTripsPage() {
                             : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
                         }}
                       >
-                        {/* 狀態 — 移到最左邊 */}
+                        {/* 狀態 + 展開鈕 */}
                         <td className="px-3 py-1.5 whitespace-nowrap">
                           <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(trip.id)}
+                              className="rounded p-0.5 hover:bg-slate-200 text-slate-500"
+                              title={isExpanded ? "收起訂單" : "查看訂單"}
+                            >
+                              {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                            </button>
                             <Badge variant={statusVariant(effStatus)} className="text-[10px]">
                               {TRIP_STATUS_LABEL[effStatus] ?? effStatus}
                             </Badge>
@@ -991,6 +1075,78 @@ export default function AdminTripsPage() {
                           </div>
                         </td>
                       </tr>
+                      {/* v183: 展開訂單明細 */}
+                      {isExpanded && (
+                        <tr style={{ background: "#eaf3ff", borderTop: "1px solid #c0d8f0" }}>
+                          <td colSpan={9} className="p-0">
+                            {tripBks === "loading" ? (
+                              <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">載入訂單中...</div>
+                            ) : tripBks === "error" ? (
+                              <div className="py-4 text-center text-xs text-rose-600">訂單載入失敗</div>
+                            ) : !tripBks || tripBks.length === 0 ? (
+                              <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">此場次目前沒有訂單</div>
+                            ) : (
+                              <div className="overflow-x-auto px-3 py-2">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="text-left" style={{ color: "#2a5580" }}>
+                                      <th className="px-2 py-1.5 font-semibold">訂單編號</th>
+                                      <th className="px-2 py-1.5 font-semibold">姓名</th>
+                                      <th className="px-2 py-1.5 font-semibold">電話</th>
+                                      <th className="px-2 py-1.5 font-semibold text-right">人數</th>
+                                      <th className="px-2 py-1.5 font-semibold text-right">氣瓶</th>
+                                      <th className="px-2 py-1.5 font-semibold text-right">已付/總額</th>
+                                      <th className="px-2 py-1.5 font-semibold">付款</th>
+                                      <th className="px-2 py-1.5 font-semibold">方式</th>
+                                      <th className="px-2 py-1.5 font-semibold">訂單狀態</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {tripBks.map((b, j) => (
+                                      <tr
+                                        key={b.id}
+                                        style={{
+                                          background: j % 2 === 0 ? "transparent" : "rgba(255,255,255,0.4)",
+                                          borderTop: "1px solid rgba(192,216,240,0.5)",
+                                        }}
+                                      >
+                                        <td className="px-2 py-1 whitespace-nowrap">
+                                          {b.code ? (
+                                            <span className="inline-block rounded bg-teal-50 px-1 py-0.5 font-mono text-[10px] text-teal-800">{b.code}</span>
+                                          ) : "—"}
+                                        </td>
+                                        <td className="px-2 py-1 font-semibold whitespace-nowrap" style={{ color: "#1a4a70" }}>{b.userName}</td>
+                                        <td className="px-2 py-1 tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">{b.phone ?? "—"}</td>
+                                        <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">×{b.participants}</td>
+                                        <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">
+                                          {trip.tankCount != null ? `${b.participants * trip.tankCount} 支` : "—"}
+                                        </td>
+                                        <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">
+                                          {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
+                                        </td>
+                                        <td className="px-2 py-1 whitespace-nowrap">
+                                          <Badge variant="muted" className="text-[9px]">
+                                            {PAY_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
+                                          </Badge>
+                                        </td>
+                                        <td className="px-2 py-1 text-[var(--muted-foreground)] text-[10px] whitespace-nowrap">
+                                          {b.paymentMethod === "cash" ? "現場" : b.paymentMethod === "bank" ? "轉帳" : b.paymentMethod === "linepay" ? "LINE Pay" : b.paymentMethod === "other" ? "其他" : "—"}
+                                        </td>
+                                        <td className="px-2 py-1 whitespace-nowrap">
+                                          <Badge variant="muted" className="text-[9px]">
+                                            {BOOK_STATUS_LABEL[b.status] ?? b.status}
+                                          </Badge>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                   {pagedTrips.length === 0 && (

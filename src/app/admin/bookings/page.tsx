@@ -42,39 +42,7 @@ interface AdminBooking {
   };
 }
 
-interface ByTripBooking {
-  id: string;
-  code?: string | null;
-  userName: string;
-  phone: string | null;
-  participants: number;
-  totalAmount: number;
-  paidAmount: number;
-  paymentStatus: string;
-  paymentMethod: string;
-  status: string;
-  notes?: string | null;
-  siteNotes?: string | null;
-  adminNotes?: string | null;
-}
-
-interface ByTripGroup {
-  kind: "daily" | "tour";
-  id: string;
-  title: string;
-  sites?: string[];
-  tankCount?: number;
-  dateStart?: string;
-  dateEnd?: string;
-  capacity: number | null;
-  status: string;
-  bookingCount: number;
-  participantSum: number;
-  tankSum?: number;
-  paidSum: number;
-  totalSum: number;
-  bookings: ByTripBooking[];
-}
+// v183: ByTripBooking / ByTripGroup 型別已移除（依場次視圖搬到 /admin/trips）
 
 // ── Helpers ──────────────────────────────────────────────────
 function isPastDate(dateStr?: string) {
@@ -124,20 +92,25 @@ export default function AdminBookingsPage() {
   const { adminUser } = useAdminAuth();
   const isAdminOrBoss = adminUser?.effectiveRoles.some((r) => r === "admin" || r === "boss") ?? false;
 
-  const [tab, setTab] = useState<"by-trip" | "all">("by-trip");
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
-  const [byTrip, setByTrip] = useState<{
-    daily: ByTripGroup[];
-    tour: ByTripGroup[];
-  }>({ daily: [], tour: [] });
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   const [saving, setSaving] = useState(false);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
-  const [filterExpiry, setFilterExpiry] = useState<"upcoming" | "past" | "all">("upcoming");
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
+  // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
+  type SortKey = "date" | "code" | "amount" | "paid" | "status" | "payment";
+  const [filterRange, setFilterRange] = useState<"today" | "tomorrow" | "week" | "month" | "all">("week");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir("asc"); }
+    setPage(1);
+  }
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
   const [refundMethod, setRefundMethod] = useState<"cash" | "credit">("credit");
@@ -292,29 +265,12 @@ export default function AdminBookingsPage() {
   }
 
   useEffect(() => {
-    Promise.all([
-      adminFetch<{ bookings: AdminBooking[] }>("/api/admin/bookings"),
-      adminFetch<{ daily: ByTripGroup[]; tour: ByTripGroup[] }>(
-        "/api/admin/bookings/by-trip",
-      ).catch(() => ({ daily: [], tour: [] })),
-    ])
-      .then(([b, g]) => {
-        setBookings(b.bookings);
-        setByTrip(g);
-      })
+    // v183：只載 /api/admin/bookings；by-trip 改放在 /admin/trips 展開
+    adminFetch<{ bookings: AdminBooking[] }>("/api/admin/bookings")
+      .then((b) => setBookings(b.bookings))
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
   }, []);
-
-  const allGroups = [...byTrip.daily, ...byTrip.tour];
-
-  // 依場次 filter by date
-  const filteredGroups = allGroups.filter((g) => {
-    if (filterExpiry === "all") return true;
-    const dateStr = g.dateStart ?? g.dateEnd ?? "";
-    const past = isPastDate(dateStr);
-    return filterExpiry === "past" ? past : !past;
-  });
 
   // 全部訂單: build unique trip keys for filter
   const tripKeyOptions: { key: string; label: string }[] = [{ key: "all", label: "全部" }];
@@ -334,9 +290,29 @@ export default function AdminBookingsPage() {
     }
   }
 
+  // v183：日期區間 filter（今天/明天/一週/一個月/全部）
+  function isInRange(dateStr?: string): boolean {
+    if (filterRange === "all") return true;
+    if (!dateStr) return true;
+    const d = dateStr.slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const t = new Date(today + "T00:00:00+08:00");
+    const tomorrow = new Date(t); tomorrow.setDate(t.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    if (filterRange === "today") return d === today;
+    if (filterRange === "tomorrow") return d === tomorrowStr;
+    // week / month：今天起 N 天內（含今天）
+    const cutoff = new Date(t);
+    cutoff.setDate(t.getDate() + (filterRange === "week" ? 7 : 30));
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return d >= today && d <= cutoffStr;
+  }
+
   const filteredBookings = bookings.filter((b) => {
     const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
     if (!payOk) return false;
+    const rangeOk = isInRange(b.ref.date ?? b.ref.dateStart);
+    if (!rangeOk) return false;
     if (filterTripKey === "all") return true;
     const key =
       b.type === "daily"
@@ -344,6 +320,43 @@ export default function AdminBookingsPage() {
         : `tour_${b.ref.title ?? ""}`;
     return key === filterTripKey;
   });
+
+  // v183：排序（日期排序時未來在前、過去在後）
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    if (sortKey === "date") {
+      const ad = (a.ref.date ?? a.ref.dateStart ?? "").slice(0, 10);
+      const bd = (b.ref.date ?? b.ref.dateStart ?? "").slice(0, 10);
+      const aPast = ad < todayStr;
+      const bPast = bd < todayStr;
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      if (aPast && bPast) {
+        // 兩個過去 → desc（最近過去先）
+        if (ad < bd) return 1;
+        if (ad > bd) return -1;
+        return 0;
+      }
+      // 兩個未來 → 依 sortDir
+      if (ad < bd) return sortDir === "asc" ? -1 : 1;
+      if (ad > bd) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    }
+    let va: string | number = 0, vb: string | number = 0;
+    switch (sortKey) {
+      case "code":    va = a.code ?? ""; vb = b.code ?? ""; break;
+      case "amount":  va = a.totalAmount; vb = b.totalAmount; break;
+      case "paid":    va = a.paidAmount;  vb = b.paidAmount; break;
+      case "status":  va = a.status; vb = b.status; break;
+      case "payment": va = a.paymentStatus; vb = b.paymentStatus; break;
+    }
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedBookings.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedBookings = sortedBookings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   async function saveEdit() {
     if (!editing) return;
@@ -411,40 +424,7 @@ export default function AdminBookingsPage() {
     }
   }
 
-  function openEditFromByTrip(b: ByTripBooking, g: ByTripGroup) {
-    const full = bookings.find((x) => x.id === b.id);
-    if (full) {
-      setEditing({ ...full });
-    } else {
-      setEditing({
-        id: b.id,
-        code: b.code,
-        type: g.kind,
-        status: b.status,
-        paymentStatus: b.paymentStatus,
-        paymentMethod: b.paymentMethod,
-        totalAmount: b.totalAmount,
-        paidAmount: b.paidAmount,
-        participants: b.participants,
-        overCapacity: false,
-        createdAt: "",
-        notes: b.notes,
-        siteNotes: b.siteNotes,
-        adminNotes: b.adminNotes,
-        user: { displayName: b.userName, realName: null, phone: b.phone },
-        ref: {
-          date: g.kind === "daily" ? g.dateStart?.slice(0, 10) : undefined,
-          startTime: g.kind === "daily" ? (g.title.split(" ")[1] ?? undefined) : undefined,
-          title: g.kind === "tour" ? g.title : undefined,
-          dateStart: g.dateStart,
-          dateEnd: g.dateEnd,
-          sites: g.sites,
-        },
-      });
-    }
-    setRefundOpen(false);
-    setRefundAmount(String(b.paidAmount));
-  }
+  // v183 移除 openEditFromByTrip — 依場次視圖已被砍掉
 
   async function doRefund() {
     if (!editing) return;
@@ -478,32 +458,27 @@ export default function AdminBookingsPage() {
 
   return (
     <AdminShell title="訂單管理">
-      {/* Tab switcher */}
-      <div className="mb-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("by-trip")}
-          className={cn(
-            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-            tab === "by-trip"
-              ? "bg-[var(--color-ocean-deep)] text-white"
-              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-          )}
-        >
-          依場次
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("all")}
-          className={cn(
-            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-            tab === "all"
-              ? "bg-[var(--color-ocean-deep)] text-white"
-              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-          )}
-        >
-          全部訂單 ({bookings.length})
-        </button>
+      {/* v183: 移除『依場次』分頁，僅留全部訂單視圖 + 強化 filter / sort / pagination */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <span className="text-sm text-[var(--muted-foreground)]">範圍：</span>
+        {(["today", "tomorrow", "week", "month", "all"] as const).map((r) => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => { setFilterRange(r); setPage(1); }}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              filterRange === r
+                ? "bg-[var(--color-ocean-deep)] text-white"
+                : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+            )}
+          >
+            {r === "today" ? "今天" : r === "tomorrow" ? "明天" : r === "week" ? "一週內" : r === "month" ? "一個月內" : "全部"}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-[var(--muted-foreground)]">
+          共 {sortedBookings.length} 筆 · 每頁 {PAGE_SIZE} 筆 · 第 {currentPage}/{totalPages} 頁
+        </span>
       </div>
 
       {err && (
@@ -517,279 +492,9 @@ export default function AdminBookingsPage() {
         <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
       )}
 
-      {/* ── By-trip view ─────────────────────────────── */}
-      {!loading && tab === "by-trip" && (
-        <div className="space-y-3">
-          {/* Expiry filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-[var(--muted-foreground)]">顯示：</span>
-            {(["upcoming", "past", "all"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilterExpiry(f)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                  filterExpiry === f
-                    ? "bg-[var(--color-ocean-deep)] text-white"
-                    : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-                )}
-              >
-                {f === "upcoming" ? "即將" : f === "past" ? "已過期" : "全部"}
-              </button>
-            ))}
-            <span className="ml-auto text-xs text-[var(--muted-foreground)]">
-              共 {filteredGroups.length} 筆
-            </span>
-          </div>
 
-          {filteredGroups.length === 0 && (
-            <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-              沒有符合條件的場次
-            </div>
-          )}
-
-          <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
-            {filteredGroups.length > 0 && (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-[var(--muted-foreground)]"
-                    style={{ background: "var(--muted)" }}>
-                    <th className="px-4 py-2.5 font-medium">日期</th>
-                    <th className="px-4 py-2.5 font-medium">地點</th>
-                    <th className="px-4 py-2.5 font-medium">狀態</th>
-                    <th className="px-4 py-2.5 font-medium text-right">訂單</th>
-                    <th className="px-4 py-2.5 font-medium text-right">人數/氣瓶</th>
-                    <th className="px-4 py-2.5 font-medium text-right">已付／總額</th>
-                    <th className="px-4 py-2.5 font-medium w-8" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredGroups.map((g, i) => {
-                    const key = `${g.kind}-${g.id}`;
-                    const expanded = expandedGroup === key;
-                    const dateStr = g.dateStart?.slice(0, 10) ?? "";
-                    const timeStr = g.kind === "daily"
-                      ? (g.title.includes(" ") ? g.title.split(" ")[1] : "")
-                      : `${g.dateStart?.slice(0, 10)} → ${g.dateEnd?.slice(0, 10)}`;
-                    return [
-                      <tr
-                        key={key}
-                        className={cn(
-                          "border-t cursor-pointer hover:bg-[var(--muted)]/30 transition-colors",
-                          i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/10",
-                        )}
-                        style={{ borderColor: "var(--border)" }}
-                        onClick={() => setExpandedGroup(expanded ? null : key)}
-                      >
-                        {/* 日期 + 星期 */}
-                        <td className="px-4 py-2.5 tabular-nums">
-                          <span className="font-medium">{dateStr}</span>
-                          {dateStr && (
-                            <span className="ml-1.5 text-[10px] text-[var(--muted-foreground)]">
-                              {weekdayTW(dateStr)}
-                            </span>
-                          )}
-                          {timeStr && g.kind === "daily" && (
-                            <span className="ml-1.5 text-xs text-[var(--muted-foreground)]">{timeStr}</span>
-                          )}
-                          {g.kind === "tour" && (
-                            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{timeStr}</div>
-                          )}
-                        </td>
-                        {/* 地點 */}
-                        <td className="px-4 py-2.5 text-xs">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <Badge variant={g.kind === "tour" ? "coral" : "muted"} className="text-[9px]">
-                              {g.kind === "tour" ? "潛水團" : "日潛"}
-                            </Badge>
-                            <span>
-                              {g.kind === "tour"
-                                ? g.title
-                                : (g.sites && g.sites.length > 0 ? g.sites.join("・") : g.title)}
-                            </span>
-                          </div>
-                        </td>
-                        {/* 狀態 */}
-                        <td className="px-4 py-2.5">
-                          <Badge
-                            variant={g.status === "open" ? "ocean" : g.status === "cancelled" ? "coral" : "muted"}
-                            className="text-[10px]"
-                          >
-                            {g.status === "open" ? "開放" : g.status === "cancelled" ? "取消" : g.status === "completed" ? "結束" : g.status}
-                          </Badge>
-                        </td>
-                        {/* 訂單數 */}
-                        <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                          {g.bookingCount} 筆
-                        </td>
-                        {/* 人數/氣瓶 */}
-                        <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                          {g.participantSum} 人
-                          {g.tankSum !== undefined && (
-                            <span className="ml-1" style={{ color: "var(--color-phosphor)" }}>
-                              / {g.tankSum} 支
-                            </span>
-                          )}
-                        </td>
-                        {/* 金額 */}
-                        <td className="px-4 py-2.5 text-right tabular-nums text-xs text-[var(--muted-foreground)]">
-                          {g.paidSum.toLocaleString()} / {g.totalSum.toLocaleString()}
-                        </td>
-                        {/* Expand */}
-                        <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
-                          {expanded
-                            ? <ChevronUp className="h-3.5 w-3.5" />
-                            : <ChevronDown className="h-3.5 w-3.5" />
-                          }
-                        </td>
-                      </tr>,
-                      expanded && (
-                        <tr key={`${key}-detail`} className="border-t" style={{ borderColor: "var(--border)" }}>
-                          <td colSpan={7} className="p-0">
-                            {g.bookings.length === 0 ? (
-                              <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">沒有訂單</div>
-                            ) : (
-                              <div className="overflow-x-auto" style={{ background: "#eaf3ff" }}>
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr
-                                      className="text-left text-xs font-semibold"
-                                      style={{
-                                        background: "#c8dff8",
-                                        borderBottom: "1px solid #b3cff0",
-                                        color: "#2a5580",
-                                      }}
-                                    >
-                                      <th className="px-4 py-2 font-semibold">訂單編號</th>
-                                      <th className="px-6 py-2 font-semibold">姓名</th>
-                                      <th className="px-4 py-2 font-semibold">電話</th>
-                                      <th className="px-4 py-2 font-semibold text-right">人數</th>
-                                      <th className="px-4 py-2 font-semibold text-right">氣瓶</th>
-                                      <th className="px-4 py-2 font-semibold text-right">已付/總額</th>
-                                      <th className="px-4 py-2 font-semibold">付款狀態</th>
-                                      <th className="px-4 py-2 font-semibold">方式</th>
-                                      <th className="px-4 py-2 font-semibold">訂單狀態</th>
-                                      <th className="px-4 py-2 font-semibold text-center">操作</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {g.bookings.map((b, bi) => {
-                                      // 找完整 booking 物件以供 quick actions 使用
-                                      const fullB = bookings.find((x) => x.id === b.id);
-                                      return (
-                                      <tr
-                                        key={b.id}
-                                        className="cursor-pointer transition-colors hover:bg-[#c8e0ff]"
-                                        style={{
-                                          background: bi % 2 === 0 ? "#eaf3ff" : "#ddeefb",
-                                          borderBottom: "1px solid #c0d8f0",
-                                        }}
-                                        onClick={() => openEditFromByTrip(b, g)}
-                                        title="點擊查看/編輯訂單"
-                                      >
-                                        <td className="px-4 py-2.5">
-                                          {b.code ? (
-                                            <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide text-teal-800">
-                                              {b.code}
-                                            </span>
-                                          ) : (
-                                            <span className="text-[11px] text-[var(--muted-foreground)]">—</span>
-                                          )}
-                                        </td>
-                                        <td className="px-6 py-2.5 font-semibold" style={{ color: "#1a4a70" }}>
-                                          {b.userName}
-                                        </td>
-                                        <td className="px-4 py-2.5 tabular-nums" style={{ color: "#4a6a88" }}>
-                                          {b.phone ?? "—"}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                                          ×{b.participants}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right tabular-nums text-xs" style={{ color: "#4a6a88" }}>
-                                          {g.tankCount != null
-                                            ? `${g.tankCount * b.participants} 支`
-                                            : "—"}
-                                          {g.tankCount != null && b.participants > 1 && (
-                                            <span className="ml-1 text-[10px] opacity-60">
-                                              ({b.participants}×{g.tankCount})
-                                            </span>
-                                          )}
-                                        </td>
-                                        <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: "#4a6a88" }}>
-                                          {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
-                                        </td>
-                                        <td className="px-4 py-2.5">
-                                          <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px]">
-                                            {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
-                                          </Badge>
-                                        </td>
-                                        <td className="px-4 py-2.5" style={{ color: "#4a6a88" }}>
-                                          {PAYMENT_METHOD_LABEL[b.paymentMethod] ?? b.paymentMethod ?? "—"}
-                                        </td>
-                                        <td className="px-4 py-2.5">
-                                          <Badge variant={bookStatusVariant(b.status)} className="text-[10px]">
-                                            {BOOKING_STATUS_LABEL[b.status] ?? b.status}
-                                          </Badge>
-                                        </td>
-                                        {/* 操作 — 編輯 / 取消 / 刪除（stopPropagation 避免觸發 row click） */}
-                                        <td className="px-4 py-2.5"
-                                          onClick={(e) => e.stopPropagation()}>
-                                          <div className="flex justify-center gap-1">
-                                            <button
-                                              type="button"
-                                              onClick={() => openEditFromByTrip(b, g)}
-                                              title="編輯"
-                                              className="rounded p-1 hover:bg-[#b0d0f0] transition-colors"
-                                              style={{ color: "#2a5580" }}
-                                            >
-                                              <Edit3 className="h-3.5 w-3.5" />
-                                            </button>
-                                            {(b.status === "pending" || b.status === "confirmed") && fullB && (
-                                              <button
-                                                type="button"
-                                                onClick={() => cancelBooking(fullB)}
-                                                title="取消訂單"
-                                                className="rounded p-1 hover:bg-[#b0d0f0] transition-colors"
-                                                style={{ color: "#2a5580" }}
-                                              >
-                                                <X className="h-3.5 w-3.5" />
-                                              </button>
-                                            )}
-                                            {fullB && (
-                                              <button
-                                                type="button"
-                                                onClick={() => deleteBooking(fullB)}
-                                                title="永久刪除"
-                                                className="rounded p-1 hover:bg-[var(--color-coral)]/10 transition-colors"
-                                                style={{ color: "var(--color-coral)" }}
-                                              >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                              </button>
-                                            )}
-                                          </div>
-                                        </td>
-                                      </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ),
-                    ];
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── All bookings flat table ──────────────────────── */}
-      {!loading && tab === "all" && (
+      {/* ── 全部訂單 ──────────────────────── */}
+      {!loading && (
         <div className="space-y-3">
           {/* Filters row */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -846,7 +551,7 @@ export default function AdminBookingsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBookings.map((b, i) => {
+                  {pagedBookings.map((b, i) => {
                     const tripDateStr = b.ref.date ?? b.ref.dateStart ?? "";
                     const past = isPastDate(tripDateStr);
                     const tripDisplay = b.type === "daily"
@@ -1023,7 +728,7 @@ export default function AdminBookingsPage() {
                       </tr>
                     );
                   })}
-                  {filteredBookings.length === 0 && (
+                  {pagedBookings.length === 0 && (
                     <tr>
                       <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
@@ -1034,6 +739,31 @@ export default function AdminBookingsPage() {
               </table>
             </div>
           </div>
+
+          {/* v183 分頁器 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded border border-[var(--border)] px-3 py-1 hover:bg-[var(--muted)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                上一頁
+              </button>
+              <span className="text-[var(--muted-foreground)]">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded border border-[var(--border)] px-3 py-1 hover:bg-[var(--muted)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                下一頁
+              </button>
+            </div>
+          )}
         </div>
       )}
 
