@@ -967,15 +967,19 @@ export default function AdminTripsPage() {
                     return (
                       <React.Fragment key={trip.id}>
                       <tr
+                        onClick={() => openEdit(trip)}
                         className={cn(
-                          "border-t",
+                          "border-t cursor-pointer transition-colors hover:bg-sky-50",
                           trip.status === "cancelled" && "opacity-50",
+                          editingId === trip.id && "ring-2 ring-cyan-400 ring-inset",
                         )}
                         style={{
                           borderColor: "var(--border)",
-                          background: trip.isNightDive
-                            ? i % 2 === 0 ? "#d4e4f7" : "#c8daf2"
-                            : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
+                          background: editingId === trip.id
+                            ? "rgba(14,158,145,0.08)"
+                            : trip.isNightDive
+                              ? i % 2 === 0 ? "#d4e4f7" : "#c8daf2"
+                              : i % 2 === 0 ? "#ffffff" : "rgba(var(--muted-rgb,240,242,245),0.5)",
                         }}
                       >
                         {/* 狀態 + 展開鈕 */}
@@ -983,7 +987,7 @@ export default function AdminTripsPage() {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => toggleExpand(trip.id)}
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(trip.id); }}
                               className="rounded p-0.5 hover:bg-slate-200 text-slate-500"
                               title={isExpanded ? "收起訂單" : "查看訂單"}
                             >
@@ -1059,7 +1063,7 @@ export default function AdminTripsPage() {
                             : `NT$${(estimatedRevenue(trip) || 0).toLocaleString()}`}
                         </td>
                         {/* 操作 — 縮小成 28px icon-only 按鈕 */}
-                        <td className="px-3 py-1.5 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-0.5">
                             <button onClick={() => openEdit(trip)} title="編輯"
                               className="rounded p-1.5 text-slate-600 hover:bg-slate-100 transition-colors">
