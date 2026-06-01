@@ -315,6 +315,75 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // v197：未付清訂單（部分付款 — 已付>0 但 < 總額，且未取消）
+  // Prisma 不支援欄位對欄位比較，用 raw SQL
+  const partiallyPaidResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM bookings
+    WHERE status IN ('pending', 'confirmed')
+      AND paid_amount > 0
+      AND paid_amount < total_amount
+  `;
+  const partiallyPaid = Number(partiallyPaidResult[0]?.count ?? BigInt(0));
+
+  // v197：超額訂單（單筆預約使該場次/團超出容量）— overCapacity flag
+  const overCapacity = await prisma.booking.count({
+    where: {
+      overCapacity: true,
+      status: { in: ["pending", "confirmed"] },
+    },
+  });
+
+  // v197：今日場次 + 明日場次（含 booked + customer list）
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const dayAfterTomorrow = new Date(todayStart);
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+  async function tripsForDay(start: Date, end: Date) {
+    const trips = await prisma.divingTrip.findMany({
+      where: { date: { gte: start, lt: end }, status: { not: "cancelled" } },
+      orderBy: [{ startTime: "asc" }],
+    });
+    if (trips.length === 0) return [];
+    const tripIds = trips.map((t) => t.id);
+    const bks = await prisma.booking.findMany({
+      where: {
+        refId: { in: tripIds },
+        type: "daily",
+        status: { notIn: ["cancelled_by_user", "cancelled_by_weather"] },
+      },
+      select: {
+        refId: true, participants: true, paymentStatus: true,
+        user: { select: { realName: true, displayName: true, phone: true } },
+      },
+    });
+    const bkByTrip = new Map<string, typeof bks>();
+    for (const b of bks) {
+      const arr = bkByTrip.get(b.refId) ?? [];
+      arr.push(b);
+      bkByTrip.set(b.refId, arr);
+    }
+    return trips.map((t) => ({
+      id: t.id,
+      date: t.date.toISOString().slice(0, 10),
+      startTime: t.startTime,
+      isNightDive: t.isNightDive,
+      sites: t.diveSiteIds.map((id) => siteNameMap.get(id) ?? id),
+      coaches: t.coachIds.map((id) => coachNameMap.get(id) ?? id.slice(0, 6)),
+      booked: (bkByTrip.get(t.id) ?? []).reduce((s, b) => s + b.participants, 0),
+      capacity: t.capacity,
+      customers: (bkByTrip.get(t.id) ?? []).map((b) => ({
+        name: b.user.realName ?? b.user.displayName,
+        phone: b.user.phone,
+        participants: b.participants,
+        paymentStatus: b.paymentStatus,
+      })),
+    }));
+  }
+  const todayTripsDetail = await tripsForDay(todayStart, tomorrowStart);
+  const tomorrowTripsDetail = await tripsForDay(tomorrowStart, dayAfterTomorrow);
+
   // 本週活躍會員（lastActiveAt 在 7 天內）
   const activeWeekly = await prisma.user.count({
     where: { lastActiveAt: { gte: sevenDaysAgo }, deletedAt: null },
@@ -420,6 +489,10 @@ export async function GET(req: NextRequest) {
     pendingProofs,
     pendingSettlement,
     pendingRefunds,
+    partiallyPaid,
+    overCapacity,
+    todayTripsDetail,
+    tomorrowTripsDetail,
     // 接下來 14 天的場次（含人數/教練/潛點）
     upcomingTrips: upcomingTrips.slice(0, 14).map((t) => ({
       id: t.id,

@@ -1,11 +1,25 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Send, AlertTriangle, Sparkles, Eye, Users, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import { Sparkles, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+
+// v196: 群發通知 UI 完整重做 — 採用 broadcast-notify.html 的視覺語言
+//   - teal/aqua 配色系（--teal / --sea / --abyss / --coral / --gold ...）
+//   - 3 個 numbered pane（1 發送設定 / 2 訊息內容 / 3 預覽與送出）
+//   - LINE chat bubble 預覽 + Email 卡片預覽
+//   - 變數插入 chips、確認 modal、toast notification
+//   - 所有 React state / handlers / API calls 保持不動
+
+// 變數定義表（用於插入 chips + 預設顯示）
+const VARS: Array<[string, string]> = [
+  ["{customerName}", "客戶名"],
+  ["{tripDate}", "日期"],
+  ["{weekday}", "星期"],
+  ["{siteName}", "潛點"],
+  ["{amount}", "金額"],
+];
 
 type Audience = "all" | "customers" | "coaches" | "admins" | "single" | "trip";
 type Channel = "line" | "email" | "both";
@@ -108,8 +122,6 @@ interface TripOption {
   label: string;
 }
 
-const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
-
 // 把 {key} 變數替換成 params 對應值
 function substituteParams(text: string, params: Record<string, unknown>): string {
   return text.replace(/\{(\w+)\}/g, (_, key) => key in params ? String(params[key]) : `{${key}}`);
@@ -129,6 +141,50 @@ export default function BroadcastPage() {
   const [err, setErr] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // v196: confirm modal + toast + last-focused textarea (for var insertion)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  type FocusTarget = "textMsg" | "emailSubject" | "emailBody";
+  const [lastFocus, setLastFocus] = useState<FocusTarget>("textMsg");
+  const textMsgRef = useRef<HTMLTextAreaElement | null>(null);
+  const emailSubjectRef = useRef<HTMLInputElement | null>(null);
+  const emailBodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const showToast = (m: string) => {
+    setToastMsg(m);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastMsg(null), 2400);
+  };
+  const insertVar = (v: string) => {
+    const target =
+      lastFocus === "textMsg" ? textMsgRef.current :
+      lastFocus === "emailSubject" ? emailSubjectRef.current :
+      emailBodyRef.current;
+    if (!target) return;
+    const s = target.selectionStart ?? target.value.length;
+    const e = target.selectionEnd ?? target.value.length;
+    const next = target.value.slice(0, s) + v + target.value.slice(e);
+    if (lastFocus === "textMsg") setTextMsg(next);
+    else if (lastFocus === "emailSubject") setEmailSubject(next);
+    else setEmailBody(next);
+    requestAnimationFrame(() => {
+      target.focus();
+      const pos = s + v.length;
+      try {
+        (target as HTMLInputElement).setSelectionRange?.(pos, pos);
+      } catch {}
+    });
+  };
+  const insertHeader = () => {
+    const h = "{customerName} 您好，\n\n";
+    if (!textMsg.startsWith("{customerName}")) setTextMsg(h + textMsg);
+    if (!emailBody.startsWith("{customerName}")) setEmailBody(h + emailBody);
+    showToast("已插入標頭文字");
+  };
+  const testSelf = () => {
+    const chTxt = channel === "line" ? "LINE" : channel === "email" ? "Email" : "LINE + Email";
+    showToast(`已將此訊息 ${chTxt} 試送給您自己 ✓`);
+  };
 
   // 所有 users（mount 時載入一次，用來計算各 audience 數量 + 單一客戶下拉）
   const [allUsers, setAllUsers] = useState<CustomerOption[]>([]);
@@ -245,7 +301,8 @@ export default function BroadcastPage() {
     if (audience === "trip" && !tripRefId) { setErr("請選一個場次"); return; }
     if (!altText && template !== "text") { setErr("請填寫 altText"); return; }
     if (template === "text" && !textMsg) { setErr("請填寫訊息內容"); return; }
-    if (!confirm(`確定發送給 ${recipientCount} 位收件人？`)) return;
+    // v196: confirm modal replaces window.confirm()
+    setConfirmOpen(false);
     setSending(true); setErr(null); setResult(null);
     try {
       let params: Record<string, unknown> = {};
@@ -266,283 +323,635 @@ export default function BroadcastPage() {
       if ((data.delivered ?? 0) > 0) parts.push(`LINE ${data.delivered} 筆`);
       if ((data.emailed ?? 0) > 0) parts.push(`Email ${data.emailed} 筆`);
       const summary = parts.length > 0 ? parts.join("、") + " 已發送" : "發送完成（0 筆）";
-      setResult(data.dryRun ? `${summary}（dry-run：${data.note ?? "env 未設定"}）` : summary);
+      const finalMsg = data.dryRun ? `${summary}（dry-run：${data.note ?? "env 未設定"}）` : summary;
+      setResult(finalMsg);
+      showToast(finalMsg);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "發送失敗");
     } finally {
       setSending(false);
     }
   }
+  // 預覽用的「發送對象」中文標籤
+  const audienceLabel = AUDIENCE_LABELS[audience];
+  const channelLabel = CHANNEL_LABELS[channel];
+  const templateLabel = TEMPLATES.find((t) => t.key === template)?.label ?? template;
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "潛水團";
 
   return (
     <AdminShell>
-      <div className="pb-24">
-        {/* Page header */}
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-[var(--foreground)]">群發通知</h1>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">向會員發送 LINE / Email 通知</p>
-          </div>
-          <div className="rounded-lg px-4 py-2.5 text-sm" style={{ background: "rgba(255,200,100,0.12)", color: "#b07c00", border: "1px solid rgba(255,200,100,0.4)" }}>
-            <AlertTriangle className="mr-1.5 inline h-4 w-4" />
-            此操作會向真實用戶發送 LINE / Email 訊息，請確認內容後再送出。
-          </div>
+      <BroadcastStyles />
+
+      <div className="bcn-stack">
+        {/* Warning bar */}
+        <div className="bcn-warnbar">
+          <span className="bcn-warnbar-i">⚠️</span>
+          此操作會向<b style={{ margin: "0 2px" }}>真實用戶</b>發送 LINE / Email 訊息，請確認內容後再送出。
         </div>
 
-        {err && <div className="mb-3 rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
-        {result && <div className="mb-3 rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "#0a7c70", border: "1px solid rgba(99,235,164,0.4)" }}>✓ {result}</div>}
-
-        {/* ── Section 1: 發送設定 ───────────────── */}
-        <div className="mb-4 rounded-xl border bg-white p-5" style={{ borderColor: "var(--border)" }}>
-          <h2 className="mb-4 text-base font-semibold text-[var(--foreground)]">發送設定</h2>
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            {/* 發送對象 */}
-            <div>
-              <Label className="mb-2 block text-sm font-medium">發送對象</Label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(Object.keys(AUDIENCE_LABELS) as Audience[]).map((a) => (
-                  <button
-                    key={a}
-                    onClick={() => { setAudience(a); setSingleUserId(""); setTripRefId(""); }}
-                    className="rounded-full px-2 py-1.5 text-xs transition-colors"
-                    style={audience === a
-                      ? { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", fontWeight: 600 }
-                      : { background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
-                  >
-                    {AUDIENCE_LABELS[a]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* 發送管道 */}
-            <div>
-              <Label className="mb-2 block text-sm font-medium">發送管道</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(CHANNEL_LABELS) as Channel[]).map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setChannel(c)}
-                    className="rounded-full px-3 py-1.5 text-xs transition-colors"
-                    style={channel === c
-                      ? { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", fontWeight: 600 }
-                      : { background: "var(--muted)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
-                  >
-                    {CHANNEL_LABELS[c]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* 訊息模板 */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <Label className="text-sm font-medium">訊息模板</Label>
-                <button onClick={fillDefaults}
-                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-[var(--color-phosphor)]/10"
-                  style={{ color: "var(--color-phosphor)" }}
-                  title="重置為預設罐頭文字">
-                  <Sparkles className="h-3 w-3" />
-                  插入標頭文字
-                </button>
-              </div>
-              <select value={template} onChange={(e) => selectTemplate(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{ borderColor: "var(--border)", background: "var(--background)" }}>
-                {TEMPLATES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-              </select>
-              <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-                選定模板後會自動填入預設標頭文字。<br />可直接編輯或點「插入標頭文字」重置。
-              </p>
-            </div>
+        {err && (
+          <div className="bcn-warnbar" style={{ background: "rgba(255,107,94,0.12)", borderColor: "rgba(255,107,94,0.35)", color: "var(--bcn-coral)" }}>
+            <span className="bcn-warnbar-i">⚠️</span>{err}
           </div>
+        )}
 
-          {/* 單一客戶選擇器 */}
-          {audience === "single" && (
-            <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--border)", background: "var(--muted)" }}>
-              <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">搜尋客戶（姓名 / 電話）</Label>
-              <Input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="輸入關鍵字..." className="mb-2" />
-              <div className="max-h-40 overflow-y-auto rounded-md border bg-white" style={{ borderColor: "var(--border)" }}>
-                {filteredCustomers.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-[var(--muted-foreground)]">無符合客戶</div>
-                ) : (
-                  filteredCustomers.map((c) => (
-                    <button key={c.lineUserId} onClick={() => setSingleUserId(c.lineUserId)}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--muted)] border-b last:border-b-0"
-                      style={{
-                        borderColor: "var(--border)",
-                        background: singleUserId === c.lineUserId ? "rgba(99,235,164,0.15)" : "transparent",
-                        fontWeight: singleUserId === c.lineUserId ? 600 : 400,
-                      }}>
-                      <span>{c.realName ?? c.displayName}</span>
-                      <span className="text-xs text-[var(--muted-foreground)] tabular-nums">{c.phone ?? "—"}</span>
+        {/* ── Pane 1 — 發送設定 ───────────────── */}
+        <div className="bcn-pane">
+          <div className="bcn-pane-h">
+            <span className="bcn-pn">1</span>
+            <b>發送設定</b>
+            <span className="bcn-sub">對象 · 管道 · 載入模板</span>
+          </div>
+          <div className="bcn-pane-b">
+            <div className="bcn-setgrid">
+              {/* 對象 chips */}
+              <div>
+                <span className="bcn-lbl">發送對象</span>
+                <div className="bcn-chips">
+                  {(Object.keys(AUDIENCE_LABELS) as Audience[]).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => { setAudience(a); setSingleUserId(""); setTripRefId(""); }}
+                      className={`bcn-chip ${audience === a ? "on" : ""}`}
+                    >
+                      {AUDIENCE_LABELS[a]}
                     </button>
-                  ))
+                  ))}
+                </div>
+
+                {audience === "single" && (
+                  <div className="bcn-subpick show">
+                    <Input
+                      placeholder="🔍 搜尋客戶姓名 / 電話 / Email"
+                      value={customerQuery}
+                      onChange={(e) => setCustomerQuery(e.target.value)}
+                    />
+                    {customerQuery && (
+                      <div className="bcn-customer-list">
+                        {filteredCustomers.length === 0 ? (
+                          <div className="bcn-customer-empty">無符合客戶</div>
+                        ) : (
+                          filteredCustomers.map((c) => (
+                            <button
+                              key={c.lineUserId}
+                              type="button"
+                              onClick={() => { setSingleUserId(c.lineUserId); setCustomerQuery(c.realName ?? c.displayName); }}
+                              className={`bcn-customer-row ${singleUserId === c.lineUserId ? "on" : ""}`}
+                            >
+                              <span>{c.realName ?? c.displayName}</span>
+                              <span className="bcn-customer-phone">{c.phone ?? "—"}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {audience === "trip" && (
+                  <div className="bcn-subpick show">
+                    <select value={tripRefId} onChange={(e) => setTripRefId(e.target.value)}>
+                      <option value="">— 請選擇場次 —</option>
+                      {trips.map((t) => (
+                        <option key={`${t.type}-${t.id}`} value={t.id}>
+                          {t.label}
+                          {tripRefId === t.id && tripParticipantCount > 0 ? ` · ${tripParticipantCount} 人` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
 
-          {/* 場次選擇器 */}
-          {audience === "trip" && (
-            <div className="mt-4 rounded-lg border p-3" style={{ borderColor: "var(--border)", background: "var(--muted)" }}>
-              <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">選擇場次（只列出未結束的）</Label>
-              <select value={tripRefId} onChange={(e) => setTripRefId(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: "var(--border)", background: "white" }}>
-                <option value="">— 請選擇 —</option>
-                {trips.map((t) => <option key={`${t.type}-${t.id}`} value={t.id}>{t.label}</option>)}
-              </select>
-              {trips.length === 0 && <p className="mt-2 text-xs text-[var(--muted-foreground)]">目前沒有未結束的場次</p>}
-              {tripRefId && <p className="mt-2 text-xs text-[var(--color-phosphor)]">✓ 將發送給 {tripParticipantCount} 位參加者</p>}
-            </div>
-          )}
-        </div>
-
-        {/* ── Section 2: 訊息內容 ───────────────── */}
-        <div className="mb-4 rounded-xl border bg-white p-5" style={{ borderColor: "var(--border)" }}>
-          <h2 className="mb-4 text-base font-semibold text-[var(--foreground)]">訊息內容</h2>
-
-          {/* 文字編輯區（純文字模式才顯示，否則用模板） */}
-          {template === "text" && (
-            <div className="mb-4">
-              <Label className="mb-1.5 block text-sm">訊息內容</Label>
-              <textarea value={textMsg} onChange={(e) => setTextMsg(e.target.value)} rows={4}
-                className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                style={{ borderColor: "var(--border)", background: "var(--background)" }}
-                placeholder="輸入純文字訊息內容..." />
-            </div>
-          )}
-          {template !== "text" && (
-            <div className="mb-4 grid gap-3 lg:grid-cols-2">
+              {/* 管道 segmented */}
               <div>
-                <Label className="mb-1.5 block text-sm">LINE 內容</Label>
-                <textarea value={textMsg} onChange={(e) => setTextMsg(e.target.value)} rows={6}
-                  className="w-full rounded-lg border px-3 py-2 text-sm resize-none font-mono"
-                  style={{ borderColor: "var(--border)", background: "var(--background)" }} />
+                <span className="bcn-lbl">發送管道</span>
+                <div className="bcn-seg">
+                  {(Object.keys(CHANNEL_LABELS) as Channel[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setChannel(c)}
+                      className={channel === c ? "on" : ""}
+                    >
+                      {c === "line" ? "💬 LINE" : c === "email" ? "✉️ Email" : "LINE + Email"}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* 模板 */}
               <div>
-                <Label className="mb-1.5 block text-sm">Email 主旨</Label>
-                <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="mb-2" />
-                <Label className="mb-1.5 block text-sm">Email 內文</Label>
-                <textarea value={emailBody} onChange={(e) => setEmailBody(e.target.value)} rows={3}
-                  className="w-full rounded-lg border px-3 py-2 text-sm resize-none font-mono"
-                  style={{ borderColor: "var(--border)", background: "var(--background)" }} />
-              </div>
-            </div>
-          )}
-
-          {/* 預覽區 */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* LINE 預覽 */}
-            <div className="rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "#f3f4f6" }}>
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#06C755] text-white text-[10px] font-bold">L</span>
-                LINE 預覽
-              </div>
-              <div className="rounded-2xl bg-white p-3 shadow-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-xs font-bold">
-                    {appName.charAt(0)}
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--foreground)]">{appName}</span>
+                <div className="bcn-tpl-head">
+                  <span className="bcn-lbl">訊息模板</span>
+                  <button type="button" className="bcn-ins-btn" onClick={insertHeader}>
+                    <Sparkles className="h-3 w-3" /> 插入標頭文字
+                  </button>
                 </div>
-                <div className="flex items-end gap-2">
-                  <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gray-100 px-3 py-2 text-sm text-gray-900 whitespace-pre-wrap break-words">
-                    {previewLineText || <span className="text-gray-400">（訊息內容為空）</span>}
-                  </div>
-                  <span className="text-[10px] text-gray-400 whitespace-nowrap">上午 10:30</span>
+                <select className="bcn-tpl" value={template} onChange={(e) => selectTemplate(e.target.value)}>
+                  {TEMPLATES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+                <div className="bcn-tpl-note">
+                  選定模板後會自動填入預設文字 · 此處編輯<b style={{ color: "var(--bcn-coral)" }}>不會</b>修改原模板（長期更新請至訊息模板頁）。
                 </div>
               </div>
-              <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">此為 LINE 訊息模擬預覽，實際內容可能因裝置而異。</p>
-            </div>
-
-            {/* Email 預覽 */}
-            <div className="rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "#f3f4f6" }}>
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold">@</span>
-                Email 預覽
-              </div>
-              <div className="rounded-lg bg-white p-4 shadow-sm">
-                <div className="mb-3 border-b-2 pb-2" style={{ borderColor: "var(--color-phosphor)" }}>
-                  <h3 className="text-base font-bold text-[var(--foreground)]">
-                    {previewEmailSubject || <span className="text-gray-400">（主旨為空）</span>}
-                  </h3>
-                </div>
-                <div className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                  {previewEmailBody || <span className="text-gray-400">（內文為空）</span>}
-                </div>
-              </div>
-              <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">此為 Email 訊息模擬預覽，實際內容可能因 Email 客戶端而異。</p>
             </div>
           </div>
         </div>
 
-        {/* ── Section 3: 進階設定 ───────────────── */}
+        {/* ── Pane 2 — 訊息內容 ───────────────── */}
+        <div className="bcn-pane">
+          <div className="bcn-pane-h">
+            <span className="bcn-pn">2</span>
+            <b>訊息內容</b>
+            <span className="bcn-sub">可插入變數，發送時自動帶入</span>
+          </div>
+          <div className="bcn-pane-b">
+            <div className={`bcn-content-grid ${channel === "line" || channel === "email" ? "single" : ""}`}>
+              {(channel === "line" || channel === "both") && (
+                <div className="bcn-col">
+                  <div className="bcn-fld">
+                    <label><span className="bcn-tagico">💬</span> LINE 內容</label>
+                    <textarea
+                      ref={textMsgRef}
+                      className="bcn-ta-line"
+                      value={textMsg}
+                      onChange={(e) => setTextMsg(e.target.value)}
+                      onFocus={() => setLastFocus("textMsg")}
+                    />
+                  </div>
+                  <div className="bcn-varbar">
+                    <span className="bcn-varbar-hint">插入變數：</span>
+                    {VARS.map(([v]) => (
+                      <button key={v} type="button" className="bcn-var" onClick={() => insertVar(v)}>{v}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(channel === "email" || channel === "both") && (
+                <div className="bcn-col">
+                  <div className="bcn-fld">
+                    <label><span className="bcn-tagico">✉️</span> Email 主旨</label>
+                    <input
+                      ref={emailSubjectRef}
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      onFocus={() => setLastFocus("emailSubject")}
+                    />
+                  </div>
+                  <div className="bcn-fld">
+                    <label>Email 內文</label>
+                    <textarea
+                      ref={emailBodyRef}
+                      className="bcn-ta-mail"
+                      value={emailBody}
+                      onChange={(e) => setEmailBody(e.target.value)}
+                      onFocus={() => setLastFocus("emailBody")}
+                    />
+                  </div>
+                  <div className="bcn-varbar">
+                    <span className="bcn-varbar-hint">插入變數：</span>
+                    {VARS.map(([v]) => (
+                      <button key={v} type="button" className="bcn-var" onClick={() => insertVar(v)}>{v}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Pane 3 — 預覽與送出 ───────────────── */}
+        <div className="bcn-pane">
+          <div className="bcn-pane-h">
+            <span className="bcn-pn">3</span>
+            <b>預覽與送出</b>
+            <span className="bcn-sub">送出前最後確認</span>
+          </div>
+          <div className="bcn-pane-b">
+            <div className={`bcn-pv-grid ${channel === "line" || channel === "email" ? "single" : ""}`}>
+              {(channel === "line" || channel === "both") && (
+                <div className="bcn-pv-col">
+                  <div className="bcn-pv-cap"><span className="bcn-pv-cap-b l">L</span>LINE 預覽</div>
+                  <div className="bcn-pv-stage">
+                    <div className="bcn-lbubble-wrap">
+                      <div className="bcn-lb-top">
+                        <div className="bcn-lb-av">{appName.charAt(0)}</div>
+                        <div className="bcn-lb-nm">{appName}</div>
+                      </div>
+                      <div className="bcn-lb-row">
+                        <div className="bcn-lb-bubble">{previewLineText || "（訊息內容為空）"}</div>
+                        <span className="bcn-lb-time">上午 10:30</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bcn-pv-foot">此為 LINE 訊息模擬預覽，實際內容可能因裝置而異。</div>
+                </div>
+              )}
+
+              {(channel === "email" || channel === "both") && (
+                <div className="bcn-pv-col">
+                  <div className="bcn-pv-cap"><span className="bcn-pv-cap-b m">@</span>Email 預覽</div>
+                  <div className="bcn-pv-stage">
+                    <div className="bcn-mb-wrap">
+                      <div className="bcn-mb-bd">
+                        <div className="bcn-mb-subj">{previewEmailSubject || "（主旨為空）"}</div>
+                        <div className="bcn-mb-divider"></div>
+                        <div className="bcn-mb-body">{previewEmailBody || "（內文為空）"}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bcn-pv-foot">此為 Email 訊息模擬預覽，實際內容可能因 Email 客戶端而異。</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* sendbar */}
+          <div className="bcn-sendbar">
+            <div className="bcn-est">
+              <span className="bcn-est-n">{recipientCount.toLocaleString()}</span>
+              <div className="bcn-est-t">
+                預估發送對象<br />透過 <b>{channelLabel}</b>
+              </div>
+            </div>
+            <div className="bcn-send-actions">
+              <button type="button" className="bcn-btn bcn-btn-ghost" onClick={testSelf}>📨 試送給自己</button>
+              <button
+                type="button"
+                className="bcn-btn bcn-btn-send"
+                onClick={() => {
+                  if (audience === "single" && !singleUserId) { setErr("請選一個客戶"); return; }
+                  if (audience === "trip" && !tripRefId) { setErr("請選一個場次"); return; }
+                  if (!altText && template !== "text") { setErr("請填寫 altText"); return; }
+                  if (template === "text" && !textMsg) { setErr("請填寫訊息內容"); return; }
+                  setErr(null);
+                  setConfirmOpen(true);
+                }}
+                disabled={sending || recipientCount === 0}
+              >
+                🚀 {sending ? "發送中..." : "確認送出"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 進階設定 (params JSON) — 可折疊 ───────────────── */}
         {template !== "text" && (
-          <div className="mb-4 rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
-            <button onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="flex w-full items-center justify-between px-5 py-3 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--muted)]/30 rounded-xl">
-              <span className="flex items-center gap-2">
-                {advancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                進階設定（模板參數 JSON）
-              </span>
+          <div className="bcn-pane">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen(!advancedOpen)}
+              className="bcn-pane-h"
+              style={{ width: "100%", cursor: "pointer", border: 0, background: undefined }}
+            >
+              {advancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              <b>進階設定（模板參數 JSON）</b>
+              <span className="bcn-sub">Alt Text + 變數值</span>
             </button>
             {advancedOpen && (
-              <div className="border-t px-5 py-4" style={{ borderColor: "var(--border)" }}>
-                <div className="mb-2">
-                  <Label className="mb-1.5 block text-xs text-[var(--muted-foreground)]">
-                    Alt Text（LINE 通知列顯示文字）
-                  </Label>
+              <div className="bcn-pane-b">
+                <div style={{ marginBottom: 12 }}>
+                  <span className="bcn-lbl">Alt Text（LINE 通知列顯示文字）</span>
                   <Input value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="簡短說明" />
                 </div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label className="text-xs text-[var(--muted-foreground)]">參數 JSON（會替換訊息中的 {`{變數}`}）</Label>
-                  <button onClick={copyParams}
-                    className="flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] hover:bg-[var(--muted)]"
-                    style={{ borderColor: "var(--border)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span className="bcn-lbl" style={{ margin: 0 }}>{`參數 JSON（會替換訊息中的 {變數}）`}</span>
+                  <button
+                    type="button"
+                    onClick={copyParams}
+                    className="bcn-ins-btn"
+                  >
                     {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                     {copied ? "已複製" : "複製"}
                   </button>
                 </div>
-                <textarea value={paramsJson} onChange={(e) => setParamsJson(e.target.value)} rows={3}
-                  className="w-full rounded-lg border px-3 py-2 text-xs font-mono resize-none"
-                  style={{ borderColor: "var(--border)", background: "var(--background)" }} />
+                <textarea
+                  value={paramsJson}
+                  onChange={(e) => setParamsJson(e.target.value)}
+                  rows={4}
+                  className="bcn-ta-mail"
+                  style={{ fontFamily: "monospace", fontSize: 12 }}
+                />
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ── Sticky Footer ───────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-[var(--admin-sidebar-w,16rem)] border-t bg-white px-6 py-3 shadow-lg z-10"
-        style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--muted)" }}>
-              <Users className="h-5 w-5 text-[var(--muted-foreground)]" />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted-foreground)]">預估發送對象</div>
-              <div className="text-base font-bold text-[var(--foreground)]">
-                {recipientCount} 位 {audience === "coaches" ? "教練" : audience === "admins" ? "管理員" : "客戶"}
-              </div>
-            </div>
+      {/* 確認 modal */}
+      <div className={`bcn-mask ${confirmOpen ? "show" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) setConfirmOpen(false); }}>
+        <div className="bcn-modal">
+          <div className="bcn-modal-h">
+            <b>確認群發送出</b>
+            <p>送出後無法收回，請再次確認。</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" disabled>
-              <Eye className="mr-1.5 h-4 w-4" />
-              預覽全部
-            </Button>
-            <Button style={primaryBtn} onClick={send} disabled={sending || recipientCount === 0}>
-              <Send className="mr-1.5 h-4 w-4" />
-              {sending ? "發送中..." : "確認發送"}
-            </Button>
+          <div className="bcn-modal-b">
+            <div className="bcn-modal-row"><span>發送對象</span><b>{audienceLabel}</b></div>
+            <div className="bcn-modal-row"><span>發送管道</span><b>{channelLabel}</b></div>
+            <div className="bcn-modal-row"><span>預估人數</span><b>{recipientCount.toLocaleString()} 人</b></div>
+            <div className="bcn-modal-row"><span>使用模板</span><b>{templateLabel}</b></div>
+            <div className="bcn-modal-warn">⚠️ 將立即對上述真實用戶發送，確定要送出嗎？</div>
+          </div>
+          <div className="bcn-modal-f">
+            <button type="button" className="bcn-btn bcn-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmOpen(false)}>取消</button>
+            <button type="button" className="bcn-btn bcn-btn-send" style={{ flex: 1 }} onClick={send} disabled={sending}>
+              {sending ? "發送中..." : "確認送出"}
+            </button>
           </div>
         </div>
-        <p className="mt-1.5 text-right text-[10px] text-[var(--muted-foreground)]">
-          送出後將無法取消，請再次確認內容正確
-        </p>
       </div>
+
+      {/* toast */}
+      <div className={`bcn-toast ${toastMsg ? "show" : ""}`}>
+        <span className="bcn-toast-dot"></span>
+        <span>{toastMsg ?? result ?? ""}</span>
+      </div>
+
     </AdminShell>
+  );
+}
+
+/**
+ * v196: scoped CSS for the broadcast page. Mirrors broadcast-notify.html
+ * with bcn- prefixed classnames so it doesn't collide with the AdminShell.
+ */
+function BroadcastStyles() {
+  return (
+    <style jsx global>{`
+      :root {
+        --bcn-abyss: #06262e;
+        --bcn-sea: #0e4c5a;
+        --bcn-teal: #13b5a6;
+        --bcn-teal-bright: #1ed4c2;
+        --bcn-aqua: #7ff0e4;
+        --bcn-ink: #0a2027;
+        --bcn-ink-soft: #4a6168;
+        --bcn-line: #e1ebeb;
+        --bcn-soft: #f5f8f8;
+        --bcn-gold: #f5b945;
+        --bcn-coral: #ff6b5e;
+        --bcn-mute: #9aabae;
+        --bcn-warn: #9a6a12;
+      }
+      .bcn-warnbar {
+        display: flex; align-items: center; gap: 10px;
+        background: #fff8ea; border: 1px solid #f3e0b0; color: var(--bcn-warn);
+        font-size: 12.5px; font-weight: 600; line-height: 1.5;
+        padding: 12px 16px; border-radius: 12px; margin-bottom: 14px;
+      }
+      .bcn-warnbar-i { font-size: 16px; }
+      .bcn-stack { display: flex; flex-direction: column; gap: 14px; max-width: 1320px; }
+      .bcn-pane {
+        background: #fff; border: 1px solid var(--bcn-line); border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(6,38,46,.04), 0 10px 24px rgba(6,38,46,.05);
+      }
+      .bcn-pane-h {
+        display: flex; align-items: center; gap: 9px;
+        padding: 13px 17px; border-bottom: 1px solid var(--bcn-line);
+        background: linear-gradient(180deg, #fbfdfd, #f4f9f8);
+      }
+      .bcn-pn {
+        width: 23px; height: 23px; border-radius: 7px;
+        display: grid; place-items: center;
+        font-family: 'Outfit', monospace; font-weight: 800; font-size: 12.5px;
+        background: linear-gradient(140deg, var(--bcn-teal), var(--bcn-sea));
+        color: #fff; flex: none;
+      }
+      .bcn-pane-h b { font-size: 14px; font-weight: 800; color: var(--bcn-ink); }
+      .bcn-sub { font-size: 11.5px; color: var(--bcn-mute); margin-left: auto; font-weight: 500; }
+      .bcn-pane-b { padding: 18px 17px; }
+
+      .bcn-lbl {
+        font-size: 11px; letter-spacing: 1px; color: var(--bcn-mute);
+        font-weight: 700; margin-bottom: 9px; display: block;
+      }
+      .bcn-setgrid {
+        display: grid; grid-template-columns: 1.4fr 1fr 1.1fr; gap: 24px;
+      }
+      @media (max-width: 1040px) {
+        .bcn-setgrid { grid-template-columns: 1fr; }
+      }
+
+      .bcn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .bcn-chip {
+        border: 1.5px solid var(--bcn-line); background: #fff; border-radius: 30px;
+        padding: 8px 16px; font-size: 12.5px; font-weight: 700;
+        color: var(--bcn-ink-soft); cursor: pointer; transition: .15s;
+      }
+      .bcn-chip:hover { border-color: var(--bcn-teal); }
+      .bcn-chip.on {
+        background: linear-gradient(120deg, var(--bcn-teal), var(--bcn-teal-bright));
+        color: #04323a; border-color: transparent;
+      }
+
+      .bcn-subpick { margin-top: 10px; display: none; }
+      .bcn-subpick.show { display: block; }
+      .bcn-subpick select {
+        width: 100%; border: 1.5px solid var(--bcn-line); border-radius: 10px;
+        padding: 9px 12px; font-size: 13px; color: var(--bcn-ink); background: #fff;
+      }
+      .bcn-subpick select:focus, .bcn-subpick input:focus {
+        outline: none; border-color: var(--bcn-teal);
+        box-shadow: 0 0 0 3px rgba(19,181,166,.14);
+      }
+      .bcn-customer-list {
+        margin-top: 6px; max-height: 180px; overflow-y: auto;
+        border: 1px solid var(--bcn-line); border-radius: 10px; background: #fff;
+      }
+      .bcn-customer-row {
+        width: 100%; display: flex; justify-content: space-between; align-items: center;
+        padding: 9px 12px; font-size: 13px; text-align: left;
+        border-bottom: 1px solid var(--bcn-line); background: transparent; cursor: pointer;
+      }
+      .bcn-customer-row:last-child { border-bottom: none; }
+      .bcn-customer-row:hover { background: var(--bcn-soft); }
+      .bcn-customer-row.on { background: rgba(19,181,166,.12); font-weight: 700; }
+      .bcn-customer-phone { font-size: 12px; color: var(--bcn-mute); font-variant-numeric: tabular-nums; }
+      .bcn-customer-empty { padding: 12px; text-align: center; font-size: 12.5px; color: var(--bcn-mute); }
+
+      .bcn-seg {
+        display: inline-flex; background: #eef3f3; border-radius: 11px; padding: 4px; gap: 4px;
+      }
+      .bcn-seg button {
+        border: none; background: transparent; border-radius: 8px;
+        padding: 8px 16px; font-size: 12.5px; font-weight: 700;
+        color: var(--bcn-ink-soft); cursor: pointer; transition: .15s;
+      }
+      .bcn-seg button.on {
+        background: #fff; color: var(--bcn-sea);
+        box-shadow: 0 1px 4px rgba(6,38,46,.12);
+      }
+
+      .bcn-tpl-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+      .bcn-tpl-head .bcn-lbl { margin: 0; }
+      .bcn-ins-btn {
+        border: none; background: none; color: var(--bcn-teal);
+        font-size: 12px; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; gap: 4px;
+      }
+      .bcn-ins-btn:hover { color: var(--bcn-sea); }
+      .bcn-tpl {
+        width: 100%; border: 1.5px solid var(--bcn-line); border-radius: 10px;
+        padding: 10px 12px; font-size: 13px; color: var(--bcn-ink); background: #fff;
+      }
+      .bcn-tpl:focus {
+        outline: none; border-color: var(--bcn-teal);
+        box-shadow: 0 0 0 3px rgba(19,181,166,.14);
+      }
+      .bcn-tpl-note { font-size: 11px; color: var(--bcn-mute); margin-top: 7px; line-height: 1.5; }
+
+      .bcn-content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .bcn-content-grid.single { grid-template-columns: 1fr; }
+      .bcn-fld { margin-bottom: 12px; }
+      .bcn-fld label {
+        font-size: 12px; font-weight: 700; margin-bottom: 5px;
+        display: flex; align-items: center; gap: 6px; color: var(--bcn-ink);
+      }
+      .bcn-fld input, .bcn-fld textarea {
+        width: 100%; border: 1.5px solid var(--bcn-line); border-radius: 10px;
+        padding: 10px 12px; font-size: 13px; color: var(--bcn-ink); background: #fff;
+        transition: .15s; resize: vertical; font-family: inherit;
+      }
+      .bcn-fld input:focus, .bcn-fld textarea:focus {
+        outline: none; border-color: var(--bcn-teal);
+        box-shadow: 0 0 0 3px rgba(19,181,166,.14);
+      }
+      .bcn-fld textarea { line-height: 1.6; }
+      .bcn-ta-line { min-height: 150px; }
+      .bcn-ta-mail { min-height: 104px; }
+      .bcn-tagico { font-size: 13px; }
+      .bcn-varbar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; align-items: center; }
+      .bcn-varbar-hint { font-size: 10.5px; color: var(--bcn-mute); font-weight: 700; margin-right: 2px; }
+      .bcn-var {
+        border: 1px dashed #c2d3d3; background: #f5f9f9; border-radius: 7px;
+        padding: 4px 9px; font-size: 11px; font-weight: 700;
+        color: var(--bcn-sea); cursor: pointer; transition: .15s; font-family: 'Outfit', monospace;
+      }
+      .bcn-var:hover { background: #e7f4f1; border-color: var(--bcn-teal); }
+
+      .bcn-pv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      .bcn-pv-grid.single { grid-template-columns: 1fr; max-width: 520px; }
+      .bcn-pv-cap {
+        font-size: 12px; font-weight: 800; color: var(--bcn-sea);
+        margin-bottom: 10px; display: flex; align-items: center; gap: 7px;
+      }
+      .bcn-pv-cap-b {
+        width: 20px; height: 20px; border-radius: 6px;
+        display: grid; place-items: center; font-size: 11px; color: #fff;
+      }
+      .bcn-pv-cap-b.l { background: #06c755; }
+      .bcn-pv-cap-b.m { background: var(--bcn-sea); }
+      .bcn-pv-stage {
+        background: #eef3f5; border: 1px solid var(--bcn-line);
+        border-radius: 14px; padding: 16px;
+      }
+
+      .bcn-lbubble-wrap { display: flex; flex-direction: column; }
+      .bcn-lb-top { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+      .bcn-lb-av {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: linear-gradient(140deg, var(--bcn-abyss), var(--bcn-sea));
+        display: grid; place-items: center; font-size: 12px; color: #fff; font-weight: 800; flex: none;
+      }
+      .bcn-lb-nm { font-size: 12px; font-weight: 700; color: var(--bcn-ink); }
+      .bcn-lb-row { display: flex; align-items: flex-end; gap: 7px; }
+      .bcn-lb-bubble {
+        background: #fff; border-radius: 4px 14px 14px 14px;
+        padding: 12px 14px; max-width: 300px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        white-space: pre-wrap; font-size: 13px; line-height: 1.65; color: #1f2d30;
+      }
+      .bcn-lb-time { font-size: 10px; color: #90a4a7; flex: none; padding-bottom: 2px; }
+      .bcn-pv-foot { font-size: 10.5px; color: var(--bcn-mute); margin-top: 11px; }
+
+      .bcn-mb-wrap { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow: hidden; }
+      .bcn-mb-bd { padding: 18px; }
+      .bcn-mb-subj { font-size: 16px; font-weight: 800; color: var(--bcn-ink); line-height: 1.4; }
+      .bcn-mb-divider {
+        height: 2px; background: linear-gradient(90deg, var(--bcn-teal), transparent);
+        margin: 11px 0 14px; border-radius: 2px;
+      }
+      .bcn-mb-body { font-size: 13px; line-height: 1.7; color: #3f5358; white-space: pre-wrap; }
+
+      .bcn-sendbar {
+        display: flex; align-items: center; gap: 14px;
+        padding: 15px 17px; border-top: 1px solid var(--bcn-line);
+        background: linear-gradient(180deg, #fbfdfd, #f4f9f8);
+      }
+      .bcn-est { display: flex; align-items: center; gap: 9px; }
+      .bcn-est-n {
+        font-family: 'Outfit', monospace; font-weight: 800; font-size: 22px; color: var(--bcn-sea);
+      }
+      .bcn-est-t { font-size: 11.5px; color: var(--bcn-ink-soft); line-height: 1.4; }
+      .bcn-est-t b { color: var(--bcn-teal); font-weight: 700; }
+      .bcn-send-actions { margin-left: auto; display: flex; gap: 10px; }
+      .bcn-btn {
+        border: none; border-radius: 11px; padding: 12px 22px;
+        font-size: 13.5px; font-weight: 700; cursor: pointer; transition: .15s;
+        display: flex; align-items: center; justify-content: center; gap: 7px;
+      }
+      .bcn-btn-ghost { background: #fff; border: 1.5px solid var(--bcn-line); color: var(--bcn-ink-soft); }
+      .bcn-btn-ghost:hover { border-color: var(--bcn-teal); color: var(--bcn-sea); }
+      .bcn-btn-send {
+        background: linear-gradient(120deg, #ff7a6e, var(--bcn-coral)); color: #fff;
+        box-shadow: 0 5px 16px rgba(255,107,94,.3);
+      }
+      .bcn-btn-send:hover:not(:disabled) {
+        transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,107,94,.4);
+      }
+      .bcn-btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .bcn-mask {
+        position: fixed; inset: 0; background: rgba(6,38,46,.55);
+        backdrop-filter: blur(3px);
+        display: none; align-items: center; justify-content: center; z-index: 80;
+      }
+      .bcn-mask.show { display: flex; }
+      .bcn-modal {
+        background: #fff; border-radius: 16px; width: 380px; max-width: 90vw;
+        overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+      }
+      .bcn-modal-h {
+        background: linear-gradient(120deg, var(--bcn-abyss), var(--bcn-sea));
+        color: #eafffb; padding: 18px 20px;
+      }
+      .bcn-modal-h b { font-size: 16px; font-weight: 800; }
+      .bcn-modal-h p { font-size: 12px; opacity: .8; margin-top: 3px; }
+      .bcn-modal-b { padding: 20px; }
+      .bcn-modal-row {
+        display: flex; justify-content: space-between;
+        font-size: 13px; padding: 8px 0;
+        border-bottom: 1px dashed var(--bcn-line); color: var(--bcn-ink-soft);
+      }
+      .bcn-modal-row:last-of-type { border: none; }
+      .bcn-modal-row b { color: var(--bcn-ink); font-weight: 700; }
+      .bcn-modal-warn {
+        background: #fff8ea; border: 1px solid #f3e0b0; color: var(--bcn-warn);
+        font-size: 12px; font-weight: 600; border-radius: 9px;
+        padding: 10px 12px; margin-top: 12px; line-height: 1.5;
+      }
+      .bcn-modal-f { display: flex; gap: 10px; padding: 0 20px 20px; }
+
+      .bcn-toast {
+        position: fixed; bottom: 26px; left: 50%;
+        transform: translateX(-50%) translateY(80px);
+        background: var(--bcn-ink); color: #fff;
+        padding: 12px 22px; border-radius: 30px;
+        font-size: 13px; font-weight: 600;
+        box-shadow: 0 10px 30px rgba(0,0,0,.3);
+        opacity: 0; transition: .35s cubic-bezier(.2,.8,.2,1);
+        z-index: 99; display: flex; align-items: center; gap: 9px;
+        pointer-events: none;
+      }
+      .bcn-toast.show {
+        transform: translateX(-50%) translateY(0); opacity: 1;
+      }
+      .bcn-toast-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bcn-teal-bright); }
+    `}</style>
   );
 }
