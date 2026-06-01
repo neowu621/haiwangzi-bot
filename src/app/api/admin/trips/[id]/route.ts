@@ -32,6 +32,7 @@ const PatchSchema = z.object({
   notes: z.string().nullable().optional(),
   meetingPoint: z.string().nullable().optional(),
   meetingPointUrl: z.string().nullable().optional(),
+  referenceVideoUrl: z.string().nullable().optional(),
   images: z.array(z.string()).optional(),
 });
 
@@ -98,6 +99,8 @@ export async function PATCH(
     patch.meetingPoint = data.meetingPoint === "" ? null : data.meetingPoint;
   if (data.meetingPointUrl !== undefined)
     patch.meetingPointUrl = data.meetingPointUrl === "" ? null : data.meetingPointUrl;
+  if (data.referenceVideoUrl !== undefined)
+    patch.referenceVideoUrl = data.referenceVideoUrl === "" ? null : data.referenceVideoUrl;
   if (data.images !== undefined) patch.images = data.images;
 
   try {

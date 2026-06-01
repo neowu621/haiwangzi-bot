@@ -253,6 +253,8 @@ model DivingTrip {
   meetingPoint    String?      @map("meeting_point")
   // 集合地點 Google Map URL（與 meetingPoint 分開存）
   meetingPointUrl String?      @map("meeting_point_url")
+  // 潛點參考影片 URL（YouTube / Vimeo 等，給客戶看潛點介紹影片）
+  referenceVideoUrl String?    @map("reference_video_url")
   // 場次照片 R2 keys（public bucket，prefix=trips/）
   images       String[]     @default([])
   status       TripStatus   @default(open)

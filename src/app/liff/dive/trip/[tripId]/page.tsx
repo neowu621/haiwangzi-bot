@@ -46,6 +46,7 @@ interface TripDetail {
     scooterRental: number;
   };
   sites: Array<{ id: string; name: string; description: string }>;
+  referenceVideoUrl?: string | null;
   coaches: Array<{ id: string; realName: string; cert: string }>;
 }
 
@@ -416,6 +417,17 @@ export default function TripBookingPage({
               <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
                 <Anchor className="h-3.5 w-3.5 opacity-70" />
                 <span>{trip.sites.map((s) => s.name).join(" · ")}</span>
+                {trip.referenceVideoUrl && (
+                  <a
+                    href={trip.referenceVideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-100"
+                    title="觀看潛點參考影片"
+                  >
+                    ▶ 影片
+                  </a>
+                )}
                 <Badge variant="muted" className="text-[10px]">
                   {trip.tankCount} 潛
                 </Badge>

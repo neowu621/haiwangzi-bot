@@ -167,6 +167,8 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS payment_info JSONB NOT NULL DEFAULT '{}'`,
   // v160: bookings.payment_note — 客戶選「其他」付款方式時填寫的說明
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_note TEXT`,
+  // v179: diving_trips.reference_video_url — 潛點介紹參考影片
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS reference_video_url TEXT`,
 ];
 
 async function main() {

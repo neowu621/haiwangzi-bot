@@ -80,6 +80,7 @@ const CreateSchema = z.object({
   notes: z.string().nullable().optional().or(z.literal("")),
   meetingPoint: z.string().nullable().optional().or(z.literal("")),
   meetingPointUrl: z.string().nullable().optional().or(z.literal("")),
+  referenceVideoUrl: z.string().nullable().optional().or(z.literal("")),
   images: z.array(z.string()).default([]),
 });
 
@@ -132,6 +133,7 @@ export async function POST(req: NextRequest) {
         notes: data.notes || null,
         meetingPoint: data.meetingPoint || null,
         meetingPointUrl: data.meetingPointUrl || null,
+        referenceVideoUrl: data.referenceVideoUrl || null,
         images: data.images ?? [],
         status: (data.status ?? "open") as "open" | "full" | "cancelled" | "completed",
       },

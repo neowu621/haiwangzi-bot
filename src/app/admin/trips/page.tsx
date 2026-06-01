@@ -41,6 +41,7 @@ interface Trip {
   notes: string | null;
   meetingPoint: string | null;
   meetingPointUrl: string | null;
+  referenceVideoUrl?: string | null;
   images: string[];
   status: string;
 }
@@ -132,6 +133,7 @@ const BLANK_FORM = {
   notes: "",
   meetingPoint: "",
   meetingPointUrl: "",
+  referenceVideoUrl: "",
   status: "open" as string,
 };
 
@@ -237,6 +239,7 @@ export default function AdminTripsPage() {
       notes: trip.notes ?? "",
       meetingPoint: trip.meetingPoint ?? "",
       meetingPointUrl: trip.meetingPointUrl ?? "",
+      referenceVideoUrl: trip.referenceVideoUrl ?? "",
       status: "open", // 複製的新場次強制為「開放」
     });
     setEditingId(null);
@@ -260,6 +263,7 @@ export default function AdminTripsPage() {
       notes: trip.notes ?? "",
       meetingPoint: trip.meetingPoint ?? "",
       meetingPointUrl: trip.meetingPointUrl ?? "",
+      referenceVideoUrl: trip.referenceVideoUrl ?? "",
       status: trip.status,
     });
     setEditingId(trip.id);
@@ -279,6 +283,7 @@ export default function AdminTripsPage() {
         notes: form.notes || null,
         meetingPoint: form.meetingPoint || null,
         meetingPointUrl: form.meetingPointUrl || null,
+        referenceVideoUrl: form.referenceVideoUrl || null,
         status: form.status,
       };
       if (dialogMode === "create") {
@@ -1097,20 +1102,31 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* Row 2: 潛點 — 直接輸入（v153 起，多個用逗號分隔） */}
-            <div>
-              <Label className="mb-1 block text-xs">潛點名稱</Label>
-              <Input
-                value={form.diveSiteIds.join(", ")}
-                onChange={(e) => {
-                  const names = e.target.value
-                    .split(/[,，、]/)
-                    .map((s) => s.trim())
-                    .filter(Boolean);
-                  setForm({ ...form, diveSiteIds: names });
-                }}
-                placeholder="例：鶯歌石 或 鶯歌石, 深奧（多個用逗號分隔）"
-              />
+            {/* Row 2: 潛點名稱 + 參考影片連結（並排） */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block text-xs">潛點名稱</Label>
+                <Input
+                  value={form.diveSiteIds.join(", ")}
+                  onChange={(e) => {
+                    const names = e.target.value
+                      .split(/[,，、]/)
+                      .map((s) => s.trim())
+                      .filter(Boolean);
+                    setForm({ ...form, diveSiteIds: names });
+                  }}
+                  placeholder="例：鶯歌石 或 鶯歌石, 深奧"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">參考影片連結（選填）</Label>
+                <Input
+                  type="url"
+                  value={form.referenceVideoUrl}
+                  onChange={(e) => setForm({ ...form, referenceVideoUrl: e.target.value })}
+                  placeholder="YouTube / Vimeo 等網址"
+                />
+              </div>
             </div>
 
             {/* Row 3: 教練 + 氣瓶數 + 可參加人數 (三欄並排，教練佔較寬) */}
