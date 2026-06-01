@@ -153,15 +153,13 @@ export async function POST(req: NextRequest) {
     );
   }
   const override = await prisma.messageTemplate.findUnique({ where: { key } });
-  const subject = `（測試）${override?.title ?? label}`;
-  // v234：body 不再 dump params JSON；若無 override 就用簡單說明
+  const title = override?.title ?? label;
+  const subject = `（測試）${title}`;
+  const subtitle = override?.subtitle ?? "";
   const bodyText =
     override?.bodyText ??
-    override?.subtitle ??
-    `這是 ${label} 的試送 Email。正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。`;
+    "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
   const buttonLabel = override?.buttonLabel ?? "開啟預約 App";
-  // v234：button URL 取自 params（welcome 用 liffUrl，其他用 url）
-  // 若都沒有 → 用 BASE_URL 或預設 LIFF
   const buttonUrl = (() => {
     const p = params as Record<string, string>;
     if (p.liffUrl) return p.liffUrl;
@@ -170,32 +168,90 @@ export async function POST(req: NextRequest) {
     return id ? `https://liff.line.me/${id}` : "https://haiwangzi.zeabur.app";
   })();
 
+  // v235：與 /admin/templates 預覽一致的內容
+  const HERO_EMOJI: Record<string, string> = {
+    welcome: "🌊", booking_confirm: "✅", deposit_notice: "💰", deposit_confirm: "✅",
+    final_reminder: "⏰", trip_guide: "📘", d1_reminder: "🤿", weather_cancel: "🌊",
+    overcap_alert: "⚠️", admin_weekly: "📊",
+  };
+  const EXTRA_LINES: Record<string, string[]> = {
+    welcome: [
+      "📅 日潛預約：選日期 → 選場次 → 一鍵搞定",
+      "✈️ 旅遊潛水：蘭嶼 / 綠島 / 墾丁 多日團",
+      "💳 上傳轉帳截圖，教練即時核對",
+      "🔔 行前一天自動提醒，海況即時推播",
+    ],
+    trip_guide: [
+      "🎒 攜帶：證照、防寒衣、防曬",
+      "📍 集合地點 / 交通方式：依場次說明",
+      "📞 緊急聯絡：教練電話於行前通知",
+    ],
+    weather_cancel: [
+      "🅰️ 退現金 100%",
+      "🅱️ 轉抵用金 110%（推薦，多 10% 優惠）",
+    ],
+  };
+  const EXTRA_FOOTER: Record<string, string> = {
+    welcome: "安全．專業．陪你看見海",
+  };
+
+  const heroEmoji = HERO_EMOJI[key] ?? "📩";
+  const extraLines = EXTRA_LINES[key] ?? [];
+  const extraFooter = EXTRA_FOOTER[key] ?? "";
+
   // 動態資料區（SHOW_DATA 模板才顯示）
   const showData = ["booking_confirm", "d1_reminder", "deposit_notice", "deposit_confirm", "final_reminder", "trip_guide", "weather_cancel", "overcap_alert"].includes(key);
   const showAmount = ["deposit_notice", "final_reminder"].includes(key);
   const dataHtml = showData ? `
-    <div style="background:#f4f9f8;border:1px solid #e2efed;border-radius:9px;padding:11px 13px;margin:16px 0;font-size:13px;color:#516268">
-      <div style="margin:3px 0"><b style="color:#0a2027">客戶姓名</b>　${params.name ?? params.customerName ?? "王小明"}</div>
-      <div style="margin:3px 0"><b style="color:#0a2027">預約場次</b>　${params.site ?? params.tourTitle ?? "鶯歌石"}</div>
-      <div style="margin:3px 0"><b style="color:#0a2027">出發時間</b>　${params.date ?? params.tripDate ?? "—"} ${params.time ?? params.tripTime ?? ""}</div>
-      ${showAmount ? `<div style="margin:3px 0"><b style="color:#0a2027">應繳金額</b>　NT$ ${params.total ?? params.deposit ?? params.remaining ?? "—"}</div>` : ""}
+    <div style="background:#f4f9f8;border:1px solid #e2efed;border-radius:9px;padding:12px 14px;margin:16px 0;font-size:13px;color:#516268">
+      <div style="margin:4px 0"><b style="color:#0a2342;display:inline-block;width:72px">客戶姓名</b>${params.name ?? params.customerName ?? "王小明"}</div>
+      <div style="margin:4px 0"><b style="color:#0a2342;display:inline-block;width:72px">預約場次</b>${params.site ?? params.tourTitle ?? "鶯歌石"}</div>
+      <div style="margin:4px 0"><b style="color:#0a2342;display:inline-block;width:72px">出發時間</b>${params.date ?? params.tripDate ?? "—"} ${params.time ?? params.tripTime ?? ""}</div>
+      ${showAmount ? `<div style="margin:4px 0"><b style="color:#0a2342;display:inline-block;width:72px">應繳金額</b>NT$ ${params.total ?? params.deposit ?? params.remaining ?? "—"}</div>` : ""}
     </div>
   ` : "";
 
-  const html = `<!DOCTYPE html><html><body style="font-family:'Noto Sans TC',sans-serif;background:#f5f8f8;padding:24px">
-    <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.06)">
-      <div style="background:linear-gradient(120deg,#06262e,#0e4c5a);padding:20px 24px;color:#eafffb">
-        <div style="font-size:20px;font-weight:800">東北角海王子潛水</div>
+  const listHtml = extraLines.length > 0 ? `
+    <div style="margin:14px 0">
+      ${key === "welcome" ? '<div style="font-size:13px;font-weight:700;color:#0A2342;margin-bottom:8px">我們在 LINE / Email 為您提供：</div>' : ""}
+      ${extraLines.map((line) => `<div style="font-size:13px;line-height:1.6;color:#1A2330;margin:4px 0">${line}</div>`).join("")}
+    </div>
+  ` : "";
+
+  const footerLineHtml = extraFooter ? `
+    <div style="margin-top:18px;text-align:center;font-size:12px;color:#6B7682;font-style:italic">
+      ${extraFooter}
+    </div>
+  ` : "";
+
+  // 整體 Email：與 LINE Flex 視覺一致
+  const html = `<!DOCTYPE html><html><body style="font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#f5f8f8;padding:24px;margin:0">
+    <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 14px rgba(10,35,66,.08)">
+      <!-- 品牌 banner -->
+      <div style="background:linear-gradient(120deg,#06262e,#0e4c5a);padding:18px 24px;color:#eafffb">
+        <div style="font-size:18px;font-weight:800">東北角海王子潛水</div>
         <div style="font-size:11px;opacity:.7;letter-spacing:2px">SEA PRINCE DIVING</div>
       </div>
-      <div style="padding:24px">
-        <h1 style="font-size:18px;color:#0a2027;margin:0 0 12px">${subject}</h1>
-        <p style="font-size:13px;color:#516268;line-height:1.7;white-space:pre-wrap;margin:0">${bodyText}</p>
-        ${dataHtml}
-        <a href="${buttonUrl}" style="display:inline-block;background:#13b5a6;color:#fff;padding:10px 24px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px">${buttonLabel} →</a>
+      <!-- HERO：oceanDeep + 大 emoji + 標題 + 副標 -->
+      <div style="background:#0A2342;padding:30px 20px 26px;text-align:center">
+        <div style="font-size:48px;line-height:1;margin-bottom:12px">${heroEmoji}</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.3">${title}</div>
+        ${subtitle ? `<div style="font-size:14px;color:#00D9CB;font-weight:500;line-height:1.4">${subtitle}</div>` : ""}
       </div>
+      <!-- BODY -->
+      <div style="padding:22px 26px;color:#1A2330">
+        ${bodyText ? `<p style="font-size:13.5px;color:#516268;line-height:1.75;margin:0 0 6px;white-space:pre-wrap">${bodyText}</p>` : ""}
+        ${listHtml}
+        ${dataHtml}
+        ${footerLineHtml}
+        <div style="text-align:center;margin-top:18px">
+          <a href="${buttonUrl}" style="display:inline-block;background:#00D9CB;color:#0A2342;padding:12px 32px;border-radius:10px;font-weight:800;text-decoration:none;font-size:14px">${buttonLabel} →</a>
+        </div>
+      </div>
+      <!-- 底部 -->
       <div style="padding:14px 24px;border-top:1px solid #eef2f2;font-size:11px;color:#9aabae;text-align:center">
-        系統自動通知信 · 此為試送，正式寄送時動態欄位會自動帶入
+        系統自動通知信 · 此為試送，正式寄送時動態欄位會自動帶入<br>
+        東北角海王子潛水 · 安全．專業，陪你看見海
       </div>
     </div>
   </body></html>`;
