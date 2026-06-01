@@ -448,6 +448,12 @@ model SiteConfig {
   birthdayCreditAmount Int @default(100) @map("birthday_credit_amount")
   // 生日禮金有效天數（v184）。0 = 永不過期
   birthdayCreditExpiryDays Int @default(360) @map("birthday_credit_expiry_days")
+  // v185: VIP 升等獎勵禮金有效天數
+  vipUpgradeCreditExpiryDays Int @default(360) @map("vip_upgrade_credit_expiry_days")
+  // v185: admin 手動發放禮金的預設有效天數（可在發放時覆寫）
+  adminGrantCreditExpiryDays Int @default(360) @map("admin_grant_credit_expiry_days")
+  // v185: 退款轉禮金 有效天數（0 = 永不過期，退款通常不限期）
+  refundCreditExpiryDays Int @default(0) @map("refund_credit_expiry_days")
   // VIP 升等獎金：{ "2": 200, "3": 500, "4": 1000, "5": 2000 } — key=升到的等級
   vipUpgradeCredits Json @default("{}") @map("vip_upgrade_credits")
 

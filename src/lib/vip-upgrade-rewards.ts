@@ -10,6 +10,7 @@
  */
 import { prisma } from "./prisma";
 import { grantCredit } from "./credit";
+import { computeExpiry } from "./credit-expiry";
 import type { VipTier } from "./vip-tier";
 
 /**
@@ -41,6 +42,7 @@ export async function grantVipUpgradeRewards(
     if (exists) continue; // 已發過
 
     try {
+      const expiresAt = await computeExpiry("vip_upgrade");
       await grantCredit({
         userId,
         amount: tier.upgradeCredit,
@@ -49,6 +51,7 @@ export async function grantVipUpgradeRewards(
         refId,
         note: `升等 LV${tier.level} ${tier.name} 獎勵`,
         createdBy: actorId ?? null,
+        expiresAt,
       });
       totalGranted += tier.upgradeCredit;
     } catch (e) {

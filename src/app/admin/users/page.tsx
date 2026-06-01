@@ -142,6 +142,7 @@ export default function AdminUsersPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [creditAmount, setCreditAmount] = useState("");
   const [creditNote, setCreditNote] = useState("");
+  const [creditExpiryDays, setCreditExpiryDays] = useState("");  // v185：發放有效天數覆寫（空＝用 default 360）
   const [creditBusy, setCreditBusy] = useState(false);
 
   // ── 禮金紀錄 popup ──────────────────────────────────────────────────────────
@@ -387,6 +388,7 @@ export default function AdminUsersPage() {
     }
     setCreditBusy(true);
     try {
+      const expiryDays = creditExpiryDays.trim() ? Math.max(0, parseInt(creditExpiryDays, 10) || 0) : undefined;
       const r = await adminFetch<{ newBalance: number }>(
         "/api/admin/credits",
         {
@@ -397,6 +399,7 @@ export default function AdminUsersPage() {
             reason: "admin_adjust",
             note:
               creditNote || (sign > 0 ? "管理員發放" : "管理員扣回"),
+            ...(expiryDays !== undefined ? { expiryDays } : {}),
           }),
         },
       );
@@ -409,6 +412,7 @@ export default function AdminUsersPage() {
       );
       setCreditAmount("");
       setCreditNote("");
+      setCreditExpiryDays("");
     } catch (e) {
       alert("操作失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -1133,6 +1137,16 @@ export default function AdminUsersPage() {
                     onChange={(e) => setCreditNote(e.target.value)}
                   />
                 </div>
+                {/* v185：有效天數覆寫 */}
+                <Input
+                  type="number"
+                  min={0}
+                  max={3650}
+                  placeholder="有效天數（留空 = 用後台預設值，0 = 永不過期）"
+                  value={creditExpiryDays}
+                  onChange={(e) => setCreditExpiryDays(e.target.value)}
+                  className="text-xs"
+                />
                 {/* 快捷名義 — 點擊填入「原因」欄 */}
                 <div className="flex flex-wrap gap-1">
                   {[

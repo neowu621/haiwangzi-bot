@@ -62,7 +62,10 @@ interface Config {
   defaultTripPricing: Partial<TripPricing>;
   defaultCoachFee: number;
   birthdayCreditAmount: number;
-  birthdayCreditExpiryDays: number;  // v184：生日禮金有效天數（0 = 永不過期）
+  birthdayCreditExpiryDays: number;       // v184：生日禮金有效天數（0 = 永不過期）
+  vipUpgradeCreditExpiryDays: number;     // v185：VIP 升等獎勵禮金有效天數
+  adminGrantCreditExpiryDays: number;     // v185：admin 手動發禮金的預設有效天數
+  refundCreditExpiryDays: number;         // v185：退款轉禮金有效天數
   vipUpgradeCredits: Partial<VipUpgradeCredits>;
   weatherWindThreshold: number;
   // 外部連結（Rich Menu / LIFF 用）
@@ -526,6 +529,38 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* B3.5 禮金有效天數 — v185 */}
+          <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">
+              🎁 禮金有效天數（從發放日起算，0 = 永不過期）
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金</Label>
+                <Input type="number" min={0} max={3650} value={cfg.birthdayCreditExpiryDays ?? 360}
+                  onChange={e => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">VIP 升等獎勵</Label>
+                <Input type="number" min={0} max={3650} value={cfg.vipUpgradeCreditExpiryDays ?? 360}
+                  onChange={e => setCfg(c => c ? { ...c, vipUpgradeCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">Admin 手動發放（預設）</Label>
+                <Input type="number" min={0} max={3650} value={cfg.adminGrantCreditExpiryDays ?? 360}
+                  onChange={e => setCfg(c => c ? { ...c, adminGrantCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">退款轉禮金</Label>
+                <Input type="number" min={0} max={3650} value={cfg.refundCreditExpiryDays ?? 0}
+                  onChange={e => setCfg(c => c ? { ...c, refundCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
+              ※ 設 0 = 永不過期。退款轉禮金通常設 0（不限期）。Admin 手動發放可在發放時個別覆寫。
+            </p>
+          </div>
+
           {/* B4 VIP 升等獎金 */}
           <div className="mb-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">VIP 升等獎金（NT$，0=停用）</p>
@@ -551,6 +586,9 @@ export default function SettingsPage() {
                 defaultCoachFee: cfg.defaultCoachFee,
                 birthdayCreditAmount: cfg.birthdayCreditAmount,
                 birthdayCreditExpiryDays: cfg.birthdayCreditExpiryDays ?? 360,
+                vipUpgradeCreditExpiryDays: cfg.vipUpgradeCreditExpiryDays ?? 360,
+                adminGrantCreditExpiryDays: cfg.adminGrantCreditExpiryDays ?? 360,
+                refundCreditExpiryDays: cfg.refundCreditExpiryDays ?? 0,
                 weatherWindThreshold: cfg.weatherWindThreshold,
                 vipUpgradeCredits: vipCredits,
               })}

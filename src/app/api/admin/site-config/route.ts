@@ -49,8 +49,11 @@ const PatchSchema = z.object({
     scooterRental: z.number().int().min(0),
   }).optional(),
   defaultCoachFee: z.number().int().min(0).optional(),
-  // v184：生日禮金有效天數（0 = 永不過期）
+  // v184/v185：禮金有效天數系列（0 = 永不過期）
   birthdayCreditExpiryDays: z.number().int().min(0).max(3650).optional(),
+  vipUpgradeCreditExpiryDays: z.number().int().min(0).max(3650).optional(),
+  adminGrantCreditExpiryDays: z.number().int().min(0).max(3650).optional(),
+  refundCreditExpiryDays: z.number().int().min(0).max(3650).optional(),
   birthdayCreditAmount: z.number().int().min(0).optional(),
   vipUpgradeCredits: z.record(z.number()).optional(),
   weatherWindThreshold: z.number().int().min(1).max(50).optional(),
@@ -127,6 +130,9 @@ export async function GET(req: NextRequest) {
       weatherWindThreshold: row.weatherWindThreshold,
       birthdayCreditAmount: row.birthdayCreditAmount,
       birthdayCreditExpiryDays: row.birthdayCreditExpiryDays ?? 360,
+      vipUpgradeCreditExpiryDays: row.vipUpgradeCreditExpiryDays ?? 360,
+      adminGrantCreditExpiryDays: row.adminGrantCreditExpiryDays ?? 360,
+      refundCreditExpiryDays: row.refundCreditExpiryDays ?? 0,
       vipUpgradeCredits: row.vipUpgradeCredits,
       externalLinks: row.externalLinks ?? {},
       paymentInfo: row.paymentInfo ?? {},
