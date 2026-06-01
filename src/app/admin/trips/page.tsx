@@ -1278,9 +1278,9 @@ export default function AdminTripsPage() {
             {/* /panel header */}
             <div className="space-y-3" style={{ padding: "16px 24px", overflowY: "auto", flex: 1, minHeight: 0 }}>
             {/* Row 1: 日期 + 集合時間 + 場次狀態 (三欄並排) */}
-            {/* v220：日期欄縮窄（讓日曆 icon 靠左、好按）+ 場次狀態縮小 + 集合時間拿多空間 */}
+            {/* v226：日期拿到大空間（5/12），集合時間縮窄（4/12），狀態 3/12 */}
             <div className="grid grid-cols-12 gap-3">
-              <div className="col-span-3">
+              <div className="col-span-5">
                 <Label className="mb-1 block text-xs">日期</Label>
                 <Input
                   type="date"
@@ -1296,7 +1296,7 @@ export default function AdminTripsPage() {
                   }}
                 />
               </div>
-              <div className="col-span-6">
+              <div className="col-span-4">
                 <Label className="mb-1 block text-xs">集合時間</Label>
                 <div className="flex items-center gap-1">
                   <select
