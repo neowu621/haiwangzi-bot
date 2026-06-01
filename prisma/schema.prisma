@@ -192,6 +192,8 @@ model CreditTx {
   // 紀錄事件後的餘額（方便對帳）
   balanceAfter Int   @map("balance_after")
   createdBy String?  @map("created_by") @db.VarChar(64) // admin lineUserId
+  // 到期日（v184）。null = 永不過期。birthday / 升等獎勵等可設過期
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user      User     @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
@@ -444,6 +446,8 @@ model SiteConfig {
   // 補償金 / 禮金 規則
   // 生日當天自動發放金額 (NT$)。設 0 = 關閉
   birthdayCreditAmount Int @default(100) @map("birthday_credit_amount")
+  // 生日禮金有效天數（v184）。0 = 永不過期
+  birthdayCreditExpiryDays Int @default(360) @map("birthday_credit_expiry_days")
   // VIP 升等獎金：{ "2": 200, "3": 500, "4": 1000, "5": 2000 } — key=升到的等級
   vipUpgradeCredits Json @default("{}") @map("vip_upgrade_credits")
 

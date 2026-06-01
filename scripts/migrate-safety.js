@@ -169,6 +169,10 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_note TEXT`,
   // v179: diving_trips.reference_video_url — 潛點介紹參考影片
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS reference_video_url TEXT`,
+  // v184: 生日禮金有效天數設定
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS birthday_credit_expiry_days INTEGER NOT NULL DEFAULT 360`,
+  // v184: CreditTx 到期時間（null = 永不過期）
+  `ALTER TABLE credit_txs ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`,
 ];
 
 async function main() {

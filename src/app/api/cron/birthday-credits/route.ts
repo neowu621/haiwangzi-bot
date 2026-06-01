@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
     .findUnique({ where: { id: "default" } })
     .catch(() => null);
   const amount = cfg?.birthdayCreditAmount ?? 100;
+  // v184：生日禮金有效天數（0 = 永不過期）
+  const expiryDays = cfg?.birthdayCreditExpiryDays ?? 360;
   if (amount <= 0) {
     return NextResponse.json({ ok: true, skipped: true, reason: "amount=0" });
   }
@@ -61,13 +63,21 @@ export async function GET(req: NextRequest) {
 
   for (const u of users) {
     try {
+      // v184：算出到期日（expiryDays = 0 → 永不過期）
+      const expiresAt =
+        expiryDays > 0
+          ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000)
+          : null;
       await grantCredit({
         userId: u.line_user_id,
         amount,
         reason: "birthday",
         refType: "birthday",
         refId: String(year),
-        note: `${year} 生日禮金`,
+        note: expiryDays > 0
+          ? `${year} 生日禮金（${expiryDays} 天內有效）`
+          : `${year} 生日禮金`,
+        expiresAt,
       });
       // 標記今年已發
       await prisma.user.update({

@@ -62,6 +62,7 @@ interface Config {
   defaultTripPricing: Partial<TripPricing>;
   defaultCoachFee: number;
   birthdayCreditAmount: number;
+  birthdayCreditExpiryDays: number;  // v184：生日禮金有效天數（0 = 永不過期）
   vipUpgradeCredits: Partial<VipUpgradeCredits>;
   weatherWindThreshold: number;
   // 外部連結（Rich Menu / LIFF 用）
@@ -79,10 +80,11 @@ const GEAR_LABELS: Record<keyof GearPrices, string> = {
   fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套(七折)",
 };
 const DEFAULT_TRIP: TripPricing = {
-  baseTrip: 1200, extraTank: 500, nightDive: 300, scooterRental: 500,
+  baseTrip: 1200, extraTank: 500, nightDive: 0, scooterRental: 0,
 };
-const TRIP_LABELS: Record<keyof TripPricing, string> = {
-  baseTrip: "基本潛水費", extraTank: "額外氣瓶", nightDive: "夜潛加成", scooterRental: "水上摩托車",
+// v184：移除夜潛加成 + 水上摩托車（v155 已停用業務功能）
+const TRIP_LABELS: Record<string, string> = {
+  baseTrip: "基本潛水費", extraTank: "額外氣瓶",
 };
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -480,14 +482,14 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* B2 場次預設定價 */}
+          {/* B2 場次預設定價 — v184: 移除夜潛加成 + 水上摩托車 */}
           <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">場次預設定價（新增場次時的預設值，NT$）</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(Object.keys(TRIP_LABELS) as Array<keyof TripPricing>).map(key => (
+              {(["baseTrip", "extraTank"] as const).map(key => (
                 <div key={key}>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{TRIP_LABELS[key]}</Label>
-                  <Input type="number" value={trip[key]}
+                  <Input type="number" value={trip[key as keyof TripPricing]}
                     onChange={e => {
                       const val = parseInt(e.target.value) || 0;
                       setCfg(c => c ? { ...c, defaultTripPricing: { ...trip, [key]: val } } : c);
@@ -510,6 +512,11 @@ export default function SettingsPage() {
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金（NT$，0=停用）</Label>
                 <Input type="number" value={cfg.birthdayCreditAmount}
                   onChange={e => setCfg(c => c ? { ...c, birthdayCreditAmount: parseInt(e.target.value) || 0 } : c)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日禮金有效天數（0=永不過期）</Label>
+                <Input type="number" min={0} value={cfg.birthdayCreditExpiryDays ?? 360}
+                  onChange={e => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: parseInt(e.target.value) || 0 } : c)} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">天氣取消風速門檻（m/s）</Label>
@@ -543,6 +550,7 @@ export default function SettingsPage() {
                 defaultTripPricing: trip,
                 defaultCoachFee: cfg.defaultCoachFee,
                 birthdayCreditAmount: cfg.birthdayCreditAmount,
+                birthdayCreditExpiryDays: cfg.birthdayCreditExpiryDays ?? 360,
                 weatherWindThreshold: cfg.weatherWindThreshold,
                 vipUpgradeCredits: vipCredits,
               })}

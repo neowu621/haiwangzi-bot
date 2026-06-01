@@ -25,6 +25,7 @@ export interface GrantCreditArgs {
   refId?: string | null;
   note?: string | null;
   createdBy?: string | null; // admin lineUserId
+  expiresAt?: Date | null;   // v184: 到期日（null = 永不過期）
 }
 
 /**
@@ -57,6 +58,7 @@ export async function grantCredit(args: GrantCreditArgs) {
         note: args.note ?? null,
         balanceAfter: newBalance,
         createdBy: args.createdBy ?? null,
+        expiresAt: args.expiresAt ?? null,
       },
     });
 
