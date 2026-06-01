@@ -15,6 +15,17 @@ import {
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString } from "@/lib/utils";
 
+function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
+  const ctrl = new AbortController();
+  const abort = () => ctrl.abort();
+  if (a.aborted || b.aborted) ctrl.abort();
+  else {
+    a.addEventListener("abort", abort, { once: true });
+    b.addEventListener("abort", abort, { once: true });
+  }
+  return ctrl.signal;
+}
+
 // ── Types ────────────────────────────────────────────────────
 interface AdminBooking {
   id: string;
@@ -139,16 +150,26 @@ export default function AdminBookingsPage() {
   const [proofs, setProofs] = useState<PaymentProof[]>([]);
   const [proofsLoading, setProofsLoading] = useState(false);
 
-  async function loadProofs(bookingId: string) {
+  async function loadProofs(bookingId: string, signal?: AbortSignal) {
     setProofsLoading(true);
     setProofs([]);
     try {
-      const r = await adminFetch<{ proofs: PaymentProof[] }>(`/api/admin/payment-proofs?bookingId=${bookingId}`);
+      // 8 秒 timeout 保險
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const merged = signal ? mergeSignals(signal, ctrl.signal) : ctrl.signal;
+      const r = await adminFetch<{ proofs: PaymentProof[] }>(
+        `/api/admin/payment-proofs?bookingId=${bookingId}`,
+        { signal: merged },
+      );
+      clearTimeout(timer);
+      if (signal?.aborted) return;
       setProofs(r.proofs ?? []);
     } catch (e) {
+      if (signal?.aborted) return;
       console.error("[load proofs]", e);
     } finally {
-      setProofsLoading(false);
+      if (!signal?.aborted) setProofsLoading(false);
     }
   }
 
@@ -186,10 +207,16 @@ export default function AdminBookingsPage() {
     }
   }
 
-  // 編輯 dialog 打開時自動載入付款憑證
+  // 編輯 dialog 打開時自動載入付款憑證；關閉或切換 booking 時 abort 舊請求
   useEffect(() => {
-    if (editing) loadProofs(editing.id);
-    else setProofs([]);
+    if (!editing) {
+      setProofs([]);
+      setProofsLoading(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    loadProofs(editing.id, ctrl.signal);
+    return () => ctrl.abort();
   }, [editing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function quickComplete(b: AdminBooking) {
@@ -900,8 +927,8 @@ export default function AdminBookingsPage() {
                 )}
               </div>
 
-              {/* 付款憑證審核區 */}
-              {(proofs.length > 0 || proofsLoading) && (
+              {/* 付款憑證審核區 — 只在 已付>0 OR 真的有憑證 時顯示 */}
+              {(proofs.length > 0 || (proofsLoading && editing.paidAmount > 0)) && (
                 <div className="rounded-md p-3 space-y-2" style={{ border: "2px solid var(--border)" }}>
                   <div className="text-sm font-semibold flex items-center gap-2">
                     📄 付款憑證
@@ -909,7 +936,9 @@ export default function AdminBookingsPage() {
                       ({proofs.filter(p => !p.verifiedAt).length} 筆待審核 / 共 {proofs.length} 筆)
                     </span>
                   </div>
-                  {proofsLoading && <p className="text-xs text-[var(--muted-foreground)]">載入中...</p>}
+                  {proofsLoading && proofs.length === 0 && (
+                    <p className="text-xs text-[var(--muted-foreground)]">載入中...</p>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     {proofs.map((p) => (
                       <div key={p.id} className="rounded-md border p-2 space-y-1.5" style={{ borderColor: "var(--border)" }}>
