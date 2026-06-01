@@ -561,10 +561,16 @@ export default function AdminBookingsPage() {
                       <tr
                         key={b.id}
                         className={cn(
-                          "border-t",
+                          "border-t cursor-pointer transition-colors hover:bg-sky-50",
                           i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
                         )}
                         style={{ borderColor: "var(--border)" }}
+                        onClick={() => {
+                          setEditing({ ...b });
+                          setRefundOpen(false);
+                          setRefundAmount(String(b.paidAmount));
+                          setRefundCreditPct(100);
+                        }}
                       >
                         {/* 訂單編號 */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
@@ -665,7 +671,7 @@ export default function AdminBookingsPage() {
                           {PAYMENT_METHOD_LABEL[b.paymentMethod ?? ""] ?? b.paymentMethod ?? "—"}
                         </td>
                         {/* 操作 */}
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1 flex-wrap">
                             {/* 待結算（過期+pending/confirmed）→ 快速結算按鈕 */}
                             {past && (b.status === "pending" || b.status === "confirmed") && (
