@@ -593,6 +593,11 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        {/* ── B6. 檔案上傳設定（v230） ────────────── */}
+        <SectionCard title="📤 檔案上傳設定">
+          <UploadTestPanel />
+        </SectionCard>
+
         {/* ── B5. 取消政策（v227） ───────────────── */}
         <SectionCard title="📋 取消政策">
           <p className="-mt-2 mb-2 text-[11px] text-[var(--muted-foreground)]">此文字會顯示在「常見問題」與「日潛預約頁」，admin 可自由編輯。</p>
@@ -729,5 +734,160 @@ export default function SettingsPage() {
 
       </div>
     </AdminShell>
+  );
+}
+
+// v230：檔案上傳（R2）診斷與測試元件
+interface UploadStatus {
+  configured: boolean;
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  endpoint: string | null;
+  publicBucket: string;
+  privateBucket: string;
+  publicUrl: string | null;
+}
+
+interface UploadTestResult {
+  ok: boolean;
+  step?: string;
+  message?: string;
+  error?: string;
+  detail?: string;
+  hint?: string;
+  testKey?: string;
+  bucket?: string;
+  downloadUrl?: string;
+  size?: number;
+  note?: string;
+}
+
+function UploadTestPanel() {
+  const [status, setStatus] = useState<UploadStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [testResult, setTestResult] = useState<UploadTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    adminFetch<UploadStatus>("/api/admin/uploads/test")
+      .then(setStatus)
+      .catch(() => null)
+      .finally(() => setStatusLoading(false));
+  }, []);
+
+  async function runTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const r = await adminFetch<UploadTestResult>("/api/admin/uploads/test", { method: "POST" });
+      setTestResult(r);
+    } catch (e) {
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-[var(--muted-foreground)]">
+        付款憑證 / 場次照片 / 潛點圖等檔案儲存於 <b>Cloudflare R2</b>。下面顯示目前 R2 環境變數狀態，按「測試上傳」會實際嘗試傳 1 KB 測試檔到 private bucket 驗證。
+      </p>
+
+      {/* 狀態表 */}
+      <div className="rounded-lg border bg-slate-50 p-3 text-xs" style={{ borderColor: "var(--border)" }}>
+        <div className="mb-2 font-semibold text-slate-700">📋 環境變數狀態</div>
+        {statusLoading ? (
+          <div className="text-slate-500">載入中...</div>
+        ) : !status ? (
+          <div className="text-rose-600">無法讀取狀態</div>
+        ) : (
+          <div className="space-y-0.5 font-mono text-[11px]">
+            <Row k="R2_ACCOUNT_ID" v={status.accountId} />
+            <Row k="R2_ACCESS_KEY_ID" v={status.accessKeyId} />
+            <Row k="R2_SECRET_ACCESS_KEY" v={status.secretAccessKey} />
+            <Row k="R2_ENDPOINT" v={status.endpoint ?? "（用 accountId 自動組）"} />
+            <Row k="R2_PRIVATE_BUCKET" v={status.privateBucket} />
+            <Row k="R2_PUBLIC_BUCKET" v={status.publicBucket} />
+            <Row k="R2_PUBLIC_URL" v={status.publicUrl ?? "（未設）"} />
+            <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--border)" }}>
+              整體：{status.configured
+                ? <span className="font-bold text-emerald-700">✓ 已設定</span>
+                : <span className="font-bold text-rose-600">✗ 未設定（fallback 用 base64 存 DB）</span>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 測試按鈕 + 結果 */}
+      <div className="flex gap-2">
+        <Button size="sm" onClick={runTest} disabled={testing || !status?.configured}
+          style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}>
+          📤 {testing ? "測試中..." : "測試上傳（1 KB 測試檔）"}
+        </Button>
+        {!status?.configured && (
+          <span className="self-center text-[10px] text-rose-600">需先設定 R2 環境變數</span>
+        )}
+      </div>
+
+      {testResult && (
+        <div className="rounded-lg border-2 p-3 text-xs space-y-1.5"
+          style={{
+            borderColor: testResult.ok ? "rgba(74, 222, 128, 0.4)" : "rgba(244, 63, 94, 0.4)",
+            background: testResult.ok ? "rgba(74, 222, 128, 0.08)" : "rgba(244, 63, 94, 0.05)",
+          }}>
+          <div className={`font-semibold ${testResult.ok ? "text-emerald-700" : "text-rose-600"}`}>
+            {testResult.ok ? "✓ 測試成功" : "✗ 測試失敗"}
+          </div>
+          {testResult.step && <div className="text-[10px] text-slate-600">步驟：{testResult.step}</div>}
+          {testResult.message && <div>{testResult.message}</div>}
+          {testResult.error && <div className="font-mono text-[11px] text-rose-700">錯誤：{testResult.error}</div>}
+          {testResult.detail && <div className="font-mono text-[10px] text-slate-500">{testResult.detail}</div>}
+          {testResult.hint && <div className="text-amber-700">💡 {testResult.hint}</div>}
+          {testResult.testKey && (
+            <div className="text-[10px] text-slate-600">
+              測試 key：<code>{testResult.testKey}</code>
+            </div>
+          )}
+          {testResult.downloadUrl && (
+            <a href={testResult.downloadUrl} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1 text-cyan-600 hover:underline">
+              下載驗證（60s 有效） →
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* 設定指引 */}
+      {status && !status.configured && (
+        <div className="rounded-lg border p-3 text-xs space-y-1.5"
+          style={{ borderColor: "rgba(217, 119, 6, 0.4)", background: "rgba(254, 243, 199, 0.4)" }}>
+          <div className="font-semibold text-amber-900">🔧 設定 R2 步驟</div>
+          <ol className="list-decimal pl-5 space-y-0.5 text-amber-800">
+            <li>進 Cloudflare Dashboard → R2 → 建一個 bucket（建議 <code>haiwangzi-private</code>）</li>
+            <li>右側「Manage R2 API Tokens」→ 建立 Object Read &amp; Write token</li>
+            <li>記下 Account ID、Access Key ID、Secret Access Key</li>
+            <li>到 Zeabur → haiwangzi-bot service → Variables 加：
+              <pre className="mt-1 rounded bg-white/60 px-2 py-1 text-[10px] leading-relaxed">{`R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_PRIVATE_BUCKET=haiwangzi-private
+R2_PUBLIC_BUCKET=haiwangzi-public`}</pre>
+            </li>
+            <li>Redeploy 服務 → 回到這頁按「重新整理設定」</li>
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-slate-500">{k}</span>
+      <span className="text-slate-800 truncate">{v}</span>
+    </div>
   );
 }
