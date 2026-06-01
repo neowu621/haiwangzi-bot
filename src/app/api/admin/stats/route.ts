@@ -76,6 +76,31 @@ export async function GET(req: NextRequest) {
   `;
   const pendingProofs = Number(pendingProofsResult[0]?.count ?? BigInt(0));
 
+  // v201：抓未審核憑證的細節（給 dashboard 列表用）
+  const pendingProofsList = await prisma.paymentProof.findMany({
+    where: { verifiedAt: null },
+    orderBy: { uploadedAt: "desc" },
+    take: 10,
+    include: {
+      booking: {
+        select: {
+          id: true, code: true,
+          user: { select: { realName: true, displayName: true, phone: true } },
+        },
+      },
+    },
+  });
+  const pendingProofsDetails = pendingProofsList.map((p) => ({
+    id: p.id,
+    bookingId: p.bookingId,
+    bookingCode: p.booking.code,
+    name: p.booking.user.realName ?? p.booking.user.displayName,
+    phone: p.booking.user.phone,
+    amount: p.amount,
+    type: p.type,
+    uploadedAt: p.uploadedAt.toISOString(),
+  }));
+
   // 算「尚未執行」訂單：status 為 pending / confirmed（含 deposit_paid 已是 confirmed status）
   // 並且關聯的 trip.date / tour.dateStart >= today
   // 因為 booking.refId 多型（指向 trip 或 tour），分兩段查
@@ -334,6 +359,69 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // v201：完全未付款的進行中訂單（paidAmount=0，且場次/團未過）
+  // 撈未來場次/團 id 集合，再篩
+  const futureTripIds = (await prisma.divingTrip.findMany({
+    where: { date: { gte: todayStart }, status: { not: "cancelled" } },
+    select: { id: true },
+  })).map((t) => t.id);
+  const futureTourIds = (await prisma.tourPackage.findMany({
+    where: { dateStart: { gte: todayStart }, status: { not: "cancelled" } },
+    select: { id: true },
+  })).map((t) => t.id);
+  const unpaidBookingsList = await prisma.booking.findMany({
+    where: {
+      status: { in: ["pending", "confirmed"] },
+      paidAmount: 0,
+      OR: [
+        { type: "daily", refId: { in: futureTripIds } },
+        { type: "tour", refId: { in: futureTourIds } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true, code: true, type: true, refId: true,
+      totalAmount: true, createdAt: true,
+      user: { select: { realName: true, displayName: true, phone: true } },
+    },
+  });
+  // 補上場次/團的時間
+  const futureTrips = futureTripIds.length === 0 ? [] : await prisma.divingTrip.findMany({
+    where: { id: { in: unpaidBookingsList.filter((b) => b.type === "daily").map((b) => b.refId) } },
+    select: { id: true, date: true, startTime: true, diveSiteIds: true },
+  });
+  const futureTours = futureTourIds.length === 0 ? [] : await prisma.tourPackage.findMany({
+    where: { id: { in: unpaidBookingsList.filter((b) => b.type === "tour").map((b) => b.refId) } },
+    select: { id: true, title: true, dateStart: true },
+  });
+  const tripMap2 = new Map(futureTrips.map((t) => [t.id, t]));
+  const tourMap2 = new Map(futureTours.map((t) => [t.id, t]));
+  const unpaidBookings = unpaidBookingsList.map((b) => {
+    const target = b.type === "daily" ? tripMap2.get(b.refId) : tourMap2.get(b.refId);
+    let when = "—";
+    let what = "—";
+    if (target && "date" in target) {
+      when = target.date.toISOString().slice(0, 10) + " " + (target.startTime ?? "");
+      what = target.diveSiteIds.map((id) => siteNameMap.get(id) ?? id).join("・") || "日潛";
+    } else if (target && "dateStart" in target) {
+      when = target.dateStart.toISOString().slice(0, 10);
+      what = target.title;
+    }
+    return {
+      id: b.id,
+      code: b.code,
+      type: b.type,
+      name: b.user.realName ?? b.user.displayName,
+      phone: b.user.phone,
+      totalAmount: b.totalAmount,
+      createdAt: b.createdAt.toISOString(),
+      when,
+      what,
+    };
+  });
+  const unpaidCount = unpaidBookings.length;
+
   // v197：今日場次 + 明日場次（含 booked + customer list）
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
@@ -487,10 +575,13 @@ export async function GET(req: NextRequest) {
       lastMonthSameWindow: lastMonthRevenue._sum.amount ?? 0,
     },
     pendingProofs,
+    pendingProofsDetails,
     pendingSettlement,
     pendingRefunds,
     partiallyPaid,
     overCapacity,
+    unpaidCount,
+    unpaidBookings,
     todayTripsDetail,
     tomorrowTripsDetail,
     // 接下來 14 天的場次（含人數/教練/潛點）

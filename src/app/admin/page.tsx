@@ -32,15 +32,40 @@ interface TripDetail {
   customers: CustomerOnTrip[];
 }
 
+interface UnpaidBooking {
+  id: string;
+  code: string | null;
+  type: "daily" | "tour";
+  name: string;
+  phone: string | null;
+  totalAmount: number;
+  createdAt: string;
+  when: string;
+  what: string;
+}
+interface PendingProof {
+  id: string;
+  bookingId: string;
+  bookingCode: string | null;
+  name: string;
+  phone: string | null;
+  amount: number;
+  type: "deposit" | "final" | "refund";
+  uploadedAt: string;
+}
+
 interface Stats {
   users: { total: number; todayNew: number; last7DaysNew: number; activeWeekly: number };
   revenue: { paid: number; booked: number; today: number; thisMonth: number; lastMonthSameWindow: number };
   bookings: { total: number; active: number };
   pendingProofs: number;
+  pendingProofsDetails?: PendingProof[];
   pendingSettlement: number;
   pendingRefunds: number;
   partiallyPaid: number;
   overCapacity: number;
+  unpaidCount?: number;
+  unpaidBookings?: UnpaidBooking[];
   todayTripsDetail: TripDetail[];
   tomorrowTripsDetail: TripDetail[];
   topCoaches: Array<{ name: string; trips: number; participants: number }>;
@@ -84,6 +109,7 @@ export default function AdminDashboard() {
   const todoCount = stats ? (
     stats.pendingProofs + stats.pendingSettlement + stats.pendingRefunds +
     stats.partiallyPaid + stats.overCapacity +
+    (stats.unpaidCount ?? 0) +
     (stats.churningHighVips?.length ?? 0) +
     (stats.highIntentLeads?.length ?? 0)
   ) : 0;
@@ -129,23 +155,23 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+              <ActionCard
+                show={(stats.unpaidCount ?? 0) > 0}
+                icon={<DollarSign className="h-5 w-5" />}
+                count={stats.unpaidCount ?? 0}
+                label="筆訂單尚未收款"
+                tone="red"
+                desc="完全沒付，需主動催繳"
+                onClick={() => router.push("/admin/bookings")}
+              />
               <ActionCard
                 show={stats.pendingProofs > 0}
                 icon={<FileText className="h-5 w-5" />}
                 count={stats.pendingProofs}
                 label="筆付款憑證待審核"
                 tone="red"
-                desc="客戶上傳的轉帳截圖"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={stats.pendingSettlement > 0}
-                icon={<Clock className="h-5 w-5" />}
-                count={stats.pendingSettlement}
-                label="筆訂單待結算"
-                tone="amber"
-                desc="場次已過，需標完成/未到"
+                desc="客戶已轉帳，等審核入帳"
                 onClick={() => router.push("/admin/bookings")}
               />
               <ActionCard
@@ -155,6 +181,15 @@ export default function AdminDashboard() {
                 label="筆訂單尚有尾款"
                 tone="amber"
                 desc="已付訂金但未付清"
+                onClick={() => router.push("/admin/bookings")}
+              />
+              <ActionCard
+                show={stats.pendingSettlement > 0}
+                icon={<Clock className="h-5 w-5" />}
+                count={stats.pendingSettlement}
+                label="筆訂單待結算"
+                tone="amber"
+                desc="場次已過，需標完成/未到"
                 onClick={() => router.push("/admin/bookings")}
               />
               <ActionCard
@@ -185,6 +220,71 @@ export default function AdminDashboard() {
                 onClick={() => router.push("/admin/users")}
               />
             </div>
+
+            {/* v201：未付款訂單細項 */}
+            {stats.unpaidBookings && stats.unpaidBookings.length > 0 && (
+              <div className="mt-4 rounded-xl bg-rose-50 border border-rose-200 p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-rose-800">
+                  <DollarSign className="h-4 w-4 text-rose-600" />
+                  訂單尚未收款 — 需主動催繳
+                  <span className="ml-auto rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] text-white">
+                    {stats.unpaidBookings.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
+                  {stats.unpaidBookings.slice(0, 8).map((b) => (
+                    <button key={b.id} onClick={() => router.push(`/admin/bookings`)}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 text-xs text-left hover:bg-rose-100 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-rose-900">{b.name}</span>
+                          {b.code && <span className="font-mono text-[10px] text-rose-600">{b.code}</span>}
+                          <span className="rounded px-1 py-0.5 text-[9px] font-semibold"
+                            style={{ background: b.type === "daily" ? "rgba(14,158,145,0.12)" : "rgba(242,96,60,0.12)", color: b.type === "daily" ? "#0E9E91" : "#F2603C" }}>
+                            {b.type === "daily" ? "日潛" : "潛旅"}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-rose-700 truncate">{b.when} · {b.what}</div>
+                      </div>
+                      <span className="font-mono font-bold text-rose-700 tabular-nums shrink-0">NT$ {b.totalAmount.toLocaleString()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* v201：待審核憑證細項 */}
+            {stats.pendingProofsDetails && stats.pendingProofsDetails.length > 0 && (
+              <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-amber-800">
+                  <FileText className="h-4 w-4 text-amber-600" />
+                  付款憑證待審核 — 客戶已轉帳，需確認入帳
+                  <span className="ml-auto rounded-full bg-amber-600 px-1.5 py-0.5 text-[10px] text-white">
+                    {stats.pendingProofsDetails.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
+                  {stats.pendingProofsDetails.slice(0, 8).map((p) => (
+                    <button key={p.id} onClick={() => router.push(`/admin/bookings`)}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 text-xs text-left hover:bg-amber-100 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-amber-900">{p.name}</span>
+                          {p.bookingCode && <span className="font-mono text-[10px] text-amber-600">{p.bookingCode}</span>}
+                          <span className="rounded px-1 py-0.5 text-[9px] font-semibold bg-amber-200 text-amber-900">
+                            {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-amber-700">
+                          上傳 {new Date(p.uploadedAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }).slice(5, 16)}
+                        </div>
+                      </div>
+                      <span className="font-mono font-bold text-amber-700 tabular-nums shrink-0">NT$ {p.amount.toLocaleString()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 高意願客戶 — 也算 action item，需要主動聯繫 */}
             {stats.highIntentLeads && stats.highIntentLeads.length > 0 && (
