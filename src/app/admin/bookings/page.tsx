@@ -325,7 +325,11 @@ export default function AdminBookingsPage() {
     }
   }
 
-  // v206：日期區間 filter（今天 / 3 天內 / 一週內 / 一個月內 / 全部）
+  // v215：日期區間 filter — 嚴格 N 天（未來 N 天，含今天）
+  //   今天     → 只今天
+  //   3 天內   → 今天 + 後 2 天   = 3 個日曆天
+  //   一週內   → 今天 + 後 6 天   = 7 個日曆天
+  //   一個月內 → 今天 + 後 29 天 = 30 個日曆天
   function isInRange(dateStr?: string): boolean {
     if (filterRange === "all") return true;
     if (!dateStr) return true;
@@ -333,10 +337,9 @@ export default function AdminBookingsPage() {
     const today = new Date().toISOString().slice(0, 10);
     const t = new Date(today + "T00:00:00+08:00");
     if (filterRange === "today") return d === today;
-    // 3days / week / month：今天起 N 天內（含今天）
-    const cutoff = new Date(t);
     const days = filterRange === "3days" ? 3 : filterRange === "week" ? 7 : 30;
-    cutoff.setDate(t.getDate() + days);
+    const cutoff = new Date(t);
+    cutoff.setDate(t.getDate() + (days - 1)); // N-1 → 共 N 天
     const cutoffStr = cutoff.toISOString().slice(0, 10);
     return d >= today && d <= cutoffStr;
   }
