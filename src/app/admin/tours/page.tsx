@@ -558,7 +558,7 @@ export default function ToursPage() {
   }, [tours, filter, destFilter, keyword, dateSort]);
 
   return (
-    <AdminShell title="潛水團管理">
+    <AdminShell title="潛水旅行管理">
       <div style={{ background: BG, height: "calc(100vh - 56px)", margin: "-1rem", padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* topbar */}
         <div style={{
