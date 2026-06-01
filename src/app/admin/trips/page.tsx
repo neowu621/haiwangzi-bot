@@ -949,8 +949,7 @@ export default function AdminTripsPage() {
                   >
                     <th className="px-3 py-2 font-medium"><SortHeader k="status">狀態</SortHeader></th>
                     <th className="px-3 py-2 font-medium"><SortHeader k="code">編號</SortHeader></th>
-                    <th className="px-3 py-2 font-medium"><SortHeader k="date">日期</SortHeader></th>
-                    <th className="px-3 py-2 font-medium"><SortHeader k="startTime">時段</SortHeader></th>
+                    <th className="px-3 py-2 font-medium"><SortHeader k="date">日期 / 時段</SortHeader></th>
                     <th className="px-3 py-2 font-medium">地點</th>
                     <th className="px-3 py-2 font-medium">教練</th>
                     <th className="px-3 py-2 font-medium text-right"><SortHeader k="booked" align="right">已報名/可接受</SortHeader></th>
@@ -1008,22 +1007,21 @@ export default function AdminTripsPage() {
                             <span className="text-xs text-[var(--muted-foreground)]">—</span>
                           )}
                         </td>
-                        {/* 日期 */}
-                        <td className="px-3 py-1.5 tabular-nums font-medium whitespace-nowrap">
-                          <span>{trip.date.slice(0, 10)}</span>
-                          <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                            ({weekdayLabel(trip.date)})
-                          </span>
-                        </td>
-                        {/* 時段 */}
+                        {/* 日期 + 時段（合併欄） */}
                         <td className="px-3 py-1.5 whitespace-nowrap">
-                          <div className="flex items-center gap-1 tabular-nums">
+                          <div className="tabular-nums font-medium">
+                            {trip.date.slice(0, 10)}
+                            <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
+                              ({weekdayLabel(trip.date)})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 tabular-nums text-[11px] text-[var(--muted-foreground)] mt-0.5">
                             {trip.isNightDive ? (
                               <Moon className="h-3 w-3 shrink-0" style={{ color: "#6b9fd4" }} />
                             ) : (
                               <Sun className="h-3 w-3 shrink-0" style={{ color: "#e8a020" }} />
                             )}
-                            {trip.startTime}
+                            <span className="font-semibold text-[var(--foreground)]">{trip.startTime}</span>
                             {trip.isScooter && (
                               <Anchor className="h-3 w-3 text-[var(--color-phosphor)]" />
                             )}
@@ -1084,7 +1082,7 @@ export default function AdminTripsPage() {
                       {/* v183: 展開訂單明細 */}
                       {isExpanded && (
                         <tr style={{ background: "#eaf3ff", borderTop: "1px solid #c0d8f0" }}>
-                          <td colSpan={9} className="p-0">
+                          <td colSpan={8} className="p-0">
                             {tripBks === "loading" ? (
                               <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">載入訂單中...</div>
                             ) : tripBks === "error" ? (
@@ -1158,7 +1156,7 @@ export default function AdminTripsPage() {
                   {pagedTrips.length === 0 && (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={8}
                         className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         沒有符合條件的場次
