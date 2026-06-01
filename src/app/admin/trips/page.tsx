@@ -951,8 +951,10 @@ export default function AdminTripsPage() {
                     <th className="px-3 py-2 font-medium"><SortHeader k="code">編號</SortHeader></th>
                     <th className="px-3 py-2 font-medium"><SortHeader k="date">日期 / 時段</SortHeader></th>
                     <th className="px-3 py-2 font-medium">地點</th>
-                    <th className="px-3 py-2 font-medium">教練</th>
-                    <th className="px-3 py-2 font-medium text-right"><SortHeader k="booked" align="right">已報名/可接受</SortHeader></th>
+                    <th className="px-3 py-2 font-medium">
+                      教練
+                      <span className="block font-normal text-[10px] text-[var(--muted-foreground)]"><SortHeader k="booked">已報名/可接受</SortHeader></span>
+                    </th>
                     <th className="px-3 py-2 font-medium text-right"><SortHeader k="revenue" align="right">預估收費</SortHeader></th>
                     <th className="px-3 py-2 font-medium">操作</th>
                   </tr>
@@ -1036,15 +1038,17 @@ export default function AdminTripsPage() {
                             / {trip.tankCount}支
                           </span>
                         </td>
-                        {/* 教練 */}
+                        {/* 教練 + 已報名/可接受 合併欄 */}
                         <td className="px-3 py-1.5 text-xs whitespace-nowrap">
-                          {trip.coachIds.length > 0
-                            ? trip.coachIds.map(coachName).join("、")
-                            : "—"}
-                        </td>
-                        {/* 已報名 — 防呆 undefined → 0 */}
-                        <td className="px-3 py-1.5 text-right tabular-nums text-xs whitespace-nowrap">
-                          {(trip.booked ?? 0)} / {trip.capacity == null ? "∞" : trip.capacity}
+                          <div className="font-medium text-[var(--foreground)]">
+                            {trip.coachIds.length > 0
+                              ? trip.coachIds.map(coachName).join("、")
+                              : <span className="text-amber-600">⚠ 尚未指派</span>}
+                          </div>
+                          <div className="tabular-nums text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                            已報 <b style={{ color: (trip.capacity != null && (trip.booked ?? 0) >= trip.capacity) ? "#dc2626" : (trip.booked ?? 0) === 0 ? "#d97706" : "var(--foreground)" }}>{trip.booked ?? 0}</b>
+                            <span> / {trip.capacity == null ? "∞" : trip.capacity}</span>
+                          </div>
                         </td>
                         {/* 預估收費 */}
                         <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
@@ -1082,7 +1086,7 @@ export default function AdminTripsPage() {
                       {/* v183: 展開訂單明細 */}
                       {isExpanded && (
                         <tr style={{ background: "#eaf3ff", borderTop: "1px solid #c0d8f0" }}>
-                          <td colSpan={8} className="p-0">
+                          <td colSpan={7} className="p-0">
                             {tripBks === "loading" ? (
                               <div className="py-4 text-center text-xs text-[var(--muted-foreground)]">載入訂單中...</div>
                             ) : tripBks === "error" ? (
@@ -1156,7 +1160,7 @@ export default function AdminTripsPage() {
                   {pagedTrips.length === 0 && (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         沒有符合條件的場次
