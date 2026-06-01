@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
-import { Plus, Edit3, Trash2, Ban, Upload, Download, FileSpreadsheet, X, Copy } from "lucide-react";
+import { Trash2, Ban, X, Copy, ChevronDown, ChevronRight } from "lucide-react";
+import { weekdayTW } from "@/lib/utils";
 import ExcelJS from "exceljs";
 
 // v186 後台「行程資料庫」配色（對應 mockup）
@@ -121,6 +122,63 @@ export default function ToursPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(BLANK);
   const [saving, setSaving] = useState(false);
+
+  // v193：展開查看該團報名客戶
+  const [expandedTourId, setExpandedTourId] = useState<string | null>(null);
+  interface TourBookingRow {
+    id: string;
+    code: string | null;
+    userName: string;
+    phone: string | null;
+    participants: number;
+    totalAmount: number;
+    paidAmount: number;
+    status: string;
+    paymentStatus: string;
+    paymentMethod: string;
+  }
+  const [tourBookings, setTourBookings] = useState<Record<string, TourBookingRow[] | "loading" | "error">>({});
+
+  async function toggleExpand(tourId: string) {
+    if (expandedTourId === tourId) {
+      setExpandedTourId(null);
+      return;
+    }
+    setExpandedTourId(tourId);
+    if (tourBookings[tourId] && tourBookings[tourId] !== "error") return;
+    setTourBookings((m) => ({ ...m, [tourId]: "loading" }));
+    try {
+      interface BkResp {
+        bookings: Array<{
+          id: string;
+          code?: string | null;
+          participants: number;
+          totalAmount: number;
+          paidAmount: number;
+          status: string;
+          paymentStatus: string;
+          paymentMethod?: string | null;
+          user: { displayName: string; realName: string | null; phone: string | null };
+        }>;
+      }
+      const r = await adminFetch<BkResp>(`/api/admin/bookings?refId=${tourId}`);
+      const rows: TourBookingRow[] = r.bookings.map((b) => ({
+        id: b.id,
+        code: b.code ?? null,
+        userName: b.user.realName ?? b.user.displayName,
+        phone: b.user.phone,
+        participants: b.participants,
+        totalAmount: b.totalAmount,
+        paidAmount: b.paidAmount,
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        paymentMethod: b.paymentMethod ?? "",
+      }));
+      setTourBookings((m) => ({ ...m, [tourId]: rows }));
+    } catch {
+      setTourBookings((m) => ({ ...m, [tourId]: "error" }));
+    }
+  }
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -573,74 +631,153 @@ export default function ToursPage() {
               ) : visible.length === 0 ? (
                 <div style={{ padding: 40, textAlign: "center", color: MUTED2, fontSize: 13 }}>無符合資料</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["行程", "日期 / 支數", "價格", ""].map((h) => (
-                        <th key={h} style={{
+                      {["", "日期 / 支數", "行程", "價格", ""].map((h, idx) => (
+                        <th key={idx} style={{
                           position: "sticky", top: 0, background: BG, textAlign: "left",
                           fontSize: 11, letterSpacing: ".06em", color: MUTED2, textTransform: "uppercase",
-                          padding: 8, fontWeight: 700,
+                          padding: "8px 8px", fontWeight: 700,
                         }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {visible.map((t) => (
-                      <tr
-                        key={t.id}
-                        onClick={() => loadTour(t)}
-                        style={{
-                          cursor: "pointer",
-                          borderBottom: `1px solid ${LINE}`,
-                          background: t.id === editingId ? "rgba(14,158,145,.08)" : "transparent",
-                          boxShadow: t.id === editingId ? `inset 3px 0 0 ${AQUA}` : "none",
-                          opacity: t.status === "cancelled" ? 0.5 : 1,
-                        }}
-                      >
-                        <td style={{ padding: "11px 8px", verticalAlign: "top" }}>
-                          <div style={{ fontWeight: 700, fontSize: 13.5 }}>
-                            {t.title}
-                            {t.subtitle && <span style={{ color: MUTED, fontWeight: 400, fontSize: 12, marginLeft: 4 }}>{t.subtitle}</span>}
-                          </div>
-                          <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
-                            <MiniBadge color={t.destination === "other" ? "ov" : "tw"}>
-                              {t.destination === "other" ? "海外" : "台灣"}
-                            </MiniBadge>
-                            {t.code && (
-                              <span style={{
-                                fontFamily: "monospace", fontSize: 10, padding: "2px 6px",
-                                borderRadius: 4, background: "#F4F6F8", color: MUTED,
-                              }}>{t.code}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ padding: "11px 8px", verticalAlign: "top" }}>
-                          <div style={{ fontSize: 11, color: MUTED2 }}>{t.dateStart.split("T")[0]}</div>
-                          <div style={{ fontSize: 11, color: MUTED2 }}>
-                            {t.durationLabel ?? `${Math.round((+new Date(t.dateEnd) - +new Date(t.dateStart)) / 86400000) + 1}天`}
-                            {t.tanksCount != null && t.tanksCount > 0 && ` · ${t.tanksCount}支`}
-                          </div>
-                        </td>
-                        <td style={{ padding: "11px 8px", verticalAlign: "top" }}>
-                          <span style={{
-                            fontFamily: "monospace", fontSize: 17, fontWeight: 700,
-                            color: t.destination === "other" ? CORAL : AQUA,
-                          }}>
-                            {t.basePrice.toLocaleString()}
-                          </span>
-                        </td>
-                        <td style={{ padding: "11px 8px", verticalAlign: "top" }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: "flex", gap: 5 }}>
-                            <Mini onClick={() => dupTour(t)} title="複製"><Copy size={12} /></Mini>
-                            {t.status === "open" && (
-                              <Mini onClick={() => cancelTour(t)} title="取消" color="#D88E1E"><Ban size={12} /></Mini>
-                            )}
-                            <Mini onClick={() => deleteTour(t)} title="刪除" color={CORAL}><Trash2 size={12} /></Mini>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {visible.map((t) => {
+                      const isExpanded = expandedTourId === t.id;
+                      const bks = tourBookings[t.id];
+                      const ds = t.dateStart.split("T")[0];
+                      const de = t.dateEnd.split("T")[0];
+                      const sameDay = ds === de;
+                      return (
+                        <React.Fragment key={t.id}>
+                          <tr
+                            onClick={() => loadTour(t)}
+                            className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                            style={{
+                              borderColor: LINE,
+                              background: t.id === editingId ? "rgba(14,158,145,.08)" : undefined,
+                              boxShadow: t.id === editingId ? `inset 3px 0 0 ${AQUA}` : "none",
+                              opacity: t.status === "cancelled" ? 0.5 : 1,
+                            }}
+                          >
+                            {/* expand chevron */}
+                            <td className="px-2 py-2 align-top" onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
+                              <button type="button"
+                                className="rounded p-0.5 hover:bg-slate-200 text-slate-500"
+                                title={isExpanded ? "收起客戶列表" : "查看報名客戶"}>
+                                {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                              </button>
+                            </td>
+                            {/* 日期 / 支數 — leftmost */}
+                            <td className="px-2 py-2 align-top whitespace-nowrap">
+                              <div className="tabular-nums font-medium text-[13px]">
+                                {ds} <span className="text-[10px] text-slate-500">({weekdayTW(ds)})</span>
+                              </div>
+                              {!sameDay && (
+                                <div className="tabular-nums text-[12px] text-slate-600">
+                                  ~ {de} <span className="text-[10px] text-slate-500">({weekdayTW(de)})</span>
+                                </div>
+                              )}
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                {t.durationLabel ?? `${Math.round((+new Date(t.dateEnd) - +new Date(t.dateStart)) / 86400000) + 1}天`}
+                                {t.tanksCount != null && t.tanksCount > 0 && ` · ${t.tanksCount}支`}
+                              </div>
+                            </td>
+                            {/* 行程 */}
+                            <td className="px-2 py-2 align-top">
+                              <div className="font-bold text-[13.5px]">
+                                {t.title}
+                                {t.subtitle && <span className="text-slate-500 font-normal text-[12px] ml-1">{t.subtitle}</span>}
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                <MiniBadge color={t.destination === "other" ? "ov" : "tw"}>
+                                  {t.destination === "other" ? "海外" : "台灣"}
+                                </MiniBadge>
+                                {t.beginnerFriendly && (
+                                  <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded"
+                                    style={{ background: "#FFF3DA", color: "#C98800" }}>
+                                    新手OK
+                                  </span>
+                                )}
+                                {t.code && (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded"
+                                    style={{ background: "#F4F6F8", color: MUTED }}>
+                                    {t.code}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {/* 價格 */}
+                            <td className="px-2 py-2 align-top whitespace-nowrap">
+                              <span className="font-mono text-[17px] font-bold tabular-nums"
+                                style={{ color: t.destination === "other" ? CORAL : AQUA }}>
+                                {t.basePrice.toLocaleString()}
+                              </span>
+                            </td>
+                            {/* actions */}
+                            <td className="px-2 py-2 align-top" onClick={(e) => e.stopPropagation()}>
+                              <div style={{ display: "flex", gap: 5 }}>
+                                <Mini onClick={() => dupTour(t)} title="複製"><Copy size={12} /></Mini>
+                                {t.status === "open" && (
+                                  <Mini onClick={() => cancelTour(t)} title="取消" color="#D88E1E"><Ban size={12} /></Mini>
+                                )}
+                                <Mini onClick={() => deleteTour(t)} title="刪除" color={CORAL}><Trash2 size={12} /></Mini>
+                              </div>
+                            </td>
+                          </tr>
+                          {/* expanded — bookings */}
+                          {isExpanded && (
+                            <tr style={{ background: "#F8FAFC" }}>
+                              <td colSpan={5} className="p-0">
+                                <div className="p-3 border-t" style={{ borderColor: LINE }}>
+                                  {bks === "loading" && <div className="text-xs text-slate-500 py-3 text-center">載入中...</div>}
+                                  {bks === "error" && <div className="text-xs text-rose-600 py-3 text-center">載入失敗</div>}
+                                  {Array.isArray(bks) && bks.length === 0 && (
+                                    <div className="text-xs text-slate-500 py-3 text-center">尚無人報名</div>
+                                  )}
+                                  {Array.isArray(bks) && bks.length > 0 && (
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr style={{ background: "#E2E8F0" }}>
+                                          <th className="px-2 py-1.5 font-semibold text-left">編號</th>
+                                          <th className="px-2 py-1.5 font-semibold text-left">姓名</th>
+                                          <th className="px-2 py-1.5 font-semibold text-left">電話</th>
+                                          <th className="px-2 py-1.5 font-semibold text-right">人數</th>
+                                          <th className="px-2 py-1.5 font-semibold text-right">已付/總額</th>
+                                          <th className="px-2 py-1.5 font-semibold text-left">付款狀態</th>
+                                          <th className="px-2 py-1.5 font-semibold text-left">訂單狀態</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {bks.map((b, j) => (
+                                          <tr key={b.id} style={{ background: j % 2 === 0 ? "transparent" : "rgba(255,255,255,0.5)", borderTop: `1px solid ${LINE}` }}>
+                                            <td className="px-2 py-1 whitespace-nowrap">
+                                              {b.code ? (
+                                                <span className="font-mono text-[10px] px-1 py-0.5 rounded bg-teal-50 text-teal-800">{b.code}</span>
+                                              ) : "—"}
+                                            </td>
+                                            <td className="px-2 py-1 font-semibold whitespace-nowrap">{b.userName}</td>
+                                            <td className="px-2 py-1 tabular-nums whitespace-nowrap text-slate-500">{b.phone ?? "—"}</td>
+                                            <td className="px-2 py-1 text-right tabular-nums">×{b.participants}</td>
+                                            <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-slate-600">
+                                              {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
+                                            </td>
+                                            <td className="px-2 py-1 text-[10px]">{b.paymentStatus}</td>
+                                            <td className="px-2 py-1 text-[10px]">{b.status}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

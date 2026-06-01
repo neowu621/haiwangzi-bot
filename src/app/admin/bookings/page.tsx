@@ -114,7 +114,7 @@ export default function AdminBookingsPage() {
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
-  type SortKey = "date" | "code" | "amount" | "paid" | "status" | "payment";
+  type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
   const [filterRange, setFilterRange] = useState<"today" | "tomorrow" | "week" | "month" | "all">("week");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -374,10 +374,13 @@ export default function AdminBookingsPage() {
     let va: string | number = 0, vb: string | number = 0;
     switch (sortKey) {
       case "code":    va = a.code ?? ""; vb = b.code ?? ""; break;
+      case "type":    va = a.type; vb = b.type; break;
+      case "customer": va = a.user.realName ?? a.user.displayName; vb = b.user.realName ?? b.user.displayName; break;
       case "amount":  va = a.totalAmount; vb = b.totalAmount; break;
       case "paid":    va = a.paidAmount;  vb = b.paidAmount; break;
       case "status":  va = a.status; vb = b.status; break;
       case "payment": va = a.paymentStatus; vb = b.paymentStatus; break;
+      case "method":  va = a.paymentMethod ?? ""; vb = b.paymentMethod ?? ""; break;
     }
     if (va < vb) return sortDir === "asc" ? -1 : 1;
     if (va > vb) return sortDir === "asc" ? 1 : -1;
@@ -570,15 +573,16 @@ export default function AdminBookingsPage() {
                 <thead>
                   <tr className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}>
-                    <th className="px-4 py-3 font-medium">訂單編號</th>
-                    <th className="px-4 py-3 font-medium">客戶</th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="code" curK={sortKey} dir={sortDir} onClick={toggleSort}>訂單編號</SortBtn></th>
+                    <th className="px-3 py-3 font-medium"><SortBtn k="type" curK={sortKey} dir={sortDir} onClick={toggleSort}>類型</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-3 py-3 font-medium text-center">消費</th>
-                    <th className="px-4 py-3 font-medium">場次</th>
-                    <th className="px-4 py-3 font-medium text-right">金額</th>
-                    <th className="px-4 py-3 font-medium text-right">已付</th>
-                    <th className="px-4 py-3 font-medium">訂單</th>
-                    <th className="px-4 py-3 font-medium">付款</th>
-                    <th className="px-4 py-3 font-medium">方式</th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次</SortBtn></th>
+                    <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
+                    <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>訂單</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="payment" curK={sortKey} dir={sortDir} onClick={toggleSort}>付款</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
                     <th className="px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
@@ -612,6 +616,20 @@ export default function AdminBookingsPage() {
                             </span>
                           ) : (
                             <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                          )}
+                        </td>
+                        {/* 類型：日潛 / 潛水團 */}
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          {b.type === "daily" ? (
+                            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                              style={{ background: "rgba(14,158,145,0.12)", color: "#0E9E91" }}>
+                              🌊 日潛
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                              style={{ background: "rgba(242,96,60,0.12)", color: "#F2603C" }}>
+                              🚢 潛水團
+                            </span>
                           )}
                         </td>
                         {/* 客戶 — 一行 */}
@@ -768,7 +786,7 @@ export default function AdminBookingsPage() {
                   })}
                   {pagedBookings.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
@@ -1181,5 +1199,31 @@ export default function AdminBookingsPage() {
         </DialogContent>
       </Dialog>
     </AdminShell>
+  );
+}
+
+// v193：可排序欄位 header
+type _SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
+function SortBtn({
+  k, curK, dir, onClick, align, children,
+}: {
+  k: _SortKey;
+  curK: _SortKey;
+  dir: "asc" | "desc";
+  onClick: (k: _SortKey) => void;
+  align?: "right";
+  children: React.ReactNode;
+}) {
+  const active = k === curK;
+  return (
+    <button type="button" onClick={() => onClick(k)}
+      className={cn(
+        "inline-flex items-center gap-0.5 font-medium hover:text-[var(--foreground)] transition-colors",
+        active && "text-[var(--foreground)]",
+        align === "right" && "justify-end w-full",
+      )}>
+      {children}
+      <span className="text-[10px] opacity-60">{active ? (dir === "asc" ? "▲" : "▼") : "↕"}</span>
+    </button>
   );
 }
