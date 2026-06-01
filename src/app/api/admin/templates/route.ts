@@ -5,10 +5,9 @@ import { authFromRequest, requireRole } from "@/lib/auth";
 import {
   FLEX_TEMPLATES,
   FLEX_TEMPLATE_LABELS,
+  FLEX_TEMPLATE_META,
   FLEX_EDITABLE_FIELDS,
-  buildFlexByKeyAsync,
 } from "@/lib/flex";
-import { getLineClient } from "@/lib/line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,9 +26,15 @@ export async function GET(req: NextRequest) {
 
   const templates = Object.keys(FLEX_TEMPLATES).map((key) => {
     const o = overrideMap.get(key);
+    const meta = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META];
     return {
       key,
       label: FLEX_TEMPLATE_LABELS[key as keyof typeof FLEX_TEMPLATE_LABELS],
+      group: meta.group,
+      icon: meta.icon,
+      // null override 時 fallback 到預設
+      lineEnabled: o?.lineEnabled ?? meta.defaultLine,
+      emailEnabled: o?.emailEnabled ?? meta.defaultEmail,
       editableFields: FLEX_EDITABLE_FIELDS[
         key as keyof typeof FLEX_EDITABLE_FIELDS
       ],
@@ -57,6 +62,8 @@ const PatchSchema = z.object({
   bodyText: z.string().nullable().optional(),
   buttonLabel: z.string().nullable().optional(),
   altText: z.string().nullable().optional(),
+  lineEnabled: z.boolean().nullable().optional(),
+  emailEnabled: z.boolean().nullable().optional(),
 });
 
 // POST /api/admin/templates - upsert override
@@ -74,7 +81,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unknown template key" }, { status: 400 });
   }
 
-  const patch = {
+  const patch: {
+    title: string | null;
+    subtitle: string | null;
+    bodyText: string | null;
+    buttonLabel: string | null;
+    altText: string | null;
+    lineEnabled?: boolean | null;
+    emailEnabled?: boolean | null;
+    updatedBy: string;
+  } = {
     title: data.title ?? null,
     subtitle: data.subtitle ?? null,
     bodyText: data.bodyText ?? null,
@@ -82,6 +98,8 @@ export async function POST(req: NextRequest) {
     altText: data.altText ?? null,
     updatedBy: auth.user.lineUserId,
   };
+  if (data.lineEnabled !== undefined) patch.lineEnabled = data.lineEnabled;
+  if (data.emailEnabled !== undefined) patch.emailEnabled = data.emailEnabled;
 
   const t = await prisma.messageTemplate.upsert({
     where: { key: data.key },

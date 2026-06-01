@@ -131,6 +131,10 @@ const PATCHES = [
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS final_reminder_days INTEGER DEFAULT 30`,
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS guide_reminder_days INTEGER DEFAULT 2`,
 
+  // ── v196 message_templates 加管道開關 ───────────────────────────────
+  `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS line_enabled BOOLEAN`,
+  `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN`,
+
   // ── v186 tour_packages 行銷欄位 ─────────────────────────────────────
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS subtitle TEXT`,
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS duration_label TEXT`,

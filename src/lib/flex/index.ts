@@ -77,6 +77,23 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   welcome: "歡迎加入",
 };
 
+// v196：每個 template 的分組 + icon + 預設管道開關
+export const FLEX_TEMPLATE_META: Record<
+  FlexTemplateKey,
+  { group: string; icon: string; defaultLine: boolean; defaultEmail: boolean }
+> = {
+  welcome:         { group: "加入",          icon: "👋", defaultLine: true,  defaultEmail: true  },
+  booking_confirm: { group: "預約",          icon: "✅", defaultLine: true,  defaultEmail: true  },
+  deposit_notice:  { group: "收款",          icon: "💰", defaultLine: true,  defaultEmail: true  },
+  deposit_confirm: { group: "收款",          icon: "✅", defaultLine: true,  defaultEmail: true  },
+  final_reminder:  { group: "收款",          icon: "🛟", defaultLine: true,  defaultEmail: true  },
+  trip_guide:      { group: "行前",          icon: "📘", defaultLine: true,  defaultEmail: true  },
+  d1_reminder:     { group: "行前",          icon: "🐡", defaultLine: true,  defaultEmail: false },
+  weather_cancel:  { group: "異常",          icon: "🌧️", defaultLine: true,  defaultEmail: true  },
+  overcap_alert:   { group: "管理者（內部）", icon: "⚠️", defaultLine: true,  defaultEmail: true  },
+  admin_weekly:    { group: "管理者（內部）", icon: "📊", defaultLine: false, defaultEmail: true  },
+};
+
 /**
  * 每個 template 可編輯的欄位 + 預設值
  * 給 /liff/admin/templates 顯示用
