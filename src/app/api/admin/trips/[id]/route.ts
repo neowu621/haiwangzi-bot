@@ -105,13 +105,14 @@ export async function PATCH(
 
   try {
     const trip = await prisma.divingTrip.update({ where: { id }, data: patch });
-    await logAudit({
+    // v181：audit log 不再 await，避免客戶端等 DB 寫第二次（fire-and-forget）
+    logAudit({
       actorId: auth.user.lineUserId,
       action: "trip.update",
       targetType: "trip",
       targetId: id,
       metadata: patch,
-    });
+    }).catch((e) => console.error("[audit] trip.update", e));
     return NextResponse.json({ ok: true, trip });
   } catch (e) {
     console.error("[PATCH /admin/trips]", e);
