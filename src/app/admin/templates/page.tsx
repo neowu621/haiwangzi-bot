@@ -48,7 +48,29 @@ const SHOW_AMOUNT: Record<string, boolean> = {
   final_reminder: true,
 };
 
-// v231：每個 template 的「實際 Flex 額外內容」（給預覽用，讓畫面更貼近真實 LINE 訊息）
+// v232：實際 Flex 模板顏色（與 src/lib/flex/_common.ts 同步）
+const FLEX_COLORS = {
+  oceanDeep: "#0A2342",
+  oceanSurface: "#1B3A5C",
+  phosphor: "#00D9CB",
+  coral: "#FF7B5A",
+};
+
+// 每個 template 在實際 Flex hero 用的大 emoji（與 src/lib/flex/*.ts 一致）
+const HERO_EMOJI: Record<string, string> = {
+  welcome: "🌊",
+  booking_confirm: "✅",
+  deposit_notice: "💰",
+  deposit_confirm: "✅",
+  final_reminder: "⏰",
+  trip_guide: "📘",
+  d1_reminder: "🤿",
+  weather_cancel: "🌊",
+  overcap_alert: "⚠️",
+  admin_weekly: "📊",
+};
+
+// v231：每個 template 的「實際 Flex 額外內容」（給預覽用）
 const EXTRA_LINES: Record<string, string[]> = {
   welcome: [
     "📅 日潛預約：選日期 → 選場次 → 一鍵搞定",
@@ -67,7 +89,6 @@ const EXTRA_LINES: Record<string, string[]> = {
   ],
 };
 
-// 額外底部文字（welcome 有「安全．專業．陪你看見海」）
 const EXTRA_FOOTER: Record<string, string> = {
   welcome: "安全．專業．陪你看見海",
 };
@@ -491,66 +512,99 @@ function LinePreview({ cur, val, sending, onTest }: {
         <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,.1)" }} />
       </div>
 
+      {/* v232：模擬 LINE 聊天背景 + bubble 仿真 Flex */}
       <div style={{ backgroundImage: "linear-gradient(160deg,#8fb4cf,#6e95b4)", borderRadius: 16, padding: "14px 12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 11 }}>
           <div style={{
             width: 27, height: 27, borderRadius: "50%",
-            background: "linear-gradient(140deg,#1ed4c2,#0e4c5a)",
+            background: `linear-gradient(140deg,${FLEX_COLORS.phosphor},${FLEX_COLORS.oceanDeep})`,
             display: "grid", placeItems: "center", fontSize: 13, flex: "none",
           }}>🔱</div>
           <div style={{ fontSize: 11.5, color: "#fff", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,.15)" }}>
             海王子潛水
           </div>
         </div>
+        {/* 實際 Flex bubble — 仿 LINE Flex Message 結構 */}
         <div style={{
-          background: "#fff", borderRadius: "4px 15px 15px 15px",
-          overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,.18)", maxWidth: 252,
+          background: "#fff", borderRadius: 14,
+          overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,.22)", maxWidth: 280,
         }}>
+          {/* HERO：oceanDeep 背景 + 大 emoji + 大標題 + 副標 */}
           <div style={{
-            height: 78, background: "linear-gradient(130deg,#0e4c5a,#13b5a6)",
-            display: "grid", placeItems: "center", fontSize: 30,
-          }}>{cur.icon}</div>
-          <div style={{ padding: "13px 13px 12px" }}>
-            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.35, marginBottom: 5 }}>{title}</div>
-            {sub && <div style={{ fontSize: 12, color: "#5a6f74", lineHeight: 1.5 }}>{sub}</div>}
-            {/* v231：模板內建的列表內容（非可編輯，由程式碼 hardcode 在 src/lib/flex/*.ts） */}
+            background: FLEX_COLORS.oceanDeep,
+            padding: "24px 16px 18px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 38, lineHeight: 1, marginBottom: 8 }}>
+              {HERO_EMOJI[cur.key] ?? cur.icon}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#ffffff", marginBottom: 4, lineHeight: 1.3 }}>
+              {title}
+            </div>
+            {sub && (
+              <div style={{ fontSize: 13, color: FLEX_COLORS.phosphor, fontWeight: 500, lineHeight: 1.4 }}>
+                {sub}
+              </div>
+            )}
+          </div>
+
+          {/* BODY：白底 + 列表 / 動態資料 / 標語 */}
+          <div style={{ padding: "14px 16px 4px", background: "#fff" }}>
             {EXTRA_LINES[cur.key] && (
-              <div style={{
-                marginTop: 9, borderTop: "1px solid #eef3f3", paddingTop: 8,
-                fontSize: 11, color: "#4a6168", display: "flex", flexDirection: "column", gap: 4,
-              }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                {cur.key === "welcome" && (
+                  <div style={{ fontSize: 12, fontWeight: 700, color: FLEX_COLORS.oceanDeep, marginBottom: 2 }}>
+                    我們在 LINE 為您提供：
+                  </div>
+                )}
                 {EXTRA_LINES[cur.key].map((line, i) => (
-                  <div key={i}>{line}</div>
+                  <div key={i} style={{ fontSize: 12, lineHeight: 1.55, color: "#1A2330" }}>
+                    {line}
+                  </div>
                 ))}
               </div>
             )}
             {SHOW_DATA[cur.key] && (
               <div style={{
-                marginTop: 9, borderTop: "1px solid #eef3f3", paddingTop: 8,
-                fontSize: 11, color: "#84979a", display: "flex", flexDirection: "column", gap: 2,
+                marginTop: 10, padding: 9, borderRadius: 8,
+                background: "#F4F7FA",
+                fontSize: 11.5, color: "#3A4655",
+                display: "flex", flexDirection: "column", gap: 3,
               }}>
-                <span><b style={{ color: "#0e4c5a" }}>客戶</b> {SAMPLE.客戶名}</span>
-                <span><b style={{ color: "#0e4c5a" }}>場次</b> {SAMPLE.場次}</span>
-                <span><b style={{ color: "#0e4c5a" }}>時間</b> {SAMPLE.日期}</span>
-                {SHOW_AMOUNT[cur.key] && <span><b style={{ color: "#0e4c5a" }}>金額</b> {SAMPLE.金額}</span>}
+                <span><b style={{ color: FLEX_COLORS.oceanDeep }}>客戶</b> {SAMPLE.客戶名}</span>
+                <span><b style={{ color: FLEX_COLORS.oceanDeep }}>場次</b> {SAMPLE.場次}</span>
+                <span><b style={{ color: FLEX_COLORS.oceanDeep }}>時間</b> {SAMPLE.日期}</span>
+                {SHOW_AMOUNT[cur.key] && <span><b style={{ color: FLEX_COLORS.oceanDeep }}>金額</b> {SAMPLE.金額}</span>}
               </div>
             )}
             {EXTRA_FOOTER[cur.key] && (
-              <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#84979a", fontStyle: "italic" }}>
+              <div style={{
+                marginTop: 12, textAlign: "center", fontSize: 11.5,
+                color: "#6B7682", paddingBottom: 4,
+              }}>
                 {EXTRA_FOOTER[cur.key]}
               </div>
             )}
           </div>
+
+          {/* BUTTON：phosphor 漸層滿版按鈕 */}
           {btn && (
-            <div style={{
-              margin: "10px 13px 13px", background: "#13b5a6", color: "#fff",
-              textAlign: "center", padding: 8, borderRadius: 7,
-              fontSize: 12, fontWeight: 700,
-            }}>
-              {btn}
+            <div style={{ padding: "0 16px 16px" }}>
+              <div style={{
+                background: FLEX_COLORS.phosphor,
+                color: FLEX_COLORS.oceanDeep,
+                textAlign: "center",
+                padding: "11px 8px",
+                borderRadius: 10,
+                fontSize: 13.5,
+                fontWeight: 800,
+              }}>
+                {btn}
+              </div>
             </div>
           )}
         </div>
+        {/* 通知列預覽 */}
         <div style={{ fontSize: 10.5, color: "rgba(255,255,255,.85)", marginTop: 8, paddingLeft: 3 }}>
           🔔 通知列：<span style={{ fontSize: 10, color: "#fff", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,.2)" }}>{push}</span>
         </div>
