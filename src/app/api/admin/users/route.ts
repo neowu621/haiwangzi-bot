@@ -166,10 +166,12 @@ export async function POST(req: NextRequest) {
         { status: 403 },
       );
     }
-    // 規則 3：Boss 只能將人設成 Member (customer)
-    if (callerPrimary === "boss" && targetRole !== "customer") {
+    // 規則 3：Boss 可以設定 Coach 或 Member（v177 起放寬）
+    //   v176 限制 Boss 只能設 Member，但實務上教練增減是 Boss 的日常業務
+    //   只剩「設 Boss」需要 Admin 同意
+    if (callerPrimary === "boss" && targetRole !== "customer" && targetRole !== "coach") {
       return NextResponse.json(
-        { error: "權限不足：Boss 只能將人設為 Member（customer）" },
+        { error: "權限不足：Boss 只能將人設為 Coach 或 Member" },
         { status: 403 },
       );
     }

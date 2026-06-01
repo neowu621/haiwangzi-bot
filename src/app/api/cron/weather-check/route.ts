@@ -208,7 +208,7 @@ async function handle(req: NextRequest) {
         const dateStr = trip.date.toISOString().slice(0, 10);
 
         const adminUrl = process.env.NEXT_PUBLIC_BASE_URL
-          ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/admin/trips`
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/trips`
           : "https://liff.line.me/";
 
         const text =
