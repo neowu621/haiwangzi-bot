@@ -180,12 +180,22 @@ export async function POST(req: NextRequest) {
   }
 
   if (targetRole !== undefined) {
-    // 規則 1：UI/API 完全禁止設定 Admin
+    // v219：規則 1 — UI/API 禁止「升級」為 Admin（從非 admin → admin）
+    // 但允許「保持」現有 admin（target = admin AND 該 user 本來就是 admin）
+    // 這樣 admin 編輯自己的其他欄位時不會被擋
     if (targetRole === "admin") {
-      return NextResponse.json(
-        { error: "Admin 角色只能透過系統腳本設定，不能透過介面授予" },
-        { status: 403 },
-      );
+      const existing = await prisma.user.findUnique({
+        where: { lineUserId: data.lineUserId },
+        select: { role: true, roles: true },
+      });
+      const wasAdmin = existing?.role === "admin" || (existing?.roles ?? []).includes("admin");
+      if (!wasAdmin) {
+        return NextResponse.json(
+          { error: "Admin 角色只能透過系統腳本設定，不能透過介面授予" },
+          { status: 403 },
+        );
+      }
+      // else: 維持原本的 admin，允許通過
     }
     // 規則 2：只有 Admin 可以設定 Boss
     if (targetRole === "boss" && callerPrimary !== "admin") {
