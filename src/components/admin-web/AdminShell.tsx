@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
+import { roleLabel } from "@/lib/labels";
 import {
   Menu,
   LogOut,
@@ -141,7 +142,7 @@ export function AdminShell({
                 {adminUser.realName ?? adminUser.displayName}
               </div>
               <div className="truncate text-[10px]" style={{ color: "rgba(230,240,255,0.45)" }}>
-                {adminUser.effectiveRoles.join(" · ")}
+                {adminUser.effectiveRoles.map(roleLabel).join(" · ")}
               </div>
             </div>
             <button

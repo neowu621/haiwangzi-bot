@@ -21,10 +21,10 @@ interface AuditLog {
 }
 
 const ROLE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  admin:    { label: "Admin",   color: "#7c3aed", bg: "#f3e8ff" },
-  boss:     { label: "老闆",    color: "#dc2626", bg: "#fee2e2" },
-  coach:    { label: "教練",    color: "#0891b2", bg: "#cffafe" },
-  customer: { label: "會員",    color: "#475569", bg: "#f1f5f9" },
+  admin:    { label: "管理員", color: "#7c3aed", bg: "#f3e8ff" },
+  boss:     { label: "老闆",   color: "#dc2626", bg: "#fee2e2" },
+  coach:    { label: "教練",   color: "#0891b2", bg: "#cffafe" },
+  customer: { label: "會員",   color: "#475569", bg: "#f1f5f9" },
 };
 
 interface ApiResponse {
