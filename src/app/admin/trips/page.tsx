@@ -1239,8 +1239,9 @@ export default function AdminTripsPage() {
             {/* /panel header */}
             <div className="space-y-3" style={{ padding: "16px 24px", overflowY: "auto", flex: 1, minHeight: 0 }}>
             {/* Row 1: 日期 + 集合時間 + 場次狀態 (三欄並排) */}
+            {/* v220：日期欄縮窄（讓日曆 icon 靠左、好按）+ 場次狀態縮小 + 集合時間拿多空間 */}
             <div className="grid grid-cols-12 gap-3">
-              <div className="col-span-4">
+              <div className="col-span-3">
                 <Label className="mb-1 block text-xs">日期</Label>
                 <Input
                   type="date"
@@ -1256,7 +1257,7 @@ export default function AdminTripsPage() {
                   }}
                 />
               </div>
-              <div className="col-span-4">
+              <div className="col-span-6">
                 <Label className="mb-1 block text-xs">集合時間</Label>
                 <div className="flex items-center gap-1">
                   <select
@@ -1291,8 +1292,8 @@ export default function AdminTripsPage() {
                   </select>
                 </div>
               </div>
-              <div className="col-span-4">
-                <Label className="mb-1 block text-xs">場次狀態</Label>
+              <div className="col-span-3">
+                <Label className="mb-1 block text-xs">狀態</Label>
                 {(() => {
                   const isFormDatePast = form.date < taipeiToday();
                   return (
@@ -1300,17 +1301,15 @@ export default function AdminTripsPage() {
                       <select
                         value={form.status}
                         onChange={(e) => setForm({ ...form, status: e.target.value })}
-                        className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
+                        className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-1 py-1.5 text-xs"
                       >
-                        <option value="open" disabled={isFormDatePast}>
-                          🟢 開放{isFormDatePast ? "（日期已過，禁用）" : ""}
-                        </option>
+                        <option value="open" disabled={isFormDatePast}>🟢 開放</option>
                         <option value="cancelled">🚫 取消</option>
                         <option value="completed">✓ 結束</option>
                       </select>
                       {isFormDatePast && form.status === "open" && (
                         <p className="mt-0.5 text-[9px] text-amber-600">
-                          日期已過：請改為取消或結束
+                          日期已過，請改取消或結束
                         </p>
                       )}
                     </>
