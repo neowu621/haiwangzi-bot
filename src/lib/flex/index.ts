@@ -25,17 +25,24 @@ type FlexFactory = (
   override?: TemplateOverride,
 ) => FlexMessage;
 
+// v229：依「客戶旅程」順序排列 — 加入 → 預約 → 收款 → 行前 → 異常 → 管理者
 export const FLEX_TEMPLATES: Record<string, FlexFactory> = {
+  // 加入
+  welcome: welcome,
+  // 預約
   booking_confirm: bookingConfirm,
-  d1_reminder: d1Reminder,
+  // 收款
   deposit_notice: depositNotice,
   deposit_confirm: depositConfirm,
   final_reminder: finalReminder,
+  // 行前
   trip_guide: tripGuide,
+  d1_reminder: d1Reminder,
+  // 異常
   weather_cancel: weatherCancel,
-  admin_weekly: adminWeekly,
+  // 管理者（內部）
   overcap_alert: overcapAlert,
-  welcome: welcome,
+  admin_weekly: adminWeekly,
 } as const;
 
 export type FlexTemplateKey = keyof typeof FLEX_TEMPLATES;
