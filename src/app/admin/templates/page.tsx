@@ -48,6 +48,30 @@ const SHOW_AMOUNT: Record<string, boolean> = {
   final_reminder: true,
 };
 
+// v231：每個 template 的「實際 Flex 額外內容」（給預覽用，讓畫面更貼近真實 LINE 訊息）
+const EXTRA_LINES: Record<string, string[]> = {
+  welcome: [
+    "📅 日潛預約：選日期 → 選場次 → 一鍵搞定",
+    "✈️ 旅遊潛水：蘭嶼 / 綠島 / 墾丁 多日團",
+    "💳 上傳轉帳截圖，教練即時核對",
+    "🔔 行前一天自動提醒，海況即時推播",
+  ],
+  trip_guide: [
+    "🎒 攜帶：證照、防寒衣、防曬",
+    "📍 集合地點 / 交通方式：依場次說明",
+    "📞 緊急聯絡：教練電話於行前通知",
+  ],
+  weather_cancel: [
+    "🅰️ 退現金 100%",
+    "🅱️ 轉抵用金 110%（推薦，多 10% 優惠）",
+  ],
+};
+
+// 額外底部文字（welcome 有「安全．專業．陪你看見海」）
+const EXTRA_FOOTER: Record<string, string> = {
+  welcome: "安全．專業．陪你看見海",
+};
+
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [curIdx, setCurIdx] = useState(0);
@@ -489,6 +513,17 @@ function LinePreview({ cur, val, sending, onTest }: {
           <div style={{ padding: "13px 13px 12px" }}>
             <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.35, marginBottom: 5 }}>{title}</div>
             {sub && <div style={{ fontSize: 12, color: "#5a6f74", lineHeight: 1.5 }}>{sub}</div>}
+            {/* v231：模板內建的列表內容（非可編輯，由程式碼 hardcode 在 src/lib/flex/*.ts） */}
+            {EXTRA_LINES[cur.key] && (
+              <div style={{
+                marginTop: 9, borderTop: "1px solid #eef3f3", paddingTop: 8,
+                fontSize: 11, color: "#4a6168", display: "flex", flexDirection: "column", gap: 4,
+              }}>
+                {EXTRA_LINES[cur.key].map((line, i) => (
+                  <div key={i}>{line}</div>
+                ))}
+              </div>
+            )}
             {SHOW_DATA[cur.key] && (
               <div style={{
                 marginTop: 9, borderTop: "1px solid #eef3f3", paddingTop: 8,
@@ -498,6 +533,11 @@ function LinePreview({ cur, val, sending, onTest }: {
                 <span><b style={{ color: "#0e4c5a" }}>場次</b> {SAMPLE.場次}</span>
                 <span><b style={{ color: "#0e4c5a" }}>時間</b> {SAMPLE.日期}</span>
                 {SHOW_AMOUNT[cur.key] && <span><b style={{ color: "#0e4c5a" }}>金額</b> {SAMPLE.金額}</span>}
+              </div>
+            )}
+            {EXTRA_FOOTER[cur.key] && (
+              <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#84979a", fontStyle: "italic" }}>
+                {EXTRA_FOOTER[cur.key]}
               </div>
             )}
           </div>
@@ -530,6 +570,10 @@ function LinePreview({ cur, val, sending, onTest }: {
       >
         📨 {sending ? "送出中..." : "試送 LINE 到我"}
       </button>
+      {/* v231：預覽侷限說明 */}
+      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 6, textAlign: "center" }}>
+        ※ 預覽為簡化版；實際 LINE 訊息會有完整圖示、列表、漸層。建議按「試送到我」確認最終效果。
+      </p>
     </div>
   );
 }
@@ -578,6 +622,12 @@ function EmailPreview({ cur, val, sending, onTest }: {
         <div style={{ padding: "16px 17px 6px", color: "#0a2027" }}>
           <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 7, lineHeight: 1.35 }}>{title}</div>
           {sub && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 12 }}>{sub}</div>}
+          {/* v231：模板內建列表 */}
+          {EXTRA_LINES[cur.key] && (
+            <ul style={{ marginBottom: 12, paddingLeft: 18, fontSize: 12, color: "#516268", lineHeight: 1.7 }}>
+              {EXTRA_LINES[cur.key].map((line, i) => <li key={i}>{line}</li>)}
+            </ul>
+          )}
           {SHOW_DATA[cur.key] && (
             <div style={{ background: "#f4f9f8", border: "1px solid #e2efed", borderRadius: 9, padding: "11px 13px", marginBottom: 14 }}>
               <DataRow k="客戶姓名" v={SAMPLE.客戶名} />
