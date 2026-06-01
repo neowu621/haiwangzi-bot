@@ -173,10 +173,7 @@ export default function AdminDashboard() {
           </section>
 
           {/* ═══════ 區塊 4：業務洞察（次要） ═══════ */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <InsightCard title="🏆 教練績效 Top 3" subtitle="近 30 天" items={
-              stats.topCoaches.map((c) => ({ name: c.name, value: `${c.participants} 人次 / ${c.trips} 場` }))
-            } />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <InsightCard title="🔥 熱門潛點 Top 3" subtitle="近 30 天" items={
               stats.topSites.map((s) => ({ name: s.name, value: `${s.participants} 人次 / ${s.trips} 場` }))
             } />
