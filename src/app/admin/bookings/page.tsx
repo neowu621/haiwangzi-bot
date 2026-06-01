@@ -131,6 +131,10 @@ export default function AdminBookingsPage() {
   const [refundReason, setRefundReason] = useState("");
   const [refundBusy, setRefundBusy] = useState(false);
   const [refundCreditPct, setRefundCreditPct] = useState<number>(100); // 轉禮金 % (例：110 = 退款金額的 110% 轉禮金)
+  // v199：新增一筆付款
+  const [addPaymentAmount, setAddPaymentAmount] = useState<string>("");
+  const [addPaymentNote, setAddPaymentNote] = useState<string>("");
+  const [addingPayment, setAddingPayment] = useState(false);
 
   // 未到場 dialog
   const [noShowTarget, setNoShowTarget] = useState<AdminBooking | null>(null);
@@ -461,6 +465,47 @@ export default function AdminBookingsPage() {
 
   // v183 移除 openEditFromByTrip — 依場次視圖已被砍掉
 
+  // v199：新增一筆付款（增量加到 paidAmount，避免直接 overwrite 造成多筆訂金混亂）
+  async function confirmAddPayment() {
+    if (!editing) return;
+    const n = parseInt(addPaymentAmount, 10);
+    if (!n || n <= 0) { alert("請輸入正確金額"); return; }
+    const owed = editing.totalAmount - editing.paidAmount;
+    if (n > owed) {
+      if (!confirm(`輸入金額 NT$${n} 大於剩餘應付 NT$${owed}。\n確定要新增此筆付款？（超收的會記入 paidAmount）`)) return;
+    }
+    const newPaid = editing.paidAmount + n;
+    // 自動推算付款狀態
+    let nextPayStatus = editing.paymentStatus;
+    if (newPaid >= editing.totalAmount) nextPayStatus = "fully_paid";
+    else if (newPaid > 0) nextPayStatus = "deposit_paid";
+    setAddingPayment(true);
+    try {
+      const noteSuffix = addPaymentNote ? `（${addPaymentNote}）` : "";
+      const stamp = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }).slice(5, 16);
+      const updatedAdminNote =
+        (editing.adminNotes ? editing.adminNotes + "\n" : "") +
+        `[${stamp}] 收款 +NT$${n.toLocaleString()}${noteSuffix}`;
+      const body = {
+        paidAmount: newPaid,
+        paymentStatus: nextPayStatus,
+        adminNotes: updatedAdminNote,
+      };
+      const r = await adminFetch<{ ok: boolean; booking: AdminBooking }>(
+        `/api/admin/bookings/${editing.id}`,
+        { method: "PATCH", body: JSON.stringify(body) },
+      );
+      setBookings((arr) => arr.map((x) => (x.id === editing.id ? { ...x, ...r.booking } : x)));
+      setEditing({ ...editing, paidAmount: newPaid, paymentStatus: nextPayStatus, adminNotes: updatedAdminNote });
+      setAddPaymentAmount("");
+      setAddPaymentNote("");
+    } catch (e) {
+      alert("新增付款失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAddingPayment(false);
+    }
+  }
+
   async function doRefund() {
     if (!editing) return;
     const n = Number(refundAmount);
@@ -606,6 +651,8 @@ export default function AdminBookingsPage() {
                           setRefundOpen(false);
                           setRefundAmount(String(b.paidAmount));
                           setRefundCreditPct(100);
+                          setAddPaymentAmount("");
+                          setAddPaymentNote("");
                         }}
                       >
                         {/* 訂單編號 */}
@@ -865,20 +912,28 @@ export default function AdminBookingsPage() {
                       <Label className="text-xs">參加人數</Label>
                       <Input type="number" min={1} max={20} value={editing.participants}
                         disabled={locked}
-                        onChange={(e) => setEditing({ ...editing, participants: Math.max(1, Number(e.target.value)) })} />
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10);
+                          setEditing({ ...editing, participants: Number.isNaN(n) ? 1 : Math.max(1, n) });
+                        }} />
                     </div>
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">總金額</Label>
                       <Input type="number" min={0} value={editing.totalAmount}
                         disabled={locked}
-                        onChange={(e) => setEditing({ ...editing, totalAmount: Math.max(0, Number(e.target.value)) })} />
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10);
+                          setEditing({ ...editing, totalAmount: Number.isNaN(n) ? 0 : Math.max(0, n) });
+                        }} />
                     </div>
                     <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
                       <Label className="text-xs pt-1.5">已付金額</Label>
                       <div>
-                        <Input type="number" min={0} value={editing.paidAmount}
-                          disabled={locked}
-                          onChange={(e) => setEditing({ ...editing, paidAmount: Math.max(0, Number(e.target.value)) })} />
+                        {/* v199：read-only 顯示，避免直接修改累計金額 */}
+                        <div className="flex h-9 items-center rounded-md border border-[var(--border)] bg-slate-50 px-3 text-sm tabular-nums font-bold"
+                          style={{ color: editing.paidAmount === editing.totalAmount && editing.totalAmount > 0 ? "#16a34a" : editing.paidAmount > 0 ? "#0a2342" : "#64748b" }}>
+                          NT$ {editing.paidAmount.toLocaleString()}
+                        </div>
                         {!locked && owed > 0 && editing.paidAmount > 0 && (
                           <div className="mt-1 text-[11px] font-medium text-amber-700">
                             ⚠ 已付 NT$ {editing.paidAmount.toLocaleString()} ／ 總額 NT$ {editing.totalAmount.toLocaleString()}
@@ -892,6 +947,72 @@ export default function AdminBookingsPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* v199：新增付款 inline 區塊（僅在還有剩餘應付 + 未鎖時顯示） */}
+                    {!locked && owed > 0 && (
+                      <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                        <Label className="text-xs pt-1.5" style={{ color: "#0891b2" }}>
+                          ＋新增付款
+                          <span className="block font-normal text-[10px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                            可分次累加
+                          </span>
+                        </Label>
+                        <div className="space-y-1.5">
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={editing.totalAmount * 2}
+                              value={addPaymentAmount}
+                              onChange={(e) => {
+                                // 去掉 leading 0：把字串先 parse 再轉回乾淨字串
+                                const raw = e.target.value;
+                                if (raw === "") { setAddPaymentAmount(""); return; }
+                                const n = parseInt(raw.replace(/[^\d]/g, ""), 10);
+                                setAddPaymentAmount(Number.isNaN(n) || n < 0 ? "" : String(n));
+                              }}
+                              placeholder={`金額（剩 NT$ ${owed.toLocaleString()}）`}
+                              className="flex-1"
+                              disabled={addingPayment}
+                            />
+                            <Input
+                              value={addPaymentNote}
+                              onChange={(e) => setAddPaymentNote(e.target.value)}
+                              placeholder="備註（如：訂金/尾款/現金）"
+                              className="flex-1"
+                              disabled={addingPayment}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={confirmAddPayment}
+                              disabled={addingPayment || !addPaymentAmount || parseInt(addPaymentAmount, 10) <= 0}
+                              style={{ background: "#0891b2", color: "#fff" }}
+                            >
+                              {addingPayment ? "..." : "✓ 確認"}
+                            </Button>
+                          </div>
+                          {/* 快選：訂金一半 / 全額 / 補齊剩餘 */}
+                          <div className="flex gap-1.5 flex-wrap">
+                            <button type="button"
+                              onClick={() => setAddPaymentAmount(String(Math.round(editing.totalAmount * 0.3)))}
+                              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-cyan-400 hover:text-cyan-600">
+                              訂金 30% (NT$ {Math.round(editing.totalAmount * 0.3).toLocaleString()})
+                            </button>
+                            <button type="button"
+                              onClick={() => setAddPaymentAmount(String(Math.round(editing.totalAmount * 0.5)))}
+                              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-cyan-400 hover:text-cyan-600">
+                              訂金 50% (NT$ {Math.round(editing.totalAmount * 0.5).toLocaleString()})
+                            </button>
+                            <button type="button"
+                              onClick={() => setAddPaymentAmount(String(owed))}
+                              className="rounded-md border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 hover:bg-cyan-100">
+                              補齊剩餘 NT$ {owed.toLocaleString()}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">付款方式</Label>
                       <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
