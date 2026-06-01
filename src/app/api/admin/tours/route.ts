@@ -51,7 +51,28 @@ export async function GET(req: NextRequest) {
     const tours = await prisma.tourPackage.findMany({
       orderBy: { dateStart: "asc" },
     });
-    return NextResponse.json({ tours });
+    // v194：aggregate bookings — booked 人數 + 累計實收金額
+    const ids = tours.map((t) => t.id);
+    const bookings = ids.length === 0 ? [] : await prisma.booking.groupBy({
+      by: ["refId"],
+      where: {
+        refId: { in: ids },
+        type: "tour",
+        status: { notIn: ["cancelled_by_user", "cancelled_by_weather"] },
+      },
+      _sum: { participants: true, paidAmount: true, totalAmount: true },
+    });
+    const bMap = new Map(bookings.map((b) => [b.refId, b._sum]));
+    const enriched = tours.map((t) => {
+      const s = bMap.get(t.id);
+      return {
+        ...t,
+        booked: s?.participants ?? 0,
+        totalRevenue: s?.totalAmount ?? 0,
+        totalPaid: s?.paidAmount ?? 0,
+      };
+    });
+    return NextResponse.json({ tours: enriched });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[GET /api/admin/tours] error:", msg, e);

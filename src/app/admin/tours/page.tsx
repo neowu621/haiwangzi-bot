@@ -15,6 +15,11 @@ const LINE = "#E4E8ED";
 const LINE2 = "#D2D9E0";
 const MUTED = "#6B7682";
 const MUTED2 = "#9AA6B2";
+const thStyle: React.CSSProperties = {
+  position: "sticky", top: 0, background: "#EEF1F5", textAlign: "left",
+  fontSize: 11, letterSpacing: ".06em", color: "#9AA6B2", textTransform: "uppercase",
+  padding: "8px 8px", fontWeight: 700,
+};
 
 type Dest = "northeast" | "green_island" | "lanyu" | "kenting" | "other";
 const DEST_LABELS: Record<Dest, string> = {
@@ -68,6 +73,9 @@ interface Tour {
   excludes?: string[];
   status: string;
   _count?: { bookings: number };
+  booked?: number;        // v194：累計報名人數
+  totalRevenue?: number;  // v194：累計應收金額（含未付）
+  totalPaid?: number;     // v194：累計實收金額
 }
 
 const today = new Date().toISOString().split("T")[0];
@@ -119,6 +127,8 @@ export default function ToursPage() {
   const [filter, setFilter] = useState<"all" | "open" | "cancelled">("all");
   const [destFilter, setDestFilter] = useState<"all" | "taiwan" | "overseas">("all");
   const [keyword, setKeyword] = useState("");
+  // v194：日期排序
+  const [dateSort, setDateSort] = useState<"asc" | "desc">("asc");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(BLANK);
   const [saving, setSaving] = useState(false);
@@ -542,12 +552,10 @@ export default function ToursPage() {
       .sort((a, b) => {
         const da = new Date(a.dateStart).getTime();
         const db = new Date(b.dateStart).getTime();
-        const af = da >= now.getTime(), bf = db >= now.getTime();
-        if (af && !bf) return -1;
-        if (!af && bf) return 1;
-        return af ? da - db : db - da;
+        // v194：純依使用者指定 asc/desc 排序（不再「未來優先過去後」）
+        return dateSort === "asc" ? da - db : db - da;
       });
-  }, [tours, filter, destFilter, keyword]);
+  }, [tours, filter, destFilter, keyword, dateSort]);
 
   return (
     <AdminShell title="潛水團管理">
@@ -560,10 +568,7 @@ export default function ToursPage() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: AQUA, boxShadow: `0 0 14px ${AQUA}` }} />
-            <h1 style={{ fontSize: 16, fontWeight: 900 }}>行程資料庫</h1>
-            <span style={{ fontFamily: "monospace", letterSpacing: ".22em", color: MUTED, fontSize: 12 }}>
-              {tours.length} TRIPS
-            </span>
+            <h1 style={{ fontSize: 16, fontWeight: 900 }}>潛水旅行團</h1>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleUpload} style={{ display: "none" }} />
@@ -592,15 +597,8 @@ export default function ToursPage() {
         }}>
           {/* LEFT: list */}
           <div style={{ borderRight: `1px solid ${LINE}`, display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <div style={{ padding: "16px 24px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700 }}>行程列表</h2>
-              <span style={{ fontFamily: "monospace", color: AQUA, fontSize: 20, fontWeight: 700 }}>
-                {visible.length}
-              </span>
-            </div>
-
             {/* toolbar */}
-            <div style={{ display: "flex", gap: 8, padding: "0 24px 12px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, padding: "12px 24px", flexWrap: "wrap" }}>
               <Seg value={destFilter} onChange={setDestFilter} options={[
                 { v: "all", l: "全部" },
                 { v: "taiwan", l: "台灣離島" },
@@ -634,13 +632,20 @@ export default function ToursPage() {
                 <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
-                      {["", "日期 / 支數", "行程", "價格", ""].map((h, idx) => (
-                        <th key={idx} style={{
-                          position: "sticky", top: 0, background: BG, textAlign: "left",
-                          fontSize: 11, letterSpacing: ".06em", color: MUTED2, textTransform: "uppercase",
-                          padding: "8px 8px", fontWeight: 700,
-                        }}>{h}</th>
-                      ))}
+                      <th style={thStyle}></th>
+                      <th style={thStyle}>
+                        <button type="button"
+                          onClick={() => setDateSort((d) => (d === "asc" ? "desc" : "asc"))}
+                          className="inline-flex items-center gap-0.5 font-bold hover:text-slate-700">
+                          日期 / 支數
+                          <span className="text-[10px] opacity-70">{dateSort === "asc" ? "▲" : "▼"}</span>
+                        </button>
+                      </th>
+                      <th style={thStyle}>行程</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>已報/可接受</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>價格</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>累計費用</th>
+                      <th style={thStyle}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -709,12 +714,30 @@ export default function ToursPage() {
                                 )}
                               </div>
                             </td>
+                            {/* 已報 / 可接受 */}
+                            <td className="px-2 py-2 align-top whitespace-nowrap text-right tabular-nums">
+                              <div className="font-bold text-[13px]" style={{ color: AQUA }}>
+                                {t.booked ?? 0}
+                              </div>
+                              <div className="text-[10px] text-slate-500">
+                                / {t.capacity ?? "∞"}
+                              </div>
+                            </td>
                             {/* 價格 */}
-                            <td className="px-2 py-2 align-top whitespace-nowrap">
+                            <td className="px-2 py-2 align-top whitespace-nowrap text-right">
                               <span className="font-mono text-[17px] font-bold tabular-nums"
                                 style={{ color: t.destination === "other" ? CORAL : AQUA }}>
                                 {t.basePrice.toLocaleString()}
                               </span>
+                            </td>
+                            {/* 累計費用（總應收 + 實收） */}
+                            <td className="px-2 py-2 align-top whitespace-nowrap text-right">
+                              <div className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: "#1B2733" }}>
+                                NT$ {(t.totalRevenue ?? 0).toLocaleString()}
+                              </div>
+                              <div className="text-[10px] text-slate-500 tabular-nums">
+                                實收 {(t.totalPaid ?? 0).toLocaleString()}
+                              </div>
                             </td>
                             {/* actions */}
                             <td className="px-2 py-2 align-top" onClick={(e) => e.stopPropagation()}>
@@ -730,7 +753,7 @@ export default function ToursPage() {
                           {/* expanded — bookings */}
                           {isExpanded && (
                             <tr style={{ background: "#F8FAFC" }}>
-                              <td colSpan={5} className="p-0">
+                              <td colSpan={7} className="p-0">
                                 <div className="p-3 border-t" style={{ borderColor: LINE }}>
                                   {bks === "loading" && <div className="text-xs text-slate-500 py-3 text-center">載入中...</div>}
                                   {bks === "error" && <div className="text-xs text-rose-600 py-3 text-center">載入失敗</div>}
