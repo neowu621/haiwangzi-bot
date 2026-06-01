@@ -9,9 +9,8 @@ import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, Calendar, ChevronRight, Sun, Moon,
-  UserCheck, Trophy, Heart, Cake,
-  CheckCircle2, FileText, DollarSign, Clock, AlertTriangle, RotateCw,
+  Calendar, ChevronRight, Sun, Moon,
+  UserCheck, Trophy, Cake, RotateCw,
 } from "lucide-react";
 
 interface CustomerOnTrip {
@@ -106,14 +105,6 @@ export default function AdminDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const todoCount = stats ? (
-    stats.pendingProofs + stats.pendingSettlement + stats.pendingRefunds +
-    stats.partiallyPaid + stats.overCapacity +
-    (stats.unpaidCount ?? 0) +
-    (stats.churningHighVips?.length ?? 0) +
-    (stats.highIntentLeads?.length ?? 0)
-  ) : 0;
-
   return (
     <AdminShell title="總覽">
       {loading ? (
@@ -122,11 +113,8 @@ export default function AdminDashboard() {
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{err}</div>
       ) : stats ? (
         <div className="space-y-5">
-          {/* refresh bar */}
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-slate-500">
-              {todoCount === 0 ? "🎉 目前沒有待辦事項，可休息一下" : `共 ${todoCount} 項待辦`}
-            </div>
+          {/* refresh bar — v213：移除「需要您處理」整個區塊，待後續重新定義 */}
+          <div className="flex items-center justify-end">
             <button onClick={load} disabled={refreshing}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
               <RotateCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
@@ -134,192 +122,6 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          {/* ═══════ 區塊 1：🚨 需要您處理 ═══════ */}
-          <section className="rounded-2xl border-2 p-5"
-            style={{
-              borderColor: todoCount === 0 ? "#bbf7d0" : "#fed7aa",
-              background: todoCount === 0 ? "linear-gradient(135deg,#f0fdf4,#ffffff)" : "linear-gradient(135deg,#fff7ed,#ffffff)",
-            }}>
-            <div className="mb-4 flex items-center gap-2">
-              {todoCount === 0 ? (
-                <>
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  <h2 className="text-base font-bold text-emerald-800">所有事項都處理完了</h2>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-5 w-5 text-orange-600" />
-                  <h2 className="text-base font-bold text-orange-900">需要您處理</h2>
-                  <span className="rounded-full bg-orange-600 px-2 py-0.5 text-[10px] font-bold text-white">{todoCount}</span>
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-              <ActionCard
-                show={(stats.unpaidCount ?? 0) > 0}
-                icon={<DollarSign className="h-5 w-5" />}
-                count={stats.unpaidCount ?? 0}
-                label="筆訂單尚未收款"
-                tone="red"
-                desc="完全沒付，需主動催繳"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={stats.pendingProofs > 0}
-                icon={<FileText className="h-5 w-5" />}
-                count={stats.pendingProofs}
-                label="筆付款憑證待審核"
-                tone="red"
-                desc="客戶已轉帳，等審核入帳"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={stats.partiallyPaid > 0}
-                icon={<DollarSign className="h-5 w-5" />}
-                count={stats.partiallyPaid}
-                label="筆訂單尚有尾款"
-                tone="amber"
-                desc="已付訂金但未付清"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={stats.pendingSettlement > 0}
-                icon={<Clock className="h-5 w-5" />}
-                count={stats.pendingSettlement}
-                label="筆訂單待結算"
-                tone="amber"
-                desc="場次已過，需標完成/未到"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={stats.pendingRefunds > 0}
-                icon={<RotateCw className="h-5 w-5" />}
-                count={stats.pendingRefunds}
-                label="筆退款待處理"
-                tone="red"
-                desc="已取消但款項未退"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={stats.overCapacity > 0}
-                icon={<AlertTriangle className="h-5 w-5" />}
-                count={stats.overCapacity}
-                label="筆超額預約需協調"
-                tone="red"
-                desc="預約人數已超過場次容量"
-                onClick={() => router.push("/admin/bookings")}
-              />
-              <ActionCard
-                show={(stats.churningHighVips?.length ?? 0) > 0}
-                icon={<Heart className="h-5 w-5" />}
-                count={stats.churningHighVips?.length ?? 0}
-                label="位 VIP 流失警告"
-                tone="purple"
-                desc="VIP4+ 30 天沒下單"
-                onClick={() => router.push("/admin/users")}
-              />
-            </div>
-
-            {/* v201：未付款訂單細項 */}
-            {stats.unpaidBookings && stats.unpaidBookings.length > 0 && (
-              <div className="mt-4 rounded-xl bg-rose-50 border border-rose-200 p-3">
-                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-rose-800">
-                  <DollarSign className="h-4 w-4 text-rose-600" />
-                  訂單尚未收款 — 需主動催繳
-                  <span className="ml-auto rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] text-white">
-                    {stats.unpaidBookings.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
-                  {stats.unpaidBookings.slice(0, 8).map((b) => (
-                    <button key={b.id} onClick={() => router.push(`/admin/bookings`)}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 text-xs text-left hover:bg-rose-100 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-rose-900">{b.name}</span>
-                          {b.code && <span className="font-mono text-[10px] text-rose-600">{b.code}</span>}
-                          <span className="rounded px-1 py-0.5 text-[9px] font-semibold"
-                            style={{ background: b.type === "daily" ? "rgba(14,158,145,0.12)" : "rgba(242,96,60,0.12)", color: b.type === "daily" ? "#0E9E91" : "#F2603C" }}>
-                            {b.type === "daily" ? "日潛" : "潛旅"}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-rose-700 truncate">{b.when} · {b.what}</div>
-                      </div>
-                      <span className="font-mono font-bold text-rose-700 tabular-nums shrink-0">{b.totalAmount.toLocaleString()}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* v201：待審核憑證細項 */}
-            {stats.pendingProofsDetails && stats.pendingProofsDetails.length > 0 && (
-              <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3">
-                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-amber-800">
-                  <FileText className="h-4 w-4 text-amber-600" />
-                  付款憑證待審核 — 客戶已轉帳，需確認入帳
-                  <span className="ml-auto rounded-full bg-amber-600 px-1.5 py-0.5 text-[10px] text-white">
-                    {stats.pendingProofsDetails.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
-                  {stats.pendingProofsDetails.slice(0, 8).map((p) => (
-                    <button key={p.id} onClick={() => router.push(`/admin/bookings`)}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 text-xs text-left hover:bg-amber-100 transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-amber-900">{p.name}</span>
-                          {p.bookingCode && <span className="font-mono text-[10px] text-amber-600">{p.bookingCode}</span>}
-                          <span className="rounded px-1 py-0.5 text-[9px] font-semibold bg-amber-200 text-amber-900">
-                            {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-amber-700">
-                          上傳 {new Date(p.uploadedAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }).slice(5, 16)}
-                        </div>
-                      </div>
-                      <span className="font-mono font-bold text-amber-700 tabular-nums shrink-0">{p.amount.toLocaleString()}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 高意願客戶 — 也算 action item，需要主動聯繫 */}
-            {stats.highIntentLeads && stats.highIntentLeads.length > 0 && (
-              <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-emerald-800">
-                  <Heart className="h-4 w-4 fill-emerald-500 text-emerald-500" />
-                  高意願客戶 — 看過但沒下單，可主動聯繫
-                  <span className="ml-auto rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">
-                    {stats.highIntentLeads.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
-                  {stats.highIntentLeads.slice(0, 6).map((l, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-xs">
-                      <span className="font-semibold text-emerald-900">{l.name}</span>
-                      <span className="text-emerald-700">{l.tripDate} · {l.tripSite}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {stats.churningHighVips && stats.churningHighVips.length > 0 && (
-              <div className="mt-3 rounded-xl bg-rose-50 border border-rose-200 p-3">
-                <div className="mb-2 text-xs font-bold text-rose-800">💔 VIP 流失警告 — 30 天未下單</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {stats.churningHighVips.map((u, i) => (
-                    <span key={i} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-rose-700 border border-rose-200">
-                      {u.name} · LV{u.vipLevel}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
 
           {/* ═══════ 區塊 2：📅 今日 + 明日場次（含客戶名單） ═══════ */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
