@@ -67,6 +67,11 @@ export async function genBookingCode(): Promise<string> {
   return genCode("O", async (code) => !!(await prisma.booking.findUnique({ where: { code } })));
 }
 
+// v225：抵用金編碼 C20260601-XX
+export async function genCreditCode(): Promise<string> {
+  return genCode("C", async (code) => !!(await prisma.creditTx.findUnique({ where: { code } })));
+}
+
 // ── 補發舊資料用（使用 createdAt 日期）────────────────────────────────────
 
 export async function genMemberCodeForDate(createdAt: Date): Promise<string> {

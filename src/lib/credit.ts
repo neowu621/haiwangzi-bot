@@ -9,6 +9,7 @@
  */
 import { prisma } from "./prisma";
 import type { Prisma } from "@prisma/client";
+import { genCreditCode } from "./code-gen";
 
 export type CreditReason =
   | "birthday"        // 生日自動發
@@ -48,8 +49,11 @@ export async function grantCredit(args: GrantCreditArgs) {
       );
     }
 
+    // v225：每筆 CreditTx 自動產編碼 C20260601-XX
+    const code = await genCreditCode();
     const txRow = await tx.creditTx.create({
       data: {
+        code,
         userId: args.userId,
         amount: args.amount,
         reason: args.reason,

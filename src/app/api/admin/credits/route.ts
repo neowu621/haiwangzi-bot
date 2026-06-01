@@ -69,6 +69,23 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // v225：補上經辦人真名（從 lineUserId 查 User table）
+  const actorIds = Array.from(new Set(txs.map((t) => t.createdBy).filter((x): x is string => !!x && x !== "system")));
+  const actors = actorIds.length === 0 ? [] : await prisma.user.findMany({
+    where: { lineUserId: { in: actorIds } },
+    select: { lineUserId: true, realName: true, displayName: true },
+  });
+  const actorMap = new Map(actors.map((a) => [a.lineUserId, a]));
+  const txsEnriched = txs.map((t) => {
+    const a = t.createdBy ? actorMap.get(t.createdBy) : undefined;
+    return {
+      ...t,
+      actorName: t.createdBy === "system" || !t.createdBy
+        ? "系統發"
+        : (a?.realName ?? a?.displayName ?? null),
+    };
+  });
+
   // 統計：總發放 / 總使用 / 即將過期（30 天內）/ 已過期但還沒清掉的
   const now = new Date();
   const in30days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -80,7 +97,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json({
-    txs,
+    txs: txsEnriched,
     stats: {
       totalGranted: grantedAgg._sum.amount ?? 0,
       totalUsed: Math.abs(usedAgg._sum.amount ?? 0),
