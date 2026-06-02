@@ -839,6 +839,14 @@ export default function ProfilePage() {
           </div>
           <span className="text-[var(--muted-foreground)]">→</span>
         </a>
+
+        {/* v244：重置 / 重新整理入口（卡住、想重新登入或重新加好友時用） */}
+        <a
+          href="/liff/reset"
+          className="mt-1 flex items-center justify-center gap-1.5 py-2 text-[11px] text-[var(--muted-foreground)] underline decoration-dotted"
+        >
+          🔄 畫面卡住 / 想重新登入？點此重置
+        </a>
       </div>
 
       {/* 預約紀錄 / 已完成 點擊跳出 Dialog */}
