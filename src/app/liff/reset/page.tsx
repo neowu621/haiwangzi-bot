@@ -19,16 +19,33 @@ export default function LiffResetPage() {
   async function doReset() {
     setBusy(true);
     try {
-      // 1. 清前端快取（localStorage 裡也包含 LIFF 自己存的 access_token / id_token，
-      //    清掉就相當於「重新登入」效果，且不會把 LIFF SDK 推進需要重新 OAuth 的狀態）
-      try { localStorage.clear(); } catch {}
+      // v247：白名單清除 — 保留所有 LIFF_ 開頭的 key（LIFF SDK 用 LIFF_STORE:* prefix
+      //   存 accessToken / IDToken / config / context / clientId 等授權狀態），只清掉 app
+      //   自己的快取。整個 localStorage.clear() 會把 LIFF SDK 的 token 也一起砍 →
+      //   下次 init 拿不到任何 token → fetchWithAuth 觸發 liff.login() → 無限閃跳。
+      try {
+        const liffKeys: Array<[string, string]> = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k) continue;
+          // LIFF SDK 用的 prefix（@liff/consts STORE_KEY = "LIFF_STORE"）
+          // 也保留 liff.utm_* / liffEvent / liff.* 等 LIFF 內部相關 key
+          if (k.toUpperCase().startsWith("LIFF")) {
+            const v = localStorage.getItem(k);
+            if (v !== null) liffKeys.push([k, v]);
+          }
+        }
+        localStorage.clear();
+        liffKeys.forEach(([k, v]) => {
+          try { localStorage.setItem(k, v); } catch {}
+        });
+      } catch {}
       try { sessionStorage.clear(); } catch {}
 
       // v246：刻意不呼叫 liff.logout()
       //   原因：在 iOS LINE App 內 logout() 會讓 LIFF 進入「未授權」狀態，
       //   下一個頁面任何 fetchWithAuth 都會觸發 liff.login() 自動跳轉 →
       //   token 還沒準備好又再跳 → 無限重導/閃跳。
-      //   localStorage.clear() 已經把 LIFF 本地 token 清掉，足夠達到「重置快取」效果。
 
       setDone(true);
       // 2 秒後 hard reload 回首頁（會重新 LIFF init + 重新跑好友檢查）
