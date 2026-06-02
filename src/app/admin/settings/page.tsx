@@ -867,24 +867,75 @@ function UploadTestPanel() {
         </div>
       )}
 
-      {/* 設定指引 */}
+      {/* 設定指引（v240：擴充完整步驟） */}
       {status && !status.configured && (
-        <div className="rounded-lg border p-3 text-xs space-y-1.5"
+        <div className="rounded-lg border p-3 text-xs space-y-2"
           style={{ borderColor: "rgba(217, 119, 6, 0.4)", background: "rgba(254, 243, 199, 0.4)" }}>
-          <div className="font-semibold text-amber-900">🔧 設定 R2 步驟</div>
-          <ol className="list-decimal pl-5 space-y-0.5 text-amber-800">
-            <li>進 Cloudflare Dashboard → R2 → 建一個 bucket（建議 <code>haiwangzi-private</code>）</li>
-            <li>右側「Manage R2 API Tokens」→ 建立 Object Read &amp; Write token</li>
-            <li>記下 Account ID、Access Key ID、Secret Access Key</li>
-            <li>到 Zeabur → haiwangzi-bot service → Variables 加：
-              <pre className="mt-1 rounded bg-white/60 px-2 py-1 text-[10px] leading-relaxed">{`R2_ACCOUNT_ID=...
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
+          <div className="font-semibold text-amber-900">🔧 設定 Cloudflare R2 完整步驟（免費額度：10GB 儲存 + 100 萬次寫入/月）</div>
+
+          <div className="space-y-1.5 text-amber-800">
+            <div className="font-semibold mt-1">① 註冊 / 登入 Cloudflare</div>
+            <ol className="list-decimal pl-5 space-y-0.5">
+              <li>到 <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer" className="underline">https://dash.cloudflare.com/sign-up</a> 註冊（用 gmail 即可，免信用卡）</li>
+              <li>登入後左側選單點「R2」（會請你同意 R2 條款一次，免費 plan 即可，但要綁信用卡 — Cloudflare 承諾「不超用就不扣款」）</li>
+            </ol>
+
+            <div className="font-semibold mt-1">② 建立兩個 Bucket</div>
+            <ol className="list-decimal pl-5 space-y-0.5">
+              <li>R2 頁面右上「Create bucket」→ 名稱填 <code>haiwangzi-private</code> → Location: Automatic → 建立</li>
+              <li>再建一個 <code>haiwangzi-public</code>（同樣設定）</li>
+              <li>進 <code>haiwangzi-public</code> → Settings → Public Access → 開啟 → 它會給你一個 <code>https://pub-xxxxx.r2.dev</code> 網址，記下來（之後填 R2_PUBLIC_URL）</li>
+            </ol>
+
+            <div className="font-semibold mt-1">③ 建立 API Token</div>
+            <ol className="list-decimal pl-5 space-y-0.5">
+              <li>R2 主頁右側「Manage R2 API Tokens」→ Create API token</li>
+              <li>Token name: <code>haiwangzi-bot</code></li>
+              <li>Permissions: <code>Object Read &amp; Write</code></li>
+              <li>Specify bucket: 兩個 bucket 都勾選</li>
+              <li>TTL: Forever（不設過期）</li>
+              <li>建立後 <strong>立刻複製</strong>：Access Key ID、Secret Access Key、Account ID（離開頁面就看不到了）</li>
+            </ol>
+
+            <div className="font-semibold mt-1">④ 設定 CORS（讓 LIFF 網頁能上傳）</div>
+            <ol className="list-decimal pl-5 space-y-0.5">
+              <li>進 <code>haiwangzi-private</code> bucket → Settings → CORS policy → Edit</li>
+              <li>貼下面 JSON 再儲存：</li>
+            </ol>
+            <pre className="rounded bg-white/60 px-2 py-1 text-[10px] leading-relaxed">{`[{
+  "AllowedOrigins": ["https://haiwangzi.zeabur.app"],
+  "AllowedMethods": ["GET","PUT"],
+  "AllowedHeaders": ["*"],
+  "MaxAgeSeconds": 3000
+}]`}</pre>
+            <div className="text-[10px]">（<code>haiwangzi-public</code> 同樣設一次）</div>
+
+            <div className="font-semibold mt-1">⑤ 設定環境變數到 Zeabur</div>
+            <ol className="list-decimal pl-5 space-y-0.5">
+              <li>到 Zeabur dashboard → haiwangzi-bot service → Variables tab</li>
+              <li>新增以下 7 個變數：</li>
+            </ol>
+            <pre className="rounded bg-white/60 px-2 py-1 text-[10px] leading-relaxed">{`R2_ACCOUNT_ID=（步驟③ 的 Account ID）
+R2_ACCESS_KEY_ID=（步驟③ 的 Access Key ID）
+R2_SECRET_ACCESS_KEY=（步驟③ 的 Secret Access Key）
 R2_PRIVATE_BUCKET=haiwangzi-private
-R2_PUBLIC_BUCKET=haiwangzi-public`}</pre>
-            </li>
-            <li>Redeploy 服務 → 回到這頁按「重新整理設定」</li>
-          </ol>
+R2_PUBLIC_BUCKET=haiwangzi-public
+R2_PUBLIC_URL=https://pub-xxxxx.r2.dev   ← 步驟② 的網址
+R2_ENDPOINT=  （留空，會自動組）`}</pre>
+
+            <div className="font-semibold mt-1">⑥ 重新部署 + 驗證</div>
+            <ol className="list-decimal pl-5 space-y-0.5">
+              <li>Zeabur 設完變數會自動重新部署（等 2-3 分鐘）</li>
+              <li>回到這頁按「重新整理設定」→ 7 個欄位都該變綠 ✓</li>
+              <li>按「執行測試」→ 4 個步驟全部 ✓ 就 OK</li>
+              <li>之後 LIFF 客戶上傳付款證明就會走 R2 直傳，瞬間完成</li>
+            </ol>
+
+            <div className="mt-2 rounded bg-white/60 p-2 text-[10px]">
+              💡 設定完成後告訴 Claude，我可以幫你用 CLI 一次塞 7 個變數到 Zeabur，免去手動點 7 次的麻煩。
+              你只要把 Account ID / Access Key / Secret Access Key 給我。
+            </div>
+          </div>
         </div>
       )}
     </div>
