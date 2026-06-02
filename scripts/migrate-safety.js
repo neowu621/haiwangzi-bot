@@ -20,6 +20,23 @@ const PATCHES = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(64)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_reason TEXT`,
 
+  // v256: Email 驗證機制
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_sent_at TIMESTAMPTZ`,
+  // v257: 首單獎勵發放追蹤
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS first_order_reward_granted_at TIMESTAMPTZ`,
+  // v256: Email 驗證 token 表
+  `CREATE TABLE IF NOT EXISTS email_verify_tokens (
+     token VARCHAR(64) PRIMARY KEY,
+     user_id VARCHAR(64) NOT NULL,
+     email VARCHAR(254) NOT NULL,
+     expires_at TIMESTAMPTZ NOT NULL,
+     used_at TIMESTAMPTZ,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     CONSTRAINT email_verify_tokens_user_fk FOREIGN KEY (user_id) REFERENCES users(line_user_id) ON DELETE CASCADE
+   )`,
+  `CREATE INDEX IF NOT EXISTS email_verify_tokens_user_idx ON email_verify_tokens(user_id)`,
+
   // v131: MediaPost 表（最新動態，手動 post + 未來自動抓）
   `CREATE TABLE IF NOT EXISTS media_posts (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -116,6 +116,12 @@ model User {
   phone              String?    @db.VarChar(32)
   // 註冊 email — 用於通知信、發票、e-card；比 SMS 便宜，首次登入強制要填
   email              String?    @db.VarChar(254)
+  // v256：Email 驗證（點擊驗證信內連結後寫入時間）。null = 尚未驗證
+  emailVerifiedAt    DateTime?  @map("email_verified_at") @db.Timestamptz
+  // v256：最近一次發送驗證信時間（rate limit 用，60 秒內不能重發）
+  emailVerifyTokenSentAt DateTime? @map("email_verify_token_sent_at") @db.Timestamptz
+  // v257：首單獎勵發放時間（null = 還沒發過）。發放條件：emailVerifiedAt 不為 null + 首筆 fully_paid 訂單
+  firstOrderRewardGrantedAt DateTime? @map("first_order_reward_granted_at") @db.Timestamptz
   // 通知偏好：客戶可在 /liff/profile 自己關掉。預設都開
   notifyByLine       Boolean    @default(true) @map("notify_by_line")
   notifyByEmail      Boolean    @default(true) @map("notify_by_email")
@@ -170,12 +176,30 @@ model User {
   deletedBy          String?    @map("deleted_by") @db.VarChar(64)
   deletedReason      String?    @map("deleted_reason")
 
-  bookings       Booking[]
-  coachProfile   Coach?
-  verifiedProofs PaymentProof[]
-  creditTxs      CreditTx[]
+  bookings          Booking[]
+  coachProfile      Coach?
+  verifiedProofs    PaymentProof[]
+  creditTxs         CreditTx[]
+  emailVerifyTokens EmailVerifyToken[]
 
   @@map("users")
+}
+
+// v256：Email 驗證 token
+//   驗證信寄出時建一筆，使用者點 link 後標 usedAt + 寫 User.emailVerifiedAt
+//   7 天過期。同一 user 可重發（同一 email 共存的 token 都還能用，但只認最後一個）
+model EmailVerifyToken {
+  token     String    @id @db.VarChar(64)
+  userId    String    @map("user_id") @db.VarChar(64)
+  email     String    @db.VarChar(254)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verify_tokens")
 }
 
 // 補償金 / 禮金 交易紀錄（audit trail）

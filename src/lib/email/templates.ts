@@ -478,6 +478,60 @@ export function broadcastEmail(params: {
   return { subject: params.subject, text, html };
 }
 
+/**
+ * v256：Email 驗證信
+ * 點下方按鈕 → 後端標記 emailVerifiedAt → 首單付款完成後自動領 100 元抵用金
+ */
+export function emailVerifyEmail(params: {
+  name: string;
+  verifyUrl: string;
+  rewardAmount?: number; // 首單獎勵金額（顯示在 CTA 下方文字，不寫死）
+}): EmailContent {
+  const reward = params.rewardAmount ?? 100;
+  const subject = "請驗證您的 Email — 海王子潛水團";
+  const text = `Hi ${params.name},
+
+感謝您加入海王子潛水團 🐳
+
+請點擊下方連結驗證您的 Email：
+${params.verifyUrl}
+
+驗證後：
+✓ 您將可收到場次提醒、付款確認、行前通知
+✓ 首次訂單付款完成後，自動獲得 NT$${reward} 抵用金（下次潛水可用）
+
+此連結 7 天內有效。若您未申請此驗證，請忽略本信。
+
+— 海王子潛水團`;
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 16px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:14px;line-height:1.7;color:#374151;margin:0 0 18px 0;">
+      感謝您加入海王子潛水團 🐳<br>
+      請點擊下方按鈕驗證您的 Email。
+    </p>
+    <div style="margin:24px 0;text-align:center;">
+      <a href="${escapeHtml(params.verifyUrl)}"
+         style="display:inline-block;padding:14px 32px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:24px;font-weight:bold;font-size:15px;letter-spacing:0.05em;">
+        ✓ 驗證 Email
+      </a>
+    </div>
+    <div style="background:#f0f9f7;border-left:4px solid ${BRAND_PHOSPHOR};padding:14px 16px;border-radius:6px;margin:18px 0;font-size:13px;color:#374151;line-height:1.6;">
+      <b>驗證後可獲得：</b><br>
+      ✓ 收到場次提醒、付款確認、行前通知<br>
+      ✓ 首次訂單付款完成後，自動獲得 <b style="color:${BRAND_DEEP};">NT$${reward}</b> 抵用金（下次潛水可用）
+    </div>
+    <p style="font-size:12px;color:#9ca3af;margin:18px 0 0 0;line-height:1.6;">
+      此連結 7 天內有效。若您未申請此驗證，請忽略本信。<br>
+      若按鈕無法點擊，請複製此連結至瀏覽器：<br>
+      <span style="word-break:break-all;color:#6b7280;">${escapeHtml(params.verifyUrl)}</span>
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 
 function escapeHtml(s: string): string {
