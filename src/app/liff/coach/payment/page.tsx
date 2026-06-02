@@ -68,7 +68,9 @@ export default function CoachPaymentPage() {
   }
   useEffect(() => {
     load();
-  }, [liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liff.ready]);
 
   async function decide(p: PendingProof, approve: boolean) {
     setActing(p.id);

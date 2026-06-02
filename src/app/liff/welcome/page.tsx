@@ -100,7 +100,10 @@ export default function WelcomePage() {
         if (!u.email) setEmailMissing(true);
       })
       .catch(() => {});
-  }, [liff, liff.ready, liff.loggedIn]);
+    // v249：deps 移除整個 liff（避免 init 期間 4 次 setState 連環觸發），
+    //   只用 ready + loggedIn — 兩個都只 flip 一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liff.ready, liff.loggedIn]);
 
   const cards = (cfg.cards ?? DEFAULT_SITE_CONFIG.cards)
     .filter((c) => c.enabled)

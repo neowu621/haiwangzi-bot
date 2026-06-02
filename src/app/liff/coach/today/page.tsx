@@ -87,8 +87,9 @@ export default function CoachTodayPage() {
 
   useEffect(() => {
     reload();
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liff]);
+  }, [liff.ready]);
 
   async function markAttendance(
     bookingId: string,

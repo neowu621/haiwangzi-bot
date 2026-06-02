@@ -78,7 +78,9 @@ export default function PaymentUploadPage({
     fetch("/api/config")
       .then((r) => r.json())
       .then((c: Config) => setBank(c.bank));
-  }, [bookingId, liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, liff.ready]);
 
   // v240：迭代壓縮 — 目標 < 500KB
   //   Step 1: 1280px / quality 0.75

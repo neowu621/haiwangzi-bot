@@ -67,7 +67,9 @@ export default function TourListPage() {
       .then((d) => setTours(d.tours))
       .catch(() => setTours([]))
       .finally(() => setLoading(false));
-  }, [liff]);
+    // v249：deps 改用 liff.ready（一次 false→true），避免 init 期間 4 次 setState 造成連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liff.ready]);
 
   // 自動取 max budget
   const maxBudget = useMemo(() => {

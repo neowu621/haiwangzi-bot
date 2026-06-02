@@ -39,7 +39,9 @@ export default function DiveDateListPage({
       .then((d) => setTrips(d.trips))
       .catch(() => setTrips([]))
       .finally(() => setLoading(false));
-  }, [date, liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, liff.ready]);
 
   // 注意：不對整個 shell 套 midnight，
   //  否則白色卡片上的灰色字會被全域 text-white 覆寫導致對比不足。

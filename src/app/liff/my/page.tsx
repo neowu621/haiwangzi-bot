@@ -173,7 +173,9 @@ export default function MyBookingsPage() {
       .then((d) => setBookings(d.bookings))
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
-  }, [liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次重新觸發 → 閃爍 + 3-5 秒延遲
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liff.ready]);
 
   useEffect(() => {
     load();
@@ -694,7 +696,9 @@ function EditBookingDialog({
         })
         .catch(() => {});
     }
-  }, [booking, liff]);
+    // v249：見上方註解
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking, liff.ready]);
 
   // 自動調整潛伴 slot 數量 = participants - 1 (本人不算)
   useEffect(() => {

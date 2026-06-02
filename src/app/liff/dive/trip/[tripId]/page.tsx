@@ -178,7 +178,9 @@ export default function TripBookingPage({
       method: "POST",
       body: JSON.stringify({ refType: "trip", refId: tripId }),
     }).catch(() => { /* silent */ });
-  }, [tripId, liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId, liff.ready]);
 
   // 從後台讀取裝備租借費率（若有設定則覆蓋預設值）
   useEffect(() => {
@@ -238,7 +240,9 @@ export default function TripBookingPage({
       })
       .catch(() => {})
       .finally(() => setMeLoaded(true));
-  }, [liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liff.ready]);
 
   // 必填欄位是否齊全（給折疊摘要 + 提交檢查用）
   const personalComplete =

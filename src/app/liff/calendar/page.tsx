@@ -111,7 +111,10 @@ export default function CalendarPage() {
       .catch(() => setTrips([]))
       .finally(() => setLoading(false));
     // 用 optional chain 保護 from/to 可能 undefined（防止 .getTime() throw）
-  }, [range?.from?.getTime(), range?.to?.getTime(), liff]);
+    // v249：deps 不放整個 liff（會 4 次 setState 期間連環觸發 → 閃爍 + 3-5 秒延遲）
+    //   只看 liff.ready（從 false → true 一次），fetchWithAuth 內部會等 token
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range?.from?.getTime(), range?.to?.getTime(), liff.ready]);
 
   const tripsByDate = useMemo(() => {
     const m = new Map<string, Trip[]>();

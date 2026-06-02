@@ -98,7 +98,9 @@ export default function TourDetailPage({
         if (me.phone) setPhone(formatPhoneTW(me.phone));
       })
       .catch(() => {});
-  }, [packageId, liff]);
+    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packageId, liff.ready]);
 
   const total = useMemo(() => {
     if (!tour) return 0;
