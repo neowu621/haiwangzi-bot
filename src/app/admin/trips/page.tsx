@@ -57,6 +57,16 @@ interface Site {
 
 // DIFF_LABELS / REGION_LABELS 已移除（v153 起無潛點詳情面板）
 
+// v242：取消場次常用原因（點選自動填入，仍可自行編輯）
+const CANCEL_REASON_PRESETS = [
+  "天氣海況不佳（東北季風浪大、能見度差）",
+  "報名人數不足，未達開團人數",
+  "教練臨時有事無法帶團",
+  "船班 / 船家臨時取消",
+  "場地維護或設備調整",
+  "颱風 / 豪雨等天災警報",
+];
+
 interface Coach {
   id: string;
   realName: string;
@@ -205,6 +215,10 @@ export default function AdminTripsPage() {
   const [form, setForm] = useState<TripForm>({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
   const [defaultPricing, setDefaultPricing] = useState<Pricing>(BLANK_PRICING_DEFAULT);
+  // v242：取消場次原因 modal
+  const [cancelTarget, setCancelTarget] = useState<Trip | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   // v183：展開查看訂單
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -395,18 +409,39 @@ export default function AdminTripsPage() {
     }
   }
 
-  async function deleteTrip(trip: Trip) {
-    if (!confirm(`取消場次 ${trip.date.slice(0, 10)} ${trip.startTime}？`))
+  // v242：打開取消原因 modal（不再用 confirm）
+  function deleteTrip(trip: Trip) {
+    setCancelTarget(trip);
+    setCancelReason("");
+  }
+
+  // v242：送出取消（帶原因）
+  async function confirmCancelTrip() {
+    if (!cancelTarget) return;
+    const reason = cancelReason.trim();
+    if (!reason) {
+      alert("請選擇或填寫取消原因");
       return;
+    }
+    setCancelBusy(true);
     try {
-      await adminFetch(`/api/admin/trips/${trip.id}`, { method: "DELETE" });
+      await adminFetch(`/api/admin/trips/${cancelTarget.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ reason }),
+      });
       setTrips((arr) =>
         arr.map((x) =>
-          x.id === trip.id ? { ...x, status: "cancelled" } : x,
+          x.id === cancelTarget.id
+            ? { ...x, status: "cancelled" }
+            : x,
         ),
       );
+      setCancelTarget(null);
+      setCancelReason("");
     } catch (e) {
       alert("取消失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setCancelBusy(false);
     }
   }
 
@@ -1568,6 +1603,88 @@ export default function AdminTripsPage() {
         {/* /grid */}
       </div>
       {/* /outer */}
+
+      {/* v242：取消場次原因 modal */}
+      {cancelTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !cancelBusy && setCancelTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-amber-600">
+              <Ban className="h-5 w-5" />
+              <h3 className="text-base font-bold">取消場次</h3>
+            </div>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              {cancelTarget.date.slice(0, 10)} {cancelTarget.startTime}
+              {(cancelTarget.booked ?? 0) > 0 && (
+                <span className="ml-1 text-rose-600">
+                  ・已有 {cancelTarget.booked} 筆報名
+                </span>
+              )}
+            </p>
+
+            <div className="mt-4">
+              <Label className="mb-1.5 block text-xs text-[var(--muted-foreground)]">
+                常用原因（點選自動填入，可再修改）
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {CANCEL_REASON_PRESETS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setCancelReason(r)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                      cancelReason === r
+                        ? "border-amber-400 bg-amber-50 text-amber-800"
+                        : "border-[var(--border)] text-slate-600 hover:bg-slate-50",
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
+                取消原因（必填，會記錄於操作紀錄）
+              </Label>
+              <textarea
+                className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                rows={3}
+                placeholder="點上方常用原因，或自行輸入..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelBusy}
+              >
+                返回
+              </Button>
+              <Button
+                size="sm"
+                style={{ background: "#d97706", color: "#fff" }}
+                onClick={confirmCancelTrip}
+                disabled={cancelBusy || !cancelReason.trim()}
+              >
+                {cancelBusy ? "取消中..." : "確認取消場次"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }

@@ -48,5 +48,15 @@ next-env.d.ts
 *.zip
 /npm-build.log
 
+# 根目錄的截圖 / 匯出檔 / mockup / 開發報告（不該進 repo 或 Docker image）
+/*.png
+/*.jpg
+/*.jpeg
+/*.xlsx
+/*.html
+/SYSTEM_TEST_REPORT_*.md
+/MORNING_REPORT_*.md
+/GOOD_MORNING.md
+
 # Claude Code 本機工具設定（preview launch / scheduled tasks lock）
 .claude/

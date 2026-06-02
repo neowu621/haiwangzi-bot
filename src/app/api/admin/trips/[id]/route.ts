@@ -143,6 +143,23 @@ export async function DELETE(
   const url = new URL(req.url);
   const permanent = url.searchParams.get("permanent") === "true";
 
+  // v242：軟取消可帶取消原因（body { reason }）。硬刪不需要。
+  let reasonText = "";
+  if (!permanent) {
+    try {
+      const body = await req.json();
+      if (body && typeof body.reason === "string") reasonText = body.reason.trim();
+    } catch {
+      // 無 body 也允許（向後相容）
+    }
+  }
+  // 依關鍵字歸類 cancelReason enum（weather / insufficient / other）
+  function classifyReason(t: string): "weather" | "insufficient" | "other" {
+    if (/天氣|海況|浪|颱風|豪雨|季風|能見度|天災/.test(t)) return "weather";
+    if (/人數不足|未達|報名不足/.test(t)) return "insufficient";
+    return "other";
+  }
+
   if (permanent) {
     // 安全檢查：若有 confirmed booking 不讓刪
     const hasBookings = await prisma.booking.count({
@@ -182,18 +199,26 @@ export async function DELETE(
     }
   }
 
-  // 軟取消
+  // 軟取消（v242：記錄取消原因）
   try {
     const trip = await prisma.divingTrip.update({
       where: { id },
-      data: { status: "cancelled" },
+      data: {
+        status: "cancelled",
+        ...(reasonText
+          ? {
+              cancelReason: classifyReason(reasonText),
+              weatherNote: reasonText, // 自由文字明細（顯示於客戶端/教練端）
+            }
+          : {}),
+      },
     });
     await logAudit({
       actorId: auth.user.lineUserId,
       action: "trip.cancel",
       targetType: "trip",
       targetId: id,
-      metadata: { permanent },
+      metadata: { permanent, reason: reasonText || null },
     });
     return NextResponse.json({ ok: true, action: "soft_cancelled", trip });
   } catch (e) {
