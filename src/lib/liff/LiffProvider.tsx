@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -72,6 +73,9 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
   const [idToken, setIdToken] = useState<string | null>(
     isMock ? "mock-id-token" : null,
   );
+  // v243：idToken 也存 ref，讓 fetchWithAuth 在 token 刷新時不必觸發 re-render
+  //   （避免 value useMemo 因 idToken 改變而重建 → [liff] 依賴頁面無限重抓 → iPhone 一直閃載入）
+  const idTokenRef = useRef<string | null>(isMock ? "mock-id-token" : null);
   // Mock 模式預設視為已加好友（dev 用）；真實模式從 null 開始等 getFriendship
   const [isFriend, setIsFriend] = useState<boolean | null>(isMock ? true : null);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +111,11 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
             pictureUrl: p.pictureUrl,
             statusMessage: p.statusMessage,
           });
-          setIdToken(liff.getIDToken());
+          {
+            const tok = liff.getIDToken();
+            idTokenRef.current = tok;
+            setIdToken(tok);
+          }
           // 查 LINE OA 好友狀態（必須在 LIFF 內、且 LIFF App 設定的 Channel 有對應 OA 才會 work）
           try {
             const friendship = await liff.getFriendship();
@@ -170,7 +178,8 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
           url = u.pathname + u.search;
         } else {
           // 真實 LIFF：每次都重抓最新 idToken（avoid stale token after long form fill）
-          let token = idToken;
+          // v243：用 ref 不用 state，避免在 fetch 熱路徑 setState 觸發 re-render 迴圈
+          let token = idTokenRef.current;
 
           // 修 admin 401 race: 頁面 useEffect 比 LIFF init 早跑時，等最多 3 秒讓 LIFF ready
           // 直接 poll liff SDK 而不是 React state，避免閉包 stale issue
@@ -182,7 +191,8 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
               const t = liffMod.default.getIDToken();
               if (t) {
                 token = t;
-                if (t !== idToken) setIdToken(t);
+                // v243：只更新 ref（不 setState），不讓 token 刷新引發 re-render 迴圈
+                idTokenRef.current = t;
                 break;
               }
               const loggedIn = liffMod.default.isLoggedIn?.();
@@ -243,7 +253,10 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         return (await res.json()) as T;
       },
     };
-  }, [ready, loggedIn, profile, idToken, isFriend, error, isMock]);
+    // v243：刻意不含 idToken — fetchWithAuth 改讀 idTokenRef，token 刷新不需重建 value，
+    //   否則 [liff] 依賴的頁面會無限重抓造成 iPhone「一直閃載入」
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, loggedIn, profile, isFriend, error, isMock]);
 
   return <LiffContext.Provider value={value}>{children}</LiffContext.Provider>;
 }
