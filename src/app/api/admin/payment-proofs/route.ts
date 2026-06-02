@@ -53,10 +53,13 @@ export async function GET(req: NextRequest) {
     const withUrls = await Promise.all(
       proofs.map(async (p) => {
         let previewUrl: string | null = null;
-        try {
-          previewUrl = await presignGetUrl("payments", p.imageKey, 600);
-        } catch (e) {
-          console.error("[presign payment proof]", e);
+        // v238：imageKey 可為 null（沒附圖只填後 5 碼）
+        if (p.imageKey) {
+          try {
+            previewUrl = await presignGetUrl("payments", p.imageKey, 600);
+          } catch (e) {
+            console.error("[presign payment proof]", e);
+          }
         }
         return {
           id: p.id,

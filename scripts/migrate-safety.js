@@ -138,6 +138,11 @@ const PATCHES = [
   // ── v227 site_config 加取消政策欄位 ──────────────────────────────────
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS cancellation_policy TEXT NOT NULL DEFAULT ''`,
 
+  // ── v238 payment_proofs：image 可選 + 加 last5 / note ──────────────
+  `ALTER TABLE payment_proofs ALTER COLUMN image_key DROP NOT NULL`,
+  `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS last5 VARCHAR(8)`,
+  `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS note TEXT`,
+
   // ── v196 message_templates 加管道開關 ───────────────────────────────
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS line_enabled BOOLEAN`,
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN`,

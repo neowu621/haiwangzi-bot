@@ -9,17 +9,18 @@ export const dynamic = "force-dynamic";
 // v228：允許上到 10MB（fallback 用 base64 時放大圖片才不會被擋）
 export const maxDuration = 60;
 
-// 兩種輸入皆受支援：
-//  - r2Key   (推薦：client 透過 /api/uploads/presign 拿 URL 直傳 R2)
-//  - imageDataUrl (legacy fallback：base64 data URL，本機 dev 沒 R2 也能跑)
+// v238：照片改為 optional；最少要有 last5（後 5 碼）核對
+//  - r2Key       (推薦：client 透過 /api/uploads/presign 拿 URL 直傳 R2)
+//  - imageDataUrl (legacy fallback：base64 data URL)
+//  - last5       (必填) 匯款帳號後 5 碼，5 位數字
+//  - note        (選填) 匯款說明
 const BodySchema = z.object({
   type: z.enum(["deposit", "final", "refund"]),
   amount: z.number().int().min(1),
   r2Key: z.string().min(1).optional(),
   imageDataUrl: z.string().min(20).optional(),
-  last5: z.string().max(8).optional(),
-}).refine((d) => d.r2Key || d.imageDataUrl, {
-  message: "需提供 r2Key 或 imageDataUrl",
+  last5: z.string().regex(/^\d{5}$/, "匯款帳號後 5 碼必須是 5 位數字"),
+  note: z.string().max(500).optional(),
 });
 
 // POST /api/bookings/:id/payment-proofs
@@ -61,8 +62,8 @@ export async function POST(
     );
   }
 
-  // 寫入 imageKey 欄位。優先用 r2Key，fallback 用 base64 data URL。
-  const imageKey = data.r2Key ?? data.imageDataUrl!;
+  // v238：寫入 imageKey（可選 — 沒上傳照片就 null）+ last5 + note
+  const imageKey = data.r2Key ?? data.imageDataUrl ?? null;
 
   let proof;
   try {
@@ -72,6 +73,8 @@ export async function POST(
         type: data.type,
         amount: data.amount,
         imageKey,
+        last5: data.last5,
+        note: data.note ?? null,
       },
     });
   } catch (e) {

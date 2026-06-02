@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { cn } from "@/lib/utils";
 
 interface MyBookingMini {
   id: string;
@@ -49,6 +50,7 @@ export default function PaymentUploadPage({
     (search.get("type") as "deposit" | "final") ?? "deposit",
   );
   const [last5, setLast5] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");  // v238：匯款說明 optional
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -125,7 +127,12 @@ export default function PaymentUploadPage({
   }
 
   async function submit() {
-    if (!booking || !file || !preview) return;
+    if (!booking) return;
+    // v238：last5 必填且必須是 5 位數字；照片變 optional
+    if (!/^\d{5}$/.test(last5)) {
+      setError("匯款帳號後 5 碼必須是 5 位數字");
+      return;
+    }
     setUploading(true);
     setError(null);
 
@@ -135,44 +142,44 @@ export default function PaymentUploadPage({
           ? booking.depositAmount - booking.paidAmount
           : booking.totalAmount - booking.paidAmount;
 
-      // v228：嘗試 presign → R2 直傳；若 R2 沒設定就走 base64 + 加 30s timeout
+      // 嘗試 presign → R2 直傳；失敗 → fallback base64（仍 optional）
       let r2Key: string | undefined;
-      try {
-        const ctrl1 = new AbortController();
-        const t1 = setTimeout(() => ctrl1.abort(), 15000);
-        const presign = await liff.fetchWithAuth<{
-          url: string;
-          key: string;
-        }>("/api/uploads/presign", {
-          method: "POST",
-          body: JSON.stringify({
-            prefix: "payments",
-            filename: file.name,
-            contentType: file.type || "image/jpeg",
-          }),
-          signal: ctrl1.signal,
-        });
-        clearTimeout(t1);
-        const ctrl2 = new AbortController();
-        const t2 = setTimeout(() => ctrl2.abort(), 30000);
-        const putRes = await fetch(presign.url, {
-          method: "PUT",
-          body: file,
-          headers: { "Content-Type": file.type || "image/jpeg" },
-          signal: ctrl2.signal,
-        });
-        clearTimeout(t2);
-        if (putRes.ok) r2Key = presign.key;
-      } catch (e) {
-        // R2 沒設定或失敗 → fallback 走 base64
-        console.warn("[upload] R2 presign/PUT failed, fallback to base64:", e);
-      }
-
-      // Fallback base64 — 確認 preview 大小不超過 8 MB
-      if (!r2Key) {
-        const bytes = (preview.length * 0.75); // base64 → 原 binary 約 75%
-        if (bytes > 8 * 1024 * 1024) {
-          throw new Error(`圖片太大（${Math.round(bytes / 1024 / 1024)}MB）— 請改拍小一點再上傳`);
+      if (file) {
+        try {
+          const ctrl1 = new AbortController();
+          const t1 = setTimeout(() => ctrl1.abort(), 15000);
+          const presign = await liff.fetchWithAuth<{
+            url: string;
+            key: string;
+          }>("/api/uploads/presign", {
+            method: "POST",
+            body: JSON.stringify({
+              prefix: "payments",
+              filename: file.name,
+              contentType: file.type || "image/jpeg",
+            }),
+            signal: ctrl1.signal,
+          });
+          clearTimeout(t1);
+          const ctrl2 = new AbortController();
+          const t2 = setTimeout(() => ctrl2.abort(), 30000);
+          const putRes = await fetch(presign.url, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type || "image/jpeg" },
+            signal: ctrl2.signal,
+          });
+          clearTimeout(t2);
+          if (putRes.ok) r2Key = presign.key;
+        } catch (e) {
+          console.warn("[upload] R2 presign/PUT failed, fallback to base64:", e);
+        }
+        // Fallback base64 — size guard
+        if (!r2Key && preview) {
+          const bytes = (preview.length * 0.75);
+          if (bytes > 8 * 1024 * 1024) {
+            throw new Error(`圖片太大（${Math.round(bytes / 1024 / 1024)}MB）— 請改拍小一點再上傳，或先不附圖只提交後 5 碼`);
+          }
         }
       }
 
@@ -185,8 +192,9 @@ export default function PaymentUploadPage({
             type: paymentType,
             amount: expectedAmount,
             r2Key,
-            imageDataUrl: r2Key ? undefined : preview,
-            last5: last5 || undefined,
+            imageDataUrl: r2Key || !file ? undefined : preview,
+            last5,
+            note: paymentNote || undefined,
           }),
           signal: ctrl3.signal,
         });
@@ -315,7 +323,7 @@ export default function PaymentUploadPage({
               <div className="tabular text-lg font-bold">{bank.account}</div>
               <div className="mt-2 rounded bg-white/10 p-2 text-xs">
                 請匯款 <span className="tabular font-bold text-[var(--color-phosphor)]">NT$ {expected.toLocaleString()}</span>，
-                並於下方上傳轉帳截圖
+                並於下方<b>填寫匯款後 5 碼</b>送出（截圖選填）
               </div>
             </CardContent>
           </Card>
@@ -323,56 +331,85 @@ export default function PaymentUploadPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">轉帳截圖</CardTitle>
+            <CardTitle className="text-base">付款證明</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={onPick}
-            />
-            {preview ? (
-              <div className="relative">
-                <img
-                  src={preview}
-                  alt="轉帳截圖"
-                  className="w-full rounded-lg border border-[var(--border)]"
-                />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="absolute right-2 top-2"
-                  onClick={() => {
-                    setPreview(null);
-                    setFile(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--border)] text-sm text-[var(--muted-foreground)]"
-              >
-                <Camera className="h-8 w-8" />
-                <span>點此拍照或選擇圖檔</span>
-              </button>
-            )}
+            {/* 必填：匯款後 5 碼（5 位數字） */}
             <div>
-              <Label htmlFor="last5">您匯款帳號的後 5 碼 (協助核對)</Label>
+              <Label htmlFor="last5">
+                <span className="text-rose-600">＊</span>您匯款帳號的後 5 碼
+              </Label>
               <Input
                 id="last5"
                 inputMode="numeric"
-                maxLength={8}
+                maxLength={5}
                 value={last5}
-                onChange={(e) => setLast5(e.target.value.replace(/\D/g, ""))}
-                placeholder="例: 12345"
+                onChange={(e) => setLast5(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                placeholder="必填，5 位數字"
+                className={cn(
+                  last5.length > 0 && last5.length !== 5 && "border-rose-500",
+                )}
               />
+              {last5.length > 0 && last5.length !== 5 && (
+                <p className="mt-1 text-xs text-rose-600">需要剛好 5 位數字</p>
+              )}
+            </div>
+
+            {/* 選填：匯款說明 */}
+            <div>
+              <Label htmlFor="paymentNote" className="text-[var(--muted-foreground)]">
+                匯款說明（選填）
+              </Label>
+              <textarea
+                id="paymentNote"
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value.slice(0, 500))}
+                placeholder="例：使用 LINE Pay 轉帳 / 委託家人代匯 / 分兩筆..."
+                rows={2}
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+            </div>
+
+            {/* 選填：轉帳截圖 */}
+            <div>
+              <Label className="text-[var(--muted-foreground)]">轉帳截圖（選填）</Label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                onChange={onPick}
+              />
+              {preview ? (
+                <div className="relative mt-1">
+                  <img
+                    src={preview}
+                    alt="轉帳截圖"
+                    className="w-full rounded-lg border border-[var(--border)]"
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="absolute right-2 top-2"
+                    onClick={() => {
+                      setPreview(null);
+                      setFile(null);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="mt-1 flex h-32 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--border)] text-sm text-[var(--muted-foreground)]"
+                >
+                  <Camera className="h-7 w-7" />
+                  <span>點此拍照或選擇圖檔（選填）</span>
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -389,11 +426,11 @@ export default function PaymentUploadPage({
             variant="ocean"
             size="lg"
             className="w-full"
-            disabled={!file || uploading}
+            disabled={last5.length !== 5 || uploading}
             onClick={submit}
           >
             <Upload className="h-4 w-4" />
-            {uploading ? "上傳中..." : "送出付款證明"}
+            {uploading ? (file ? "上傳中..." : "送出中...") : "送出付款證明"}
           </Button>
         )}
 

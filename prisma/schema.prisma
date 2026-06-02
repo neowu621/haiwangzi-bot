@@ -357,7 +357,10 @@ model PaymentProof {
   bookingId  String           @map("booking_id") @db.Uuid
   type       PaymentProofType
   amount     Int
-  imageKey   String           @map("image_key")
+  // v238：照片變 optional（後5碼 + 說明就夠核對）；imageKey 改 nullable
+  imageKey   String?          @map("image_key")
+  last5      String?          @map("last5") @db.VarChar(8)     // 匯款帳號後 5 碼
+  note       String?                                            // 匯款說明（選填）
   uploadedAt DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz
   verifiedBy String?          @map("verified_by") @db.VarChar(64)
   verifiedAt DateTime?        @map("verified_at") @db.Timestamptz
