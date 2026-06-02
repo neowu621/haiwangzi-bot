@@ -8,32 +8,46 @@ export const dynamic = "force-dynamic";
 
 // GET /api/bookings/my - 我的所有訂單 (含展開的場次/潛水團詳情)
 export async function GET(req: NextRequest) {
+  const t0 = Date.now();
+  const timing: Record<string, number> = {};
+
   const auth = await authFromRequest(req);
+  timing.auth_ms = Date.now() - t0;
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
 
+  const t1 = Date.now();
   const bookings = await prisma.booking.findMany({
     where: { userId: auth.user.lineUserId },
     orderBy: { createdAt: "desc" },
     include: { paymentProofs: true },
   });
+  timing.bookings_query_ms = Date.now() - t1;
+  timing.bookings_count = bookings.length;
+  timing.proofs_count = bookings.reduce((s, b) => s + b.paymentProofs.length, 0);
 
   // 補完 ref 詳情
+  const t2 = Date.now();
   const tripIds = bookings.filter((b) => b.type === "daily").map((b) => b.refId);
   const tourIds = bookings.filter((b) => b.type === "tour").map((b) => b.refId);
   const [trips, tours] = await Promise.all([
     prisma.divingTrip.findMany({ where: { id: { in: tripIds } } }),
     prisma.tourPackage.findMany({ where: { id: { in: tourIds } } }),
   ]);
+  timing.trips_tours_ms = Date.now() - t2;
+
+  const t3 = Date.now();
   const allSiteIds = Array.from(new Set([
     ...trips.flatMap((t) => t.diveSiteIds),
     ...tours.flatMap((t) => t.diveSiteIds),
   ]));
   const sites = await prisma.diveSite.findMany({ where: { id: { in: allSiteIds } } });
+  timing.sites_ms = Date.now() - t3;
   const siteMap = new Map(sites.map((s) => [s.id, s]));
   const tripMap = new Map(trips.map((t) => [t.id, t]));
   const tourMap = new Map(tours.map((t) => [t.id, t]));
 
-  return NextResponse.json({
+  const t4 = Date.now();
+  const result = {
     bookings: await Promise.all(bookings.map(async (b) => {
       const ref = b.type === "daily" ? tripMap.get(b.refId) : tourMap.get(b.refId);
       // v153 起：diveSiteIds 可能直接存中文名稱，DiveSite 表內找不到時 fallback 用 id 本身
@@ -96,5 +110,14 @@ export async function GET(req: NextRequest) {
         ),
       };
     })),
-  });
+  };
+  timing.transform_and_presign_ms = Date.now() - t4;
+  timing.total_ms = Date.now() - t0;
+
+  // v250：把計時放 response header 方便 client devtools 看，也 log 一筆讓 Zeabur 看得到
+  console.log(`[bookings/my] timing=${JSON.stringify(timing)} user=${auth.user.lineUserId}`);
+
+  const res = NextResponse.json(result);
+  res.headers.set("x-timing", JSON.stringify(timing));
+  return res;
 }
