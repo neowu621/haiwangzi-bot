@@ -624,7 +624,8 @@ export default function AdminBookingsPage() {
                     <th className="px-3 py-3 font-medium"><SortBtn k="type" curK={sortKey} dir={sortDir} onClick={toggleSort}>類型</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-3 py-3 font-medium text-center">消費</th>
-                    <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
+                    <th className="px-4 py-3 font-medium">地點 / 行程</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>訂單</SortBtn></th>
@@ -737,19 +738,12 @@ export default function AdminBookingsPage() {
                           })()}
                         </td>
                         {/* 場次 — 一行 */}
-                        {/* 場次 — daily 一行 / tour 兩行（開始 / 結束）+ 名稱另起 */}
+                        {/* 場次時間 — daily 一行 / tour 兩行（開始 ~ 結束） */}
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap">
                           {b.type === "daily" ? (
-                            <>
-                              <div className={cn("tabular-nums font-medium", past && "text-[var(--muted-foreground)]")}>
-                                {b.ref.date ?? "—"} {weekdayTW(b.ref.date ?? "")} {b.ref.startTime ?? ""}
-                              </div>
-                              {b.ref.sites && b.ref.sites.length > 0 && (
-                                <div className="text-[var(--muted-foreground)] mt-0.5">
-                                  {b.ref.sites.join("·")}
-                                </div>
-                              )}
-                            </>
+                            <div className={cn("tabular-nums font-medium", past && "text-[var(--muted-foreground)]")}>
+                              {b.ref.date ?? "—"} {weekdayTW(b.ref.date ?? "")} {b.ref.startTime ?? ""}
+                            </div>
                           ) : (
                             <>
                               <div className={cn("tabular-nums font-medium leading-tight", past && "text-[var(--muted-foreground)]")}>
@@ -758,10 +752,19 @@ export default function AdminBookingsPage() {
                               <div className="tabular-nums text-[10px] text-[var(--muted-foreground)] leading-tight">
                                 ~ {b.ref.dateEnd ?? "—"} {weekdayTW(b.ref.dateEnd ?? "")}
                               </div>
-                              <div className="mt-1 text-[var(--foreground)] font-medium">
-                                {b.ref.title ?? "潛水團"}
-                              </div>
                             </>
+                          )}
+                        </td>
+                        {/* 地點 / 行程 */}
+                        <td className="px-4 py-2.5 text-xs">
+                          {b.type === "daily" ? (
+                            b.ref.sites && b.ref.sites.length > 0 ? (
+                              <span>{b.ref.sites.join("・")}</span>
+                            ) : (
+                              <span className="text-[var(--muted-foreground)]">—</span>
+                            )
+                          ) : (
+                            <span className="font-medium">{b.ref.title ?? "潛水團"}</span>
                           )}
                         </td>
                         {/* 金額 */}
@@ -854,7 +857,7 @@ export default function AdminBookingsPage() {
                   })}
                   {pagedBookings.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      <td colSpan={12} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
