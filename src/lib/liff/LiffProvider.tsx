@@ -79,6 +79,8 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
   // Mock 模式預設視為已加好友（dev 用）；真實模式從 null 開始等 getFriendship
   const [isFriend, setIsFriend] = useState<boolean | null>(isMock ? true : null);
   const [error, setError] = useState<string | null>(null);
+  // v254：iOS LIFF init 失敗 → 顯示專屬 fallback UI 取代 children（取代紅色 error banner）
+  const [iosLiffInitFailed, setIosLiffInitFailed] = useState(false);
 
   // mock 模式：載入時讀 localStorage 設 profile（避免 SSR mismatch）
   useEffect(() => {
@@ -188,10 +190,21 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         if (cancelled) return;
-        // v252：把失敗的 step 也帶進錯誤訊息，方便除錯
-        //   常見值：fetch_config / parse_config / import_liff_sdk / liff_init / post_init
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[liff init failed at step=${step}]`, err);
+
+        // v254：iOS 在 liff_init 步驟爆 → 顯示專屬 fallback UI 取代紅色 banner
+        //   原因：iOS LINE WebView + LIFF SDK 相容性問題，retry 經常救不回來。
+        //   引導使用者重新從 LINE 開啟比卡在錯誤畫面好。
+        const isIOS =
+          typeof navigator !== "undefined" &&
+          /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIOS && step === "liff_init") {
+          setIosLiffInitFailed(true);
+          setReady(true);
+          return;
+        }
+
         setError(`[${step}] ${msg}`);
         setReady(true);
       }
@@ -321,7 +334,60 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, loggedIn, profile, isFriend, error, isMock]);
 
-  return <LiffContext.Provider value={value}>{children}</LiffContext.Provider>;
+  return (
+    <LiffContext.Provider value={value}>
+      {iosLiffInitFailed ? <IosLiffFallback /> : children}
+    </LiffContext.Provider>
+  );
+}
+
+/**
+ * v254：iOS LIFF init 失敗時的引導畫面（取代紅色 error banner）
+ *
+ * 為什麼需要：iOS LINE WebView + LIFF SDK 在「冷開」時有相容性問題，
+ *   retry 通常救不回來。與其讓使用者看著錯誤訊息懷疑 app 壞了，不如清楚引導
+ *   他「重新開啟」（多數情況下重新開一次就好了）。
+ *
+ * 你的資料完全沒影響——這只是 LINE 環境的初始化問題。
+ */
+function IosLiffFallback() {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--background)] px-6 py-10 text-center">
+      <div
+        className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full"
+        style={{ background: "rgba(6,199,85,0.12)" }}
+      >
+        <span className="text-3xl">🔄</span>
+      </div>
+      <h1 className="mb-2 text-xl font-bold text-[var(--foreground)]">
+        LINE 環境啟動中⋯
+      </h1>
+      <p className="mb-6 max-w-sm text-sm leading-relaxed text-[var(--muted-foreground)]">
+        偵測到 LINE 內嵌瀏覽器初始化異常（iPhone 偶發狀況）。
+        <br />
+        請點下方按鈕重新載入，或從 LINE 重新打開預約 App。
+        <br />
+        <span className="text-[11px]">（您的訂單、會員資料完全不受影響）</span>
+      </p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-bold text-white shadow-lg transition-transform active:scale-95"
+        style={{ background: "#06C755" }}
+      >
+        🔄 重新載入
+      </button>
+      <p className="mt-5 max-w-sm text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+        如果按重新載入後仍然不行，請：
+        <br />
+        1. 完全關閉 LINE App（從多工把 LINE 滑掉）
+        <br />
+        2. 重新打開 LINE
+        <br />
+        3. 從 OA menu 重新進入預約 App
+      </p>
+    </div>
+  );
 }
 
 export function useLiff(): LiffContextValue {
