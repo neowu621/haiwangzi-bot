@@ -840,13 +840,12 @@ export default function ProfilePage() {
           <span className="text-[var(--muted-foreground)]">→</span>
         </a>
 
-        {/* v244：重置 / 重新整理入口（卡住、想重新登入或重新加好友時用） */}
-        <a
-          href="/liff/reset"
-          className="mt-1 flex items-center justify-center gap-1.5 py-2 text-[11px] text-[var(--muted-foreground)] underline decoration-dotted"
-        >
-          🔄 畫面卡住 / 想重新登入？點此重置
-        </a>
+        {/*
+          v248：移除 /liff/reset 入口。
+          連續踩 3 個 bug（v244 logout / v246 clear / v247 白名單）後決定整個拿掉。
+          使用者遇到畫面異常的最佳作法是「完全關閉 LINE App 後重開」——平台原生機制最可靠，
+          不需要 app 內按鈕代勞。v243 已修根因（idToken 改 useRef），正常流量不會閃。
+        */}
       </div>
 
       {/* 預約紀錄 / 已完成 點擊跳出 Dialog */}
