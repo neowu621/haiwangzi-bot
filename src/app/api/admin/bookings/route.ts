@@ -57,6 +57,23 @@ export async function GET(req: NextRequest) {
 
     const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
 
+    // v262：簽名圖 presigned URL（讓 admin UI 直接顯示）
+    const { previewUrl, r2Configured } = await import("@/lib/r2");
+    const signatureUrls = new Map<string, string>();
+    if (r2Configured()) {
+      await Promise.all(
+        bookings.map(async (b) => {
+          if (!b.signatureImageKey) return;
+          try {
+            const url = await previewUrl("signatures", b.signatureImageKey);
+            signatureUrls.set(b.id, url);
+          } catch {
+            // ignore
+          }
+        }),
+      );
+    }
+
     return NextResponse.json({
       bookings: bookings.map((b) => {
         let ref: Record<string, unknown> = {};
@@ -84,6 +101,8 @@ export async function GET(req: NextRequest) {
           ...b,
           // 管理備註僅 admin/boss 可見
           adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
+          // v262：簽名 presigned URL（10 分鐘 TTL）
+          signatureImageUrl: signatureUrls.get(b.id) ?? null,
           ref,
         };
       }),

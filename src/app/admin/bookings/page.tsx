@@ -46,6 +46,10 @@ interface AdminBooking {
   notes?: string | null;
   siteNotes?: string | null;
   adminNotes?: string | null;
+  // v262：簽名
+  signatureImageUrl?: string | null;
+  signedAt?: string | null;
+  signedFromUserAgent?: string | null;
   user: { displayName: string; realName: string | null; phone: string | null };
   ref: {
     date?: string;
@@ -1201,6 +1205,41 @@ export default function AdminBookingsPage() {
                       value={editing.adminNotes ?? ""}
                       onChange={(e) => setEditing({ ...editing, adminNotes: e.target.value })}
                     />
+                  </div>
+                )}
+
+                {/* v262：客戶簽名 + 簽署 metadata（法律證據） */}
+                {(editing.signatureImageUrl || editing.signedAt) && (
+                  <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                    <Label className="text-xs pt-1.5">
+                      ✍️ 客戶簽名
+                      <span className="block font-normal text-[10px] text-[var(--muted-foreground)]">法律證據</span>
+                    </Label>
+                    <div className="space-y-1.5">
+                      {editing.signatureImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={editing.signatureImageUrl}
+                          alt="customer signature"
+                          className="max-h-32 rounded-md border bg-white"
+                          style={{ borderColor: "var(--border)" }}
+                        />
+                      ) : (
+                        <div className="text-xs text-[var(--muted-foreground)]">
+                          （簽名圖未上傳，可能是 R2 未設定或網路問題）
+                        </div>
+                      )}
+                      {editing.signedAt && (
+                        <div className="text-[11px] text-[var(--muted-foreground)] font-mono">
+                          🕒 {new Date(editing.signedAt).toLocaleString("zh-TW")}
+                        </div>
+                      )}
+                      {editing.signedFromUserAgent && (
+                        <div className="text-[10px] text-[var(--muted-foreground)] truncate" title={editing.signedFromUserAgent}>
+                          📱 {editing.signedFromUserAgent}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
