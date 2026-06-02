@@ -106,9 +106,35 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
       throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
     }
 
+    // v253：給 liff.init() 本身加 retry。iOS LINE 內嵌瀏覽器在「冷開」時
+    //   liff.init 內部的 LINE server features fetch 可能爆 "Unable to load client features" / "Load failed"。
+    //   3 次 retry 配 exponential backoff 通常第二次就會過。
+    async function liffInitWithRetry(
+      liff: typeof import("@line/liff").default,
+      liffId: string,
+      tries = 3,
+    ): Promise<void> {
+      let lastErr: unknown = null;
+      for (let i = 0; i < tries; i++) {
+        try {
+          await liff.init({ liffId });
+          return;
+        } catch (e) {
+          lastErr = e;
+          // 300ms / 600ms / 1200ms backoff
+          await new Promise((r) => setTimeout(r, 300 * Math.pow(2, i)));
+        }
+      }
+      throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+    }
+
     (async () => {
       let step = "init";
       try {
+        // v253：延一個 tick 讓 React 把頁面 hydration 跑完再啟動 LIFF init，
+        //   避免「頁面渲染 + LIFF SDK 初始化」在 iOS 內嵌瀏覽器同時搶資源造成 init 失敗。
+        await new Promise((r) => setTimeout(r, 0));
+
         step = "fetch_config";
         const cfgRes = await fetchWithRetry("/api/config");
         step = "parse_config";
@@ -122,7 +148,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         const liffMod = await import("@line/liff");
         const liff = liffMod.default;
         step = "liff_init";
-        await liff.init({ liffId: cfg.liffId });
+        await liffInitWithRetry(liff, cfg.liffId);
         step = "post_init";
         if (cancelled) return;
         const isLoggedIn = liff.isLoggedIn();
