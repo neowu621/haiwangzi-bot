@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_CANCELLATION_POLICY } from "@/lib/default-policies";
+import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +16,7 @@ export async function GET() {
   let externalLinks: Record<string, string> = {};
   let paymentInfo: PaymentInfo = {};
   let cancellationPolicy = DEFAULT_CANCELLATION_POLICY;
+  let safetyPolicy = DEFAULT_SAFETY_POLICY;
   try {
     const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
     if (cfg?.externalLinks) {
@@ -26,6 +27,9 @@ export async function GET() {
     }
     if (cfg?.cancellationPolicy) {
       cancellationPolicy = cfg.cancellationPolicy;
+    }
+    if (cfg?.safetyPolicy) {
+      safetyPolicy = cfg.safetyPolicy;
     }
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
@@ -51,5 +55,6 @@ export async function GET() {
     linepay,
     externalLinks,
     cancellationPolicy,
+    safetyPolicy,
   });
 }

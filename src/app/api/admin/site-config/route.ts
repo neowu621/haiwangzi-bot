@@ -80,6 +80,8 @@ const PatchSchema = z.object({
   }).optional(),
   // v227：取消政策（純文字，admin 可編輯，FAQ + 預約頁同步顯示）
   cancellationPolicy: z.string().max(5000).optional(),
+  // v257：安全政策（純文字，admin 可編輯，FAQ + 預約頁同步顯示）
+  safetyPolicy: z.string().max(5000).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -139,6 +141,7 @@ export async function GET(req: NextRequest) {
       externalLinks: row.externalLinks ?? {},
       paymentInfo: row.paymentInfo ?? {},
       cancellationPolicy: row.cancellationPolicy ?? "",
+      safetyPolicy: row.safetyPolicy ?? "",
     },
     isDefault: false,
     updatedAt: row.updatedAt,

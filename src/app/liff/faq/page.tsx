@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
-import { ChevronDown, ChevronUp, HelpCircle, Anchor, Waves, Phone, Mail } from "lucide-react";
+import { ChevronDown, ChevronUp, HelpCircle, Anchor, Waves, Phone, Mail, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "東北角海王子潛水";
@@ -13,8 +13,37 @@ type FaqItem = {
   a: React.ReactNode;
 };
 
-// v227：FAQS 改為 builder function，吃 cancellationPolicy
-function buildFaqs(cancellationPolicy: string): { category: string; icon: React.ReactNode; items: FaqItem[] }[] {
+// v257：把純文字裡的 http(s):// URL 轉成可點 link（保留其他文字 / 換行）
+function linkifyPolicy(text: string): React.ReactNode {
+  const URL_RE = /(https?:\/\/[^\s)]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIdx = 0;
+  let key = 0;
+  for (const m of text.matchAll(URL_RE)) {
+    const idx = m.index ?? 0;
+    if (idx > lastIdx) parts.push(text.slice(lastIdx, idx));
+    parts.push(
+      <a
+        key={`u${key++}`}
+        href={m[1]}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="break-all text-[var(--color-phosphor)] underline"
+      >
+        {m[1]}
+      </a>,
+    );
+    lastIdx = idx + m[1].length;
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  return parts;
+}
+
+// v227：FAQS 改為 builder function，吃 cancellationPolicy + v257 加 safetyPolicy
+function buildFaqs(
+  cancellationPolicy: string,
+  safetyPolicy: string,
+): { category: string; icon: React.ReactNode; items: FaqItem[] }[] {
   return [
   {
     category: "預約相關",
@@ -131,6 +160,20 @@ function buildFaqs(cancellationPolicy: string): { category: string; icon: React.
     ],
   },
   {
+    category: "安全注意事項",
+    icon: <ShieldCheck className="h-4 w-4" />,
+    items: [
+      {
+        q: "潛水安全與保險須知（重要）",
+        a: (
+          <pre className="whitespace-pre-wrap font-sans text-xs leading-6">
+            {linkifyPolicy(safetyPolicy)}
+          </pre>
+        ),
+      },
+    ],
+  },
+  {
     category: "潛水當天",
     icon: <Anchor className="h-4 w-4" />,
     items: [
@@ -196,13 +239,17 @@ function FaqAccordion({ item, defaultOpen = false }: { item: FaqItem; defaultOpe
 
 export default function FaqPage() {
   const [cancellationPolicy, setCancellationPolicy] = useState<string>("");
+  const [safetyPolicy, setSafetyPolicy] = useState<string>("");
   useEffect(() => {
     fetch("/api/config")
       .then((r) => r.json())
-      .then((c) => setCancellationPolicy(c.cancellationPolicy ?? ""))
+      .then((c) => {
+        setCancellationPolicy(c.cancellationPolicy ?? "");
+        setSafetyPolicy(c.safetyPolicy ?? "");
+      })
       .catch(() => { /* fall back to empty - buildFaqs handles */ });
   }, []);
-  const FAQS = buildFaqs(cancellationPolicy);
+  const FAQS = buildFaqs(cancellationPolicy, safetyPolicy);
   return (
     <LiffShell>
       <div className="pb-20">

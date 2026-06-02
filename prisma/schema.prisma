@@ -510,6 +510,8 @@ model SiteConfig {
   paymentInfo          Json   @default("{}") @map("payment_info")
   // v227：取消政策（admin 可編輯，FAQ + 預約頁同步顯示）
   cancellationPolicy   String @default("") @map("cancellation_policy") @db.Text
+  // v257：安全政策（admin 可編輯，FAQ + 預約頁同步顯示）
+  safetyPolicy         String @default("") @map("safety_policy") @db.Text
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)

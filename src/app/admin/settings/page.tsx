@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { APP_VERSION } from "@/lib/version";
-import { DEFAULT_CANCELLATION_POLICY } from "@/lib/default-policies";
+import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -77,6 +77,8 @@ interface Config {
   paymentInfo: PaymentInfo;
   // v227：取消政策（純文字，FAQ + 預約頁同步顯示）
   cancellationPolicy: string;
+  // v257：安全政策（純文字，FAQ + 預約頁同步顯示）
+  safetyPolicy: string;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -138,6 +140,9 @@ export default function SettingsPage() {
         cancellationPolicy: data.config.cancellationPolicy?.trim()
           ? data.config.cancellationPolicy
           : DEFAULT_CANCELLATION_POLICY,
+        safetyPolicy: data.config.safetyPolicy?.trim()
+          ? data.config.safetyPolicy
+          : DEFAULT_SAFETY_POLICY,
       };
       setCfg(cfgWithDefaults);
     } catch (e) {
@@ -657,6 +662,32 @@ export default function SettingsPage() {
               disabled={saving === "取消政策"}>
               <Save className="mr-1.5 h-4 w-4" />
               {saving === "取消政策" ? "儲存中..." : "儲存取消政策"}
+            </Button>
+          </div>
+        </SectionCard>
+
+        {/* ── v257：安全政策 ───────────────── */}
+        <SectionCard title="🛡️ 安全政策">
+          <p className="-mt-2 mb-2 text-[11px] text-[var(--muted-foreground)]">此文字會顯示在「常見問題」與「預約頁」，admin 可自由編輯。內容含潛水健康注意、活動當日守則、活動紀錄授權、保險建議。</p>
+          <div>
+            <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">政策內容（純文字，支援多行）</Label>
+            <textarea
+              className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm font-mono"
+              rows={20}
+              placeholder="請輸入安全政策..."
+              value={cfg.safetyPolicy ?? ""}
+              onChange={(e) => setCfg(c => c ? { ...c, safetyPolicy: e.target.value } : c)}
+            />
+            <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+              ※ 留空會用系統預設政策。可貼上含 URL 的條文（FAQ 會自動把 https:// 開頭轉為可點連結）。
+            </p>
+          </div>
+          <div className="flex justify-end pt-3">
+            <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+              onClick={() => save("安全政策", { safetyPolicy: cfg.safetyPolicy ?? "" })}
+              disabled={saving === "安全政策"}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {saving === "安全政策" ? "儲存中..." : "儲存安全政策"}
             </Button>
           </div>
         </SectionCard>
