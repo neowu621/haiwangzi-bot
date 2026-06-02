@@ -12,10 +12,10 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────
 enum UserRole {
-  customer  // 一般會員（用 vipLevel 1-5 表示等級）
-  coach     // 教練：帶團 + 看當日場次/學員資訊
-  boss      // 老闆：開團 / 營運 / 收帳核對（不含系統設定）
-  admin     // 系統管理者：擁有所有權限
+  customer // 一般會員（用 vipLevel 1-5 表示等級）
+  coach // 教練：帶團 + 看當日場次/學員資訊
+  boss // 老闆：開團 / 營運 / 收帳核對（不含系統設定）
+  admin // 系統管理者：擁有所有權限
 }
 
 enum CertLevel {
@@ -34,7 +34,7 @@ enum CoachCert {
 
 enum Region {
   northeast
-  green_island   @map("green-island")
+  green_island @map("green-island")
   lanyu
   kenting
   other
@@ -73,9 +73,9 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  cash      // 現場支付
-  bank      // 銀行轉帳
-  linepay   // LINE Pay
+  cash // 現場支付
+  bank // 銀行轉帳
+  linepay // LINE Pay
   other
 }
 
@@ -110,36 +110,36 @@ enum MediaPlatform {
 // ─── Tables ──────────────────────────────────────────────
 
 model User {
-  lineUserId       String    @id @map("line_user_id") @db.VarChar(64)
-  displayName      String    @map("display_name")
-  realName         String?   @map("real_name")
-  phone            String?   @db.VarChar(32)
+  lineUserId         String     @id @map("line_user_id") @db.VarChar(64)
+  displayName        String     @map("display_name")
+  realName           String?    @map("real_name")
+  phone              String?    @db.VarChar(32)
   // 註冊 email — 用於通知信、發票、e-card；比 SMS 便宜，首次登入強制要填
-  email            String?   @db.VarChar(254)
+  email              String?    @db.VarChar(254)
   // 通知偏好：客戶可在 /liff/profile 自己關掉。預設都開
-  notifyByLine     Boolean   @default(true) @map("notify_by_line")
-  notifyByEmail    Boolean   @default(true) @map("notify_by_email")
-  emergencyContact Json?     @map("emergency_contact")
-  cert             CertLevel?
-  certNumber       String?   @map("cert_number") @db.VarChar(64)
+  notifyByLine       Boolean    @default(true) @map("notify_by_line")
+  notifyByEmail      Boolean    @default(true) @map("notify_by_email")
+  emergencyContact   Json?      @map("emergency_contact")
+  cert               CertLevel?
+  certNumber         String?    @map("cert_number") @db.VarChar(64)
   // 「總經驗」潛水次數：使用者自填（含其他單位累積，不可驗證）
-  logCount         Int       @default(0) @map("log_count")
+  logCount           Int        @default(0) @map("log_count")
   // 「海王子累積」潛水次數：在本系統有 booking 完成（到場勾選）才會 +1
   //   - 教練/老闆按「到場」時 += trip.tankCount × participants
   //   - VIP 等級升等用這個欄位（避免使用者自填灌水）
-  haiwangziLogCount Int @default(0) @map("haiwangzi_log_count")
+  haiwangziLogCount  Int        @default(0) @map("haiwangzi_log_count")
   // legacy 單一角色（保留以相容舊資料；新版改用 roles[] 陣列支援多重身分）
-  role             UserRole  @default(customer)
+  role               UserRole   @default(customer)
   // 多重角色：一個 user 可同時是 customer + coach + admin
   // 若為空陣列代表還沒遷移，讀的時候會自動 backfill 成 [role]
-  roles            UserRole[] @default([])
-  notes            String?
+  roles              UserRole[] @default([])
+  notes              String?
   // 同伴清單：[{ id, name, phone, cert, certNumber, logCount, relationship }]
-  companions       Json      @default("[]")
+  companions         Json       @default("[]")
   // LTV / 黑名單
-  noShowCount      Int       @default(0) @map("no_show_count")
-  blacklisted      Boolean   @default(false)
-  blacklistReason  String?   @map("blacklist_reason")
+  noShowCount        Int        @default(0) @map("no_show_count")
+  blacklisted        Boolean    @default(false)
+  blacklistReason    String?    @map("blacklist_reason")
   // 海王子潛水會員等級 1-5：
   //   1 = 小蝦 Shrimp     (<20 潛 or <10,000)
   //   2 = 龍蝦 Lobster    (21-50 潛 or 10k-30k)
@@ -147,33 +147,33 @@ model User {
   //   4 = 鬼蝠魟 MantaRay (101-200 潛 or 80k-150k)
   //   5 = 鯨鯊 WhaleShark (>200 潛 or >150k)
   // 0 = 未指派（系統初始或新註冊）
-  vipLevel         Int       @default(1) @map("vip_level")
+  vipLevel           Int        @default(1) @map("vip_level")
   // 累計消費 (NT$)：booking.paidAmount 已驗證的總和，會員升等用
-  totalSpend       Int       @default(0) @map("total_spend")
+  totalSpend         Int        @default(0) @map("total_spend")
   // 生日（年月日）— 用於發放生日禮金（每年自動）
-  birthday         DateTime? @db.Date
+  birthday           DateTime?  @db.Date
   // 補償金/禮金餘額 (NT$)。來源：生日、VIP 升等、refund 轉禮金、admin 手調
   // 變動皆記錄到 CreditTx 表（audit trail）
-  creditBalance    Int       @default(0) @map("credit_balance")
+  creditBalance      Int        @default(0) @map("credit_balance")
   // 最後一次發放生日禮金的年份，避免同一年發兩次
-  birthdayCreditYear Int?    @map("birthday_credit_year")
+  birthdayCreditYear Int?       @map("birthday_credit_year")
   // 網頁管理後台個人密碼（scrypt hash，格式 "salt:hash"）
   // 首次登入時自行設定，之後每次需輸入
-  webPasswordHash  String?   @map("web_password_hash")
+  webPasswordHash    String?    @map("web_password_hash")
   // 會員編號 M{YYYYMMDD}-{XX}，XX 為 base-36 2位，首次加入時自動產生
-  code             String?   @unique @map("code") @db.VarChar(12)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  lastActiveAt     DateTime  @default(now()) @map("last_active_at") @db.Timestamptz
+  code               String?    @unique @map("code") @db.VarChar(12)
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  lastActiveAt       DateTime   @default(now()) @map("last_active_at") @db.Timestamptz
   // 軟刪除：設值後使用者無法登入 LIFF，但訂單/付款紀錄保留以便查帳
   // null = 正常會員；DateTime = 已刪除的時間
-  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
-  deletedBy        String?   @map("deleted_by") @db.VarChar(64)
-  deletedReason    String?   @map("deleted_reason")
+  deletedAt          DateTime?  @map("deleted_at") @db.Timestamptz
+  deletedBy          String?    @map("deleted_by") @db.VarChar(64)
+  deletedReason      String?    @map("deleted_reason")
 
-  bookings         Booking[]
-  coachProfile     Coach?
-  verifiedProofs   PaymentProof[]
-  creditTxs        CreditTx[]
+  bookings       Booking[]
+  coachProfile   Coach?
+  verifiedProofs PaymentProof[]
+  creditTxs      CreditTx[]
 
   @@map("users")
 }
@@ -182,22 +182,22 @@ model User {
 // amount: 正 = 增加 / 負 = 使用
 // reason: birthday / vip_upgrade / refund / used / admin_adjust
 model CreditTx {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String?  @unique @map("code") @db.VarChar(16)  // v225：抵用金編碼 C20260601-XX
-  userId    String   @map("user_id") @db.VarChar(64)
-  amount    Int                                       // + 增 / - 用
-  reason    String   @db.VarChar(32)
-  refType   String?  @map("ref_type") @db.VarChar(32) // booking / vip / null
-  refId     String?  @map("ref_id")
-  note      String?
+  id           String    @id @default(uuid()) @db.Uuid
+  code         String?   @unique @map("code") @db.VarChar(16) // v225：抵用金編碼 C20260601-XX
+  userId       String    @map("user_id") @db.VarChar(64)
+  amount       Int // + 增 / - 用
+  reason       String    @db.VarChar(32)
+  refType      String?   @map("ref_type") @db.VarChar(32) // booking / vip / null
+  refId        String?   @map("ref_id")
+  note         String?
   // 紀錄事件後的餘額（方便對帳）
-  balanceAfter Int   @map("balance_after")
-  createdBy String?  @map("created_by") @db.VarChar(64) // admin lineUserId
+  balanceAfter Int       @map("balance_after")
+  createdBy    String?   @map("created_by") @db.VarChar(64) // admin lineUserId
   // 到期日（v184）。null = 永不過期。birthday / 升等獎勵等可設過期
-  expiresAt DateTime? @map("expires_at") @db.Timestamptz
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  user      User     @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@map("credit_txs")
@@ -213,7 +213,7 @@ model DiveSite {
   features    String[]   @default([])
   images      String[]   @default([])
   youtubeUrl  String?    @map("youtube_url")
-  locationUrl String?    @map("location_url")  // Google Maps URL
+  locationUrl String?    @map("location_url") // Google Maps URL
   cautions    String?
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
@@ -221,133 +221,133 @@ model DiveSite {
 }
 
 model Coach {
-  id          String    @id @db.VarChar(32)
-  lineUserId  String?   @unique @map("line_user_id") @db.VarChar(64)
-  realName    String    @map("real_name")
-  cert        CoachCert
-  specialty   String[]  @default([])
+  id         String    @id @db.VarChar(32)
+  lineUserId String?   @unique @map("line_user_id") @db.VarChar(64)
+  realName   String    @map("real_name")
+  cert       CoachCert
+  specialty  String[]  @default([])
   // 每一支潛水的教練成本 (NT$/dive)，admin 後台設定，每團排教練後系統可參考
   // 沒有「基本費用」概念，全部都是 per-dive 計算
-  feePerDive  Int       @default(0) @map("fee_per_dive")
-  note        String?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  feePerDive Int       @default(0) @map("fee_per_dive")
+  note       String?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  user        User?     @relation(fields: [lineUserId], references: [lineUserId], onDelete: SetNull)
+  user User? @relation(fields: [lineUserId], references: [lineUserId], onDelete: SetNull)
 
   @@map("coaches")
 }
 
 model DivingTrip {
-  id           String       @id @default(uuid()) @db.Uuid
-  code         String?      @unique @map("code") @db.VarChar(12)
-  date         DateTime     @db.Date
-  startTime    String       @map("start_time") @db.VarChar(5)
-  isNightDive  Boolean      @default(false) @map("is_night_dive")
-  isScooter    Boolean      @default(false) @map("is_scooter")
-  diveSiteIds  String[]     @default([]) @map("dive_site_ids")
-  tankCount    Int          @default(1) @map("tank_count")
-  capacity     Int?         // null = 無上限
-  coachIds     String[]     @default([]) @map("coach_ids")
-  pricing      Json
+  id                String        @id @default(uuid()) @db.Uuid
+  code              String?       @unique @map("code") @db.VarChar(12)
+  date              DateTime      @db.Date
+  startTime         String        @map("start_time") @db.VarChar(5)
+  isNightDive       Boolean       @default(false) @map("is_night_dive")
+  isScooter         Boolean       @default(false) @map("is_scooter")
+  diveSiteIds       String[]      @default([]) @map("dive_site_ids")
+  tankCount         Int           @default(1) @map("tank_count")
+  capacity          Int? // null = 無上限
+  coachIds          String[]      @default([]) @map("coach_ids")
+  pricing           Json
   // 場次備註說明（顯示在客戶端、教練端、admin 列表）
-  notes        String?
+  notes             String?
   // 集合地點說明（例：海王子潛店 / 龍洞 4 號港 / 潮境停車場...）
-  meetingPoint    String?      @map("meeting_point")
+  meetingPoint      String?       @map("meeting_point")
   // 集合地點 Google Map URL（與 meetingPoint 分開存）
-  meetingPointUrl String?      @map("meeting_point_url")
+  meetingPointUrl   String?       @map("meeting_point_url")
   // 潛點參考影片 URL（YouTube / Vimeo 等，給客戶看潛點介紹影片）
-  referenceVideoUrl String?    @map("reference_video_url")
+  referenceVideoUrl String?       @map("reference_video_url")
   // 場次照片 R2 keys（public bucket，prefix=trips/）
-  images       String[]     @default([])
-  status       TripStatus   @default(open)
-  cancelReason CancelReason? @map("cancel_reason")
-  weatherNote  String?      @map("weather_note")
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  images            String[]      @default([])
+  status            TripStatus    @default(open)
+  cancelReason      CancelReason? @map("cancel_reason")
+  weatherNote       String?       @map("weather_note")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("diving_trips")
 }
 
 model TourPackage {
-  id                    String     @id @default(uuid()) @db.Uuid
-  code                  String?    @unique @map("code") @db.VarChar(12)
-  title                 String
-  destination           Region
-  dateStart             DateTime   @map("date_start") @db.Date
-  dateEnd               DateTime   @map("date_end") @db.Date
-  itinerary             Json       @default("[]")
-  diveSiteIds           String[]   @default([]) @map("dive_site_ids")
-  basePrice             Int        @map("base_price")
-  deposit               Int
-  depositDeadline       DateTime?  @map("deposit_deadline") @db.Timestamptz
-  finalDeadline         DateTime?  @map("final_deadline") @db.Timestamptz
-  capacity              Int?       // null = 無上限
-  includes              String[]   @default([])
-  excludes              String[]   @default([])
-  addons                Json       @default("[]")
-  images                String[]   @default([])
-  youtubeUrl            String?    @map("youtube_url")
-  status                TripStatus @default(open)
+  id                  String     @id @default(uuid()) @db.Uuid
+  code                String?    @unique @map("code") @db.VarChar(12)
+  title               String
+  destination         Region
+  dateStart           DateTime   @map("date_start") @db.Date
+  dateEnd             DateTime   @map("date_end") @db.Date
+  itinerary           Json       @default("[]")
+  diveSiteIds         String[]   @default([]) @map("dive_site_ids")
+  basePrice           Int        @map("base_price")
+  deposit             Int
+  depositDeadline     DateTime?  @map("deposit_deadline") @db.Timestamptz
+  finalDeadline       DateTime?  @map("final_deadline") @db.Timestamptz
+  capacity            Int? // null = 無上限
+  includes            String[]   @default([])
+  excludes            String[]   @default([])
+  addons              Json       @default("[]")
+  images              String[]   @default([])
+  youtubeUrl          String?    @map("youtube_url")
+  status              TripStatus @default(open)
   // v186：新增「潛水團行銷頁」用的欄位（對應 mockup）
-  subtitle              String?    // 副標 / 團別（端午團、中秋團、海之星）
-  durationLabel         String?    @map("duration_label")   // "4天3夜"
-  roomLabel             String?    @map("room_label")       // "四人房套房"
-  diveStyles            String[]   @default([]) @map("dive_styles")  // ["水推","岸潛","船潛","夜潛","沉船潛水"]
-  beginnerFriendly      Boolean    @default(false) @map("beginner_friendly")
-  tanksCount            Int?       @map("tanks_count")      // 總潛水支數
-  siteList              String?    @map("site_list")        // 潛點清單（每行一個）
-  pricingNotes          String?    @map("pricing_notes")    // 早鳥/加價說明
-  extraNote             String?    @map("extra_note")       // 自由備註
+  subtitle            String? // 副標 / 團別（端午團、中秋團、海之星）
+  durationLabel       String?    @map("duration_label") // "4天3夜"
+  roomLabel           String?    @map("room_label") // "四人房套房"
+  diveStyles          String[]   @default([]) @map("dive_styles") // ["水推","岸潛","船潛","夜潛","沉船潛水"]
+  beginnerFriendly    Boolean    @default(false) @map("beginner_friendly")
+  tanksCount          Int?       @map("tanks_count") // 總潛水支數
+  siteList            String?    @map("site_list") // 潛點清單（每行一個）
+  pricingNotes        String?    @map("pricing_notes") // 早鳥/加價說明
+  extraNote           String?    @map("extra_note") // 自由備註
   // 提醒天數設定（開團時可調）
   // 規則：訂金確認後 7 天內付款保留名額；尾款出發前 30 天繳清；行前 2 天再次通知
-  depositReminderDays   Int        @default(7) @map("deposit_reminder_days")  // 訂金截止前 N 天推
-  finalReminderDays     Int        @default(30) @map("final_reminder_days")   // 尾款截止前 N 天推
-  guideReminderDays     Int        @default(2) @map("guide_reminder_days")    // 出發前 N 天推手冊
-  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  depositReminderDays Int        @default(7) @map("deposit_reminder_days") // 訂金截止前 N 天推
+  finalReminderDays   Int        @default(30) @map("final_reminder_days") // 尾款截止前 N 天推
+  guideReminderDays   Int        @default(2) @map("guide_reminder_days") // 出發前 N 天推手冊
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("tour_packages")
 }
 
 model Booking {
-  id                 String         @id @default(uuid()) @db.Uuid
-  code               String?        @unique @map("code") @db.VarChar(12)
-  userId             String         @map("user_id") @db.VarChar(64)
+  id                 String        @id @default(uuid()) @db.Uuid
+  code               String?       @unique @map("code") @db.VarChar(12)
+  userId             String        @map("user_id") @db.VarChar(64)
   type               BookingType
-  refId              String         @map("ref_id") @db.Uuid
-  participants       Int            @default(1)
+  refId              String        @map("ref_id") @db.Uuid
+  participants       Int           @default(1)
   // 本次參加者明細：[{ name, phone, cert, certNumber, logCount, relationship, isSelf }]
-  participantDetails Json           @default("[]") @map("participant_details")
-  selectedAddons     String[]       @default([]) @map("selected_addons")
-  rentalGear         Json           @default("[]") @map("rental_gear")
-  notes              String?        // 客戶備註（客戶預約時填寫）
-  siteNotes          String?        @map("site_notes")   // 網站備註（管理員填，客戶可見）
-  adminNotes         String?        @map("admin_notes")  // 管理備註（僅 admin/boss 可見）
-  totalAmount        Int            @map("total_amount")
-  depositAmount      Int            @default(0) @map("deposit_amount")
-  paidAmount         Int            @default(0) @map("paid_amount")
-  paymentStatus      PaymentStatus  @default(pending) @map("payment_status")
+  participantDetails Json          @default("[]") @map("participant_details")
+  selectedAddons     String[]      @default([]) @map("selected_addons")
+  rentalGear         Json          @default("[]") @map("rental_gear")
+  notes              String? // 客戶備註（客戶預約時填寫）
+  siteNotes          String?       @map("site_notes") // 網站備註（管理員填，客戶可見）
+  adminNotes         String?       @map("admin_notes") // 管理備註（僅 admin/boss 可見）
+  totalAmount        Int           @map("total_amount")
+  depositAmount      Int           @default(0) @map("deposit_amount")
+  paidAmount         Int           @default(0) @map("paid_amount")
+  paymentStatus      PaymentStatus @default(pending) @map("payment_status")
   // 客戶選擇的付款方式（現場 / 轉帳 / LINE Pay / 其他）；預設現場支付
-  paymentMethod      PaymentMethod  @default(cash) @map("payment_method")
+  paymentMethod      PaymentMethod @default(cash) @map("payment_method")
   // 「其他」付款方式時客戶填寫的說明（如：街口支付、微信、現金匯款等）
-  paymentNote        String?        @map("payment_note")
-  status             BookingStatus  @default(pending)
-  cancellationReason String?        @map("cancellation_reason")
-  refundAmount       Int?           @map("refund_amount")
-  refundedAt         DateTime?      @map("refunded_at") @db.Timestamptz
+  paymentNote        String?       @map("payment_note")
+  status             BookingStatus @default(pending)
+  cancellationReason String?       @map("cancellation_reason")
+  refundAmount       Int?          @map("refund_amount")
+  refundedAt         DateTime?     @map("refunded_at") @db.Timestamptz
   // 退款方式：cash = 退現金 / credit = 轉成禮金（user.creditBalance）
-  refundMethod       String?        @map("refund_method") @db.VarChar(16)
+  refundMethod       String?       @map("refund_method") @db.VarChar(16)
   // 預約時使用的禮金（從 user.creditBalance 扣，CreditTx 有對應紀錄）
   // 取消時若 paidAmount>0 系統會自動把這部份退回 creditBalance
-  creditUsed         Int            @default(0) @map("credit_used")
-  agreedToTermsAt    DateTime       @map("agreed_to_terms_at") @db.Timestamptz
+  creditUsed         Int           @default(0) @map("credit_used")
+  agreedToTermsAt    DateTime      @map("agreed_to_terms_at") @db.Timestamptz
   // 超賣標記：booking 接受但容量已滿，提醒教練處理
-  overCapacity       Boolean        @default(false) @map("over_capacity")
-  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  overCapacity       Boolean       @default(false) @map("over_capacity")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  user               User           @relation(fields: [userId], references: [lineUserId], onDelete: Restrict)
-  paymentProofs      PaymentProof[]
-  reminderLogs       ReminderLog[]
+  user          User           @relation(fields: [userId], references: [lineUserId], onDelete: Restrict)
+  paymentProofs PaymentProof[]
+  reminderLogs  ReminderLog[]
 
   @@map("bookings")
 }
@@ -359,14 +359,14 @@ model PaymentProof {
   amount     Int
   // v238：照片變 optional（後5碼 + 說明就夠核對）；imageKey 改 nullable
   imageKey   String?          @map("image_key")
-  last5      String?          @map("last5") @db.VarChar(8)     // 匯款帳號後 5 碼
-  note       String?                                            // 匯款說明（選填）
+  last5      String?          @map("last5") @db.VarChar(8) // 匯款帳號後 5 碼
+  note       String? // 匯款說明（選填）
   uploadedAt DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz
   verifiedBy String?          @map("verified_by") @db.VarChar(64)
   verifiedAt DateTime?        @map("verified_at") @db.Timestamptz
 
-  booking    Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  verifier   User?            @relation(fields: [verifiedBy], references: [lineUserId], onDelete: SetNull)
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  verifier User?   @relation(fields: [verifiedBy], references: [lineUserId], onDelete: SetNull)
 
   @@map("payment_proofs")
 }
@@ -379,7 +379,7 @@ model ReminderLog {
   channel   ReminderChannel @default(line)
   error     String?
 
-  booking   Booking?        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("reminder_logs")
 }
@@ -387,14 +387,14 @@ model ReminderLog {
 // 場次當日照片 — 日潛結束後教練/admin 上傳當天潛水照給客戶下載
 // 7 天後 cron 自動刪除（R2 + DB row）
 model TripPhoto {
-  id            String    @id @default(uuid()) @db.Uuid
-  tripId        String    @map("trip_id") @db.Uuid   // 對應 DivingTrip
-  r2Key         String    @map("r2_key")              // R2 public bucket key (prefix=trips/)
+  id            String   @id @default(uuid()) @db.Uuid
+  tripId        String   @map("trip_id") @db.Uuid // 對應 DivingTrip
+  r2Key         String   @map("r2_key") // R2 public bucket key (prefix=trips/)
   caption       String?
-  uploadedBy    String    @map("uploaded_by") @db.VarChar(64)  // 教練/admin lineUserId
-  uploadedAt    DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz
-  expiresAt     DateTime  @map("expires_at") @db.Timestamptz   // uploadedAt + 7 天，cron 到期清
-  downloadCount Int       @default(0) @map("download_count")
+  uploadedBy    String   @map("uploaded_by") @db.VarChar(64) // 教練/admin lineUserId
+  uploadedAt    DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz // uploadedAt + 7 天，cron 到期清
+  downloadCount Int      @default(0) @map("download_count")
 
   @@index([tripId])
   @@index([expiresAt])
@@ -405,13 +405,13 @@ model TripPhoto {
 // 不存實際影片（節流量），只存外部連結 + 小縮圖
 model TripMedia {
   id           String        @id @default(uuid()) @db.Uuid
-  tripId       String?       @map("trip_id") @db.Uuid    // 可選綁定 DivingTrip
-  date         DateTime      @db.Date                     // 拍攝日期
+  tripId       String?       @map("trip_id") @db.Uuid // 可選綁定 DivingTrip
+  date         DateTime      @db.Date // 拍攝日期
   platform     MediaPlatform
-  url          String                                     // FB/IG/YT 原始連結
-  thumbnailKey String?       @map("thumbnail_key")        // R2 public bucket key
+  url          String // FB/IG/YT 原始連結
+  thumbnailKey String?       @map("thumbnail_key") // R2 public bucket key
   caption      String?
-  createdBy    String?       @map("created_by") @db.VarChar(64)  // 教練 lineUserId
+  createdBy    String?       @map("created_by") @db.VarChar(64) // 教練 lineUserId
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("trip_media")
@@ -423,18 +423,18 @@ model SiteConfig {
   id String @id @default("default") @db.VarChar(32)
 
   // Hero
-  heroTitle      String  @default("東 北 角 海 王 子") @map("hero_title")
-  heroSubtitle   String  @default("NEIL OCEAN PRINCE") @map("hero_subtitle")
-  heroGreeting   String  @default("嗨") @map("hero_greeting")
+  heroTitle    String @default("東 北 角 海 王 子") @map("hero_title")
+  heroSubtitle String @default("NEIL OCEAN PRINCE") @map("hero_subtitle")
+  heroGreeting String @default("嗨") @map("hero_greeting")
 
   // 6 卡 — 整段 JSON array
   // [{id, label, enLabel, desc, href, external, icon, accent, enabled, order}]
   cards Json @default("[]")
 
   // 海況卡
-  seaEnabled Boolean @default(true) @map("sea_enabled")
-  seaTitle   String  @default("明日海況沉穩 · 適合下水") @map("sea_title")
-  seaInfo    String  @default("北風 3 級｜浪高 1m｜水溫 24°C｜能見度 8-12m") @map("sea_info")
+  seaEnabled  Boolean @default(true) @map("sea_enabled")
+  seaTitle    String  @default("明日海況沉穩 · 適合下水") @map("sea_title")
+  seaInfo     String  @default("北風 3 級｜浪高 1m｜水溫 24°C｜能見度 8-12m") @map("sea_info")
   seaCtaLabel String? @default("查看明日場次") @map("sea_cta_label")
   seaCtaHref  String? @default("/liff/calendar") @map("sea_cta_href")
 
@@ -459,31 +459,31 @@ model SiteConfig {
 
   // 補償金 / 禮金 規則
   // 生日當天自動發放金額 (NT$)。設 0 = 關閉
-  birthdayCreditAmount Int @default(100) @map("birthday_credit_amount")
+  birthdayCreditAmount       Int  @default(100) @map("birthday_credit_amount")
   // 生日禮金有效天數（v184）。0 = 永不過期
-  birthdayCreditExpiryDays Int @default(360) @map("birthday_credit_expiry_days")
+  birthdayCreditExpiryDays   Int  @default(360) @map("birthday_credit_expiry_days")
   // v185: VIP 升等獎勵禮金有效天數
-  vipUpgradeCreditExpiryDays Int @default(360) @map("vip_upgrade_credit_expiry_days")
+  vipUpgradeCreditExpiryDays Int  @default(360) @map("vip_upgrade_credit_expiry_days")
   // v185: admin 手動發放禮金的預設有效天數（可在發放時覆寫）
-  adminGrantCreditExpiryDays Int @default(360) @map("admin_grant_credit_expiry_days")
+  adminGrantCreditExpiryDays Int  @default(360) @map("admin_grant_credit_expiry_days")
   // v185: 退款轉禮金 有效天數（0 = 永不過期，退款通常不限期）
-  refundCreditExpiryDays Int @default(0) @map("refund_credit_expiry_days")
+  refundCreditExpiryDays     Int  @default(0) @map("refund_credit_expiry_days")
   // VIP 升等獎金：{ "2": 200, "3": 500, "4": 1000, "5": 2000 } — key=升到的等級
-  vipUpgradeCredits Json @default("{}") @map("vip_upgrade_credits")
+  vipUpgradeCredits          Json @default("{}") @map("vip_upgrade_credits")
 
   // 可配置金額設定
   // 外部連結（Rich Menu / LIFF 用）— admin 後台可編輯
   // { fbGroupUrl, mediaUrl, youtubeChannelUrl, instagramUrl }
-  externalLinks        Json @default("{}") @map("external_links")
-  gearRentalPrices     Json @default("{}") @map("gear_rental_prices")
+  externalLinks        Json   @default("{}") @map("external_links")
+  gearRentalPrices     Json   @default("{}") @map("gear_rental_prices")
   // {"BCD":200,"regulator":200,"wetsuit":300,"fins":100,"mask":100,"computer":300,"full_set":800}
-  defaultTripPricing   Json @default("{}") @map("default_trip_pricing")
+  defaultTripPricing   Json   @default("{}") @map("default_trip_pricing")
   // {"baseTrip":1200,"extraTank":500,"nightDive":300,"scooterRental":500}
-  defaultCoachFee      Int  @default(1500) @map("default_coach_fee")
-  weatherWindThreshold Int  @default(10)   @map("weather_wind_threshold")
+  defaultCoachFee      Int    @default(1500) @map("default_coach_fee")
+  weatherWindThreshold Int    @default(10) @map("weather_wind_threshold")
   // 付款資訊（銀行 + LINE Pay）— v160 起改用 DB 管理
   // { bank: {name, branch, account, holder}, linepay: {qrUrl, liteId} }
-  paymentInfo          Json @default("{}") @map("payment_info")
+  paymentInfo          Json   @default("{}") @map("payment_info")
   // v227：取消政策（admin 可編輯，FAQ + 預約頁同步顯示）
   cancellationPolicy   String @default("") @map("cancellation_policy") @db.Text
 
@@ -496,45 +496,45 @@ model SiteConfig {
 // 訊息模板覆寫 — admin 可在後台改各個 Flex 模板的標題/副標/按鈕文字
 // key 對應 src/lib/flex/index.ts 的 FLEX_TEMPLATE_LABELS
 model MessageTemplate {
-  key         String   @id @db.VarChar(64)
-  title       String?
-  subtitle    String?
-  bodyText    String?  @map("body_text")
-  buttonLabel String?  @map("button_label")
-  altText     String?  @map("alt_text")
+  key          String   @id @db.VarChar(64)
+  title        String?
+  subtitle     String?
+  bodyText     String?  @map("body_text")
+  buttonLabel  String?  @map("button_label")
+  altText      String?  @map("alt_text")
   // v196：管道開關（null = 用 template 預設）
-  lineEnabled Boolean? @map("line_enabled")
+  lineEnabled  Boolean? @map("line_enabled")
   emailEnabled Boolean? @map("email_enabled")
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  updatedBy   String?  @map("updated_by") @db.VarChar(64)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy    String?  @map("updated_by") @db.VarChar(64)
 
   @@map("message_templates")
 }
 
 // 操作紀錄 — 所有後台操作皆會記錄
 model AuditLog {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // 操作者
-  actorId     String?  @map("actor_id")    @db.VarChar(64)   // lineUserId 或 "system"
-  actorName   String?  @map("actor_name")  @db.VarChar(128)
+  actorId   String? @map("actor_id") @db.VarChar(64) // lineUserId 或 "system"
+  actorName String? @map("actor_name") @db.VarChar(128)
 
   // 操作類型：auth.login / booking.update / trip.create / config.update 等
-  action      String   @db.VarChar(64)
+  action String @db.VarChar(64)
 
   // 對象
-  targetType  String?  @map("target_type") @db.VarChar(32)   // booking / trip / user / config ...
-  targetId    String?  @map("target_id")   @db.VarChar(64)
-  targetLabel String?  @map("target_label") @db.VarChar(256) // 顯示用標籤
+  targetType  String? @map("target_type") @db.VarChar(32) // booking / trip / user / config ...
+  targetId    String? @map("target_id") @db.VarChar(64)
+  targetLabel String? @map("target_label") @db.VarChar(256) // 顯示用標籤
 
   // 附加資料（前後值、操作詳情等）
-  metadata    Json?
+  metadata Json?
 
-  @@map("audit_log")
   @@index([actorId])
   @@index([action])
   @@index([createdAt(sort: Desc)])
+  @@map("audit_log")
 }
 
 // 最新動態（manual 由 admin 後台手動 post，或 future 由 cron 自動抓 YouTube/IG）
@@ -554,20 +554,20 @@ model MediaPost {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@map("media_posts")
   @@index([visible, publishedAt(sort: Desc)])
   @@index([source, externalId])
+  @@map("media_posts")
 }
 
 // 客戶瀏覽紀錄（用於「看過但沒下單」高意願客戶分析）
 model PageView {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id") @db.VarChar(64)
-  refType   String   @map("ref_type") @db.VarChar(16)  // "trip" | "tour"
-  refId     String   @map("ref_id") @db.VarChar(64)
-  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id") @db.VarChar(64)
+  refType  String   @map("ref_type") @db.VarChar(16) // "trip" | "tour"
+  refId    String   @map("ref_id") @db.VarChar(64)
+  viewedAt DateTime @default(now()) @map("viewed_at") @db.Timestamptz
 
-  @@map("page_views")
   @@index([userId, viewedAt(sort: Desc)])
   @@index([refType, refId, viewedAt(sort: Desc)])
+  @@map("page_views")
 }

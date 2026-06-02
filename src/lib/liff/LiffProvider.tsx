@@ -116,17 +116,26 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
             idTokenRef.current = tok;
             setIdToken(tok);
           }
-          // 查 LINE OA 好友狀態（必須在 LIFF 內、且 LIFF App 設定的 Channel 有對應 OA 才會 work）
-          try {
-            const friendship = await liff.getFriendship();
-            if (!cancelled) setIsFriend(friendship.friendFlag);
-          } catch (e) {
-            console.warn("[liff getFriendship] failed:", e);
-            // 失敗就放行（避免擋住正常用戶；LIFF Channel 設定問題時不要全站當機）
-            if (!cancelled) setIsFriend(true);
-          }
         }
+        // v251 (Opt A)：token 拿到後立刻 setReady(true)，不等 friendship 檢查完。
+        //   friendship 是「好友 gate」用的，非阻塞主流程；在背景跑就好。
+        //   省 200-800ms（一次 LINE Server 網路 RTT）讓頁面 fetch 立刻可以開始。
         setReady(true);
+
+        if (isLoggedIn) {
+          // 背景查 LINE OA 好友狀態（不擋 ready）
+          //   必須在 LIFF 內、且 LIFF App 設定的 Channel 有對應 OA 才會 work
+          liff
+            .getFriendship()
+            .then((friendship) => {
+              if (!cancelled) setIsFriend(friendship.friendFlag);
+            })
+            .catch((e) => {
+              console.warn("[liff getFriendship] failed:", e);
+              // 失敗就放行（避免擋住正常用戶；LIFF Channel 設定問題時不要全站當機）
+              if (!cancelled) setIsFriend(true);
+            });
+        }
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : String(err));

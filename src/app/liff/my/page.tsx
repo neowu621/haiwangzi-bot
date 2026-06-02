@@ -166,20 +166,25 @@ export default function MyBookingsPage() {
     fetchGearOptions().then(setGearOptions);
   }, []);
 
-  const load = useCallback(() => {
+  // v251：直接在 useEffect 內 fetch，不繞 useCallback。
+  //   舊寫法：useCallback([liff.ready]) + useEffect([load])
+  //   → load 在 ready false→true 時 reference 變動 → useEffect 重觸 → fetch 跑 2 次。
+  //   新寫法：fetchWithAuth 內部本來就有「等最多 3 秒 token」邏輯，
+  //   useEffect 在 mount 時 fire 一次就好，不必等 ready。
+  const reload = useCallback(() => {
     setLoading(true);
     liff
       .fetchWithAuth<{ bookings: MyBooking[] }>("/api/bookings/my")
       .then((d) => setBookings(d.bookings))
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
-    // v249：deps 改用 liff.ready 避免 init 期間 4 次重新觸發 → 閃爍 + 3-5 秒延遲
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liff.ready]);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const grouped = useMemo(() => {
     const up: MyBooking[] = [];
@@ -245,7 +250,7 @@ export default function MyBookingsPage() {
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
-          load();
+          reload();
         }}
       />
     </LiffShell>
