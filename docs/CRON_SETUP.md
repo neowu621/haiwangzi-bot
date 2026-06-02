@@ -102,6 +102,30 @@
 
 ---
 
+## Endpoint：`/api/healthz`（保溫 / keep-warm）
+
+| 項目 | 內容 |
+|---|---|
+| Method | `GET` |
+| Auth | **不需要**（純健康檢查，無敏感資料） |
+| 排程建議 | 每 5 分鐘 — Cronicle：`*/5 * * * *` |
+| 目的 | 防止 Zeabur 容器閒置休眠。流量低時容器會睡著，當天第一位客人需等 ~60 秒冷啟動；每 5 分鐘戳一次讓它保持喚醒 |
+
+### Cronicle job 設定
+
+- **Plugin**: Shell Script（或 HTTP Request plugin）
+- **Schedule**: `*/5 * * * *`（每 5 分鐘）
+- **Command**:
+  ```bash
+  curl -sS -o /dev/null -w "%{http_code} %{time_total}s\n" https://haiwangzi.zeabur.app/api/healthz
+  ```
+- 不需要 CRON_SECRET（healthz 是公開端點）
+
+> ⚠️ 是否需要此 job，取決於 Zeabur 該服務是否真的會閒置休眠。
+> 若實測發現「閒置 15 分鐘後第一次請求仍 < 2 秒」就不需要設（省資源）。
+
+---
+
 ## 設定步驟
 
 ### 1. 產生密鑰
