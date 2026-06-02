@@ -47,6 +47,7 @@ export function r2Configured(): boolean {
 
 export type R2Prefix =
   | "payments"
+  | "signatures" // v260: 客戶手寫簽名 (private bucket, 法律證據長期保留)
   | "sites"
   | "avatars"
   | "richmenu"
@@ -56,7 +57,8 @@ export type R2Prefix =
 
 /** prefix → bucket 對應 */
 export function bucketFor(prefix: R2Prefix): string {
-  if (prefix === "payments" || prefix === "avatars") return R2_PRIVATE_BUCKET;
+  if (prefix === "payments" || prefix === "avatars" || prefix === "signatures")
+    return R2_PRIVATE_BUCKET;
   return R2_PUBLIC_BUCKET; // sites, richmenu, media, trips, tours
 }
 
@@ -117,6 +119,26 @@ export async function previewUrl(
 ): Promise<string> {
   if (isPrivate(prefix)) return await presignGetUrl(prefix, key, 600);
   return publicUrl(key);
+}
+
+/**
+ * v260：server 端直接 PUT 一個 buffer 到 R2（不走 presigned URL）。
+ * 用於簽名 / 自動產生的圖之類的 server-internal upload。
+ */
+export async function putBuffer(
+  prefix: R2Prefix,
+  key: string,
+  body: Buffer,
+  contentType: string,
+): Promise<void> {
+  await r2Client().send(
+    new PutObjectCommand({
+      Bucket: bucketFor(prefix),
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  );
 }
 
 export async function deleteObject(prefix: R2Prefix, key: string) {

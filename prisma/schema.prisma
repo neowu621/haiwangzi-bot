@@ -364,6 +364,10 @@ model Booking {
   // 取消時若 paidAmount>0 系統會自動把這部份退回 creditBalance
   creditUsed         Int           @default(0) @map("credit_used")
   agreedToTermsAt    DateTime      @map("agreed_to_terms_at") @db.Timestamptz
+  // v260：手寫簽名（R2 private bucket 的 key，例 signatures/<bookingId>.png）。法律證據長期保留。
+  signatureImageKey  String?       @map("signature_image_key") @db.VarChar(256)
+  signedAt           DateTime?     @map("signed_at") @db.Timestamptz
+  signedFromUserAgent String?      @map("signed_from_user_agent")
   // 超賣標記：booking 接受但容量已滿，提醒教練處理
   overCapacity       Boolean       @default(false) @map("over_capacity")
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz

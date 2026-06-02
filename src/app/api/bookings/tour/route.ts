@@ -17,6 +17,8 @@ const BodySchema = z.object({
   paymentNote: z.string().max(200).optional(), // 客戶選「其他」時填寫的說明
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
+  // v260：手寫簽名 PNG data URL
+  signatureDataUrl: z.string().optional(),
   realName: z.string().min(1),
   phone: z.string().min(1),
   certNumber: z.string().optional(),
@@ -135,6 +137,29 @@ export async function POST(req: NextRequest) {
       agreedToTermsAt: new Date(),
     },
   });
+
+  // v260：手寫簽名上 R2 → 更新 booking
+  if (data.signatureDataUrl) {
+    try {
+      const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
+      const up = await uploadSignatureFromDataUrl(
+        data.signatureDataUrl,
+        booking.id,
+      );
+      if (up.ok && up.key) {
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: {
+            signatureImageKey: up.key,
+            signedAt: new Date(),
+            signedFromUserAgent: req.headers.get("user-agent") ?? null,
+          },
+        });
+      }
+    } catch (e) {
+      console.error("[tour booking signature] failed", e);
+    }
+  }
 
   if (creditUsed > 0) {
     try {

@@ -40,6 +40,11 @@ const PATCHES = [
   // v257: 安全政策
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS safety_policy TEXT NOT NULL DEFAULT ''`,
 
+  // v260: 手寫簽名（法律證據、長期保留、不會被 30 天清除規則砍）
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signature_image_key VARCHAR(256)`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_from_user_agent TEXT`,
+
   // v131: MediaPost 表（最新動態，手動 post + 未來自動抓）
   `CREATE TABLE IF NOT EXISTS media_posts (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SignaturePad } from "@/components/ui/SignaturePad";
 import { Separator } from "@/components/ui/separator";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
@@ -63,13 +64,14 @@ export default function TourDetailPage({
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
-  // v259：兩政策 + modal + 簽名（取代單一 agreed）
+  // v259：兩政策 + modal
   const [cancellationRead, setCancellationRead] = useState(false);
   const [safetyRead, setSafetyRead] = useState(false);
   const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
   const [safetyModalOpen, setSafetyModalOpen] = useState(false);
-  const [signed, setSigned] = useState(false);
-  const [signatureName, setSignatureName] = useState("");
+  // v260：手寫簽名
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [signedHasInk, setSignedHasInk] = useState(false);
   const [cancellationPolicy, setCancellationPolicy] = useState("");
   const [safetyPolicy, setSafetyPolicy] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -128,8 +130,7 @@ export default function TourDetailPage({
     !submitting &&
     cancellationRead &&
     safetyRead &&
-    signed &&
-    signatureName.trim().length >= 2 &&
+    signedHasInk &&
     realName.trim().length >= 2 &&
     phone.trim().length >= 8 &&
     emergencyName.trim().length >= 2 &&
@@ -155,6 +156,8 @@ export default function TourDetailPage({
           paymentMethod,
           paymentNote: paymentMethod === "other" ? paymentNote : undefined,
           agreedToTerms: true as const,
+          // v260：手寫簽名 PNG data URL
+          signatureDataUrl: signatureDataUrl ?? undefined,
           realName,
           phone,
           certNumber: certNumber || undefined,
@@ -549,42 +552,30 @@ export default function TourDetailPage({
               </button>
             </div>
 
-            <button
-              type="button"
-              disabled={!cancellationRead || !safetyRead}
-              onClick={() => setSigned(!signed)}
+            {/* v260：手寫簽名（兩政策都勾才開啟） */}
+            <div
               className={cn(
-                "flex w-full items-center gap-3 rounded-lg border-2 px-4 py-3 text-left text-sm",
-                (!cancellationRead || !safetyRead) && "opacity-40",
-                signed
-                  ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10"
-                  : "border-dashed border-[var(--border)]",
+                "rounded-lg border-2 p-3 transition-opacity",
+                (!cancellationRead || !safetyRead) && "opacity-40 pointer-events-none",
+                signedHasInk
+                  ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/5"
+                  : "border-dashed border-[var(--border)] bg-white",
               )}
             >
-              <div className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", signed ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--muted-foreground)]")}>
-                {signed && <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />}
-              </div>
-              <span className="font-medium">準備電子簽署</span>
-            </button>
+              <Label className="mb-2 block text-xs">
+                ✍️ 請於下方手寫簽名
+                <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">（作為法律有效電子簽署）</span>
+              </Label>
+              <SignaturePad
+                height={200}
+                onChange={(dataUrl, hasInk) => {
+                  setSignatureDataUrl(hasInk ? dataUrl : null);
+                  setSignedHasInk(hasInk);
+                }}
+              />
+            </div>
 
-            {signed && (
-              <div className="rounded-lg border-2 border-[var(--color-phosphor)] bg-white p-3">
-                <Label htmlFor="signature" className="text-xs">
-                  請輸入您的姓名作為電子簽署
-                  <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">（v260 將升級為手寫簽名）</span>
-                </Label>
-                <Input
-                  id="signature"
-                  value={signatureName}
-                  onChange={(e) => setSignatureName(e.target.value)}
-                  className="mt-1 font-bold italic"
-                  placeholder="（簽名）"
-                  style={{ fontFamily: '"Brush Script MT", "DFKai-SB", cursive', fontSize: "1.5rem" }}
-                />
-              </div>
-            )}
-
-            {cancellationRead && safetyRead && signed && signatureName.trim().length >= 2 && (
+            {cancellationRead && safetyRead && signedHasInk && (
               <div className="rounded-lg border-l-4 px-4 py-3 text-xs leading-relaxed" style={{ borderColor: "#06C755", background: "rgba(6,199,85,0.08)" }}>
                 <div className="font-bold" style={{ color: "#06C755" }}>✅ 完成預約即視同同意以上內容</div>
                 <div className="mt-0.5 text-[var(--muted-foreground)]">所有資料已填妥、簽署完成。</div>

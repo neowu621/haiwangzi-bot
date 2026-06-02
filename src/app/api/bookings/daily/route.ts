@@ -38,6 +38,8 @@ const BodySchema = z.object({
   // 使用抵用金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
+  // v260：手寫簽名 PNG data URL（後端解 base64 上傳 R2 後存 key 到 Booking）
+  signatureDataUrl: z.string().optional(),
   // 客戶資料補完
   realName: z.string().optional(),
   phone: z.string().optional(),
@@ -252,6 +254,31 @@ export async function POST(req: NextRequest) {
       overCapacity,
     },
   });
+
+  // v260：手寫簽名上 R2 → 更新 booking.signatureImageKey + signedAt + UA
+  if (data.signatureDataUrl) {
+    try {
+      const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
+      const up = await uploadSignatureFromDataUrl(
+        data.signatureDataUrl,
+        booking.id,
+      );
+      if (up.ok && up.key) {
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: {
+            signatureImageKey: up.key,
+            signedAt: new Date(),
+            signedFromUserAgent: req.headers.get("user-agent") ?? null,
+          },
+        });
+      }
+      // 失敗不阻擋下單流程（signature 是法律證據但不該擋客戶完成預約；
+      //  R2 未設定 / 網路問題等情況也能用文字 fallback）
+    } catch (e) {
+      console.error("[booking signature upload] failed", e);
+    }
+  }
 
   // 扣抵用金（用 grantCredit 寫 audit + 同步 balance）
   if (creditUsed > 0) {
