@@ -74,6 +74,7 @@ interface Me {
   realName: string | null;
   phone: string | null;
   email: string | null;
+  emailVerifiedAt?: string | null; // v258
   notifyByLine: boolean;
   notifyByEmail: boolean;
   cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
@@ -109,6 +110,11 @@ export default function ProfilePage() {
   const [realName, setRealName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  // v258：Email 驗證狀態
+  const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | null>(null);
+  const [savedEmail, setSavedEmail] = useState<string>(""); // 上次成功儲存的 email（用來判斷是否有未儲存的編輯）
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
   const [notifyByLine, setNotifyByLine] = useState(true);
   const [notifyByEmail, setNotifyByEmail] = useState(true);
   // v211：state 允許 Rescue（legacy 資料）但 UI 不提供選項
@@ -170,6 +176,44 @@ export default function ProfilePage() {
     emergencyPhone.trim().length >= 8 &&
     emergencyRel.trim().length >= 1;
 
+  // v258：發送 Email 驗證信
+  async function sendVerifyEmail() {
+    setVerifyBusy(true);
+    setVerifyMsg(null);
+    try {
+      const r = await liff.fetchWithAuth<{
+        ok?: boolean;
+        sent?: boolean;
+        skipped?: boolean;
+        alreadyVerified?: boolean;
+        error?: string;
+        message?: string;
+        retryAfter?: number;
+      }>("/api/me/send-verify-email", { method: "POST" });
+      if (r.alreadyVerified) {
+        setVerifyMsg("✓ 此 Email 已經驗證過了");
+        // 重抓 me 同步狀態
+        await reloadMe();
+      } else if (r.skipped) {
+        setVerifyMsg("⚠️ 寄信尚未設定（聯絡 admin）");
+      } else if (r.ok && r.sent) {
+        setVerifyMsg(`📧 驗證信已發送至 ${email}，請收信後點連結驗證`);
+      } else {
+        setVerifyMsg(r.message ?? r.error ?? "發送失敗，請稍後再試");
+      }
+    } catch (e) {
+      // fetchWithAuth 對 429 也會 throw（看 message 有 "429" 字樣）
+      const m = e instanceof Error ? e.message : String(e);
+      if (m.includes("429")) {
+        setVerifyMsg("⏱ 請等 60 秒後再重發");
+      } else {
+        setVerifyMsg("發送失敗：" + m);
+      }
+    } finally {
+      setVerifyBusy(false);
+    }
+  }
+
   function reloadMe() {
     setLoadError(null);
     return liff
@@ -179,6 +223,11 @@ export default function ProfilePage() {
         setRealName(u.realName ?? "");
         setPhone(formatPhoneTW(u.phone ?? ""));
         setEmail(u.email ?? "");
+        setSavedEmail(u.email ?? "");
+        // v258：API 回傳的 emailVerifiedAt 是 Date | string | null（JSON 序列化會變字串）
+        setEmailVerifiedAt(
+          u.emailVerifiedAt ? String(u.emailVerifiedAt) : null,
+        );
         setNotifyByLine(u.notifyByLine ?? true);
         setNotifyByEmail(u.notifyByEmail ?? true);
         setCert(u.cert ?? "");
@@ -600,6 +649,43 @@ export default function ProfilePage() {
               {email.trim().length > 0 && !emailValid && (
                 <div className="mt-0.5 text-[10px] text-[var(--color-coral)]">
                   email 格式不對
+                </div>
+              )}
+
+              {/* v258：Email 驗證狀態 + 發送驗證信按鈕 */}
+              {email.trim().length > 0 && emailValid && (
+                <div className="mt-1.5 space-y-1">
+                  {emailVerifiedAt && email.trim() === savedEmail ? (
+                    <div className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                      ✓ Email 已驗證
+                    </div>
+                  ) : email.trim() !== savedEmail ? (
+                    <div className="text-[10px] text-[var(--muted-foreground)]">
+                      ✏️ Email 已修改，儲存後可發送驗證信
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                        ⚠️ 尚未驗證
+                      </div>
+                      <button
+                        type="button"
+                        onClick={sendVerifyEmail}
+                        disabled={verifyBusy}
+                        className="rounded-full border border-[var(--color-phosphor)] px-2.5 py-0.5 text-[10px] font-medium text-[var(--color-phosphor)] hover:bg-[var(--color-phosphor)]/10 disabled:opacity-50"
+                      >
+                        {verifyBusy ? "發送中..." : "📧 發送驗證信"}
+                      </button>
+                      <span className="text-[10px] text-[var(--muted-foreground)]">
+                        驗證後首單可得 100 元抵用金
+                      </span>
+                    </div>
+                  )}
+                  {verifyMsg && (
+                    <div className="text-[10px] text-[var(--muted-foreground)]">
+                      {verifyMsg}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     realName: u.realName,
     phone: u.phone,
     email: u.email,
+    emailVerifiedAt: u.emailVerifiedAt, // v258：給 profile 頁顯示「已驗證 ✓」徽章用
     notifyByLine: u.notifyByLine,
     notifyByEmail: u.notifyByEmail,
     cert: u.cert,
