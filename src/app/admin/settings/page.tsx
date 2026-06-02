@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { APP_VERSION } from "@/lib/version";
 import { DEFAULT_CANCELLATION_POLICY } from "@/lib/default-policies";
 import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /* ─── Types ─────────────────────────────────────────── */
 interface GearPrices {
@@ -278,6 +279,20 @@ export default function SettingsPage() {
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
         {ok && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "var(--color-phosphor)", border: "1px solid rgba(99,235,164,0.25)" }}>✓ {ok}</div>}
 
+        {/* v255：8 大分類改用 Tab 切換（原本一直捲容易漏 — 例如 VIP 升等獎金藏在金額底部找不到） */}
+        <Tabs defaultValue="home" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 gap-1 sm:grid-cols-8">
+            <TabsTrigger value="home">🏠 首頁</TabsTrigger>
+            <TabsTrigger value="links">🔗 連結</TabsTrigger>
+            <TabsTrigger value="payment">💳 付款</TabsTrigger>
+            <TabsTrigger value="money">💰 金額</TabsTrigger>
+            <TabsTrigger value="upload">📤 上傳</TabsTrigger>
+            <TabsTrigger value="policy">📋 政策</TabsTrigger>
+            <TabsTrigger value="danger">⚠️ 危險</TabsTrigger>
+            <TabsTrigger value="tools">🔧 工具</TabsTrigger>
+          </TabsList>
+
+        <TabsContent value="home" className="mt-4">
         {/* ── A. 首頁設定 ──────────────────── */}
         <SectionCard title="🏠 首頁設定">
           <div className="space-y-3">
@@ -326,7 +341,9 @@ export default function SettingsPage() {
             </Button>
           </div>
         </SectionCard>
+        </TabsContent>
 
+        <TabsContent value="links" className="mt-4">
         {/* ── A2. 外部連結（Rich Menu / FAQ 用）────── */}
         <SectionCard title="🔗 外部連結（Rich Menu / 客戶端用）">
           <p className="mb-3 text-xs text-[var(--muted-foreground)]">
@@ -393,6 +410,9 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        </TabsContent>
+
+        <TabsContent value="payment" className="mt-4">
         {/* ── A3. 付款資訊（銀行 + LINE Pay）─────────── */}
         <SectionCard title="💳 付款資訊（客戶下單時顯示）">
           {/* 銀行匯款 */}
@@ -476,6 +496,9 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        </TabsContent>
+
+        <TabsContent value="money" className="mt-4">
         {/* ── B. 金額設定 ──────────────────── */}
         <SectionCard title="💰 金額設定">
 
@@ -601,11 +624,17 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        </TabsContent>
+
+        <TabsContent value="upload" className="mt-4">
         {/* ── B6. 檔案上傳設定（v230） ────────────── */}
         <SectionCard title="📤 檔案上傳設定">
           <UploadTestPanel />
         </SectionCard>
 
+        </TabsContent>
+
+        <TabsContent value="policy" className="mt-4">
         {/* ── B5. 取消政策（v227） ───────────────── */}
         <SectionCard title="📋 取消政策">
           <p className="-mt-2 mb-2 text-[11px] text-[var(--muted-foreground)]">此文字會顯示在「常見問題」與「日潛預約頁」，admin 可自由編輯。</p>
@@ -632,6 +661,9 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        </TabsContent>
+
+        <TabsContent value="danger" className="mt-4">
         {/* ── C. 危險操作 ──────────────────── */}
         <div className="rounded-xl border-2 p-5" style={{ borderColor: "var(--color-coral)", background: "rgba(255,80,65,0.04)" }}>
           <h2 className="mb-1 text-base font-semibold" style={{ color: "var(--color-coral)" }}>
@@ -693,6 +725,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        </TabsContent>
+
+        <TabsContent value="tools" className="mt-4">
         {/* ── D. 系統工具 ──────────────────── */}
         <SectionCard title="🔧 系統工具">
           <div className="space-y-4">
@@ -739,6 +774,8 @@ export default function SettingsPage() {
             </FieldRow>
           </div>
         </SectionCard>
+        </TabsContent>
+        </Tabs>
 
       </div>
     </AdminShell>
