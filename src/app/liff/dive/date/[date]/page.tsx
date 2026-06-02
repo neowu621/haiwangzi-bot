@@ -5,6 +5,7 @@ import { Clock, Users, Anchor, Moon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { useLiff } from "@/lib/liff/LiffProvider";
 
 interface Trip {
@@ -49,11 +50,7 @@ export default function DiveDateListPage({
       backHref="/liff/calendar"
     >
       <section className="space-y-3 px-4 pt-4">
-        {loading && (
-          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-            載入中...
-          </div>
-        )}
+        {loading && <LiffLoading variant="skeleton" count={2} label="正在查詢這天的場次..." />}
         {!loading && trips.length === 0 && (
           <Card className="p-8 text-center text-sm text-[var(--muted-foreground)]">
             這天暫無開放場次

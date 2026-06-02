@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
@@ -386,9 +387,13 @@ export default function TripBookingPage({
   if (!trip) {
     return (
       <LiffShell title="場次預約" backHref="/liff/calendar">
-        <div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
-          {error ? `錯誤：${error}` : "載入中..."}
-        </div>
+        {error ? (
+          <div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">
+            錯誤：{error}
+          </div>
+        ) : (
+          <LiffLoading variant="bubbles" label="正在載入場次資訊..." />
+        )}
       </LiffShell>
     );
   }

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
@@ -258,11 +259,7 @@ export default function CalendarPage() {
           {view === "month" ? "本月場次預覽" : "此期場次預覽"}
         </h2>
         <div className="mt-2 space-y-2">
-          {loading && (
-            <div className="text-center text-sm text-[var(--muted-foreground)]">
-              載入中...
-            </div>
-          )}
+          {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
           {!loading && trips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
               此期暫無場次

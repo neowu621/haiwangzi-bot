@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 
@@ -173,11 +174,7 @@ export default function TourListPage() {
           boxShadow: "0 1px 3px rgba(20,30,40,.05)",
         }}>
           <CardHead n="2" title="選擇行程" rightCount={filtered.length} />
-          {loading && (
-            <div style={{ padding: "30px 10px", textAlign: "center", color: SUB2, fontSize: 13 }}>
-              載入中...
-            </div>
-          )}
+          {loading && <LiffLoading variant="bubbles" label="正在載入潛水團行程..." />}
           {!loading && filtered.length === 0 && (
             <div style={{ padding: "30px 10px", textAlign: "center", color: SUB2, fontSize: 13 }}>
               <div style={{ fontSize: 34, marginBottom: 6 }}>🌊</div>

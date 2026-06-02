@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { Lightbox } from "@/components/ui/lightbox";
 import { TripPhotoGallery } from "@/components/admin/TripPhotoGallery";
@@ -213,11 +214,7 @@ export default function MyBookingsPage() {
           </TabsList>
 
           <TabsContent value="up" className="space-y-3">
-            {loading && (
-              <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-                載入中...
-              </div>
-            )}
+            {loading && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
             {!loading && grouped.up.length === 0 && <EmptyState />}
             {grouped.up.map((b) => (
               <BookingCard key={b.id} b={b} onEdit={() => setEditing(b)} />

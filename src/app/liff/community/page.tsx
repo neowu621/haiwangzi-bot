@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { ExternalLink, Pin } from "lucide-react";
 
@@ -102,9 +103,7 @@ export default function CommunityPage() {
         </div>
 
         {loading ? (
-          <div className="py-10 text-center text-sm text-[var(--muted-foreground)]">
-            載入中...
-          </div>
+          <LiffLoading variant="bubbles" label="正在載入社群動態..." />
         ) : (
         <>
           {/* 最新動態 posts */}

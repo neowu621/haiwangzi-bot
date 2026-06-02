@@ -4,6 +4,7 @@ import { ExternalLink, Facebook, Instagram, Youtube, Anchor } from "lucide-react
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 
@@ -54,11 +55,7 @@ export default function MediaPage() {
           點縮圖跳到原平台看完整影片 / 照片。
         </div>
 
-        {loading && (
-          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-            載入中...
-          </div>
-        )}
+        {loading && <LiffLoading variant="skeleton" count={3} label="正在載入潛水動態..." />}
 
         {!loading && items.length === 0 && (
           <Card className="p-8 text-center text-xs text-[var(--muted-foreground)]">

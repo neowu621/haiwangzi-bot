@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
@@ -852,9 +853,7 @@ export default function ProfilePage() {
             </DialogTitle>
           </DialogHeader>
           {bookingLoading ? (
-            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-              載入中...
-            </div>
+            <LiffLoading variant="ring" label="正在載入紀錄..." />
           ) : bookingError ? (
             <div className="py-8 px-3 text-sm text-[var(--color-coral)]">
               <div className="font-semibold mb-2">載入失敗</div>
@@ -1180,9 +1179,7 @@ function CreditCard({
             </div>
           </div>
           {loading ? (
-            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-              載入中...
-            </div>
+            <LiffLoading variant="ring" label="正在載入抵用金紀錄..." />
           ) : !txs || txs.length === 0 ? (
             <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
               尚無紀錄。生日當天或會員升等時系統會自動發放抵用金。

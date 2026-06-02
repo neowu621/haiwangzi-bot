@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,10 @@ export default function PaymentUploadPage({
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // v240：壓縮中提示
+  const [compressing, setCompressing] = useState(false);
+  const [origSize, setOrigSize] = useState<number | null>(null);
+  const [finalSize, setFinalSize] = useState<number | null>(null);
 
   useEffect(() => {
     liff
@@ -75,55 +80,81 @@ export default function PaymentUploadPage({
       .then((c: Config) => setBank(c.bank));
   }, [bookingId, liff]);
 
-  // v228：壓縮圖片到 max 1600px width + JPEG 0.85（避免 base64 太大）
+  // v240：迭代壓縮 — 目標 < 500KB
+  //   Step 1: 1280px / quality 0.75
+  //   Step 2: 1024px / 0.65（若仍 > 500KB）
+  //   Step 3: 800px  / 0.6（最後一搏）
+  //   任何一階比原檔大就用原檔（已經是高度壓縮的照片）
   async function compressImage(f: File): Promise<File> {
     if (!f.type.startsWith("image/")) return f;
-    return new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(f);
-      img.onload = () => {
-        const MAX = 1600;
+    const TARGET_BYTES = 500 * 1024; // 500KB
+    const steps: Array<{ max: number; q: number }> = [
+      { max: 1280, q: 0.75 },
+      { max: 1024, q: 0.65 },
+      { max: 800, q: 0.6 },
+    ];
+
+    const url = URL.createObjectURL(f);
+    try {
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = url;
+      });
+      let best: File = f;
+      for (const { max, q } of steps) {
         let { width, height } = img;
-        if (width > MAX || height > MAX) {
+        if (width > max || height > max) {
           if (width > height) {
-            height = Math.round((height * MAX) / width);
-            width = MAX;
+            height = Math.round((height * max) / width);
+            width = max;
           } else {
-            width = Math.round((width * MAX) / height);
-            height = MAX;
+            width = Math.round((width * max) / height);
+            height = max;
           }
         }
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { URL.revokeObjectURL(url); resolve(f); return; }
+        if (!ctx) break;
         ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            URL.revokeObjectURL(url);
-            if (!blob) { resolve(f); return; }
-            // 比原檔大就用原檔
-            if (blob.size >= f.size) { resolve(f); return; }
-            resolve(new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
-          },
-          "image/jpeg",
-          0.85,
+        const blob: Blob | null = await new Promise((res) =>
+          canvas.toBlob(res, "image/jpeg", q),
         );
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(f); };
-      img.src = url;
-    });
+        if (!blob) continue;
+        if (blob.size < best.size) {
+          best = new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), {
+            type: "image/jpeg",
+          });
+        }
+        if (best.size <= TARGET_BYTES) break;
+      }
+      return best;
+    } catch {
+      return f;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.files?.[0];
     if (!raw) return;
-    const f = await compressImage(raw);
-    setFile(f);
-    const reader = new FileReader();
-    reader.onload = () => setPreview(String(reader.result));
-    reader.readAsDataURL(f);
+    setOrigSize(raw.size);
+    setFinalSize(null);
+    setCompressing(true);
+    try {
+      const f = await compressImage(raw);
+      setFile(f);
+      setFinalSize(f.size);
+      const reader = new FileReader();
+      reader.onload = () => setPreview(String(reader.result));
+      reader.readAsDataURL(f);
+    } finally {
+      setCompressing(false);
+    }
   }
 
   async function submit() {
@@ -216,9 +247,13 @@ export default function PaymentUploadPage({
   if (!booking) {
     return (
       <LiffShell title="付款上傳" backHref="/liff/my">
-        <div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
-          {error ?? "載入中..."}
-        </div>
+        {error ? (
+          <div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">
+            {error}
+          </div>
+        ) : (
+          <LiffLoading variant="bubbles" label="正在載入訂單..." />
+        )}
       </LiffShell>
     );
   }
@@ -381,7 +416,12 @@ export default function PaymentUploadPage({
                 hidden
                 onChange={onPick}
               />
-              {preview ? (
+              {compressing ? (
+                <div className="mt-1 flex h-32 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--color-phosphor)]/50 bg-[var(--color-phosphor)]/5 text-sm text-[var(--muted-foreground)]">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--color-phosphor)] border-t-transparent" />
+                  <span>正在壓縮圖片...</span>
+                </div>
+              ) : preview ? (
                 <div className="relative mt-1">
                   <img
                     src={preview}
@@ -395,10 +435,18 @@ export default function PaymentUploadPage({
                     onClick={() => {
                       setPreview(null);
                       setFile(null);
+                      setOrigSize(null);
+                      setFinalSize(null);
                     }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
+                  {origSize && finalSize && (
+                    <div className="mt-1 text-center text-[11px] text-[var(--muted-foreground)]">
+                      已壓縮：{Math.round(origSize / 1024)} KB → {Math.round(finalSize / 1024)} KB
+                      （省 {Math.max(0, Math.round((1 - finalSize / origSize) * 100))}%）
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -408,6 +456,7 @@ export default function PaymentUploadPage({
                 >
                   <Camera className="h-7 w-7" />
                   <span>點此拍照或選擇圖檔（選填）</span>
+                  <span className="text-[10px]">會自動壓縮到 &lt; 500 KB</span>
                 </button>
               )}
             </div>
