@@ -110,9 +110,17 @@ export async function POST(req: NextRequest) {
     data: { emailVerifyTokenSentAt: new Date() },
   });
 
-  // 組驗證 URL（用 request 的 host，避免硬編 production url 在 staging 失效）
-  const origin = `${url.protocol}//${url.host}`;
-  const verifyUrl = `${origin}/api/verify-email?token=${encodeURIComponent(token)}`;
+  // v265 fix：Zeabur 內部 hostname (service-xxx:8080) 不能對外。
+  //   優先用 X-Forwarded-Host，fallback PUBLIC_APP_URL，最後 fallback req URL。
+  const xfHost = req.headers.get("x-forwarded-host") ?? "";
+  const xfProto = req.headers.get("x-forwarded-proto") ?? "";
+  const publicOrigin =
+    xfHost && xfProto
+      ? `${xfProto}://${xfHost}`
+      : process.env.PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        `${url.protocol}//${url.host}`;
+  const verifyUrl = `${publicOrigin}/api/verify-email?token=${encodeURIComponent(token)}`;
 
   // 撈首單獎勵金額（顯示在信中）— SiteConfig.id 是 string "default"
   const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });

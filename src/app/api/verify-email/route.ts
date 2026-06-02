@@ -18,12 +18,23 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const origin = `${url.protocol}//${url.host}`;
+  // v265 fix：Zeabur 內部 hostname (service-xxx:8080) 不能對外。
+  //   優先用 X-Forwarded-Host / X-Forwarded-Proto（公開 URL），
+  //   fallback PUBLIC_APP_URL env var，最後才 fallback 到 req URL。
+  const xfHost = req.headers.get("x-forwarded-host") ?? "";
+  const xfProto = req.headers.get("x-forwarded-proto") ?? "";
+  const publicOrigin =
+    xfHost && xfProto
+      ? `${xfProto}://${xfHost}`
+      : process.env.PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        `${url.protocol}//${url.host}`;
+
   const token = url.searchParams.get("token");
 
   function resultRedirect(status: string, extra?: Record<string, string>) {
     const params = new URLSearchParams({ status, ...(extra ?? {}) });
-    return NextResponse.redirect(`${origin}/verify-email-result?${params}`);
+    return NextResponse.redirect(`${publicOrigin}/verify-email-result?${params}`);
   }
 
   if (!token) return resultRedirect("missing");
