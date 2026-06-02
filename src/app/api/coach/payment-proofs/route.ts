@@ -107,6 +107,15 @@ export async function POST(req: NextRequest) {
     console.error("[promote vip]", e),
   );
 
+  // v261：首單付款獎勵（會自己檢查條件，未驗證 email / 非首單 自動 skip）
+  if (newPaymentStatus === "fully_paid") {
+    void import("@/lib/first-order-reward")
+      .then((m) =>
+        m.maybeGrantFirstOrderReward(proof.booking.userId, proof.bookingId),
+      )
+      .catch((e) => console.error("[first-order-reward coach]", e));
+  }
+
   // 寄收款確認 email (fire-and-forget)
   void sendPaymentReceivedEmail({
     bookingId: proof.bookingId,

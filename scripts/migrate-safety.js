@@ -45,6 +45,10 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_from_user_agent TEXT`,
 
+  // v261: 首單付款獎勵設定
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_amount INT NOT NULL DEFAULT 100`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_expiry_days INT NOT NULL DEFAULT 360`,
+
   // v131: MediaPost 表（最新動態，手動 post + 未來自動抓）
   `CREATE TABLE IF NOT EXISTS media_posts (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

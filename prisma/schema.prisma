@@ -517,6 +517,10 @@ model SiteConfig {
   // v257：安全政策（admin 可編輯，FAQ + 預約頁同步顯示）
   safetyPolicy         String @default("") @map("safety_policy") @db.Text
 
+  // v261：首單付款完成 + Email 已驗證 → 自動發抵用金（0 = 停用此功能）
+  firstOrderRewardAmount     Int @default(100) @map("first_order_reward_amount")
+  firstOrderRewardExpiryDays Int @default(360) @map("first_order_reward_expiry_days")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

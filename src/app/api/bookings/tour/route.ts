@@ -181,5 +181,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // v261：若創建時 fully_paid → 嘗試首單獎勵
+  if (paymentStatus === "fully_paid") {
+    void import("@/lib/first-order-reward")
+      .then((m) =>
+        m.maybeGrantFirstOrderReward(auth.user.lineUserId, booking.id),
+      )
+      .catch((e) => console.error("[first-order-reward tour]", e));
+  }
+
   return NextResponse.json({ ok: true, booking });
 }

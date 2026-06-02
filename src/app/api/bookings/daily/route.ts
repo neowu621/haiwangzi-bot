@@ -323,6 +323,15 @@ export async function POST(req: NextRequest) {
     userId: auth.user.lineUserId,
   }).catch((e) => console.error("[booking confirm email]", e));
 
+  // v261：若創建時就 fully_paid（純抵用金支付 / 免費場次）→ 嘗試首單獎勵
+  if (paymentStatus === "fully_paid") {
+    void import("@/lib/first-order-reward")
+      .then((m) =>
+        m.maybeGrantFirstOrderReward(auth.user.lineUserId, booking.id),
+      )
+      .catch((e) => console.error("[first-order-reward daily]", e));
+  }
+
   return NextResponse.json({ ok: true, booking, overCapacity });
 }
 

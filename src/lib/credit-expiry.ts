@@ -20,6 +20,7 @@ const DEFAULTS: Record<CreditReason, number> = {
   admin_adjust: 360,
   refund: 0,
   used: 0,
+  first_order_reward: 360, // v261
 };
 
 let cached: { value: Record<CreditReason, number>; ts: number } | null = null;
@@ -34,6 +35,9 @@ async function readExpiryDaysFromDB(): Promise<Record<CreditReason, number>> {
     admin_adjust: cfg?.adminGrantCreditExpiryDays ?? DEFAULTS.admin_adjust,
     refund: cfg?.refundCreditExpiryDays ?? DEFAULTS.refund,
     used: 0,
+    first_order_reward:
+      (cfg as unknown as { firstOrderRewardExpiryDays?: number } | null)
+        ?.firstOrderRewardExpiryDays ?? DEFAULTS.first_order_reward,
   };
   cached = { value: map, ts: Date.now() };
   return map;

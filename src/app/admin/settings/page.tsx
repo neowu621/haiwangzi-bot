@@ -79,6 +79,9 @@ interface Config {
   cancellationPolicy: string;
   // v257：安全政策（純文字，FAQ + 預約頁同步顯示）
   safetyPolicy: string;
+  // v261：首單付款獎勵
+  firstOrderRewardAmount?: number;
+  firstOrderRewardExpiryDays?: number;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -608,6 +611,26 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* v261 B5：首單付款獎勵 */}
+          <div className="mb-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-1 text-sm font-medium text-[var(--foreground)]">🎁 首單付款獎勵</p>
+            <p className="mb-3 text-[11px] text-[var(--muted-foreground)]">
+              客戶第一筆訂單付款完成 + Email 已驗證 → 自動發抵用金（一人僅一次）。
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">金額（NT$，0=停用）</Label>
+                <NumberInput min={0} value={cfg.firstOrderRewardAmount ?? 100}
+                  onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardAmount: n } : c)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">有效天數（0=永不過期）</Label>
+                <NumberInput min={0} max={3650} value={cfg.firstOrderRewardExpiryDays ?? 360}
+                  onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardExpiryDays: n } : c)} />
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
               onClick={() => save("金額設定", {
@@ -621,6 +644,8 @@ export default function SettingsPage() {
                 refundCreditExpiryDays: cfg.refundCreditExpiryDays ?? 0,
                 weatherWindThreshold: cfg.weatherWindThreshold,
                 vipUpgradeCredits: vipCredits,
+                firstOrderRewardAmount: cfg.firstOrderRewardAmount ?? 100,
+                firstOrderRewardExpiryDays: cfg.firstOrderRewardExpiryDays ?? 360,
               })}
               disabled={saving === "金額設定"}>
               <Save className="mr-1.5 h-4 w-4" />

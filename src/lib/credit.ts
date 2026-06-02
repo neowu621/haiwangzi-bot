@@ -12,11 +12,12 @@ import type { Prisma } from "@prisma/client";
 import { genCreditCode } from "./code-gen";
 
 export type CreditReason =
-  | "birthday"        // 生日自動發
-  | "vip_upgrade"     // VIP 升等獎勵
-  | "refund"          // 退款轉抵用金
-  | "used"            // 訂單使用（負數）
-  | "admin_adjust";   // admin 手動調整
+  | "birthday"            // 生日自動發
+  | "vip_upgrade"         // VIP 升等獎勵
+  | "refund"              // 退款轉抵用金
+  | "used"                // 訂單使用（負數）
+  | "admin_adjust"        // admin 手動調整
+  | "first_order_reward"; // v261：首單付款完成 + Email 已驗證
 
 export interface GrantCreditArgs {
   userId: string;

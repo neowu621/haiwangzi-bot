@@ -82,6 +82,9 @@ const PatchSchema = z.object({
   cancellationPolicy: z.string().max(5000).optional(),
   // v257：安全政策（純文字，admin 可編輯，FAQ + 預約頁同步顯示）
   safetyPolicy: z.string().max(5000).optional(),
+  // v261：首單付款獎勵
+  firstOrderRewardAmount: z.number().int().min(0).optional(),
+  firstOrderRewardExpiryDays: z.number().int().min(0).max(3650).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -142,6 +145,8 @@ export async function GET(req: NextRequest) {
       paymentInfo: row.paymentInfo ?? {},
       cancellationPolicy: row.cancellationPolicy ?? "",
       safetyPolicy: row.safetyPolicy ?? "",
+      firstOrderRewardAmount: (row as unknown as { firstOrderRewardAmount?: number }).firstOrderRewardAmount ?? 100,
+      firstOrderRewardExpiryDays: (row as unknown as { firstOrderRewardExpiryDays?: number }).firstOrderRewardExpiryDays ?? 360,
     },
     isDefault: false,
     updatedAt: row.updatedAt,
