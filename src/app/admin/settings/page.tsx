@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { APP_VERSION } from "@/lib/version";
+import { DEFAULT_CANCELLATION_POLICY } from "@/lib/default-policies";
 import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -130,7 +131,14 @@ export default function SettingsPage() {
   const load = useCallback(async () => {
     try {
       const data = await adminFetch<{ config: Config }>("/api/admin/site-config");
-      setCfg(data.config);
+      // v239：取消政策 DB 為空時，預填系統預設文字，方便 owner 在原文上修改
+      const cfgWithDefaults: Config = {
+        ...data.config,
+        cancellationPolicy: data.config.cancellationPolicy?.trim()
+          ? data.config.cancellationPolicy
+          : DEFAULT_CANCELLATION_POLICY,
+      };
+      setCfg(cfgWithDefaults);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "載入失敗");
     } finally {
