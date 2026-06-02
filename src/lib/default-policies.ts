@@ -24,10 +24,9 @@ export const DEFAULT_SAFETY_POLICY = `🛡️ 潛水安全注意事項
 • 潛水專屬保險
 • 富邦海域活動險 https://www.fubon.com/insurance/b2c/content/marine_activity/index.html
 • 國泰海域活動保險 https://www.cathay-ins.com.tw/cathayins/personal/travel/sea/
-以獲得更完整保障。
-
-✅ 完成預約即視同同意以上內容。
-🌊 東北角海王子 感謝您的信任，期待與您一起安全探索海洋。`;
+以獲得更完整保障。`;
+// v259：原本最後兩行「✅ 完成預約即視同同意以上內容」與「🌊 東北角海王子 感謝您的信任...」
+// 已移除，改在預約頁以獨立 banner / footer 顯示（受 React 控制版面，視覺強度更高）
 
 export const DEFAULT_CANCELLATION_POLICY = `📌 客戶自行取消（依距離出發日）：
 • 場次前 7 天以上：可退 100% 現金，或轉抵用金 100%

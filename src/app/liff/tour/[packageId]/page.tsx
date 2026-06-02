@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
@@ -62,7 +63,15 @@ export default function TourDetailPage({
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
-  const [agreed, setAgreed] = useState(false);
+  // v259：兩政策 + modal + 簽名（取代單一 agreed）
+  const [cancellationRead, setCancellationRead] = useState(false);
+  const [safetyRead, setSafetyRead] = useState(false);
+  const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
+  const [safetyModalOpen, setSafetyModalOpen] = useState(false);
+  const [signed, setSigned] = useState(false);
+  const [signatureName, setSignatureName] = useState("");
+  const [cancellationPolicy, setCancellationPolicy] = useState("");
+  const [safetyPolicy, setSafetyPolicy] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // 抵用金折抵
   const [creditBalance, setCreditBalance] = useState(0);
@@ -83,7 +92,11 @@ export default function TourDetailPage({
       .catch((e) => setError(e.message));
     fetch("/api/config")
       .then((r) => r.json())
-      .then((c) => setPaymentInfo({ bank: c.bank, linepay: c.linepay }))
+      .then((c) => {
+        setPaymentInfo({ bank: c.bank, linepay: c.linepay });
+        setCancellationPolicy(c.cancellationPolicy ?? "");
+        setSafetyPolicy(c.safetyPolicy ?? "");
+      })
       .catch(() => {});
     // 取自己 creditBalance
     liff
@@ -113,7 +126,10 @@ export default function TourDetailPage({
   const canSubmit =
     tour &&
     !submitting &&
-    agreed &&
+    cancellationRead &&
+    safetyRead &&
+    signed &&
+    signatureName.trim().length >= 2 &&
     realName.trim().length >= 2 &&
     phone.trim().length >= 8 &&
     emergencyName.trim().length >= 2 &&
@@ -489,47 +505,129 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
+        {/* v259：政策同意流程（兩個 checkbox + modal）+ 簽名 + 同意 banner */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-2 rounded-lg bg-[var(--muted)] p-3 text-xs">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[var(--color-coral)]" />
-              <div>
-                <p className="font-bold">繳款 & 取消政策</p>
-                <ul className="mt-1 list-inside list-disc space-y-0.5 opacity-90">
-                  <li>預約後請於 7 日內繳訂金 NT$ {tour.deposit.toLocaleString()}/人</li>
-                  <li>尾款於出發前 14 日繳清</li>
-                  <li>出發前 30 日取消：扣訂金 50%</li>
-                  <li>出發前 14 日內取消：訂金不退、扣尾款 50%</li>
-                  <li>因不可抗力 (氣候/疫情) 取消：全額退費或改期</li>
-                </ul>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAgreed(!agreed)}
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">📋 同意聲明（必填）</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
               className={cn(
-                "mt-3 flex w-full items-center gap-3 rounded-lg border-2 px-4 py-3 text-left text-sm",
-                agreed
+                "flex items-center gap-3 rounded-lg border-2 px-4 py-3",
+                cancellationRead
                   ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10"
                   : "border-dashed border-[var(--border)]",
               )}
             >
-              <div
-                className={cn(
-                  "flex h-5 w-5 items-center justify-center rounded-full border-2",
-                  agreed
-                    ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]"
-                    : "border-[var(--muted-foreground)]",
-                )}
-              >
-                {agreed && (
-                  <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />
-                )}
+              <button type="button" onClick={() => setCancellationRead(!cancellationRead)} className="flex flex-1 items-center gap-3 text-left text-sm">
+                <div className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", cancellationRead ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--muted-foreground)]")}>
+                  {cancellationRead && <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />}
+                </div>
+                <span className="font-medium">我已閱讀並同意《取消政策》</span>
+              </button>
+              <button type="button" onClick={() => setCancellationModalOpen(true)} className="rounded-full border border-[var(--color-phosphor)] px-3 py-1 text-[11px] font-medium text-[var(--color-phosphor)]">
+                查看 ›
+              </button>
+            </div>
+
+            <div
+              className={cn(
+                "flex items-center gap-3 rounded-lg border-2 px-4 py-3",
+                safetyRead
+                  ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10"
+                  : "border-dashed border-[var(--border)]",
+              )}
+            >
+              <button type="button" onClick={() => setSafetyRead(!safetyRead)} className="flex flex-1 items-center gap-3 text-left text-sm">
+                <div className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", safetyRead ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--muted-foreground)]")}>
+                  {safetyRead && <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />}
+                </div>
+                <span className="font-medium">我已閱讀並同意《安全政策》</span>
+              </button>
+              <button type="button" onClick={() => setSafetyModalOpen(true)} className="rounded-full border border-[var(--color-phosphor)] px-3 py-1 text-[11px] font-medium text-[var(--color-phosphor)]">
+                查看 ›
+              </button>
+            </div>
+
+            <button
+              type="button"
+              disabled={!cancellationRead || !safetyRead}
+              onClick={() => setSigned(!signed)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg border-2 px-4 py-3 text-left text-sm",
+                (!cancellationRead || !safetyRead) && "opacity-40",
+                signed
+                  ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10"
+                  : "border-dashed border-[var(--border)]",
+              )}
+            >
+              <div className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", signed ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--muted-foreground)]")}>
+                {signed && <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />}
               </div>
-              <span className="font-medium">我已閱讀並同意繳款 & 取消政策</span>
+              <span className="font-medium">準備電子簽署</span>
             </button>
+
+            {signed && (
+              <div className="rounded-lg border-2 border-[var(--color-phosphor)] bg-white p-3">
+                <Label htmlFor="signature" className="text-xs">
+                  請輸入您的姓名作為電子簽署
+                  <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">（v260 將升級為手寫簽名）</span>
+                </Label>
+                <Input
+                  id="signature"
+                  value={signatureName}
+                  onChange={(e) => setSignatureName(e.target.value)}
+                  className="mt-1 font-bold italic"
+                  placeholder="（簽名）"
+                  style={{ fontFamily: '"Brush Script MT", "DFKai-SB", cursive', fontSize: "1.5rem" }}
+                />
+              </div>
+            )}
+
+            {cancellationRead && safetyRead && signed && signatureName.trim().length >= 2 && (
+              <div className="rounded-lg border-l-4 px-4 py-3 text-xs leading-relaxed" style={{ borderColor: "#06C755", background: "rgba(6,199,85,0.08)" }}>
+                <div className="font-bold" style={{ color: "#06C755" }}>✅ 完成預約即視同同意以上內容</div>
+                <div className="mt-0.5 text-[var(--muted-foreground)]">所有資料已填妥、簽署完成。</div>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* v259：取消政策 Modal */}
+        <Dialog open={cancellationModalOpen} onOpenChange={(o) => {
+          setCancellationModalOpen(o);
+          if (!o) setCancellationRead(true);
+        }}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>📋 取消政策</DialogTitle>
+            </DialogHeader>
+            <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--foreground)]">
+              {cancellationPolicy || "（管理員尚未設定取消政策）"}
+            </pre>
+            <button type="button" onClick={() => setCancellationModalOpen(false)} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
+              我已閱讀，關閉並同意
+            </button>
+          </DialogContent>
+        </Dialog>
+
+        {/* v259：安全政策 Modal */}
+        <Dialog open={safetyModalOpen} onOpenChange={(o) => {
+          setSafetyModalOpen(o);
+          if (!o) setSafetyRead(true);
+        }}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>🛡️ 安全政策</DialogTitle>
+            </DialogHeader>
+            <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--foreground)]">
+              {safetyPolicy || "（管理員尚未設定安全政策）"}
+            </pre>
+            <button type="button" onClick={() => setSafetyModalOpen(false)} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
+              我已閱讀，關閉並同意
+            </button>
+          </DialogContent>
+        </Dialog>
 
         {/* 抵用金折抵 — 有餘額才顯示 */}
         {creditBalance > 0 && (
@@ -608,6 +706,13 @@ export default function TourDetailPage({
             {error}
           </div>
         )}
+
+        {/* v259：品牌 footer 收尾 */}
+        <div className="px-4 pt-4 pb-2 text-center text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+          🌊 東北角海王子 感謝您的信任
+          <br />
+          期待與您一起安全探索海洋
+        </div>
       </div>
     </LiffShell>
   );
