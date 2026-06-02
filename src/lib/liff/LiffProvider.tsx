@@ -88,18 +88,42 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isMock) return;
     let cancelled = false;
+
+    // v252：iOS LINE 內嵌瀏覽器有時 iframe 剛載入時 fetch 會被打斷（"Load failed"），
+    //   加 retry 解 race condition。Android webview 沒這問題但加上也無害。
+    async function fetchWithRetry(url: string, tries = 3): Promise<Response> {
+      let lastErr: unknown = null;
+      for (let i = 0; i < tries; i++) {
+        try {
+          const res = await fetch(url);
+          return res;
+        } catch (e) {
+          lastErr = e;
+          // 200ms / 400ms / 800ms backoff
+          await new Promise((r) => setTimeout(r, 200 * Math.pow(2, i)));
+        }
+      }
+      throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+    }
+
     (async () => {
+      let step = "init";
       try {
-        const cfgRes = await fetch("/api/config");
+        step = "fetch_config";
+        const cfgRes = await fetchWithRetry("/api/config");
+        step = "parse_config";
         const cfg = await cfgRes.json();
         if (!cfg.liffId) {
           setError("LIFF ID 未設定 (LINE_LIFF_ID env var)");
           setReady(true);
           return;
         }
+        step = "import_liff_sdk";
         const liffMod = await import("@line/liff");
         const liff = liffMod.default;
+        step = "liff_init";
         await liff.init({ liffId: cfg.liffId });
+        step = "post_init";
         if (cancelled) return;
         const isLoggedIn = liff.isLoggedIn();
         setLoggedIn(isLoggedIn);
@@ -138,7 +162,11 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
+        // v252：把失敗的 step 也帶進錯誤訊息，方便除錯
+        //   常見值：fetch_config / parse_config / import_liff_sdk / liff_init / post_init
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[liff init failed at step=${step}]`, err);
+        setError(`[${step}] ${msg}`);
         setReady(true);
       }
     })();
