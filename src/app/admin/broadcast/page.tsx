@@ -356,6 +356,9 @@ export default function BroadcastPage() {
           </div>
         )}
 
+        {/* v263：3-column container（desktop） */}
+        <div className="bcn-cols">
+
         {/* ── Pane 1 — 發送設定 ───────────────── */}
         <div className="bcn-pane">
           <div className="bcn-pane-h">
@@ -599,6 +602,8 @@ export default function BroadcastPage() {
           </div>
         </div>
 
+        </div>{/* /bcn-cols */}
+
         {/* ── 進階設定 (params JSON) — 可折疊 ───────────────── */}
         {template !== "text" && (
           <div className="bcn-pane">
@@ -705,6 +710,17 @@ function BroadcastStyles() {
       }
       .bcn-warnbar-i { font-size: 16px; }
       .bcn-stack { display: flex; flex-direction: column; gap: 14px; max-width: 1320px; }
+      /* v263：群發 layout 對齊訊息模板三欄結構（desktop ≥ 1100px） */
+      .bcn-cols { display: flex; flex-direction: column; gap: 14px; }
+      @media (min-width: 1100px) {
+        .bcn-stack { max-width: none; }
+        .bcn-cols {
+          display: grid;
+          grid-template-columns: 300px 1fr 400px;
+          gap: 14px;
+          align-items: start;
+        }
+      }
       .bcn-pane {
         background: #fff; border: 1px solid var(--bcn-line); border-radius: 14px;
         overflow: hidden;
