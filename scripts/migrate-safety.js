@@ -49,6 +49,11 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_amount INT NOT NULL DEFAULT 100`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_expiry_days INT NOT NULL DEFAULT 360`,
 
+  // v264: 每日天氣自動回報設定
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_last_sent_at TIMESTAMPTZ`,
+
   // v131: MediaPost 表（最新動態，手動 post + 未來自動抓）
   `CREATE TABLE IF NOT EXISTS media_posts (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

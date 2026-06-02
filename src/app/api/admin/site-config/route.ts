@@ -85,6 +85,9 @@ const PatchSchema = z.object({
   // v261：首單付款獎勵
   firstOrderRewardAmount: z.number().int().min(0).optional(),
   firstOrderRewardExpiryDays: z.number().int().min(0).max(3650).optional(),
+  // v264：自動發送（每日天氣回報）
+  dailyWeatherReportEnabled: z.boolean().optional(),
+  dailyWeatherReportRecipients: z.array(z.string()).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -147,6 +150,10 @@ export async function GET(req: NextRequest) {
       safetyPolicy: row.safetyPolicy ?? "",
       firstOrderRewardAmount: (row as unknown as { firstOrderRewardAmount?: number }).firstOrderRewardAmount ?? 100,
       firstOrderRewardExpiryDays: (row as unknown as { firstOrderRewardExpiryDays?: number }).firstOrderRewardExpiryDays ?? 360,
+      // v264 自動發送
+      dailyWeatherReportEnabled: (row as unknown as { dailyWeatherReportEnabled?: boolean }).dailyWeatherReportEnabled ?? false,
+      dailyWeatherReportRecipients: ((row as unknown as { dailyWeatherReportRecipients?: unknown }).dailyWeatherReportRecipients as string[] | undefined) ?? [],
+      dailyWeatherReportLastSentAt: (row as unknown as { dailyWeatherReportLastSentAt?: Date | null }).dailyWeatherReportLastSentAt ?? null,
     },
     isDefault: false,
     updatedAt: row.updatedAt,

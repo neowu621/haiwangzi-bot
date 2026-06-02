@@ -82,6 +82,10 @@ interface Config {
   // v261：首單付款獎勵
   firstOrderRewardAmount?: number;
   firstOrderRewardExpiryDays?: number;
+  // v264：自動發送（每日天氣回報）
+  dailyWeatherReportEnabled?: boolean;
+  dailyWeatherReportRecipients?: string[];
+  dailyWeatherReportLastSentAt?: string | null;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -289,13 +293,14 @@ export default function SettingsPage() {
 
         {/* v255：8 大分類改用 Tab 切換（原本一直捲容易漏 — 例如 VIP 升等獎金藏在金額底部找不到） */}
         <Tabs defaultValue="home" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-1 sm:grid-cols-8">
+          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-9">
             <TabsTrigger value="home">🏠 首頁</TabsTrigger>
             <TabsTrigger value="links">🔗 連結</TabsTrigger>
             <TabsTrigger value="payment">💳 付款</TabsTrigger>
             <TabsTrigger value="money">💰 金額</TabsTrigger>
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
+            <TabsTrigger value="autosend">📨 發送</TabsTrigger>
             <TabsTrigger value="danger">⚠️ 危險</TabsTrigger>
             <TabsTrigger value="tools">🔧 工具</TabsTrigger>
           </TabsList>
@@ -717,6 +722,75 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        </TabsContent>
+
+        <TabsContent value="autosend" className="mt-4">
+        {/* v264：自動發送設定 */}
+        <SectionCard title="📨 自動發送設定">
+          <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)]">
+            這些通知由 Cronicle 排程觸發，可在此設定是否啟用、寄送對象。
+          </p>
+
+          {/* 每日天氣回報 */}
+          <div className="rounded-lg border p-4 mb-3" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <p className="text-sm font-medium text-[var(--foreground)]">🌊 每日天氣回報</p>
+                <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
+                  每天早上自動抓 CWA 風速 + 今日/明日場次 → 推 LINE / Email 給老闆。<br />
+                  Cronicle 排程建議：每天 06:00（UTC 22:00）→ <code>0 22 * * *</code>
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-sm shrink-0">
+                <input
+                  type="checkbox"
+                  checked={cfg.dailyWeatherReportEnabled ?? false}
+                  onChange={(e) => setCfg(c => c ? { ...c, dailyWeatherReportEnabled: e.target.checked } : c)}
+                />
+                <span className="text-[var(--foreground)]">啟用</span>
+              </label>
+            </div>
+
+            <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
+              收件人（一行一個，格式：<code>line:Uxxx</code> 或 <code>email:xxx@yy.com</code>）
+            </Label>
+            <textarea
+              className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm font-mono"
+              rows={4}
+              placeholder={`line:U6a35aa6ea8c0fa7a6d4d54e94e8c6f0d\nemail:boss@example.com`}
+              value={(cfg.dailyWeatherReportRecipients ?? []).join("\n")}
+              onChange={(e) => setCfg(c => c ? {
+                ...c,
+                dailyWeatherReportRecipients: e.target.value.split("\n").map(s => s.trim()).filter(Boolean),
+              } : c)}
+            />
+            <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+              ※ LINE userId 必須是已加 OA 好友的人（U 開頭 33 字）。Email 必須是真實信箱。<br />
+              ※ 最後一次發送：
+              {cfg.dailyWeatherReportLastSentAt
+                ? new Date(cfg.dailyWeatherReportLastSentAt).toLocaleString("zh-TW")
+                : "（尚未發送）"}
+            </p>
+          </div>
+
+          <div className="flex justify-end">
+            <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+              onClick={() => save("自動發送", {
+                dailyWeatherReportEnabled: cfg.dailyWeatherReportEnabled ?? false,
+                dailyWeatherReportRecipients: cfg.dailyWeatherReportRecipients ?? [],
+              })}
+              disabled={saving === "自動發送"}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {saving === "自動發送" ? "儲存中..." : "儲存自動發送設定"}
+            </Button>
+          </div>
+
+          <p className="mt-3 rounded bg-[var(--muted)]/40 p-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+            📋 <b>Cronicle 設定</b>：在 https://neowu-cron-hub.zeabur.app 加 event，<br />
+            Plugin: Shell Script，Schedule: <code>0 22 * * *</code>（UTC 22:00 = 台灣 06:00），<br />
+            Command: <code>curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-weather-report&quot;</code>
+          </p>
+        </SectionCard>
         </TabsContent>
 
         <TabsContent value="danger" className="mt-4">
