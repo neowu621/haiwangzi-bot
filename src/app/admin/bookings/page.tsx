@@ -542,7 +542,7 @@ export default function AdminBookingsPage() {
     <AdminShell title="訂單管理">
       {/* v183: 移除『依場次』分頁，僅留全部訂單視圖 + 強化 filter / sort / pagination */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
-        <span className="text-sm text-[var(--muted-foreground)]">範圍：</span>
+        <span className="text-sm text-[var(--muted-foreground)]">活動時間範圍：</span>
         {(["today", "3days", "week", "month", "all"] as const).map((r) => (
           <button
             key={r}
@@ -737,12 +737,31 @@ export default function AdminBookingsPage() {
                           })()}
                         </td>
                         {/* 場次 — 一行 */}
+                        {/* 場次 — daily 一行 / tour 兩行（開始 / 結束）+ 名稱另起 */}
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap">
-                          <span className={cn("tabular-nums", past && "text-[var(--muted-foreground)]")}>{tripDisplay}</span>
-                          {b.ref.sites && b.ref.sites.length > 0 && (
-                            <span className="ml-1.5 text-[var(--muted-foreground)]">
-                              {b.ref.sites.join("·")}
-                            </span>
+                          {b.type === "daily" ? (
+                            <>
+                              <div className={cn("tabular-nums font-medium", past && "text-[var(--muted-foreground)]")}>
+                                {b.ref.date ?? "—"} {weekdayTW(b.ref.date ?? "")} {b.ref.startTime ?? ""}
+                              </div>
+                              {b.ref.sites && b.ref.sites.length > 0 && (
+                                <div className="text-[var(--muted-foreground)] mt-0.5">
+                                  {b.ref.sites.join("·")}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className={cn("tabular-nums font-medium leading-tight", past && "text-[var(--muted-foreground)]")}>
+                                {b.ref.dateStart ?? "—"} {weekdayTW(b.ref.dateStart ?? "")}
+                              </div>
+                              <div className="tabular-nums text-[10px] text-[var(--muted-foreground)] leading-tight">
+                                ~ {b.ref.dateEnd ?? "—"} {weekdayTW(b.ref.dateEnd ?? "")}
+                              </div>
+                              <div className="mt-1 text-[var(--foreground)] font-medium">
+                                {b.ref.title ?? "潛水團"}
+                              </div>
+                            </>
                           )}
                         </td>
                         {/* 金額 */}
