@@ -140,7 +140,10 @@ export async function GET(req: NextRequest) {
                 status: rr.status,
                 method: rr.method,
                 amount: rr.amount,
+                creditBonusPct: rr.creditBonusPct,
+                reason: rr.reason,
                 customerNote: rr.customerNote,
+                initiatedBy: (rr as unknown as { initiatedBy?: string }).initiatedBy ?? "admin",
                 createdAt: rr.createdAt,
                 respondedAt: rr.respondedAt,
               }

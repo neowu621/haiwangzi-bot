@@ -507,6 +507,14 @@ function BookingCard({
                 </button>
               </Link>
             )}
+            {/* v280：申請退款按鈕（已付款且未退款才顯示） */}
+            {b.paidAmount > 0 && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding" && b.status !== "cancelled_unpaid" && (
+              <Link href={`/liff/refund-request/new?bookingId=${b.id}`}>
+                <button className="inline-flex items-center gap-1 rounded-full border border-[var(--color-coral)] px-3 py-1.5 text-xs font-medium text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10">
+                  💸 申請退款
+                </button>
+              </Link>
+            )}
           </div>
 
           {/* v273：付款截止日提醒（只有 paymentStatus=pending 時顯示） */}

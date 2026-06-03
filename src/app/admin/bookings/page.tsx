@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
@@ -50,13 +51,16 @@ interface AdminBooking {
   signatureImageUrl?: string | null;
   signedAt?: string | null;
   signedFromUserAgent?: string | null;
-  // v274：退款申請狀態
+  // v274 / v280：退款申請狀態
   refundRequest?: {
     id: string;
     status: string;
     method: string;
     amount: number;
+    creditBonusPct?: number;
+    reason?: string | null;
     customerNote?: string | null;
+    initiatedBy?: string;  // v280: customer / admin
     createdAt: string;
     respondedAt?: string | null;
   } | null;
@@ -824,10 +828,15 @@ export default function AdminBookingsPage() {
                             <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
                               {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
                             </Badge>
-                            {/* v274：退款申請 badges */}
+                            {/* v274 / v280：退款申請 badges */}
                             {b.refundRequest?.status === "pending_customer" && (
                               <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] text-blue-700 whitespace-nowrap">
                                 💸 退款待客戶確認
+                              </span>
+                            )}
+                            {b.refundRequest?.status === "pending_admin" && (
+                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] text-red-700 whitespace-nowrap font-bold animate-pulse">
+                                🔔 客戶申請退款待審核
                               </span>
                             )}
                             {b.refundRequest?.status === "questioning" && (
@@ -838,6 +847,11 @@ export default function AdminBookingsPage() {
                             {b.refundRequest?.status === "accepted" && (
                               <span className="inline-flex rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] text-green-700 whitespace-nowrap">
                                 ✓ 客戶已同意（待處理）
+                              </span>
+                            )}
+                            {b.refundRequest?.status === "rejected_by_admin" && (
+                              <span className="inline-flex rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] text-gray-600 whitespace-nowrap">
+                                ✗ 退款已拒絕
                               </span>
                             )}
                           </div>
@@ -1266,6 +1280,20 @@ export default function AdminBookingsPage() {
                   </div>
                 )}
 
+                {/* v280：客戶發起的退款申請（pending_admin）— 審核按鈕 */}
+                {editing.refundRequest?.status === "pending_admin" && editing.refundRequest.initiatedBy === "customer" && (
+                  <CustomerRefundReviewPanel
+                    booking={editing}
+                    onResolved={async () => {
+                      // 重抓資料
+                      const d = await adminFetch<{ bookings: AdminBooking[] }>("/api/admin/bookings");
+                      setBookings(d.bookings);
+                      const updated = d.bookings.find((b) => b.id === editing.id);
+                      if (updated) setEditing(updated);
+                    }}
+                  />
+                )}
+
                 {/* v262：客戶簽名 + 簽署 metadata（法律證據） */}
                 {(editing.signatureImageUrl || editing.signedAt) && (
                   <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
@@ -1510,5 +1538,158 @@ function SortBtn({
       {children}
       <span className="text-[10px] opacity-60">{active ? (dir === "asc" ? "▲" : "▼") : "↕"}</span>
     </button>
+  );
+}
+
+// v280：客戶發起的退款審核 panel
+function CustomerRefundReviewPanel({
+  booking,
+  onResolved,
+}: {
+  booking: AdminBooking;
+  onResolved: () => void | Promise<void>;
+}) {
+  const rr = booking.refundRequest!;
+  const [busy, setBusy] = React.useState<"approve" | "reject" | null>(null);
+  const [showApprove, setShowApprove] = React.useState(false);
+  const [showReject, setShowReject] = React.useState(false);
+  const [editMethod, setEditMethod] = React.useState<"cash" | "credit">(rr.method as "cash" | "credit");
+  const [editAmount, setEditAmount] = React.useState(String(rr.amount));
+  const [editBonusPct, setEditBonusPct] = React.useState(String(rr.creditBonusPct ?? 0));
+  const [editRefundNote, setEditRefundNote] = React.useState("");
+  const [rejectReason, setRejectReason] = React.useState("");
+  const [err, setErr] = React.useState<string | null>(null);
+
+  async function approve() {
+    setBusy("approve");
+    setErr(null);
+    try {
+      await adminFetch(`/api/admin/refund-request/${rr.id}/decide`, {
+        method: "POST",
+        body: JSON.stringify({
+          decision: "approve",
+          method: editMethod,
+          amount: Number(editAmount),
+          creditBonusPct: Number(editBonusPct),
+          refundNote: editRefundNote || undefined,
+        }),
+      });
+      await onResolved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function reject() {
+    if (rejectReason.trim().length < 3) { setErr("拒絕理由至少 3 字"); return; }
+    setBusy("reject");
+    setErr(null);
+    try {
+      await adminFetch(`/api/admin/refund-request/${rr.id}/decide`, {
+        method: "POST",
+        body: JSON.stringify({ decision: "reject", rejectReason }),
+      });
+      await onResolved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="rounded-md p-3" style={{ border: "2px solid var(--color-coral)", background: "rgba(255,80,65,0.04)" }}>
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-coral)" }}>
+        🔔 客戶發起退款申請（待您審核）
+      </div>
+      <div className="space-y-1.5 text-xs">
+        <div>
+          <span className="text-[var(--muted-foreground)]">退款方式：</span>
+          <b>{rr.method === "credit" ? "🎁 抵用金" : "💵 現金"}</b>
+        </div>
+        <div>
+          <span className="text-[var(--muted-foreground)]">退款金額：</span>
+          <b>NT$ {rr.amount.toLocaleString()}</b>
+          <span className="text-[10px] text-[var(--muted-foreground)] ml-1">
+            （已付 NT$ {booking.paidAmount.toLocaleString()}）
+          </span>
+        </div>
+        {rr.reason && (
+          <div>
+            <span className="text-[var(--muted-foreground)]">客戶理由：</span>
+            <span>{rr.reason}</span>
+          </div>
+        )}
+      </div>
+
+      {!showApprove && !showReject && (
+        <div className="mt-3 flex gap-2">
+          <Button
+            size="sm"
+            style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+            onClick={() => setShowApprove(true)}
+          >
+            ✓ 核准
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setShowReject(true)}>
+            ✗ 拒絕
+          </Button>
+        </div>
+      )}
+
+      {showApprove && (
+        <div className="mt-3 space-y-2 rounded p-3 bg-white" style={{ border: "1px solid var(--border)" }}>
+          <p className="text-xs font-medium">確認退款參數（可調整）</p>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              className="rounded border px-2 py-1.5 text-sm"
+              style={{ borderColor: "var(--border)" }}
+              value={editMethod}
+              onChange={(e) => setEditMethod(e.target.value as "cash" | "credit")}
+            >
+              <option value="credit">🎁 抵用金</option>
+              <option value="cash">💵 現金</option>
+            </select>
+            <Input type="text" inputMode="numeric" value={editAmount} onChange={(e) => setEditAmount(e.target.value.replace(/\D/g, ""))} placeholder="金額" />
+          </div>
+          {editMethod === "credit" && (
+            <div>
+              <Label className="block text-[10px] text-[var(--muted-foreground)] mb-0.5">抵用金加成 %（0=不加）</Label>
+              <Input type="text" inputMode="numeric" value={editBonusPct} onChange={(e) => setEditBonusPct(e.target.value.replace(/\D/g, ""))} placeholder="0" />
+            </div>
+          )}
+          <Input value={editRefundNote} onChange={(e) => setEditRefundNote(e.target.value)} placeholder="退款備註（內部）例：LINE Pay 訂單 #12345" className="text-xs" />
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowApprove(false)}>取消</Button>
+            <Button size="sm" disabled={busy !== null || !Number(editAmount)} onClick={approve} style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}>
+              {busy === "approve" ? "處理中..." : "確認執行"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {showReject && (
+        <div className="mt-3 space-y-2 rounded p-3 bg-white" style={{ border: "1px solid var(--border)" }}>
+          <p className="text-xs font-medium">拒絕理由（會以 LINE 通知客戶）</p>
+          <textarea
+            className="w-full rounded border px-2 py-1.5 text-sm"
+            style={{ borderColor: "var(--border)" }}
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="例：訂單已逾退款期限 / 此筆訂單已退過款 / ..."
+          />
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowReject(false)}>取消</Button>
+            <Button size="sm" disabled={busy !== null} onClick={reject} style={{ background: "var(--color-coral)", color: "white" }}>
+              {busy === "reject" ? "處理中..." : "拒絕並通知"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {err && <p className="mt-2 text-xs text-[var(--color-coral)]">{err}</p>}
+    </div>
   );
 }

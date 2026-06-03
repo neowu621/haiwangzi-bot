@@ -58,6 +58,9 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,
   `ALTER TABLE refund_requests ADD COLUMN IF NOT EXISTS refund_note TEXT`,
 
+  // v280: 退款申請初始發起方
+  `ALTER TABLE refund_requests ADD COLUMN IF NOT EXISTS initiated_by VARCHAR(16) NOT NULL DEFAULT 'admin'`,
+
   // v278: 訂單狀態歷史
   `CREATE TABLE IF NOT EXISTS booking_status_logs (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

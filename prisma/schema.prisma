@@ -436,15 +436,19 @@ model BookingStatusLog {
 model RefundRequest {
   id              String    @id @default(uuid()) @db.Uuid
   bookingId       String    @map("booking_id") @db.Uuid
-  requestedBy     String    @map("requested_by") @db.VarChar(64) // admin lineUserId
+  requestedBy     String    @map("requested_by") @db.VarChar(64) // admin / customer 的 lineUserId
+  // v280：誰發起的（customer 客戶自助 / admin 老闆發起給客戶確認）
+  initiatedBy     String    @default("admin") @map("initiated_by") @db.VarChar(16)
   method          String    @db.VarChar(16)   // "cash" 或 "credit"
   amount          Int                          // 退款金額 NT$
   creditBonusPct  Int       @default(0) @map("credit_bonus_pct") // 抵用金額外加成 %
   reason          String?   @db.Text
   // v275：退款備註（admin 寫實際退款管道，內部用，會 copy 到 booking.refundNote）
   refundNote      String?   @map("refund_note") @db.Text
-  // pending_customer (剛建，等客戶) / accepted (客戶同意) /
-  // questioning (客戶有疑問) / executed (已執行) / cancelled (admin 取消申請)
+  // 狀態：
+  // pending_customer (admin 發起，等客戶) / accepted (客戶同意) /
+  // questioning (客戶有疑問) / executed (已執行) / cancelled (admin 取消申請) /
+  // v280：pending_admin (客戶發起，等 admin 審) / rejected_by_admin
   status          String    @default("pending_customer") @db.VarChar(32)
   customerNote    String?   @map("customer_note") @db.Text
   respondedAt     DateTime? @map("responded_at") @db.Timestamptz
