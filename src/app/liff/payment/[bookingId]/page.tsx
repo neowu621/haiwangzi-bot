@@ -414,7 +414,6 @@ export default function PaymentUploadPage({
                 ref={fileRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 hidden
                 onChange={onPick}
               />
