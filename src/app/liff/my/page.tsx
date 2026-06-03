@@ -362,8 +362,8 @@ function BookingCard({
   return (
     <Card className={cn(b.type === "tour" && "border-l-4 border-l-[var(--color-coral)]")}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {isDaily ? (
               <CalendarDays className="h-4 w-4" />
             ) : (
@@ -382,19 +382,46 @@ function BookingCard({
               </Badge>
             )}
           </div>
-          <Badge
-            variant={
-              b.status === "confirmed"
-                ? "default"
-                : b.status === "completed"
-                ? "muted"
-                : b.status.startsWith("cancelled")
-                ? "coral"
-                : "gold"
-            }
-          >
-            {STATUS_LABEL[b.status]}
-          </Badge>
+          {/* v283：右上 — status badge + 修改 + 付款截止 stack */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <Badge
+              variant={
+                b.status === "confirmed"
+                  ? "default"
+                  : b.status === "completed"
+                  ? "muted"
+                  : b.status.startsWith("cancelled")
+                  ? "coral"
+                  : "gold"
+              }
+            >
+              {STATUS_LABEL[b.status]}
+            </Badge>
+            {editable && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onEdit}
+                className="h-7 gap-1 px-2 text-[11px]"
+              >
+                <Edit3 className="h-3 w-3" />
+                修改
+              </Button>
+            )}
+            {paymentDeadline && daysLeft !== null && (
+              <div
+                className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
+                style={
+                  daysLeft <= 3
+                    ? { background: "rgba(255,123,90,0.12)", color: "var(--color-coral)" }
+                    : { background: "rgba(255,184,0,0.12)", color: "#9a7a00" }
+                }
+              >
+                ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
+                {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期）"}
+              </div>
+            )}
+          </div>
         </div>
 
         {ref && "date" in ref && (
@@ -478,58 +505,40 @@ function BookingCard({
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-3">
-          <div>
-            <div className="text-xs text-[var(--muted-foreground)]">
-              {isDaily ? "現場收費" : "總金額"}
+        {/* v283：下方 — 上傳付款資訊（左）/ 金額（中）/ 申請退款（右） */}
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
+          {/* 左：上傳付款資訊（主要 CTA） */}
+          <div className="flex-1 min-w-0">
+            {needsPayment ? (
+              <Link href={`/liff/payment/${b.id}`}>
+                <button className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-3 py-2 text-xs font-bold text-[var(--color-ocean-deep)] shadow-sm">
+                  <Upload className="h-3.5 w-3.5" />
+                  上傳付款資訊
+                </button>
+              </Link>
+            ) : (
+              // 沒待付款 → 顯示金額 label
+              <div className="text-[10px] text-[var(--muted-foreground)]">
+                {isDaily ? "現場收費" : "總金額"}
+              </div>
+            )}
+          </div>
+          {/* 中：金額（永遠顯示） */}
+          <div className="text-right flex-shrink-0">
+            <div className="text-[10px] text-[var(--muted-foreground)]">
+              {needsPayment ? (isDaily ? "現場收費" : "應付總金額") : ""}
             </div>
             <div className="text-base font-bold tabular text-[var(--color-coral)]">
               NT$ {b.totalAmount.toLocaleString()}
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            {editable && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onEdit}
-                className="h-8 gap-1 px-2.5 text-xs"
-              >
-                <Edit3 className="h-3 w-3" />
-                修改
-              </Button>
-            )}
-            {needsPayment && (
-              <Link href={`/liff/payment/${b.id}`}>
-                <button className="inline-flex items-center gap-1 rounded-full bg-[var(--color-gold)] px-3 py-1.5 text-xs font-bold text-[var(--color-ocean-deep)]">
-                  <Upload className="h-3 w-3" />
-                  {b.type === "daily" ? "付款確認" : "上傳付款"}
-                </button>
-              </Link>
-            )}
-            {/* v280：申請退款按鈕（已付款且未退款才顯示） */}
-            {b.paidAmount > 0 && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding" && b.status !== "cancelled_unpaid" && (
-              <Link href={`/liff/refund-request/new?bookingId=${b.id}`}>
-                <button className="inline-flex items-center gap-1 rounded-full border border-[var(--color-coral)] px-3 py-1.5 text-xs font-medium text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10">
-                  💸 申請退款
-                </button>
-              </Link>
-            )}
-          </div>
-
-          {/* v273：付款截止日提醒（只有 paymentStatus=pending 時顯示） */}
-          {paymentDeadline && daysLeft !== null && (
-            <div
-              className="mt-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium"
-              style={
-                daysLeft <= 3
-                  ? { background: "rgba(255,123,90,0.12)", color: "var(--color-coral)" }
-                  : { background: "rgba(255,184,0,0.12)", color: "#9a7a00" }
-              }
-            >
-              ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
-              {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期，將自動取消）"}
-            </div>
+          {/* 右：申請退款（已付款才出現） */}
+          {b.paidAmount > 0 && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding" && b.status !== "cancelled_unpaid" && (
+            <Link href={`/liff/refund-request/new?bookingId=${b.id}`}>
+              <button className="inline-flex items-center gap-1 rounded-full border border-[var(--color-coral)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10 whitespace-nowrap">
+                💸 申請退款
+              </button>
+            </Link>
           )}
         </div>
 
