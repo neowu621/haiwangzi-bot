@@ -10,11 +10,10 @@ export const dynamic = "force-dynamic";
  *
  * 每天跑（建議 03:00 Asia/Taipei）。
  *
- * v238：規則改為「活動結束日 + 30 天」後才清除（不再用 uploadedAt + 30）
- * - 日潛：活動結束日 = trip.date
- * - 潛旅：活動結束日 = tour.dateEnd
- * - 達標的 PaymentProof 把 imageKey 從 R2 刪除 + 設成 null（標示已清理）
- * - DB 紀錄保留（last5 / note / amount 用來查帳）
+ * v271 規則（取代 v238）：
+ *   - 已核可（verifiedAt 不為 null）→ **永久保留**（法律證據 / 退款舉證 / 國稅查帳）
+ *   - 未核可（verifiedAt = null）且 uploadedAt > 30 天 → 清圖 + 標 imageKey=null
+ *     （這類通常是客戶上傳錯了沒人理、或重複上傳）
  *
  * 認證：Authorization: Bearer ${CRON_SECRET}
  */
@@ -30,10 +29,11 @@ export async function POST(req: NextRequest) {
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  // v238：撈所有 imageKey 還存在的 verified proofs，後續判斷活動是否已結束 >30 天
+  // v271：只清未核可 + 超過 30 天的 zombie proofs
   const candidates = await prisma.paymentProof.findMany({
     where: {
-      verifiedAt: { not: null },
+      verifiedAt: null,                        // 未核可
+      uploadedAt: { lt: thirtyDaysAgo },       // 上傳超過 30 天
       imageKey: { not: null },
       NOT: { imageKey: "" },
     },
@@ -42,38 +42,17 @@ export async function POST(req: NextRequest) {
   });
 
   if (candidates.length === 0) {
-    return NextResponse.json({ ok: true, cleaned: 0 });
+    return NextResponse.json({
+      ok: true,
+      cleaned: 0,
+      rule: "v271：未核可且 uploadedAt > 30 天才清；已核可永久保留",
+    });
   }
-
-  // 撈對應 bookings + trip/tour 結束日
-  const bookings = await prisma.booking.findMany({
-    where: { id: { in: candidates.map((p) => p.bookingId) } },
-    select: { id: true, type: true, refId: true },
-  });
-  const dailyIds = bookings.filter((b) => b.type === "daily").map((b) => b.refId);
-  const tourIds = bookings.filter((b) => b.type === "tour").map((b) => b.refId);
-  const [trips, tours] = await Promise.all([
-    dailyIds.length ? prisma.divingTrip.findMany({ where: { id: { in: dailyIds } }, select: { id: true, date: true } }) : [],
-    tourIds.length ? prisma.tourPackage.findMany({ where: { id: { in: tourIds } }, select: { id: true, dateEnd: true } }) : [],
-  ]);
-  const tripMap = new Map(trips.map((t) => [t.id, t.date]));
-  const tourMap = new Map(tours.map((t) => [t.id, t.dateEnd]));
-  const bookingEndDate = new Map<string, Date>();
-  for (const b of bookings) {
-    const end = b.type === "daily" ? tripMap.get(b.refId) : tourMap.get(b.refId);
-    if (end) bookingEndDate.set(b.id, end);
-  }
-
-  // 篩出「活動結束 + 30 天」已過的
-  const toClean = candidates.filter((p) => {
-    const end = bookingEndDate.get(p.bookingId);
-    return end && end <= thirtyDaysAgo;
-  });
 
   let cleaned = 0;
   let failed = 0;
 
-  for (const p of toClean) {
+  for (const p of candidates) {
     try {
       // 只有 R2 key（非 base64 data URL）才刪 R2 物件
       const isR2Key = p.imageKey && !p.imageKey.startsWith("data:");
@@ -96,7 +75,6 @@ export async function POST(req: NextRequest) {
     cleaned,
     failed,
     candidates: candidates.length,
-    eligible: toClean.length,
-    rule: "活動結束日 + 30 天",
+    rule: "v271：未核可且 uploadedAt > 30 天；已核可永久保留",
   });
 }

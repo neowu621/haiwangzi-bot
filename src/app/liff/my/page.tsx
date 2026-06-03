@@ -326,6 +326,17 @@ function BookingCard({
     b.paymentStatus !== "fully_paid" &&
     b.paymentStatus !== "refunded" &&
     b.totalAmount > 0;
+  // v273：付款截止日 = createdAt + 10 天（D+10 自動取消）
+  const paymentDeadline = (() => {
+    if (!needsPayment) return null;
+    if (b.paymentStatus !== "pending") return null;
+    const d = new Date(b.createdAt);
+    d.setDate(d.getDate() + 10);
+    return d;
+  })();
+  const daysLeft = paymentDeadline
+    ? Math.ceil((paymentDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
   const progress =
     b.totalAmount > 0
       ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100))
@@ -492,6 +503,21 @@ function BookingCard({
               </Link>
             )}
           </div>
+
+          {/* v273：付款截止日提醒（只有 paymentStatus=pending 時顯示） */}
+          {paymentDeadline && daysLeft !== null && (
+            <div
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium"
+              style={
+                daysLeft <= 3
+                  ? { background: "rgba(255,123,90,0.12)", color: "var(--color-coral)" }
+                  : { background: "rgba(255,184,0,0.12)", color: "#9a7a00" }
+              }
+            >
+              ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
+              {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期，將自動取消）"}
+            </div>
+          )}
         </div>
 
         {/* 我上傳的轉帳截圖 — 點縮圖放大 */}
