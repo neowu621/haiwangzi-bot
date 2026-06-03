@@ -20,6 +20,8 @@ export interface TemplateOverride {
   bodyText?: string | null;
   buttonLabel?: string | null;
   altText?: string | null;
+  // v270：first_order_reward_grant 等模板用
+  footerHint?: string | null;
 }
 
 /** 取得欄位值：override > default */

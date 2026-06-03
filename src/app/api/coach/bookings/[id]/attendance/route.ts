@@ -105,6 +105,50 @@ export async function POST(
           }
         }
       }
+      // v270：推 LINE 「已記錄到場」 + 嘗試首單獎勵
+      const updatedUser = await prisma.user.findUnique({
+        where: { lineUserId: booking.userId },
+        select: { displayName: true, realName: true, haiwangziLogCount: true, vipLevel: true, notifyByLine: true },
+      });
+      void (async () => {
+        try {
+          if (updatedUser?.notifyByLine ?? true) {
+            const { getLineClient } = await import("@/lib/line");
+            const { buildFlexByKeyAsync } = await import("@/lib/flex");
+            const lineClient = getLineClient();
+            if (!lineClient) return;
+            // 組 booking title
+            let bookingTitle = `預約 #${id.slice(0, 8)}`;
+            if (booking.type === "daily") {
+              const trip = await prisma.divingTrip.findUnique({ where: { id: booking.refId } });
+              if (trip) bookingTitle = `日潛 ${trip.date.toISOString().slice(0, 10)} ${trip.startTime}`;
+            } else {
+              const tour = await prisma.tourPackage.findUnique({ where: { id: booking.refId } });
+              if (tour) bookingTitle = tour.title;
+            }
+            const flex = await buildFlexByKeyAsync(
+              "attendance_confirmed",
+              {
+                bookingTitle,
+                addLogs,
+                totalLogs: updatedUser?.haiwangziLogCount ?? 0,
+                vipLevel: updatedUser?.vipLevel ?? 1,
+                liffUrl: process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm",
+              },
+              `已記錄您今日到場 (+${addLogs} 潛)`,
+            );
+            await lineClient.pushMessage({ to: booking.userId, messages: [flex] });
+          }
+        } catch (e) {
+          console.error("[attendance LINE]", e);
+        }
+      })();
+
+      // v270：首單獎勵改在這裡觸發（取代原本 fully_paid 觸發）
+      void import("@/lib/first-order-reward")
+        .then((m) => m.maybeGrantFirstOrderReward(booking.userId, id))
+        .catch((e) => console.error("[first-order-reward attendance]", e));
+
       return NextResponse.json({ ok: true, action: "completed", logsAdded: addLogs });
     } else {
       await prisma.$transaction([

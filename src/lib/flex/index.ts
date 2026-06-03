@@ -11,6 +11,8 @@ import { weatherCancel } from "./weather-cancel";
 import { adminWeekly } from "./admin-weekly";
 import { overcapAlert } from "./overcap-alert";
 import { welcome } from "./welcome";
+import { firstOrderRewardGrant } from "./first-order-reward-grant";
+import { attendanceConfirmed } from "./attendance-confirmed";
 
 export type FlexMessage = messagingApi.FlexMessage;
 
@@ -43,6 +45,9 @@ export const FLEX_TEMPLATES: Record<string, FlexFactory> = {
   // 管理者（內部）
   overcap_alert: overcapAlert,
   admin_weekly: adminWeekly,
+  // v270：到場 / 完成 / 首單獎勵通知
+  attendance_confirmed: attendanceConfirmed,
+  first_order_reward_grant: firstOrderRewardGrant,
 } as const;
 
 export type FlexTemplateKey = keyof typeof FLEX_TEMPLATES;
@@ -82,6 +87,8 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   admin_weekly: "Admin 週報摘要",
   overcap_alert: "超賣警示",
   welcome: "歡迎加入",
+  attendance_confirmed: "到場確認",
+  first_order_reward_grant: "首單獎勵發放",
 };
 
 // v196：每個 template 的分組 + icon + 預設管道開關
@@ -99,6 +106,8 @@ export const FLEX_TEMPLATE_META: Record<
   weather_cancel:  { group: "異常",          icon: "🌧️", defaultLine: true,  defaultEmail: true  },
   overcap_alert:   { group: "管理者（內部）", icon: "⚠️", defaultLine: true,  defaultEmail: true  },
   admin_weekly:    { group: "管理者（內部）", icon: "📊", defaultLine: false, defaultEmail: true  },
+  attendance_confirmed:    { group: "到場 / 完成", icon: "🐠", defaultLine: true,  defaultEmail: false },
+  first_order_reward_grant:{ group: "到場 / 完成", icon: "🎁", defaultLine: true,  defaultEmail: true  },
 };
 
 /**
@@ -165,5 +174,18 @@ export const FLEX_EDITABLE_FIELDS: Record<
     { key: "bodyText", label: "說明", defaultValue: "安全．專業．陪你看見海" },
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "開啟預約 App" },
     { key: "altText", label: "通知列文字", defaultValue: "歡迎加入" },
+  ],
+  attendance_confirmed: [
+    { key: "title", label: "標題", defaultValue: "已記錄您的到場" },
+    { key: "bodyText", label: "說明文字", defaultValue: "感謝您今日的參與，期待下次海上見！" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的紀錄" },
+    { key: "altText", label: "通知列文字", defaultValue: "已記錄到場" },
+  ],
+  first_order_reward_grant: [
+    { key: "title", label: "標題", defaultValue: "首單獎勵入帳" },
+    { key: "bodyText", label: "說明文字", defaultValue: "感謝您完成首次潛水！為了感謝您的支持，我們已將首單抵用金存入您的帳戶。" },
+    { key: "footerHint", label: "底部提示", defaultValue: "下次預約時可直接折抵 ✨" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的抵用金" },
+    { key: "altText", label: "通知列文字", defaultValue: "首單獎勵已入帳" },
   ],
 };

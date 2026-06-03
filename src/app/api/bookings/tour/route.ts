@@ -181,14 +181,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // v261：若創建時 fully_paid → 嘗試首單獎勵
-  if (paymentStatus === "fully_paid") {
-    void import("@/lib/first-order-reward")
-      .then((m) =>
-        m.maybeGrantFirstOrderReward(auth.user.lineUserId, booking.id),
-      )
-      .catch((e) => console.error("[first-order-reward tour]", e));
-  }
+  // v270：首單獎勵改在 attendance=completed 時觸發，不在這裡
 
   return NextResponse.json({ ok: true, booking });
 }

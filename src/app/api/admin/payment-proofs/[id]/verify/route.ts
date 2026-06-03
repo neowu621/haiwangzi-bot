@@ -77,16 +77,8 @@ export async function POST(
       console.error("[promote vip after verify]", e),
     );
 
-    // v261：若此筆變 fully_paid → 嘗試發首單獎勵（會自己檢查條件）
-    if (newPayStatus === "fully_paid") {
-      void import("@/lib/first-order-reward")
-        .then((m) =>
-          m.maybeGrantFirstOrderReward(proof.booking.userId, proof.bookingId),
-        )
-        .catch((e) =>
-          console.error("[first-order-reward after verify]", e),
-        );
-    }
+    // v270：首單獎勵改在 attendance=completed 時觸發（教練/老闆勾選到場），
+    //   不在這裡（付款驗證）觸發了。原本付完款就發 → 客戶取消未到場可能拿不回來。
 
     await logAudit({
       actorId: auth.user.lineUserId,
