@@ -1,0 +1,257 @@
+/**
+ * v268：每日天氣回報 — 共用 lib（被 cron endpoint + admin 測試 endpoint 共用）
+ *
+ * 抓 CWA 即時測站風速 + 今/明日場次 → 推送 LINE / Email 給 SiteConfig 設定的收件人。
+ */
+import { prisma } from "./prisma";
+import { getLineClient } from "./line";
+import { sendEmail } from "./email/send";
+
+interface CWAStation {
+  StationId: string;
+  StationName: string;
+  WeatherElement?: {
+    WindSpeed?: string;
+    WindDirection?: string;
+    AirTemperature?: string;
+  };
+}
+
+export interface DailyWeatherResult {
+  ok: true;
+  skipped?: boolean;
+  reason?: string;
+  maxWind?: number | null;
+  stationReadings?: Array<{ name: string; wind: number | null; temp: number | null }>;
+  todayTripsCount?: number;
+  tomorrowTripsCount?: number;
+  results?: Array<{ to: string; ok: boolean; error?: string }>;
+  textPreview?: string;
+  tookMs?: number;
+}
+
+export async function runDailyWeatherReport(opts?: {
+  /** 測試模式：只組訊息，不真的寄出（只回 textPreview）。預設 false。 */
+  dryRun?: boolean;
+  /** 強制使用這組收件人（覆寫 SiteConfig），用於 admin 測試 */
+  overrideRecipients?: string[];
+}): Promise<DailyWeatherResult> {
+  const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
+  if (!cfg) {
+    return { ok: true, skipped: true, reason: "site config missing" };
+  }
+
+  const enabled =
+    (cfg as unknown as { dailyWeatherReportEnabled?: boolean })
+      .dailyWeatherReportEnabled ?? false;
+  if (!enabled && !opts?.overrideRecipients) {
+    return { ok: true, skipped: true, reason: "daily weather report disabled" };
+  }
+
+  const recipientsRaw = opts?.overrideRecipients ?? (
+    (cfg as unknown as { dailyWeatherReportRecipients?: unknown })
+      .dailyWeatherReportRecipients
+  );
+  const recipients: string[] = Array.isArray(recipientsRaw)
+    ? recipientsRaw.filter((x): x is string => typeof x === "string")
+    : [];
+  if (recipients.length === 0 && !opts?.dryRun) {
+    return { ok: true, skipped: true, reason: "no recipients configured" };
+  }
+
+  const startedAt = Date.now();
+  const threshold = cfg.weatherWindThreshold ?? 10;
+
+  // ── 1. 抓 CWA 即時測站 ──────────────────────────────
+  const stationIds = (process.env.WEATHER_STATIONS ?? "466940,467080")
+    .split(",")
+    .map((s) => s.trim());
+  let maxWind: number | null = null;
+  const stationReadings: Array<{ name: string; wind: number | null; temp: number | null }> = [];
+
+  if (process.env.CWA_API_KEY) {
+    try {
+      const res = await fetch(
+        `https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0001-001?Authorization=${process.env.CWA_API_KEY}&format=JSON`,
+        { signal: AbortSignal.timeout(15_000) },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as {
+          records?: { Station?: CWAStation[] };
+        };
+        const stations = data.records?.Station ?? [];
+        for (const sid of stationIds) {
+          const s = stations.find((x) => x.StationId === sid);
+          if (!s) continue;
+          const ws = s.WeatherElement?.WindSpeed;
+          const wind = ws && ws !== "-99" && ws !== "" ? Number(ws) : null;
+          const t = s.WeatherElement?.AirTemperature;
+          const temp = t && t !== "-99" && t !== "" ? Number(t) : null;
+          stationReadings.push({ name: s.StationName, wind, temp });
+          if (wind != null && (maxWind == null || wind > maxWind)) maxWind = wind;
+        }
+      }
+    } catch (e) {
+      console.error("[daily-weather-report] CWA fetch failed", e);
+    }
+  }
+
+  // ── 2. 抓今日 / 明日場次 ────────────────────────────
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dayAfter = new Date(today);
+  dayAfter.setDate(dayAfter.getDate() + 2);
+
+  const [todayTrips, tomorrowTrips] = await Promise.all([
+    prisma.divingTrip.findMany({
+      where: { date: { gte: today, lt: tomorrow }, status: "open" },
+      orderBy: { startTime: "asc" },
+    }),
+    prisma.divingTrip.findMany({
+      where: { date: { gte: tomorrow, lt: dayAfter }, status: "open" },
+      orderBy: { startTime: "asc" },
+    }),
+  ]);
+
+  const allTripIds = [...todayTrips, ...tomorrowTrips].map((t) => t.id);
+  const bookings = allTripIds.length
+    ? await prisma.booking.groupBy({
+        by: ["refId"],
+        where: {
+          refId: { in: allTripIds },
+          type: "daily",
+          status: { in: ["pending", "confirmed"] },
+        },
+        _sum: { participants: true },
+      })
+    : [];
+  const bookedMap = new Map(
+    bookings.map((b) => [b.refId, b._sum.participants ?? 0]),
+  );
+
+  // ── 3. 組訊息 ──────────────────────────────────────
+  const dateStr = today.toLocaleDateString("zh-TW", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+
+  const windStatus =
+    maxWind == null
+      ? "（無資料）"
+      : maxWind > threshold
+        ? `🔴 ${maxWind.toFixed(1)} m/s（超過 ${threshold} m/s 門檻，建議考慮取消）`
+        : `🟢 ${maxWind.toFixed(1)} m/s（低於 ${threshold} m/s 門檻，可正常下水）`;
+
+  const stationLines = stationReadings
+    .map(
+      (s) =>
+        `  ${s.name}：風${s.wind != null ? `${s.wind.toFixed(1)} m/s` : "-"}  溫${s.temp != null ? `${s.temp.toFixed(1)}°C` : "-"}`,
+    )
+    .join("\n");
+
+  const todayLines = todayTrips.length
+    ? todayTrips
+        .map((t) => {
+          const booked = bookedMap.get(t.id) ?? 0;
+          const cap = t.capacity ?? "∞";
+          return `  ${t.startTime}（${booked}/${cap}人${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}）`;
+        })
+        .join("\n")
+    : "  （無）";
+
+  const tomorrowLines = tomorrowTrips.length
+    ? tomorrowTrips
+        .map((t) => {
+          const booked = bookedMap.get(t.id) ?? 0;
+          const cap = t.capacity ?? "∞";
+          return `  ${t.startTime}（${booked}/${cap}人）`;
+        })
+        .join("\n")
+    : "  （無）";
+
+  const textReport = `🌊 海王子潛水 每日營運報告
+${dateStr}
+
+【海況】
+今日風速：${windStatus}
+測站讀數：
+${stationLines || "  （無資料）"}
+
+【今日場次】
+${todayLines}
+
+【明日場次】
+${tomorrowLines}
+
+—
+此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`;
+
+  const subject = `🌊 海王子日報 ${dateStr}（風速 ${maxWind?.toFixed(1) ?? "-"} m/s）`;
+
+  // ── 4. dry-run 直接回 preview，不發送 ──────────────
+  if (opts?.dryRun) {
+    return {
+      ok: true,
+      maxWind,
+      stationReadings,
+      todayTripsCount: todayTrips.length,
+      tomorrowTripsCount: tomorrowTrips.length,
+      results: [],
+      textPreview: textReport,
+      tookMs: Date.now() - startedAt,
+    };
+  }
+
+  // ── 5. 真的發送 ─────────────────────────────────────
+  const lineClient = getLineClient();
+  const results: Array<{ to: string; ok: boolean; error?: string }> = [];
+  for (const r of recipients) {
+    try {
+      if (r.startsWith("line:")) {
+        const userId = r.slice(5);
+        if (!lineClient) {
+          results.push({ to: r, ok: false, error: "LINE client not configured" });
+          continue;
+        }
+        await lineClient.pushMessage({
+          to: userId,
+          messages: [{ type: "text", text: textReport }],
+        });
+        results.push({ to: r, ok: true });
+      } else if (r.startsWith("email:")) {
+        const to = r.slice(6);
+        const html = `<pre style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;">${textReport.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`;
+        const er = await sendEmail({ to, subject, text: textReport, html });
+        results.push({ to: r, ok: er.ok, error: er.error });
+      } else {
+        results.push({ to: r, ok: false, error: "unrecognized recipient prefix (use line: or email:)" });
+      }
+    } catch (e) {
+      results.push({
+        to: r,
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  // ── 6. 記錄最後發送時間 ──────────────────────────
+  await prisma.siteConfig.update({
+    where: { id: "default" },
+    data: { dailyWeatherReportLastSentAt: new Date() } as never,
+  });
+
+  return {
+    ok: true,
+    maxWind,
+    stationReadings,
+    todayTripsCount: todayTrips.length,
+    tomorrowTripsCount: tomorrowTrips.length,
+    results,
+    textPreview: textReport,
+    tookMs: Date.now() - startedAt,
+  };
+}

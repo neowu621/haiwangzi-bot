@@ -1,5 +1,7 @@
 "use client";
+import * as React from "react";
 import { useEffect, useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
@@ -725,72 +727,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="autosend" className="mt-4">
-        {/* v264：自動發送設定 */}
-        <SectionCard title="📨 自動發送設定">
-          <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)]">
-            這些通知由 Cronicle 排程觸發，可在此設定是否啟用、寄送對象。
-          </p>
-
-          {/* 每日天氣回報 */}
-          <div className="rounded-lg border p-4 mb-3" style={{ borderColor: "var(--border)" }}>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div>
-                <p className="text-sm font-medium text-[var(--foreground)]">🌊 每日天氣回報</p>
-                <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
-                  每天早上自動抓 CWA 風速 + 今日/明日場次 → 推 LINE / Email 給老闆。<br />
-                  Cronicle 排程建議：每天 06:00（UTC 22:00）→ <code>0 22 * * *</code>
-                </p>
-              </div>
-              <label className="flex items-center gap-2 text-sm shrink-0">
-                <input
-                  type="checkbox"
-                  checked={cfg.dailyWeatherReportEnabled ?? false}
-                  onChange={(e) => setCfg(c => c ? { ...c, dailyWeatherReportEnabled: e.target.checked } : c)}
-                />
-                <span className="text-[var(--foreground)]">啟用</span>
-              </label>
-            </div>
-
-            <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
-              收件人（一行一個，格式：<code>line:Uxxx</code> 或 <code>email:xxx@yy.com</code>）
-            </Label>
-            <textarea
-              className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm font-mono"
-              rows={4}
-              placeholder={`line:U6a35aa6ea8c0fa7a6d4d54e94e8c6f0d\nemail:boss@example.com`}
-              value={(cfg.dailyWeatherReportRecipients ?? []).join("\n")}
-              onChange={(e) => setCfg(c => c ? {
-                ...c,
-                dailyWeatherReportRecipients: e.target.value.split("\n").map(s => s.trim()).filter(Boolean),
-              } : c)}
-            />
-            <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-              ※ LINE userId 必須是已加 OA 好友的人（U 開頭 33 字）。Email 必須是真實信箱。<br />
-              ※ 最後一次發送：
-              {cfg.dailyWeatherReportLastSentAt
-                ? new Date(cfg.dailyWeatherReportLastSentAt).toLocaleString("zh-TW")
-                : "（尚未發送）"}
-            </p>
-          </div>
-
-          <div className="flex justify-end">
-            <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
-              onClick={() => save("自動發送", {
-                dailyWeatherReportEnabled: cfg.dailyWeatherReportEnabled ?? false,
-                dailyWeatherReportRecipients: cfg.dailyWeatherReportRecipients ?? [],
-              })}
-              disabled={saving === "自動發送"}>
-              <Save className="mr-1.5 h-4 w-4" />
-              {saving === "自動發送" ? "儲存中..." : "儲存自動發送設定"}
-            </Button>
-          </div>
-
-          <p className="mt-3 rounded bg-[var(--muted)]/40 p-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-            📋 <b>Cronicle 設定</b>：在 https://neowu-cron-hub.zeabur.app 加 event，<br />
-            Plugin: Shell Script，Schedule: <code>0 22 * * *</code>（UTC 22:00 = 台灣 06:00），<br />
-            Command: <code>curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-weather-report&quot;</code>
-          </p>
-        </SectionCard>
+        <AutoSendSection cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
         </TabsContent>
 
         <TabsContent value="danger" className="mt-4">
@@ -909,6 +846,237 @@ export default function SettingsPage() {
 
       </div>
     </AdminShell>
+  );
+}
+
+// v264 / v268：自動發送設定元件
+interface AutoSendUser {
+  lineUserId: string;
+  displayName: string;
+  realName: string | null;
+  email: string | null;
+  role: string;
+  roles?: string[];
+}
+
+function AutoSendSection({
+  cfg,
+  setCfg,
+  save,
+  saving,
+}: {
+  cfg: Config;
+  setCfg: React.Dispatch<React.SetStateAction<Config | null>>;
+  save: (label: string, partial: Partial<Config>) => Promise<void>;
+  saving: string | null;
+}) {
+  const [users, setUsers] = React.useState<AutoSendUser[]>([]);
+  const [usersLoading, setUsersLoading] = React.useState(true);
+  const [testBusy, setTestBusy] = React.useState<"dry" | "real" | null>(null);
+  const [testResult, setTestResult] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setUsersLoading(true);
+    adminFetch<{ users: AutoSendUser[] }>("/api/admin/users?role=admin,boss,coach")
+      .then((d) => {
+        // 只留有真實 role 的（admin/boss/coach）
+        const filtered = (d.users ?? []).filter((u) => {
+          const rs = u.roles && u.roles.length > 0 ? u.roles : [u.role];
+          return rs.some((r) => r === "admin" || r === "boss" || r === "coach");
+        });
+        setUsers(filtered);
+      })
+      .catch(() => setUsers([]))
+      .finally(() => setUsersLoading(false));
+  }, []);
+
+  const recipients = cfg.dailyWeatherReportRecipients ?? [];
+  const recipientSet = new Set(recipients);
+
+  function toggleLine(userId: string) {
+    const tag = `line:${userId}`;
+    const next = recipientSet.has(tag)
+      ? recipients.filter((r) => r !== tag)
+      : [...recipients, tag];
+    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+  }
+  function toggleEmail(email: string) {
+    const tag = `email:${email}`;
+    const next = recipientSet.has(tag)
+      ? recipients.filter((r) => r !== tag)
+      : [...recipients, tag];
+    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+  }
+
+  async function runTest(dryRun: boolean) {
+    setTestBusy(dryRun ? "dry" : "real");
+    setTestResult(null);
+    try {
+      const r = await adminFetch<{
+        ok: boolean;
+        skipped?: boolean;
+        reason?: string;
+        maxWind?: number | null;
+        textPreview?: string;
+        results?: Array<{ to: string; ok: boolean; error?: string }>;
+        tookMs?: number;
+      }>("/api/admin/test-weather-report", {
+        method: "POST",
+        body: JSON.stringify({ dryRun }),
+      });
+      if (r.skipped) {
+        setTestResult(`⚠️ Skipped：${r.reason}`);
+      } else if (dryRun) {
+        setTestResult(`✓ 預覽內容（沒有實際寄送）：\n\n${r.textPreview ?? "(empty)"}`);
+      } else {
+        const ok = (r.results ?? []).filter((x) => x.ok).length;
+        const fail = (r.results ?? []).filter((x) => !x.ok).length;
+        const details =
+          (r.results ?? [])
+            .map((x) => `${x.ok ? "✓" : "✗"} ${x.to}${x.error ? ` — ${x.error}` : ""}`)
+            .join("\n") || "（沒有收件人）";
+        setTestResult(`已發送：成功 ${ok} / 失敗 ${fail}（用時 ${r.tookMs}ms）\n\n${details}\n\n— 預覽：\n${r.textPreview ?? ""}`);
+      }
+    } catch (e) {
+      setTestResult(`✗ 失敗：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setTestBusy(null);
+    }
+  }
+
+  return (
+    <SectionCard title="📨 自動發送設定">
+      <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)]">
+        這些通知由 Cronicle 排程觸發，可在此設定是否啟用、寄送對象。
+      </p>
+
+      <div className="rounded-lg border p-4 mb-3" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--foreground)]">🌊 每日天氣回報</p>
+            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              抓中央氣象署 CWA 即時測站（466940 基隆 + 467080 宜蘭）的風速 / 氣溫 + 今日 / 明日場次摘要 → LINE / Email 推送。
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <input
+              type="checkbox"
+              checked={cfg.dailyWeatherReportEnabled ?? false}
+              onChange={(e) => setCfg(c => c ? { ...c, dailyWeatherReportEnabled: e.target.checked } : c)}
+            />
+            <span className="text-[var(--foreground)]">啟用</span>
+          </label>
+        </div>
+
+        {/* v268：收件人 picker — 從 admin/boss/coach 用戶挑 */}
+        <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
+          收件人（從管理員 / 教練清單勾選）
+        </Label>
+        {usersLoading ? (
+          <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
+        ) : users.length === 0 ? (
+          <p className="text-[11px] text-[var(--muted-foreground)]">（沒有 admin / boss / coach 用戶）</p>
+        ) : (
+          <div className="space-y-1 rounded-md border p-2 max-h-72 overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+            {users.map((u) => {
+              const lineChecked = recipientSet.has(`line:${u.lineUserId}`);
+              const emailChecked = u.email ? recipientSet.has(`email:${u.email}`) : false;
+              const roleLabel =
+                u.roles && u.roles.length > 0
+                  ? u.roles.join("/")
+                  : u.role;
+              return (
+                <div
+                  key={u.lineUserId}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-1.5 text-[12px] hover:bg-[var(--muted)]/40"
+                >
+                  <span className="flex-1 min-w-[180px]">
+                    <b>{u.realName ?? u.displayName}</b>
+                    <span className="ml-1.5 rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">{roleLabel}</span>
+                  </span>
+                  <label className="flex items-center gap-1.5 text-[11px]">
+                    <input type="checkbox" checked={lineChecked} onChange={() => toggleLine(u.lineUserId)} />
+                    <span>LINE</span>
+                  </label>
+                  <label className={cn("flex items-center gap-1.5 text-[11px]", !u.email && "opacity-40")}>
+                    <input
+                      type="checkbox"
+                      disabled={!u.email}
+                      checked={emailChecked}
+                      onChange={() => u.email && toggleEmail(u.email)}
+                      title={u.email ?? "此用戶沒填 Email"}
+                    />
+                    <span>Email {u.email ? `(${u.email})` : ""}</span>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-2 rounded bg-[var(--muted)]/30 p-2 text-[10px] text-[var(--muted-foreground)]">
+          已選 {recipients.length} 個目標。最後一次發送：
+          {cfg.dailyWeatherReportLastSentAt
+            ? new Date(cfg.dailyWeatherReportLastSentAt).toLocaleString("zh-TW")
+            : "（尚未發送）"}
+        </div>
+
+        {/* v268：測試按鈕 */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => runTest(true)}
+            disabled={testBusy !== null}
+            title="不會真的發送，只顯示訊息預覽"
+          >
+            <Send className="mr-1.5 h-3.5 w-3.5" />
+            {testBusy === "dry" ? "預覽中..." : "預覽訊息（不寄）"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              if (!confirm(`真的要立即發送給 ${recipients.length} 個收件人嗎？`)) return;
+              void runTest(false);
+            }}
+            disabled={testBusy !== null || recipients.length === 0}
+            style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+            title="立即發送（會真的推 LINE / Email）"
+          >
+            <Send className="mr-1.5 h-3.5 w-3.5" />
+            {testBusy === "real" ? "發送中..." : "🧪 立即測試發送"}
+          </Button>
+        </div>
+
+        {testResult && (
+          <pre className="mt-2 max-h-72 overflow-y-auto rounded bg-white border p-3 text-[11px] whitespace-pre-wrap font-mono text-[var(--foreground)]" style={{ borderColor: "var(--border)" }}>
+            {testResult}
+          </pre>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+          onClick={() => save("自動發送", {
+            dailyWeatherReportEnabled: cfg.dailyWeatherReportEnabled ?? false,
+            dailyWeatherReportRecipients: cfg.dailyWeatherReportRecipients ?? [],
+          })}
+          disabled={saving === "自動發送"}>
+          <Save className="mr-1.5 h-4 w-4" />
+          {saving === "自動發送" ? "儲存中..." : "儲存自動發送設定"}
+        </Button>
+      </div>
+
+      <div className="mt-3 rounded bg-[var(--muted)]/40 p-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+        📋 <b>Cronicle 兩個排程</b>（一天兩次）：<br />
+        晚上 10:00 台灣時間 → UTC 14:00 → <code>0 14 * * *</code><br />
+        早上 05:00 台灣時間 → UTC 21:00 → <code>0 21 * * *</code><br />
+        Command（兩個 event 共用）：<br />
+        <code className="block mt-1 break-all">
+          curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-weather-report&quot;
+        </code>
+      </div>
+    </SectionCard>
   );
 }
 
