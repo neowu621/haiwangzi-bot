@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SignaturePad } from "@/components/ui/SignaturePad";
 import { PolicyText } from "@/components/ui/PolicyText";
+import { MissingContactInfoModal } from "@/components/liff/MissingContactInfoModal";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -223,11 +224,16 @@ export default function TripBookingPage({
 
   // 載入本人資料 + 同伴清單，第一次預約後再進來會自動帶入
   const [meLoaded, setMeLoaded] = useState(false);
+  // v269：me 的 email/phone（用來決定 submit 前要不要跳 modal 補）
+  const [meEmail, setMeEmail] = useState<string | null>(null);
+  const [mePhone, setMePhone] = useState<string | null>(null);
+  const [missingInfoModalOpen, setMissingInfoModalOpen] = useState(false);
   useEffect(() => {
     liff
       .fetchWithAuth<{
         realName: string | null;
         phone: string | null;
+        email: string | null;
         cert: typeof CERTS[number] | null;
         certNumber: string | null;
         logCount: number;
@@ -243,6 +249,8 @@ export default function TripBookingPage({
       .then((me) => {
         if (me.realName) setRealName(me.realName);
         if (me.phone) setPhone(formatPhoneTW(me.phone));
+        setMeEmail(me.email ?? null);
+        setMePhone(me.phone ?? null);
         if (me.cert) setCert(me.cert);
         if (me.logCount) setLogCount(String(me.logCount));
         if (me.emergencyContact) {
@@ -346,6 +354,14 @@ export default function TripBookingPage({
 
   async function submit() {
     if (!trip || !canSubmit) return;
+    // v269：送出前 check email/phone（user 表的，不是 form 的 realName/phone）
+    //   缺 → 跳 modal 強制補 → modal 儲存成功會 callback 自動再 submit
+    const needEmail = !meEmail || meEmail.trim().length < 5;
+    const needPhone = !mePhone || mePhone.trim().length < 8;
+    if (needEmail || needPhone) {
+      setMissingInfoModalOpen(true);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -1227,6 +1243,23 @@ export default function TripBookingPage({
           </Button>
         </DialogContent>
       </Dialog>
+
+      {/* v269：缺 phone/email 強制補資料 modal */}
+      <MissingContactInfoModal
+        open={missingInfoModalOpen}
+        missingEmail={!meEmail || meEmail.trim().length < 5}
+        missingPhone={!mePhone || mePhone.trim().length < 8}
+        defaultEmail={meEmail ?? ""}
+        defaultPhone={mePhone ?? ""}
+        onClose={() => setMissingInfoModalOpen(false)}
+        onSaved={(data) => {
+          setMissingInfoModalOpen(false);
+          setMeEmail(data.email);
+          setMePhone(data.phone);
+          // 補完後立刻重新觸發 submit（不必等使用者再點一次）
+          setTimeout(() => { void submit(); }, 100);
+        }}
+      />
     </LiffShell>
   );
 }

@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SignaturePad } from "@/components/ui/SignaturePad";
 import { PolicyText } from "@/components/ui/PolicyText";
+import { MissingContactInfoModal } from "@/components/liff/MissingContactInfoModal";
 import { Separator } from "@/components/ui/separator";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
@@ -78,6 +79,10 @@ export default function TourDetailPage({
   const [signedHasInk, setSignedHasInk] = useState(false);
   const [cancellationPolicy, setCancellationPolicy] = useState("");
   const [safetyPolicy, setSafetyPolicy] = useState("");
+  // v269：缺 phone/email 強制補資料 modal
+  const [meEmail, setMeEmail] = useState<string | null>(null);
+  const [mePhone, setMePhone] = useState<string | null>(null);
+  const [missingInfoModalOpen, setMissingInfoModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // 抵用金折抵
   const [creditBalance, setCreditBalance] = useState(0);
@@ -104,17 +109,20 @@ export default function TourDetailPage({
         setSafetyPolicy(c.safetyPolicy ?? "");
       })
       .catch(() => {});
-    // 取自己 creditBalance
+    // 取自己 creditBalance + email/phone (v269 modal 用)
     liff
       .fetchWithAuth<{
         creditBalance: number;
         realName: string | null;
         phone: string | null;
+        email: string | null;
       }>("/api/me")
       .then((me) => {
         setCreditBalance(me.creditBalance ?? 0);
         if (me.realName) setRealName(me.realName);
         if (me.phone) setPhone(formatPhoneTW(me.phone));
+        setMeEmail(me.email ?? null);
+        setMePhone(me.phone ?? null);
       })
       .catch(() => {});
     // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
@@ -142,6 +150,13 @@ export default function TourDetailPage({
 
   async function submit() {
     if (!tour || !canSubmit) return;
+    // v269：送出前 check email/phone
+    const needEmail = !meEmail || meEmail.trim().length < 5;
+    const needPhone = !mePhone || mePhone.trim().length < 8;
+    if (needEmail || needPhone) {
+      setMissingInfoModalOpen(true);
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await liff.fetchWithAuth<{
@@ -733,6 +748,22 @@ export default function TourDetailPage({
           期待與您一起安全探索海洋
         </div>
       </div>
+
+      {/* v269：缺 phone/email 強制補資料 modal */}
+      <MissingContactInfoModal
+        open={missingInfoModalOpen}
+        missingEmail={!meEmail || meEmail.trim().length < 5}
+        missingPhone={!mePhone || mePhone.trim().length < 8}
+        defaultEmail={meEmail ?? ""}
+        defaultPhone={mePhone ?? ""}
+        onClose={() => setMissingInfoModalOpen(false)}
+        onSaved={(data) => {
+          setMissingInfoModalOpen(false);
+          setMeEmail(data.email);
+          setMePhone(data.phone);
+          setTimeout(() => { void submit(); }, 100);
+        }}
+      />
     </LiffShell>
   );
 }
