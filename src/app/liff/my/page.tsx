@@ -98,16 +98,29 @@ interface MyBooking {
   createdAt: string;
 }
 
-const STATUS_LABEL: Record<MyBooking["status"], string> = {
-  pending: "待付款",
-  awaiting_verify: "匯款待確認",     // v276 / v279
-  confirmed: "已確認",
-  cancelled_by_user: "已取消",
-  cancelled_by_weather: "天候取消",
-  cancelled_unpaid: "訂單未成立",     // v276 / v279
-  completed: "已完成",
-  no_show: "未到",
-};
+// v286：合併 booking.status × paymentStatus → 單一語意 badge
+// confirmed + pending 不顯示 badge（已由「上傳付款資訊」按鈕 + 截止日提醒傳達）
+// 退款中 / 已退款優先顯示（payment 維度），其次 booking.status
+type BadgeVariant = "default" | "muted" | "coral" | "gold";
+function getStateBadge(b: Pick<MyBooking, "status" | "paymentStatus">):
+  { label: string; variant: BadgeVariant } | null {
+  // 取消類
+  if (b.status === "cancelled_unpaid") return { label: "訂單未成立", variant: "muted" };
+  if (b.status === "cancelled_by_user") return { label: "已取消", variant: "coral" };
+  if (b.status === "cancelled_by_weather") return { label: "天候取消", variant: "coral" };
+  // 結束類
+  if (b.status === "no_show") return { label: "⚠ 未到場", variant: "coral" };
+  if (b.status === "completed") return { label: "✓ 已完成", variant: "muted" };
+  // 退款流程（優先於 confirmed）
+  if (b.paymentStatus === "refunded") return { label: "↩ 已退款", variant: "muted" };
+  if (b.paymentStatus === "refunding") return { label: "退款處理中", variant: "gold" };
+  // 進行中
+  if (b.status === "awaiting_verify") return { label: "⏳ 匯款待確認", variant: "gold" };
+  if (b.paymentStatus === "fully_paid") return { label: "✓ 已付清", variant: "default" };
+  if (b.paymentStatus === "deposit_paid") return { label: "💰 訂金已付", variant: "default" };
+  // confirmed + pending → 預設狀態，不顯示 badge（畫面已有上傳付款資訊按鈕）
+  return null;
+}
 
 interface GearOption { itemType: GearItemType; label: string; price: number; }
 
@@ -402,21 +415,12 @@ function BookingCard({
               </Badge>
             )}
           </div>
-          {/* v283：右上 — status badge + 修改 + 付款截止 stack */}
+          {/* v286：合併語意 badge — 預設(confirmed+pending) 不顯示 */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <Badge
-              variant={
-                b.status === "confirmed"
-                  ? "default"
-                  : b.status === "completed"
-                  ? "muted"
-                  : b.status.startsWith("cancelled")
-                  ? "coral"
-                  : "gold"
-              }
-            >
-              {STATUS_LABEL[b.status]}
-            </Badge>
+            {(() => {
+              const s = getStateBadge(b);
+              return s ? <Badge variant={s.variant}>{s.label}</Badge> : null;
+            })()}
             {/* v285：「修改」改為「取消訂單」— 客戶想改就取消再下單 */}
             {cancellable && (
               <Button
