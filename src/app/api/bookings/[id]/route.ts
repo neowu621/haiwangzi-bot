@@ -211,7 +211,9 @@ export async function PATCH(
   return NextResponse.json({ error: "unknown booking type" }, { status: 400 });
 }
 
-// DELETE /api/bookings/:id — 客戶自取消（轉成 cancelled_by_user）
+// DELETE /api/bookings/:id — 客戶自取消
+// v285：未付款 → cancelled_unpaid（訂單不成立，不需退款）
+//       已付款 → cancelled_by_user（客戶需另外申請退款）
 export async function DELETE(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
@@ -230,6 +232,7 @@ export async function DELETE(
   if (
     booking.status === "cancelled_by_user" ||
     booking.status === "cancelled_by_weather" ||
+    booking.status === "cancelled_unpaid" ||
     booking.status === "completed"
   ) {
     return NextResponse.json(
@@ -237,9 +240,28 @@ export async function DELETE(
       { status: 400 },
     );
   }
+  // 區分有沒有真實付款（純抵用金折抵也算）
+  const hasPaid = booking.paidAmount > 0;
+  const newStatus = hasPaid ? "cancelled_by_user" : "cancelled_unpaid";
   const updated = await prisma.booking.update({
     where: { id },
-    data: { status: "cancelled_by_user", cancellationReason: "user_cancel" },
+    data: {
+      status: newStatus,
+      cancellationReason: hasPaid ? "user_cancel_after_payment" : "user_cancel_unpaid",
+    },
   });
-  return NextResponse.json({ ok: true, booking: updated });
+  // v278：log
+  void import("@/lib/booking-status-log").then((m) =>
+    m.logBookingStatusChange({
+      bookingId: id,
+      fromStatus: booking.status,
+      toStatus: newStatus,
+      actorId: auth.user.lineUserId,
+      actorRole: "customer",
+      note: hasPaid
+        ? `客戶主動取消（已付 NT$${booking.paidAmount}，請申請退款）`
+        : "客戶主動取消（未付款）",
+    }),
+  );
+  return NextResponse.json({ ok: true, booking: updated, hasPaid });
 }

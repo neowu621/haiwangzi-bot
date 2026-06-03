@@ -151,12 +151,16 @@ function isUpcoming(b: MyBooking) {
   return new Date(d) >= new Date(new Date().toDateString());
 }
 
-function isEditable(b: MyBooking) {
+// v285：客戶端不再支援「修改」，改為「取消訂單」（修改 = 取消 + 重新下訂）
+//   可取消條件：尚未到期 + 未完成 + 未取消 + 未退款
+function isCancellable(b: MyBooking) {
   return (
     isUpcoming(b) &&
-    b.paymentStatus !== "fully_paid" &&
-    b.paymentStatus !== "refunding" &&
-    b.paymentStatus !== "refunded"
+    b.status !== "completed" &&
+    b.status !== "no_show" &&
+    !b.status.startsWith("cancelled") &&
+    b.paymentStatus !== "refunded" &&
+    b.paymentStatus !== "refunding"
   );
 }
 
@@ -234,6 +238,22 @@ export default function MyBookingsPage() {
     return { up, done, cancelled };
   }, [bookings]);
 
+  // v285：取消訂單 handler
+  async function cancelBooking(b: MyBooking) {
+    const hasPaid = b.paidAmount > 0;
+    const msg = hasPaid
+      ? `確定要取消這筆訂單嗎？\n\n您已付 NT$ ${b.paidAmount.toLocaleString()}\n→ 取消後需另外點「申請退款」處理退款。\n\n（想改人數或內容請取消後重新預約）`
+      : `確定要取消這筆訂單嗎？\n\n尚未付款，取消後訂單不成立、不需退款。\n（想改人數或內容請取消後重新預約）`;
+    if (!confirm(msg)) return;
+    try {
+      await liff.fetchWithAuth(`/api/bookings/${b.id}`, { method: "DELETE" });
+      // 重抓
+      reload();
+    } catch (e) {
+      alert("取消失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   return (
     <LiffShell title="我的預約" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <div className="px-4 pt-4">
@@ -263,13 +283,13 @@ export default function MyBookingsPage() {
             {loading && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
             {!loading && grouped.up.length === 0 && <EmptyState />}
             {grouped.up.map((b) => (
-              <BookingCard key={b.id} b={b} onEdit={() => setEditing(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
             ))}
           </TabsContent>
           <TabsContent value="done" className="space-y-3">
             {grouped.done.length === 0 && <EmptyState text="還沒有完成紀錄" />}
             {grouped.done.map((b) => (
-              <BookingCard key={b.id} b={b} onEdit={() => setEditing(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
             ))}
           </TabsContent>
           <TabsContent value="cancelled" className="space-y-3">
@@ -277,7 +297,7 @@ export default function MyBookingsPage() {
               <EmptyState text="沒有已取消的訂單" />
             )}
             {grouped.cancelled.map((b) => (
-              <BookingCard key={b.id} b={b} onEdit={() => setEditing(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
             ))}
           </TabsContent>
         </Tabs>
@@ -320,10 +340,10 @@ function EmptyState({ text = "尚無預約紀錄" }: { text?: string }) {
 
 function BookingCard({
   b,
-  onEdit,
+  onCancel,
 }: {
   b: MyBooking;
-  onEdit: () => void;
+  onCancel: () => void;
 }) {
   const isDaily = b.type === "daily";
   const ref = b.ref;
@@ -346,7 +366,7 @@ function BookingCard({
     b.totalAmount > 0
       ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100))
       : 0;
-  const editable = isEditable(b);
+  const cancellable = isCancellable(b);
   const [proofLightbox, setProofLightbox] = useState<{
     url: string;
     caption?: string;
@@ -397,15 +417,16 @@ function BookingCard({
             >
               {STATUS_LABEL[b.status]}
             </Badge>
-            {editable && (
+            {/* v285：「修改」改為「取消訂單」— 客戶想改就取消再下單 */}
+            {cancellable && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={onEdit}
+                onClick={onCancel}
                 className="h-7 gap-1 px-2 text-[11px]"
+                style={{ borderColor: "var(--color-coral)", color: "var(--color-coral)" }}
               >
-                <Edit3 className="h-3 w-3" />
-                修改
+                ✕ 取消訂單
               </Button>
             )}
             {paymentDeadline && daysLeft !== null && (
