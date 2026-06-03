@@ -16,10 +16,22 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
 
   const t1 = Date.now();
+  // v293：paymentProofs 只取需要欄位（imageKey 拿來算 url，其他大欄位不必），減少 payload
   const bookings = await prisma.booking.findMany({
     where: { userId: auth.user.lineUserId },
     orderBy: { createdAt: "desc" },
-    include: { paymentProofs: true },
+    include: {
+      paymentProofs: {
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          uploadedAt: true,
+          verifiedAt: true,
+          imageKey: true,
+        },
+      },
+    },
   });
   timing.bookings_query_ms = Date.now() - t1;
   timing.bookings_count = bookings.length;

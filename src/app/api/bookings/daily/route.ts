@@ -220,12 +220,13 @@ export async function POST(req: NextRequest) {
   }
 
   // v291：預付金額 = creditUsed。依抵用金折抵情況決定初始 status/paymentStatus
-  //   - 抵用金 ≥ 全額：直接 confirmed + fully_paid（不必再付款）
+  //   - 抵用金 ≥ 全額 / totalAmount = 0：直接 confirmed + fully_paid（不必再付款）
   //   - 否則：pending + pending → 客戶到付款頁上傳 → awaiting_verify → admin 審核 → confirmed
   const paidAmount = creditUsed;
   let paymentStatus: "pending" | "fully_paid" = "pending";
   let status: "pending" | "confirmed" = "pending";
-  if (paidAmount >= totalAmount && totalAmount > 0) {
+  // v293：totalAmount===0 也視為 fully_paid（不應卡在 pending）
+  if (totalAmount === 0 || paidAmount >= totalAmount) {
     paymentStatus = "fully_paid";
     status = "confirmed";
   }

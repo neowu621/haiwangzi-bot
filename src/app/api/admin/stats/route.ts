@@ -68,8 +68,9 @@ export async function GET(req: NextRequest) {
   ]);
 
   // 只算「未審核 + booking 仍存在」的憑證；過濾掉孤兒紀錄（用 raw SQL 才能 INNER JOIN）
+  // v293：改 DISTINCT booking_id，避免一筆訂單多張未審 proof 重複計數
   const pendingProofsResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint AS count
+    SELECT COUNT(DISTINCT pp.booking_id)::bigint AS count
     FROM payment_proofs pp
     INNER JOIN bookings b ON pp.booking_id = b.id
     WHERE pp.verified_at IS NULL
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
   const activeDailyBookings = await prisma.booking.count({
     where: {
       type: "daily",
-      status: { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "awaiting_verify", "confirmed"] }, // v293：加入 awaiting_verify
       refId: {
         in: (
           await prisma.divingTrip.findMany({
@@ -121,7 +122,7 @@ export async function GET(req: NextRequest) {
   const activeTourBookings = await prisma.booking.count({
     where: {
       type: "tour",
-      status: { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "awaiting_verify", "confirmed"] }, // v293：加入 awaiting_verify
       refId: {
         in: (
           await prisma.tourPackage.findMany({
@@ -327,7 +328,7 @@ export async function GET(req: NextRequest) {
     where: {
       type: "daily",
       refId: { in: pastTripsForSettlement.map((t) => t.id) },
-      status: { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "awaiting_verify", "confirmed"] }, // v293：加入 awaiting_verify
     },
   });
 
@@ -355,7 +356,7 @@ export async function GET(req: NextRequest) {
   const overCapacity = await prisma.booking.count({
     where: {
       overCapacity: true,
-      status: { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "awaiting_verify", "confirmed"] }, // v293：加入 awaiting_verify
     },
   });
 
@@ -371,7 +372,7 @@ export async function GET(req: NextRequest) {
   })).map((t) => t.id);
   const unpaidBookingsList = await prisma.booking.findMany({
     where: {
-      status: { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "awaiting_verify", "confirmed"] }, // v293：加入 awaiting_verify
       paidAmount: 0,
       OR: [
         { type: "daily", refId: { in: futureTripIds } },

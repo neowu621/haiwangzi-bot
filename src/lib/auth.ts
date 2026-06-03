@@ -35,11 +35,9 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
     return await verifyIdToken(token);
   }
 
-  // dev fallback：本地（NODE_ENV !== production）或顯式開啟 DEV_MODE_ENABLED=1 才允許
-  // 允許用 ?lineUserId=Uxxx 在 query 帶入身分；用於 dev personas 跳過 LINE 登入
-  const devEnabled =
-    process.env.NODE_ENV !== "production" ||
-    process.env.DEV_MODE_ENABLED === "1";
+  // dev fallback：只在「真的非 production」才開啟。
+  // v293 安全強化：production 環境即使 DEV_MODE_ENABLED=1 也拒絕；避免誤設導致任何人冒充任意身份
+  const devEnabled = process.env.NODE_ENV !== "production";
   if (devEnabled) {
     const url = new URL(req.url);
     const lineUserId = url.searchParams.get("lineUserId");
@@ -122,10 +120,20 @@ export async function createAdminWebJwt(lineUserId: string): Promise<string> {
 }
 
 async function verifyIdToken(idToken: string): Promise<AuthResult> {
+  // v293：production 強制要求 audience 環境變數，避免「未設定 = 跳過 audience 驗證」
+  // 任何 LINE channel 簽出的 idToken 都能登入此系統的漏洞
+  const audience = process.env.LINE_LIFF_CHANNEL_ID;
+  if (process.env.NODE_ENV === "production" && !audience) {
+    return {
+      ok: false,
+      status: 500,
+      message: "LINE_LIFF_CHANNEL_ID env not configured (server misconfig)",
+    };
+  }
   try {
     const { payload } = await jwtVerify(idToken, JWKS, {
       issuer: "https://access.line.me",
-      audience: process.env.LINE_LIFF_CHANNEL_ID, // optional 驗 audience
+      audience, // 必驗 audience（dev 環境可選）
     });
     const lineUserId = payload.sub;
     const displayName =

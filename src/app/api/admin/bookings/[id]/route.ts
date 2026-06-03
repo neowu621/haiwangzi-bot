@@ -15,13 +15,16 @@ const PatchSchema = z.object({
   paymentStatus: z
     .enum(["pending", "deposit_paid", "fully_paid", "refunding", "refunded"])
     .optional(),
-  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).optional(),
+  // v293: paymentMethod nullable — 訂單建立時可能還沒選付款方式
+  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).nullable().optional(),
   status: z
     .enum([
       "pending",
+      "awaiting_verify",       // v276
       "confirmed",
       "cancelled_by_user",
       "cancelled_by_weather",
+      "cancelled_unpaid",      // v276
       "completed",
       "no_show",
     ])
@@ -150,6 +153,7 @@ export async function DELETE(
     }
 
     // 軟取消：admin 取消 => status = cancelled_by_user
+    const fromStatus = booking.status;
     const updated = await prisma.booking.update({
       where: { id },
       data: {
@@ -157,6 +161,17 @@ export async function DELETE(
         cancellationReason: "admin cancelled",
       },
     });
+    // v293：補寫 booking_status_log
+    void import("@/lib/booking-status-log").then((m) =>
+      m.logBookingStatusChange({
+        bookingId: id,
+        fromStatus,
+        toStatus: "cancelled_by_user",
+        actorId: auth.user.lineUserId,
+        actorRole: "admin",
+        note: "admin 軟取消",
+      }),
+    );
     await logAudit({
       actorId: auth.user.lineUserId,
       action: "booking.cancel",

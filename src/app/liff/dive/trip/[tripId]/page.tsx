@@ -1023,7 +1023,7 @@ export default function TripBookingPage({
             <div className="flex items-end justify-between">
               <div>
                 <div className="text-[10px] text-[var(--muted-foreground)]">
-                  總金額 (現場收)
+                  總金額
                 </div>
                 <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
                   NT$ {total.toLocaleString()}

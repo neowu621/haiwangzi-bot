@@ -309,7 +309,7 @@ export default function PaymentUploadPage({
                 </div>
               </div>
               <Badge variant="muted" className="tabular">
-                {booking.paymentStatus}
+                {(({ pending: "待付款", deposit_paid: "訂金已付", fully_paid: "已付清", refunding: "退款中", refunded: "已退款" } as Record<string,string>)[booking.paymentStatus] ?? booking.paymentStatus)}
               </Badge>
             </div>
           </CardContent>

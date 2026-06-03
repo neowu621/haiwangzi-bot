@@ -216,7 +216,13 @@ export default function MyBookingsPage() {
       .then((d) => {
         setBookings(d.bookings);
         try {
-          window.localStorage.setItem(BOOKINGS_CACHE_KEY, JSON.stringify(d.bookings));
+          // v293：剝掉 R2 presigned URL（10 分鐘 TTL），下次讀 cache 時不會看到 broken image
+          const cacheable = d.bookings.map((b) => ({
+            ...b,
+            signatureUrl: null,
+            paymentProofs: b.paymentProofs.map((p) => ({ ...p, url: null })),
+          }));
+          window.localStorage.setItem(BOOKINGS_CACHE_KEY, JSON.stringify(cacheable));
         } catch { /* quota or disabled — ignore */ }
       })
       .catch(() => { /* 失敗時保留 cache，不清空 */ })
@@ -477,77 +483,76 @@ function BookingCard({
     (b.status === "completed" ||
       (ref && "date" in ref && ref.date < new Date().toISOString().slice(0, 10)));
 
+  // v293：依使用者指定 5 行排版
+  //   1. 📅 類型 + ×人 + ×支
+  //   2. ⊙ 地點 + 日期時間
+  //   3. 訂單狀態 / 付款狀態 / 取消訂單 / 同意聲明（橫排）
+  //   4. 主 CTA：付款方式選擇
+  //   5. ⏰ 截止日 (左) / 應付金額 (右)
   return (
     <Card className={cn(b.type === "tour" && "border-l-4 border-l-[var(--color-coral)]")}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            {isDaily ? (
-              <CalendarDays className="h-4 w-4" />
-            ) : (
-              <Plane className="h-4 w-4" />
-            )}
-            <span className="text-sm font-bold">
-              {isDaily ? "日潛" : "旅遊潛水"}
-            </span>
-            <Badge variant="muted" className="text-[10px]">
-              ×{b.participants} 人
-            </Badge>
-            {/* 日潛：顯示氣瓶總數 (人數 × 場次氣瓶) */}
-            {isDaily && ref && "tankCount" in ref && ref.tankCount && (
-              <Badge variant="muted" className="text-[10px]">
-                ×{b.participants * ref.tankCount} 支
-              </Badge>
-            )}
-          </div>
-          {/* v288：訂單狀態 + 付款狀態雙 badge */}
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {(() => {
-              const o = getOrderBadge(b.status);
-              return <Badge variant={o.variant}>{o.label}</Badge>;
-            })()}
-            {(() => {
-              const p = getPaymentBadge(b.paymentStatus);
-              return <Badge variant={p.variant} className="text-[10px]">{p.label}</Badge>;
-            })()}
-            {/* v285：「修改」改為「取消訂單」— 客戶想改就取消再下單 */}
-            {cancellable && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onCancel}
-                className="h-7 gap-1 px-2 text-[11px]"
-                style={{ borderColor: "var(--color-coral)", color: "var(--color-coral)" }}
-              >
-                ✕ 取消訂單
-              </Button>
-            )}
-            {/* v289：截止日提醒搬到下方「付款方式選擇」按鈕旁 */}
-          </div>
+      <CardContent className="p-4 space-y-2">
+        {/* Row 1：類型 + 人數 + 氣瓶 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {isDaily ? <CalendarDays className="h-4 w-4" /> : <Plane className="h-4 w-4" />}
+          <span className="text-sm font-bold">{isDaily ? "日潛" : "旅遊潛水"}</span>
+          <Badge variant="muted" className="text-[10px]">×{b.participants} 人</Badge>
+          {isDaily && ref && "tankCount" in ref && ref.tankCount && (
+            <Badge variant="muted" className="text-[10px]">×{b.participants * ref.tankCount} 支</Badge>
+          )}
         </div>
 
+        {/* Row 2：地點 + 日期時間 / tour 標題 + 日期區間 */}
         {ref && "date" in ref && (
-          <>
-            <div className="mt-2 text-xl font-bold tabular">
-              {ref.date} {ref.startTime}
-            </div>
-            <div className="mt-0.5 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-              <MapPin className="h-3 w-3" />
-              {ref.sites.join(" · ")}
-            </div>
-          </>
+          <div className="flex items-center gap-2 flex-wrap text-sm">
+            {ref.sites.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                <MapPin className="h-3 w-3" />
+                {ref.sites.join(" · ")}
+              </span>
+            )}
+            <span className="font-bold tabular">{ref.date} {ref.startTime}</span>
+          </div>
         )}
         {ref && "title" in ref && (
-          <>
-            <div className="mt-2 text-lg font-bold leading-tight">
-              {ref.title}
-            </div>
+          <div>
+            <div className="text-base font-bold leading-tight">{ref.title}</div>
             <div className="mt-0.5 flex items-center gap-1 text-xs text-[var(--muted-foreground)] tabular">
               <CalendarDays className="h-3 w-3" />
               {ref.dateStart} → {ref.dateEnd}
             </div>
-          </>
+          </div>
         )}
+
+        {/* Row 3：狀態 + 動作橫排（訂單狀態 / 付款狀態 / 取消 / 同意聲明）*/}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(() => {
+            const o = getOrderBadge(b.status);
+            return <Badge variant={o.variant} className="text-[11px]">{o.label}</Badge>;
+          })()}
+          {(() => {
+            const p = getPaymentBadge(b.paymentStatus);
+            return <Badge variant={p.variant} className="text-[11px]">{p.label}</Badge>;
+          })()}
+          {cancellable && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onCancel}
+              className="h-7 gap-1 px-2 text-[11px]"
+              style={{ borderColor: "var(--color-coral)", color: "var(--color-coral)" }}
+            >
+              ✕ 取消訂單
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={onOpenAgreement}
+            className="ml-auto inline-flex items-center gap-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2 hover:opacity-70"
+          >
+            📜 同意聲明
+          </button>
+        </div>
 
         {b.rentalGear.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -727,16 +732,7 @@ function BookingCard({
           </div>
         )}
 
-        {/* v289：同意聲明 — 顯示簽名 + 政策內容 */}
-        <div className="mt-3 border-t border-[var(--border)] pt-2 text-right">
-          <button
-            type="button"
-            onClick={onOpenAgreement}
-            className="inline-flex items-center gap-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2 hover:opacity-70"
-          >
-            📜 同意聲明
-          </button>
-        </div>
+        {/* v293：同意聲明已搬到 Row 3，這裡移除避免重複 */}
       </CardContent>
 
       {/* Payment proof lightbox */}

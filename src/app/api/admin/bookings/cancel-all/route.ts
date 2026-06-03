@@ -32,12 +32,34 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // v293：先撈出每筆 id+原 status 才能寫 booking_status_log
+    const targets = await prisma.booking.findMany({
+      where: { status: { in: ["pending", "awaiting_verify", "confirmed"] } },
+      select: { id: true, status: true },
+    });
     const r = await prisma.booking.updateMany({
-      where: { status: { in: ["pending", "confirmed"] } },
+      where: { status: { in: ["pending", "awaiting_verify", "confirmed"] } },
       data: {
         status: "cancelled_by_user",
         cancellationReason: "admin bulk cancel",
       },
+    });
+    // 批量寫 log（不擋住 response）
+    void import("@/lib/booking-status-log").then(async (m) => {
+      for (const t of targets) {
+        try {
+          await m.logBookingStatusChange({
+            bookingId: t.id,
+            fromStatus: t.status,
+            toStatus: "cancelled_by_user",
+            actorId: auth.user.lineUserId,
+            actorRole: "admin",
+            note: "admin bulk cancel",
+          });
+        } catch (e) {
+          console.error("[cancel-all log]", t.id, e);
+        }
+      }
     });
     return NextResponse.json({ ok: true, cancelled: r.count });
   } catch (e) {

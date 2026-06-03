@@ -63,10 +63,11 @@ export async function PATCH(
   if (booking.userId !== auth.user.lineUserId) {
     return NextResponse.json({ error: "not your booking" }, { status: 403 });
   }
-  // 已取消、已完成、未到 → 不能改
+  // 已取消、已完成、未到 → 不能改 (v293 補 cancelled_unpaid)
   if (
     booking.status === "cancelled_by_user" ||
     booking.status === "cancelled_by_weather" ||
+    booking.status === "cancelled_unpaid" ||
     booking.status === "completed" ||
     booking.status === "no_show"
   ) {

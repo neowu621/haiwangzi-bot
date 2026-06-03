@@ -84,7 +84,7 @@ export async function POST(
         type: data.type,
         amount: data.amount,
         imageKey,
-        last5: data.last5 ?? "00000", // bank 才有真實後 5 碼，其他付款方式用佔位（DB 欄位 NOT NULL）
+        last5: data.last5 ?? null, // v293：DB 欄位本身 nullable，bank 才有真實後 5 碼
         note: data.note ?? null,
       },
     });
