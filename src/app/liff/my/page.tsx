@@ -437,19 +437,7 @@ function BookingCard({
                 ✕ 取消訂單
               </Button>
             )}
-            {paymentDeadline && daysLeft !== null && (
-              <div
-                className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
-                style={
-                  daysLeft <= 3
-                    ? { background: "rgba(255,123,90,0.12)", color: "var(--color-coral)" }
-                    : { background: "rgba(255,184,0,0.12)", color: "#9a7a00" }
-                }
-              >
-                ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
-                {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期）"}
-              </div>
-            )}
+            {/* v289：截止日提醒搬到下方「付款方式選擇」按鈕旁 */}
           </div>
         </div>
 
@@ -534,22 +522,34 @@ function BookingCard({
           </div>
         )}
 
-        {/* v283：下方 — 上傳付款資訊（左）/ 金額（中）/ 申請退款（右） */}
+        {/* v289：下方 — 付款方式選擇（左）+ 截止日提醒（緊鄰右側）/ 金額（中）/ 申請退款（右） */}
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-          {/* 左：上傳付款資訊（主要 CTA） */}
-          <div className="flex-1 min-w-0">
+          {/* 左：付款方式選擇（主要 CTA）+ 截止日提醒 */}
+          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
             {needsPayment ? (
-              <Link href={`/liff/payment/${b.id}`}>
-                <button className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-3 py-2 text-xs font-bold text-[var(--color-ocean-deep)] shadow-sm">
-                  <Upload className="h-3.5 w-3.5" />
-                  上傳付款資訊
-                </button>
-              </Link>
+              <>
+                <Link href={`/liff/payment/${b.id}`}>
+                  <button className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-3 py-2 text-xs font-bold text-[var(--color-ocean-deep)] shadow-sm whitespace-nowrap">
+                    <Upload className="h-3.5 w-3.5" />
+                    付款方式選擇
+                  </button>
+                </Link>
+                {paymentDeadline && daysLeft !== null && (
+                  <div
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
+                    style={
+                      daysLeft <= 3
+                        ? { background: "rgba(255,123,90,0.12)", color: "var(--color-coral)" }
+                        : { background: "rgba(255,184,0,0.12)", color: "#9a7a00" }
+                    }
+                  >
+                    ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
+                    {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期）"}
+                  </div>
+                )}
+              </>
             ) : (
-              // 沒待付款 → 顯示金額 label
-              <div className="text-[10px] text-[var(--muted-foreground)]">
-                總金額
-              </div>
+              <div className="text-[10px] text-[var(--muted-foreground)]">總金額</div>
             )}
           </div>
           {/* 中：金額（永遠顯示） */}

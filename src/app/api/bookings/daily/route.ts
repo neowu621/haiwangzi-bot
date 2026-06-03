@@ -32,7 +32,8 @@ const BodySchema = z.object({
     .default([]),
   notes: z.string().optional(),
   // 付款方式：cash 現場 / bank 轉帳 / linepay / other
-  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).default("cash"),
+  // v289: paymentMethod 改為可選 — 建立訂單時不選，等客戶到「付款方式選擇」頁才寫入
+  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).nullable().optional(),
   // 「其他」付款方式時客戶填寫的說明
   paymentNote: z.string().max(200).optional(),
   // 使用抵用金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount
@@ -103,17 +104,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // LV1 會員不可選現場支付（必須出發前 3 天付清）
-  if (data.paymentMethod === "cash" && (auth.user.vipLevel ?? 1) === 1) {
-    return NextResponse.json(
-      {
-        error: "lv1_cash_not_allowed",
-        message:
-          "LV1 會員無法使用「現場支付」，請改用轉帳或 LINE Pay，並於出發前 3 天完成付款。升級至 LV2 後即可解鎖此功能。",
-      },
-      { status: 403 },
-    );
-  }
+  // v289：建立訂單時不再選付款方式，所以這裡 LV1 cash 限制移除
+  //   付款方式在 /liff/payment/[bookingId] 才選；那邊會檢查 VIP 等級
 
   // 計算目前已預約人數
   const booked = await prisma.booking.aggregate({
@@ -246,7 +238,8 @@ export async function POST(req: NextRequest) {
       depositAmount: 0,
       paidAmount,
       paymentStatus,
-      paymentMethod: data.paymentMethod,
+      // v289：建立時不寫付款方式，等客戶到付款頁選
+      paymentMethod: data.paymentMethod ?? null,
       paymentNote: data.paymentNote ?? null,
       creditUsed,
       status: "confirmed", // 日潛當天現場收費,直接 confirmed

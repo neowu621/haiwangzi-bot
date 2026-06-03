@@ -189,6 +189,9 @@ const PATCHES = [
      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method "PaymentMethod" DEFAULT 'cash';
    EXCEPTION WHEN others THEN NULL;
    END $$`,
+  // v289: payment_method 改為 nullable — 訂單建立時不指定付款方式
+  `ALTER TABLE bookings ALTER COLUMN payment_method DROP NOT NULL`,
+  `ALTER TABLE bookings ALTER COLUMN payment_method DROP DEFAULT`,
   // 取消原因 / 退款相關
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,

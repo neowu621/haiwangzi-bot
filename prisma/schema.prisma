@@ -352,8 +352,8 @@ model Booking {
   depositAmount      Int           @default(0) @map("deposit_amount")
   paidAmount         Int           @default(0) @map("paid_amount")
   paymentStatus      PaymentStatus @default(pending) @map("payment_status")
-  // 客戶選擇的付款方式（現場 / 轉帳 / LINE Pay / 其他）；預設現場支付
-  paymentMethod      PaymentMethod @default(cash) @map("payment_method")
+  // v289：客戶選擇的付款方式（轉帳 / LINE Pay / 其他）。建立訂單時為 null，等客戶到「付款方式選擇」頁才寫入
+  paymentMethod      PaymentMethod? @map("payment_method")
   // 「其他」付款方式時客戶填寫的說明（如：街口支付、微信、現金匯款等）
   paymentNote        String?       @map("payment_note")
   status             BookingStatus @default(pending)

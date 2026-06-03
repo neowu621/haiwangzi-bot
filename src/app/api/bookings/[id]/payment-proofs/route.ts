@@ -9,18 +9,29 @@ export const dynamic = "force-dynamic";
 // v228：允許上到 10MB（fallback 用 base64 時放大圖片才不會被擋）
 export const maxDuration = 60;
 
-// v238：照片改為 optional；最少要有 last5（後 5 碼）核對
-//  - r2Key       (推薦：client 透過 /api/uploads/presign 拿 URL 直傳 R2)
-//  - imageDataUrl (legacy fallback：base64 data URL)
-//  - last5       (必填) 匯款帳號後 5 碼，5 位數字
-//  - note        (選填) 匯款說明
+// v289：付款方式選擇移到此頁，依方式不同必填欄位也不同
+//  - paymentMethod (必填) bank / linepay / other
+//  - r2Key / imageDataUrl 圖片（linepay 必填，bank/other 選填）
+//  - last5  bank 必填、其他不需要
+//  - note   other 必填說明、bank/linepay 選填
 const BodySchema = z.object({
   type: z.enum(["deposit", "final", "refund"]),
   amount: z.number().int().min(1),
+  paymentMethod: z.enum(["bank", "linepay", "other"]),
   r2Key: z.string().min(1).optional(),
   imageDataUrl: z.string().min(20).optional(),
-  last5: z.string().regex(/^\d{5}$/, "匯款帳號後 5 碼必須是 5 位數字"),
+  last5: z.string().regex(/^\d{5}$/).optional(),
   note: z.string().max(500).optional(),
+}).superRefine((d, ctx) => {
+  if (d.paymentMethod === "bank" && !d.last5) {
+    ctx.addIssue({ code: "custom", path: ["last5"], message: "轉帳付款需填寫匯款帳號後 5 碼" });
+  }
+  if (d.paymentMethod === "linepay" && !d.r2Key && !d.imageDataUrl) {
+    ctx.addIssue({ code: "custom", path: ["r2Key"], message: "LINE Pay 付款需上傳轉帳截圖" });
+  }
+  if (d.paymentMethod === "other" && !d.note) {
+    ctx.addIssue({ code: "custom", path: ["note"], message: "其他付款方式需填寫說明" });
+  }
 });
 
 // POST /api/bookings/:id/payment-proofs
@@ -62,7 +73,7 @@ export async function POST(
     );
   }
 
-  // v238：寫入 imageKey（可選 — 沒上傳照片就 null）+ last5 + note
+  // v238：寫入 imageKey（可選）+ last5 + note；v289：同時更新 booking.paymentMethod / paymentNote
   const imageKey = data.r2Key ?? data.imageDataUrl ?? null;
 
   let proof;
@@ -73,8 +84,17 @@ export async function POST(
         type: data.type,
         amount: data.amount,
         imageKey,
-        last5: data.last5,
+        last5: data.last5 ?? "00000", // bank 才有真實後 5 碼，其他付款方式用佔位（DB 欄位 NOT NULL）
         note: data.note ?? null,
+      },
+    });
+    // v289：依本次選擇更新 booking 的付款方式（尾款若改方式就用最新的）
+    await prisma.booking.update({
+      where: { id },
+      data: {
+        paymentMethod: data.paymentMethod,
+        // 把 note 也寫進 booking.paymentNote（admin 後台看到）；overwrite OK
+        ...(data.note ? { paymentNote: data.note } : {}),
       },
     });
   } catch (e) {
@@ -126,7 +146,8 @@ export async function POST(
           select: { lineUserId: true },
         });
         const customerName = bk?.user.realName ?? bk?.user.displayName ?? "客戶";
-        const text = `💰 待確認匯款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n金額：NT$ ${data.amount.toLocaleString()}\n後 5 碼：${data.last5}\n${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin/payment-proofs`;
+        const methodLabel = { bank: "🏦 轉帳", linepay: "💚 LINE Pay", other: "📝 其他" }[data.paymentMethod];
+        const text = `💰 待確認付款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n方式：${methodLabel}\n金額：NT$ ${data.amount.toLocaleString()}\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin/payment-proofs`;
         for (const a of admins) {
           try {
             await lineClient.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text }] });

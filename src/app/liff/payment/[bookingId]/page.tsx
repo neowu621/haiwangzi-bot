@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Upload, Check, X, CreditCard, Building2 } from "lucide-react";
+import { Camera, Upload, Check, X, Building2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -24,6 +24,7 @@ interface MyBookingMini {
   depositAmount: number;
   paidAmount: number;
   paymentStatus: string;
+  paymentMethod?: "bank" | "linepay" | "other" | null;  // v289
   ref:
     | { date: string; startTime: string; sites: string[] }
     | { title: string; dateStart: string; dateEnd: string; sites: string[] }
@@ -32,7 +33,10 @@ interface MyBookingMini {
 
 interface Config {
   bank: { name: string; branch: string; account: string; holder: string };
+  linepay: { qrUrl: string; liteId: string };  // v289
 }
+
+type PayMethod = "bank" | "linepay" | "other";
 
 export default function PaymentUploadPage({
   params,
@@ -47,9 +51,11 @@ export default function PaymentUploadPage({
 
   const [booking, setBooking] = useState<MyBookingMini | null>(null);
   const [bank, setBank] = useState<Config["bank"] | null>(null);
+  const [linepay, setLinepay] = useState<Config["linepay"] | null>(null);
   const [paymentType, setPaymentType] = useState<"deposit" | "final">(
     (search.get("type") as "deposit" | "final") ?? "deposit",
   );
+  const [paymentMethod, setPaymentMethod] = useState<PayMethod | null>(null);  // v289
   const [last5, setLast5] = useState("");
   const [paymentNote, setPaymentNote] = useState("");  // v238：匯款說明 optional
   const [preview, setPreview] = useState<string | null>(null);
@@ -71,13 +77,17 @@ export default function PaymentUploadPage({
           setBooking(b);
           // 日潛沒有訂金概念，直接走「全款」一次性付款
           if (b.type === "daily") setPaymentType("final");
+          // v289: 預填上次選的付款方式（如果有）
+          if (b.paymentMethod && (b.paymentMethod === "bank" || b.paymentMethod === "linepay" || b.paymentMethod === "other")) {
+            setPaymentMethod(b.paymentMethod);
+          }
         } else {
           setError("找不到此訂單");
         }
       });
     fetch("/api/config")
       .then((r) => r.json())
-      .then((c: Config) => setBank(c.bank));
+      .then((c: Config) => { setBank(c.bank); setLinepay(c.linepay); });
     // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId, liff.ready]);
@@ -161,9 +171,21 @@ export default function PaymentUploadPage({
 
   async function submit() {
     if (!booking) return;
-    // v238：last5 必填且必須是 5 位數字；照片變 optional
-    if (!/^\d{5}$/.test(last5)) {
-      setError("匯款帳號後 5 碼必須是 5 位數字");
+    if (!paymentMethod) {
+      setError("請選擇付款方式");
+      return;
+    }
+    // v289：依方式不同驗證必填欄位
+    if (paymentMethod === "bank" && !/^\d{5}$/.test(last5)) {
+      setError("轉帳付款需填寫匯款帳號後 5 碼（5 位數字）");
+      return;
+    }
+    if (paymentMethod === "linepay" && !file) {
+      setError("LINE Pay 付款需上傳轉帳截圖");
+      return;
+    }
+    if (paymentMethod === "other" && !paymentNote.trim()) {
+      setError("請說明使用的付款方式（例：街口、微信支付⋯）");
       return;
     }
     setUploading(true);
@@ -224,9 +246,10 @@ export default function PaymentUploadPage({
           body: JSON.stringify({
             type: paymentType,
             amount: expectedAmount,
+            paymentMethod,  // v289：必填
             r2Key,
             imageDataUrl: r2Key || !file ? undefined : preview,
-            last5,
+            last5: paymentMethod === "bank" ? last5 : undefined,
             note: paymentNote || undefined,
           }),
           signal: ctrl3.signal,
@@ -268,7 +291,7 @@ export default function PaymentUploadPage({
   const isDaily = booking.type === "daily";
 
   return (
-    <LiffShell title={isDaily ? "付款確認" : "付款上傳"} backHref="/liff/my">
+    <LiffShell title="付款方式選擇" backHref="/liff/my">
       <div className="space-y-4 px-4 pt-4">
         <Card>
           <CardContent className="p-4">
@@ -289,11 +312,39 @@ export default function PaymentUploadPage({
                 {booking.paymentStatus}
               </Badge>
             </div>
-            {isDaily && (
-              <div className="mt-3 rounded-lg bg-[var(--color-phosphor)]/10 p-2 text-[11px] text-[var(--color-ocean-deep)]">
-                日潛採當日付款。可選擇 (A) 現場現金 — 教練收款後核可；或
-                (B) 事前匯款並上傳截圖供教練核對。
-              </div>
+          </CardContent>
+        </Card>
+
+        {/* v289：付款方式選擇 — 3 選 1 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">選擇付款方式</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                ["bank", "🏦 轉帳"],
+                ["linepay", "💚 LINE Pay"],
+                ["other", "📝 其他"],
+              ] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setPaymentMethod(k)}
+                  className={
+                    paymentMethod === k
+                      ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-2 text-sm font-bold"
+                      : "rounded-md border border-[var(--border)] px-2 py-2 text-sm"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {!paymentMethod && (
+              <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
+                請先選擇付款方式，再依下方指示完成填寫與上傳
+              </p>
             )}
           </CardContent>
         </Card>
@@ -340,7 +391,8 @@ export default function PaymentUploadPage({
           </Card>
         )}
 
-        {bank?.account && (
+        {/* v289：bank 顯示銀行資訊 + 一鍵複製帳號 */}
+        {paymentMethod === "bank" && bank?.account && (
           <Card className="bg-[var(--color-ocean-deep)] text-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base text-white">
@@ -357,59 +409,104 @@ export default function PaymentUploadPage({
                 <span className="opacity-70">戶名：</span>
                 {bank.holder}
               </div>
-              <div className="tabular text-lg font-bold">{bank.account}</div>
+              <div className="flex items-center gap-2">
+                <span className="tabular text-lg font-bold">{bank.account}</span>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(bank.account).then(() => alert("✓ 帳號已複製"))}
+                  className="rounded bg-white/20 px-2 py-0.5 text-[10px]"
+                >📋 複製</button>
+              </div>
               <div className="mt-2 rounded bg-white/10 p-2 text-xs">
-                請匯款 <span className="tabular font-bold text-[var(--color-phosphor)]">NT$ {expected.toLocaleString()}</span>，
-                並於下方<b>填寫匯款後 5 碼</b>送出（截圖選填）
+                請匯款 <span className="tabular font-bold text-[var(--color-phosphor)]">NT$ {expected.toLocaleString()}</span>，並於下方<b>填寫匯款後 5 碼</b>送出（截圖選填）
               </div>
             </CardContent>
           </Card>
         )}
 
+        {/* v289：linepay 顯示 QR + Lite ID */}
+        {paymentMethod === "linepay" && (linepay?.qrUrl || linepay?.liteId) && (
+          <Card className="bg-green-50/40 border-green-200">
+            <CardHeader>
+              <CardTitle className="text-base text-green-900">💚 LINE Pay 轉帳</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {linepay.qrUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={linepay.qrUrl} alt="LINE Pay QR" className="h-44 w-44 rounded border bg-white object-contain mx-auto" />
+              )}
+              {linepay.liteId && (
+                <div className="flex items-center gap-2 text-green-900 justify-center">
+                  <span>Lite ID：</span>
+                  <span className="font-mono font-bold">{linepay.liteId}</span>
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(linepay.liteId).then(() => alert("✓ Lite ID 已複製"))}
+                    className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white"
+                  >📋 複製</button>
+                </div>
+              )}
+              <div className="mt-2 rounded bg-green-100 p-2 text-xs text-green-900">
+                請轉帳 <span className="tabular font-bold">NT$ {expected.toLocaleString()}</span>，並在下方<b>上傳轉帳成功截圖</b>送出
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* v289：依付款方式不同顯示不同表單 */}
+        {paymentMethod && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">付款證明</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* 必填：匯款後 5 碼（5 位數字） */}
-            <div>
-              <Label htmlFor="last5">
-                <span className="text-rose-600">＊</span>您匯款帳號的後 5 碼
-              </Label>
-              <Input
-                id="last5"
-                inputMode="numeric"
-                maxLength={5}
-                value={last5}
-                onChange={(e) => setLast5(e.target.value.replace(/\D/g, "").slice(0, 5))}
-                placeholder="必填，5 位數字"
-                className={cn(
-                  last5.length > 0 && last5.length !== 5 && "border-rose-500",
+            {/* bank：匯款後 5 碼必填（5 位數字） */}
+            {paymentMethod === "bank" && (
+              <div>
+                <Label htmlFor="last5">
+                  <span className="text-rose-600">＊</span>您匯款帳號的後 5 碼
+                </Label>
+                <Input
+                  id="last5"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={last5}
+                  onChange={(e) => setLast5(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                  placeholder="必填，5 位數字"
+                  className={cn(last5.length > 0 && last5.length !== 5 && "border-rose-500")}
+                />
+                {last5.length > 0 && last5.length !== 5 && (
+                  <p className="mt-1 text-xs text-rose-600">需要剛好 5 位數字</p>
                 )}
-              />
-              {last5.length > 0 && last5.length !== 5 && (
-                <p className="mt-1 text-xs text-rose-600">需要剛好 5 位數字</p>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* 選填：匯款說明 */}
+            {/* 匯款 / LINE Pay 說明（選填）/ other（必填） */}
             <div>
-              <Label htmlFor="paymentNote" className="text-[var(--muted-foreground)]">
-                匯款說明（選填）
+              <Label htmlFor="paymentNote" className={paymentMethod === "other" ? "" : "text-[var(--muted-foreground)]"}>
+                {paymentMethod === "other"
+                  ? <><span className="text-rose-600">＊</span>請說明您的付款方式</>
+                  : "匯款說明（選填）"}
               </Label>
               <textarea
                 id="paymentNote"
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value.slice(0, 500))}
-                placeholder="例：使用 LINE Pay 轉帳 / 委託家人代匯 / 分兩筆..."
+                placeholder={paymentMethod === "other"
+                  ? "例：街口支付、微信支付、現金交付..."
+                  : "例：委託家人代匯 / 分兩筆..."}
                 rows={2}
                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
 
-            {/* 選填：轉帳截圖 */}
+            {/* 截圖：linepay 必填，其他選填 */}
             <div>
-              <Label className="text-[var(--muted-foreground)]">轉帳截圖（選填）</Label>
+              <Label className={paymentMethod === "linepay" ? "" : "text-[var(--muted-foreground)]"}>
+                {paymentMethod === "linepay"
+                  ? <><span className="text-rose-600">＊</span>轉帳截圖</>
+                  : "轉帳截圖（選填）"}
+              </Label>
               <input
                 ref={fileRef}
                 type="file"
@@ -463,6 +560,7 @@ export default function PaymentUploadPage({
             </div>
           </CardContent>
         </Card>
+        )}
 
         {uploaded ? (
           <Card className="bg-[var(--color-phosphor)]/20 text-center">
@@ -476,7 +574,11 @@ export default function PaymentUploadPage({
             variant="ocean"
             size="lg"
             className="w-full"
-            disabled={last5.length !== 5 || uploading}
+            disabled={!paymentMethod
+              || (paymentMethod === "bank" && last5.length !== 5)
+              || (paymentMethod === "linepay" && !file)
+              || (paymentMethod === "other" && !paymentNote.trim())
+              || uploading}
             onClick={submit}
           >
             <Upload className="h-4 w-4" />

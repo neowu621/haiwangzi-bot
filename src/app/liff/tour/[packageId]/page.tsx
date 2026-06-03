@@ -87,15 +87,7 @@ export default function TourDetailPage({
   // 抵用金折抵
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
-  // 付款方式 — 潛水團預設 bank（轉帳訂金）
-  // v275：tour 拿掉現場現金選項，只允許 bank / linepay / other
-  const [paymentMethod, setPaymentMethod] = useState<"bank" | "linepay" | "other">("bank");
-  const [paymentNote, setPaymentNote] = useState("");
-  // 公開付款資訊
-  const [paymentInfo, setPaymentInfo] = useState<{
-    bank: { name: string; branch: string; account: string; holder: string };
-    linepay: { qrUrl: string; liteId: string };
-  } | null>(null);
+  // v289：付款方式移到「我的預約 → 付款方式選擇」頁，這裡不再選
 
   useEffect(() => {
     liff
@@ -105,7 +97,6 @@ export default function TourDetailPage({
     fetch("/api/config")
       .then((r) => r.json())
       .then((c) => {
-        setPaymentInfo({ bank: c.bank, linepay: c.linepay });
         setCancellationPolicy(c.cancellationPolicy ?? "");
         setSafetyPolicy(c.safetyPolicy ?? "");
       })
@@ -173,8 +164,7 @@ export default function TourDetailPage({
           ),
           notes: notes || undefined,
           creditUsed: Math.min(creditUsed, creditBalance, total),
-          paymentMethod,
-          paymentNote: paymentMethod === "other" ? paymentNote : undefined,
+          // v289：建立時不送 paymentMethod，後端寫 null
           agreedToTerms: true as const,
           // v260：手寫簽名 PNG data URL
           signatureDataUrl: signatureDataUrl ?? undefined,
@@ -429,101 +419,15 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
-        {/* 付款方式（潛水團）— v160 新增 */}
+        {/* v289：付款方式不再於下單頁選，改到「我的預約 → 付款方式選擇」 */}
         <Card>
           <CardContent className="p-4">
-            <div className="mb-2 text-sm font-semibold">付款方式</div>
-            {/* v275：tour 不允許現場付款，需先付訂金預訂位 */}
-            <div className="grid grid-cols-3 gap-1.5">
-              {(
-                [
-                  ["bank", "🏦 轉帳"],
-                  ["linepay", "💚 LINE Pay"],
-                  ["other", "📝 其他"],
-                ] as const
-              ).map(([k, label]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setPaymentMethod(k)}
-                  className={
-                    paymentMethod === k
-                      ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-1.5 text-xs font-semibold"
-                      : "rounded-md border border-[var(--border)] px-2 py-1.5 text-xs"
-                  }
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="rounded-md border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 text-xs text-[var(--color-ocean-deep)]">
+              <div className="font-semibold mb-1">💳 下單後再選付款方式</div>
+              <div className="text-[var(--muted-foreground)]">
+                預約完成後請至「我的預約」→ <span className="font-semibold">付款方式選擇</span>，可選擇 🏦 轉帳 / 💚 LINE Pay / 📝 其他並上傳對應的付款截圖。
+              </div>
             </div>
-            <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-              {paymentMethod === "bank" && "預約後 7 日內匯訂金保留名額"}
-              {paymentMethod === "linepay" && "預約後 7 日內 LINE Pay 轉帳並上傳截圖"}
-              {paymentMethod === "other" && "請於下方填寫您要使用的付款方式"}
-            </div>
-
-            {/* 轉帳：展開銀行帳號 */}
-            {paymentMethod === "bank" && paymentInfo?.bank?.account && (
-              <div className="mt-2 rounded-lg border bg-blue-50/40 p-3 text-xs" style={{ borderColor: "rgba(96,165,250,0.4)" }}>
-                <div className="mb-1 font-semibold text-blue-900">🏦 匯款資訊</div>
-                <div className="space-y-0.5 text-blue-900">
-                  <div>銀行：{paymentInfo.bank.name} {paymentInfo.bank.branch}</div>
-                  <div>戶名：{paymentInfo.bank.holder}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-base font-mono font-bold tracking-wider">{paymentInfo.bank.account}</span>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(paymentInfo.bank.account).then(() => alert("✓ 帳號已複製"))}
-                      className="rounded bg-blue-600 px-2 py-0.5 text-[10px] text-white hover:bg-blue-700"
-                    >
-                      📋 複製
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* LINE Pay：展開 QR + Lite ID */}
-            {paymentMethod === "linepay" && (paymentInfo?.linepay?.qrUrl || paymentInfo?.linepay?.liteId) && (
-              <div className="mt-2 rounded-lg border bg-green-50/40 p-3 text-xs" style={{ borderColor: "rgba(74,222,128,0.4)" }}>
-                <div className="mb-2 font-semibold text-green-900">💚 LINE Pay 轉帳</div>
-                {paymentInfo.linepay.qrUrl && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={paymentInfo.linepay.qrUrl}
-                    alt="LINE Pay QR"
-                    className="mb-2 h-40 w-40 rounded border bg-white object-contain"
-                  />
-                )}
-                {paymentInfo.linepay.liteId && (
-                  <div className="flex items-center gap-2 text-green-900">
-                    <span>Lite ID：</span>
-                    <span className="font-mono font-bold">{paymentInfo.linepay.liteId}</span>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(paymentInfo.linepay.liteId).then(() => alert("✓ Lite ID 已複製"))}
-                      className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white hover:bg-green-700"
-                    >
-                      📋 複製
-                    </button>
-                  </div>
-                )}
-                <div className="mt-2 text-[10px] text-green-800">
-                  完成轉帳後請至「我的預約」上傳截圖
-                </div>
-              </div>
-            )}
-
-            {/* 其他：文字輸入 */}
-            {paymentMethod === "other" && (
-              <div className="mt-2">
-                <Input
-                  value={paymentNote}
-                  onChange={(e) => setPaymentNote(e.target.value)}
-                  placeholder="請說明使用的付款方式（例：街口支付 / 微信支付 / 現金匯款）"
-                />
-              </div>
-            )}
           </CardContent>
         </Card>
 

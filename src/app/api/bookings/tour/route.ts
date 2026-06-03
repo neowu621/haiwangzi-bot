@@ -13,8 +13,8 @@ const BodySchema = z.object({
   participants: z.number().int().min(1).max(10).default(1),
   selectedAddons: z.array(z.string()).default([]),
   notes: z.string().optional(),
-  // v275：tour 不允許 cash（必須先付訂金確保名額）
-  paymentMethod: z.enum(["bank", "linepay", "other"]).default("bank"),
+  // v289：建立訂單時不選付款方式，等客戶到「付款方式選擇」頁才寫入
+  paymentMethod: z.enum(["bank", "linepay", "other"]).nullable().optional(),
   paymentNote: z.string().max(200).optional(), // 客戶選「其他」時填寫的說明
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       depositAmount,
       paidAmount,
       paymentStatus,
-      paymentMethod: data.paymentMethod,
+      paymentMethod: data.paymentMethod ?? null,
       paymentNote: data.paymentNote ?? null,
       creditUsed,
       status,
