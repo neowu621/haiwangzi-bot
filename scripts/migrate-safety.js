@@ -54,6 +54,24 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_last_sent_at TIMESTAMPTZ`,
 
+  // v274: 退款申請（兩段式）
+  `CREATE TABLE IF NOT EXISTS refund_requests (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     booking_id UUID NOT NULL,
+     requested_by VARCHAR(64) NOT NULL,
+     method VARCHAR(16) NOT NULL,
+     amount INT NOT NULL,
+     credit_bonus_pct INT NOT NULL DEFAULT 0,
+     reason TEXT,
+     status VARCHAR(32) NOT NULL DEFAULT 'pending_customer',
+     customer_note TEXT,
+     responded_at TIMESTAMPTZ,
+     executed_at TIMESTAMPTZ,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     CONSTRAINT refund_requests_booking_fk FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+   )`,
+  `CREATE INDEX IF NOT EXISTS refund_requests_booking_idx ON refund_requests(booking_id)`,
+
   // v131: MediaPost 表（最新動態，手動 post + 未來自動抓）
   `CREATE TABLE IF NOT EXISTS media_posts (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

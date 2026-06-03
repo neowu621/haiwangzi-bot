@@ -374,8 +374,9 @@ model Booking {
   updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user          User           @relation(fields: [userId], references: [lineUserId], onDelete: Restrict)
-  paymentProofs PaymentProof[]
-  reminderLogs  ReminderLog[]
+  paymentProofs   PaymentProof[]
+  reminderLogs    ReminderLog[]
+  refundRequests  RefundRequest[] // v274
 
   @@map("bookings")
 }
@@ -410,6 +411,29 @@ model ReminderLog {
   booking Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("reminder_logs")
+}
+
+// v274：退款申請（兩段式 — admin 發起 → 客戶確認 → 執行）
+model RefundRequest {
+  id              String    @id @default(uuid()) @db.Uuid
+  bookingId       String    @map("booking_id") @db.Uuid
+  requestedBy     String    @map("requested_by") @db.VarChar(64) // admin lineUserId
+  method          String    @db.VarChar(16)   // "cash" 或 "credit"
+  amount          Int                          // 退款金額 NT$
+  creditBonusPct  Int       @default(0) @map("credit_bonus_pct") // 抵用金額外加成 %
+  reason          String?   @db.Text
+  // pending_customer (剛建，等客戶) / accepted (客戶同意) /
+  // questioning (客戶有疑問) / executed (已執行) / cancelled (admin 取消申請)
+  status          String    @default("pending_customer") @db.VarChar(32)
+  customerNote    String?   @map("customer_note") @db.Text
+  respondedAt     DateTime? @map("responded_at") @db.Timestamptz
+  executedAt      DateTime? @map("executed_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("refund_requests")
 }
 
 // 場次當日照片 — 日潛結束後教練/admin 上傳當天潛水照給客戶下載

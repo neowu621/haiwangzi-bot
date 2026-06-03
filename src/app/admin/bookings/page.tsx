@@ -50,6 +50,16 @@ interface AdminBooking {
   signatureImageUrl?: string | null;
   signedAt?: string | null;
   signedFromUserAgent?: string | null;
+  // v274：退款申請狀態
+  refundRequest?: {
+    id: string;
+    status: string;
+    method: string;
+    amount: number;
+    customerNote?: string | null;
+    createdAt: string;
+    respondedAt?: string | null;
+  } | null;
   user: { displayName: string; realName: string | null; phone: string | null };
   ref: {
     date?: string;
@@ -516,27 +526,34 @@ export default function AdminBookingsPage() {
     if (!editing) return;
     const n = Number(refundAmount);
     if (!n || n <= 0) { alert("請輸入退款金額"); return; }
-    const creditAmount = refundMethod === "credit" ? Math.round(n * refundCreditPct / 100) : undefined;
+    const creditBonusPct = refundMethod === "credit" ? Math.max(0, refundCreditPct - 100) : 0;
     const desc = refundMethod === "credit"
-      ? `轉抵用金 NT$${creditAmount?.toLocaleString()}${refundCreditPct !== 100 ? `（${refundCreditPct}%）` : ""}`
-      : `退現金 NT$${n.toLocaleString()}`;
-    if (!confirm(`確定退款？\n從已付款扣 NT$${n.toLocaleString()}\n→ ${desc}`)) return;
+      ? `🎁 抵用金 NT$${n}${creditBonusPct > 0 ? ` + ${creditBonusPct}% 加成` : ""}`
+      : `💵 現金退費 NT$${n}`;
+    // v274：兩段式 — 先發起申請推給客戶，客戶接受才執行
+    if (!confirm(`發起退款申請？\n推 LINE Flex 給客戶請他確認：\n${desc}\n\n客戶接受後系統會自動執行抵用金/通知 admin 處理現金。`)) return;
     setRefundBusy(true);
     try {
-      const body: Record<string, unknown> = { amount: n, method: refundMethod, reason: refundReason || undefined };
-      if (refundMethod === "credit" && creditAmount !== n) body.creditAmount = creditAmount;
-      await adminFetch(`/api/admin/bookings/${editing.id}/refund`, {
+      await adminFetch(`/api/admin/bookings/${editing.id}/refund-request`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          method: refundMethod,
+          amount: n,
+          creditBonusPct,
+          reason: refundReason || undefined,
+        }),
       });
-      setBookings((arr) =>
-        arr.map((x) => x.id === editing.id ? { ...x, paymentStatus: "refunded" } : x),
-      );
-      setEditing({ ...editing, paymentStatus: "refunded" });
+      // 重抓資料拿到 refundRequest 狀態
+      // 重抓資料拿到 refundRequest 狀態
+      const d = await adminFetch<{ bookings: AdminBooking[] }>("/api/admin/bookings");
+      setBookings(d.bookings);
+      const updated = d.bookings.find((b) => b.id === editing.id);
+      if (updated) setEditing(updated);
       setRefundOpen(false);
       setRefundAmount("");
+      alert("✓ 已發起退款申請，已推送 LINE Flex 給客戶");
     } catch (e) {
-      alert("退款失敗：" + (e instanceof Error ? e.message : String(e)));
+      alert("發起退款申請失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
       setRefundBusy(false);
     }
@@ -787,9 +804,27 @@ export default function AdminBookingsPage() {
                         </td>
                         {/* 付款狀態 */}
                         <td className="px-4 py-2.5">
-                          <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
-                            {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
+                              {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
+                            </Badge>
+                            {/* v274：退款申請 badges */}
+                            {b.refundRequest?.status === "pending_customer" && (
+                              <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] text-blue-700 whitespace-nowrap">
+                                💸 退款待客戶確認
+                              </span>
+                            )}
+                            {b.refundRequest?.status === "questioning" && (
+                              <span className="inline-flex rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] text-orange-700 whitespace-nowrap font-bold">
+                                ⚠️ 客戶有疑問
+                              </span>
+                            )}
+                            {b.refundRequest?.status === "accepted" && (
+                              <span className="inline-flex rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] text-green-700 whitespace-nowrap">
+                                ✓ 客戶已同意（待處理）
+                              </span>
+                            )}
+                          </div>
                         </td>
                         {/* 方式 */}
                         <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap">

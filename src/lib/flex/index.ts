@@ -13,6 +13,7 @@ import { overcapAlert } from "./overcap-alert";
 import { welcome } from "./welcome";
 import { firstOrderRewardGrant } from "./first-order-reward-grant";
 import { attendanceConfirmed } from "./attendance-confirmed";
+import { refundRequest } from "./refund-request";
 
 export type FlexMessage = messagingApi.FlexMessage;
 
@@ -48,6 +49,8 @@ export const FLEX_TEMPLATES: Record<string, FlexFactory> = {
   // v270：到場 / 完成 / 首單獎勵通知
   attendance_confirmed: attendanceConfirmed,
   first_order_reward_grant: firstOrderRewardGrant,
+  // v274：退款申請
+  refund_request: refundRequest,
 } as const;
 
 export type FlexTemplateKey = keyof typeof FLEX_TEMPLATES;
@@ -89,6 +92,7 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   welcome: "歡迎加入",
   attendance_confirmed: "到場確認",
   first_order_reward_grant: "首單獎勵發放",
+  refund_request: "退款申請（待客戶確認）",
 };
 
 // v196：每個 template 的分組 + icon + 預設管道開關
@@ -108,6 +112,7 @@ export const FLEX_TEMPLATE_META: Record<
   admin_weekly:    { group: "管理者（內部）", icon: "📊", defaultLine: false, defaultEmail: true  },
   attendance_confirmed:    { group: "到場 / 完成", icon: "🐠", defaultLine: true,  defaultEmail: false },
   first_order_reward_grant:{ group: "到場 / 完成", icon: "🎁", defaultLine: true,  defaultEmail: true  },
+  refund_request:          { group: "異常",        icon: "💸", defaultLine: true,  defaultEmail: true  },
 };
 
 /**
@@ -187,5 +192,11 @@ export const FLEX_EDITABLE_FIELDS: Record<
     { key: "footerHint", label: "底部提示", defaultValue: "下次預約時可直接折抵 ✨" },
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的抵用金" },
     { key: "altText", label: "通知列文字", defaultValue: "首單獎勵已入帳" },
+  ],
+  refund_request: [
+    { key: "title", label: "標題", defaultValue: "退款申請待您確認" },
+    { key: "bodyText", label: "說明文字", defaultValue: "請點下方按鈕確認接受，或選擇有疑問與店家聯絡。" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看詳情並確認" },
+    { key: "altText", label: "通知列文字", defaultValue: "退款申請待確認" },
   ],
 };

@@ -57,6 +57,21 @@ export async function GET(req: NextRequest) {
 
     const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
 
+    // v274：取得每筆 booking 的最新 RefundRequest 狀態
+    const refundReqs = bookings.length
+      ? await prisma.refundRequest.findMany({
+          where: {
+            bookingId: { in: bookings.map((b) => b.id) },
+            status: { in: ["pending_customer", "questioning", "accepted"] },
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
+    const refundReqByBooking = new Map<string, typeof refundReqs[number]>();
+    for (const r of refundReqs) {
+      if (!refundReqByBooking.has(r.bookingId)) refundReqByBooking.set(r.bookingId, r);
+    }
+
     // v262：簽名圖 presigned URL（讓 admin UI 直接顯示）
     const { previewUrl, r2Configured } = await import("@/lib/r2");
     const signatureUrls = new Map<string, string>();
@@ -97,12 +112,25 @@ export async function GET(req: NextRequest) {
             };
           }
         }
+        const rr = refundReqByBooking.get(b.id);
         return {
           ...b,
           // 管理備註僅 admin/boss 可見
           adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
           // v262：簽名 presigned URL（10 分鐘 TTL）
           signatureImageUrl: signatureUrls.get(b.id) ?? null,
+          // v274：退款申請狀態
+          refundRequest: rr
+            ? {
+                id: rr.id,
+                status: rr.status,
+                method: rr.method,
+                amount: rr.amount,
+                customerNote: rr.customerNote,
+                createdAt: rr.createdAt,
+                respondedAt: rr.respondedAt,
+              }
+            : null,
           ref,
         };
       }),
