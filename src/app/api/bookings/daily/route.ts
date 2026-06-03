@@ -75,7 +75,8 @@ const BodySchema = z.object({
 });
 
 // POST /api/bookings/daily
-// 建立日潛訂單 (現場收費,所以 paymentStatus=pending,當天現場結算)
+// v291：建立日潛訂單。預設 status=pending 等客戶付款 → admin 審核 → 才轉 confirmed
+//   舊版（v288 前）日潛走現場收費直接 confirmed，現在跟 tour 邏輯一致
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
@@ -218,10 +219,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 預付金額 = creditUsed（其他現場收）
+  // v291：預付金額 = creditUsed。依抵用金折抵情況決定初始 status/paymentStatus
+  //   - 抵用金 ≥ 全額：直接 confirmed + fully_paid（不必再付款）
+  //   - 否則：pending + pending → 客戶到付款頁上傳 → awaiting_verify → admin 審核 → confirmed
   const paidAmount = creditUsed;
-  const paymentStatus =
-    paidAmount >= totalAmount && totalAmount > 0 ? "fully_paid" : "pending";
+  let paymentStatus: "pending" | "fully_paid" = "pending";
+  let status: "pending" | "confirmed" = "pending";
+  if (paidAmount >= totalAmount && totalAmount > 0) {
+    paymentStatus = "fully_paid";
+    status = "confirmed";
+  }
 
   const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({
@@ -242,7 +249,7 @@ export async function POST(req: NextRequest) {
       paymentMethod: data.paymentMethod ?? null,
       paymentNote: data.paymentNote ?? null,
       creditUsed,
-      status: "confirmed", // 日潛當天現場收費,直接 confirmed
+      status,
       agreedToTermsAt: new Date(),
       overCapacity,
     },
@@ -253,7 +260,7 @@ export async function POST(req: NextRequest) {
     m.logBookingStatusChange({
       bookingId: booking.id,
       fromStatus: null,
-      toStatus: "confirmed",
+      toStatus: status,
       actorId: auth.user.lineUserId,
       actorRole: "customer",
       note: `下單（付款狀態：${paymentStatus}）`,
