@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SignaturePad } from "@/components/ui/SignaturePad";
+import { PolicyText } from "@/components/ui/PolicyText";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -161,6 +162,11 @@ export default function TripBookingPage({
   const [companionSlots, setCompanionSlots] = useState<Companion[]>([]);
 
   // v259：政策同意流程（兩個 checkbox + 各自 modal）
+  // v266：客戶必須先點「查看 ›」進去看過 modal 才能勾選同意
+  //   cancellationViewed/safetyViewed = 是否曾經打開過 modal
+  //   cancellationRead/safetyRead = 是否勾選同意（modal 關閉時自動勾上）
+  const [cancellationViewed, setCancellationViewed] = useState(false);
+  const [safetyViewed, setSafetyViewed] = useState(false);
   const [cancellationRead, setCancellationRead] = useState(false);
   const [safetyRead, setSafetyRead] = useState(false);
   const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
@@ -890,7 +896,7 @@ export default function TripBookingPage({
             <CardTitle className="text-base">📋 同意聲明（必填）</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* 取消政策 checkbox */}
+            {/* 取消政策 checkbox（v266：必須先查看才能勾選） */}
             <div
               className={cn(
                 "flex items-center gap-3 rounded-lg border-2 px-4 py-3 transition-colors",
@@ -901,11 +907,29 @@ export default function TripBookingPage({
             >
               <button
                 type="button"
-                onClick={() => setCancellationRead(!cancellationRead)}
-                className="flex flex-1 items-center gap-3 text-left text-sm"
+                disabled={!cancellationViewed}
+                onClick={() => {
+                  if (!cancellationViewed) {
+                    setCancellationModalOpen(true);
+                    return;
+                  }
+                  setCancellationRead(!cancellationRead);
+                }}
+                className={cn(
+                  "flex flex-1 items-center gap-3 text-left text-sm",
+                  !cancellationViewed && "cursor-not-allowed opacity-60",
+                )}
+                title={!cancellationViewed ? "請先點「查看 ›」閱讀政策內容" : ""}
               >
                 <CheckCircle on={cancellationRead} />
-                <span className="font-medium">我已閱讀並同意《取消政策》</span>
+                <span className="font-medium">
+                  我已閱讀並同意《取消政策》
+                  {!cancellationViewed && (
+                    <span className="ml-1 text-[10px] font-normal text-[var(--color-coral)]">
+                      （請先查看內容）
+                    </span>
+                  )}
+                </span>
               </button>
               <button
                 type="button"
@@ -916,7 +940,7 @@ export default function TripBookingPage({
               </button>
             </div>
 
-            {/* 安全政策 checkbox */}
+            {/* 安全政策 checkbox（v266：必須先查看才能勾選） */}
             <div
               className={cn(
                 "flex items-center gap-3 rounded-lg border-2 px-4 py-3 transition-colors",
@@ -927,11 +951,29 @@ export default function TripBookingPage({
             >
               <button
                 type="button"
-                onClick={() => setSafetyRead(!safetyRead)}
-                className="flex flex-1 items-center gap-3 text-left text-sm"
+                disabled={!safetyViewed}
+                onClick={() => {
+                  if (!safetyViewed) {
+                    setSafetyModalOpen(true);
+                    return;
+                  }
+                  setSafetyRead(!safetyRead);
+                }}
+                className={cn(
+                  "flex flex-1 items-center gap-3 text-left text-sm",
+                  !safetyViewed && "cursor-not-allowed opacity-60",
+                )}
+                title={!safetyViewed ? "請先點「查看 ›」閱讀政策內容" : ""}
               >
                 <CheckCircle on={safetyRead} />
-                <span className="font-medium">我已閱讀並同意《安全政策》</span>
+                <span className="font-medium">
+                  我已閱讀並同意《安全政策》
+                  {!safetyViewed && (
+                    <span className="ml-1 text-[10px] font-normal text-[var(--color-coral)]">
+                      （請先查看內容）
+                    </span>
+                  )}
+                </span>
               </button>
               <button
                 type="button"
@@ -987,19 +1029,22 @@ export default function TripBookingPage({
           </CardContent>
         </Card>
 
-        {/* v259：取消政策 Modal */}
+        {/* v259/v266：取消政策 Modal */}
         <Dialog open={cancellationModalOpen} onOpenChange={(o) => {
           setCancellationModalOpen(o);
-          // 關閉 modal 時自動勾選（視為使用者已看過）
-          if (!o) setCancellationRead(true);
+          if (o) {
+            // 開啟時標記已查看 → 解鎖 checkbox
+            setCancellationViewed(true);
+          } else {
+            // 關閉時自動勾選同意
+            setCancellationRead(true);
+          }
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>📋 取消政策</DialogTitle>
             </DialogHeader>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--foreground)]">
-              {cancellationPolicy || "（管理員尚未設定取消政策）"}
-            </pre>
+            <PolicyText>{cancellationPolicy || "（管理員尚未設定取消政策）"}</PolicyText>
             <button
               type="button"
               onClick={() => setCancellationModalOpen(false)}
@@ -1010,18 +1055,20 @@ export default function TripBookingPage({
           </DialogContent>
         </Dialog>
 
-        {/* v259：安全政策 Modal */}
+        {/* v259/v266：安全政策 Modal */}
         <Dialog open={safetyModalOpen} onOpenChange={(o) => {
           setSafetyModalOpen(o);
-          if (!o) setSafetyRead(true);
+          if (o) {
+            setSafetyViewed(true);
+          } else {
+            setSafetyRead(true);
+          }
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>🛡️ 安全政策</DialogTitle>
             </DialogHeader>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--foreground)]">
-              {safetyPolicy || "（管理員尚未設定安全政策）"}
-            </pre>
+            <PolicyText>{safetyPolicy || "（管理員尚未設定安全政策）"}</PolicyText>
             <button
               type="button"
               onClick={() => setSafetyModalOpen(false)}

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SignaturePad } from "@/components/ui/SignaturePad";
+import { PolicyText } from "@/components/ui/PolicyText";
 import { Separator } from "@/components/ui/separator";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
@@ -65,6 +66,9 @@ export default function TourDetailPage({
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
   // v259：兩政策 + modal
+  // v266：客戶必須先點「查看 ›」進去看過 modal 才能勾選同意
+  const [cancellationViewed, setCancellationViewed] = useState(false);
+  const [safetyViewed, setSafetyViewed] = useState(false);
   const [cancellationRead, setCancellationRead] = useState(false);
   const [safetyRead, setSafetyRead] = useState(false);
   const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
@@ -522,11 +526,24 @@ export default function TourDetailPage({
                   : "border-dashed border-[var(--border)]",
               )}
             >
-              <button type="button" onClick={() => setCancellationRead(!cancellationRead)} className="flex flex-1 items-center gap-3 text-left text-sm">
+              <button
+                type="button"
+                disabled={!cancellationViewed}
+                onClick={() => {
+                  if (!cancellationViewed) { setCancellationModalOpen(true); return; }
+                  setCancellationRead(!cancellationRead);
+                }}
+                className={cn("flex flex-1 items-center gap-3 text-left text-sm", !cancellationViewed && "cursor-not-allowed opacity-60")}
+              >
                 <div className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", cancellationRead ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--muted-foreground)]")}>
                   {cancellationRead && <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />}
                 </div>
-                <span className="font-medium">我已閱讀並同意《取消政策》</span>
+                <span className="font-medium">
+                  我已閱讀並同意《取消政策》
+                  {!cancellationViewed && (
+                    <span className="ml-1 text-[10px] font-normal text-[var(--color-coral)]">（請先查看內容）</span>
+                  )}
+                </span>
               </button>
               <button type="button" onClick={() => setCancellationModalOpen(true)} className="rounded-full border border-[var(--color-phosphor)] px-3 py-1 text-[11px] font-medium text-[var(--color-phosphor)]">
                 查看 ›
@@ -541,11 +558,24 @@ export default function TourDetailPage({
                   : "border-dashed border-[var(--border)]",
               )}
             >
-              <button type="button" onClick={() => setSafetyRead(!safetyRead)} className="flex flex-1 items-center gap-3 text-left text-sm">
+              <button
+                type="button"
+                disabled={!safetyViewed}
+                onClick={() => {
+                  if (!safetyViewed) { setSafetyModalOpen(true); return; }
+                  setSafetyRead(!safetyRead);
+                }}
+                className={cn("flex flex-1 items-center gap-3 text-left text-sm", !safetyViewed && "cursor-not-allowed opacity-60")}
+              >
                 <div className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", safetyRead ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--muted-foreground)]")}>
                   {safetyRead && <Check className="h-3 w-3 text-[var(--color-ocean-deep)]" />}
                 </div>
-                <span className="font-medium">我已閱讀並同意《安全政策》</span>
+                <span className="font-medium">
+                  我已閱讀並同意《安全政策》
+                  {!safetyViewed && (
+                    <span className="ml-1 text-[10px] font-normal text-[var(--color-coral)]">（請先查看內容）</span>
+                  )}
+                </span>
               </button>
               <button type="button" onClick={() => setSafetyModalOpen(true)} className="rounded-full border border-[var(--color-phosphor)] px-3 py-1 text-[11px] font-medium text-[var(--color-phosphor)]">
                 查看 ›
@@ -584,36 +614,34 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
-        {/* v259：取消政策 Modal */}
+        {/* v259/v266：取消政策 Modal */}
         <Dialog open={cancellationModalOpen} onOpenChange={(o) => {
           setCancellationModalOpen(o);
-          if (!o) setCancellationRead(true);
+          if (o) setCancellationViewed(true);
+          else setCancellationRead(true);
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>📋 取消政策</DialogTitle>
             </DialogHeader>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--foreground)]">
-              {cancellationPolicy || "（管理員尚未設定取消政策）"}
-            </pre>
+            <PolicyText>{cancellationPolicy || "（管理員尚未設定取消政策）"}</PolicyText>
             <button type="button" onClick={() => setCancellationModalOpen(false)} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
               我已閱讀，關閉並同意
             </button>
           </DialogContent>
         </Dialog>
 
-        {/* v259：安全政策 Modal */}
+        {/* v259/v266：安全政策 Modal */}
         <Dialog open={safetyModalOpen} onOpenChange={(o) => {
           setSafetyModalOpen(o);
-          if (!o) setSafetyRead(true);
+          if (o) setSafetyViewed(true);
+          else setSafetyRead(true);
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>🛡️ 安全政策</DialogTitle>
             </DialogHeader>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-[var(--foreground)]">
-              {safetyPolicy || "（管理員尚未設定安全政策）"}
-            </pre>
+            <PolicyText>{safetyPolicy || "（管理員尚未設定安全政策）"}</PolicyText>
             <button type="button" onClick={() => setSafetyModalOpen(false)} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
               我已閱讀，關閉並同意
             </button>
