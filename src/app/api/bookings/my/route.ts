@@ -54,12 +54,21 @@ export async function GET(req: NextRequest) {
       const refSites = ref
         ? ref.diveSiteIds.map((id) => siteMap.get(id)?.name ?? id).filter(Boolean)
         : [];
+      // v289：簽名圖 presigned URL（給「同意聲明」彈窗顯示用）
+      let signatureUrl: string | null = null;
+      if (b.signatureImageKey && r2Configured()) {
+        try {
+          const prefix = b.signatureImageKey.split("/")[0] as R2Prefix;
+          signatureUrl = await previewUrl(prefix, b.signatureImageKey);
+        } catch { /* ignore */ }
+      }
       return {
         id: b.id,
         type: b.type,
         refId: b.refId, // 給 client 拼 photo gallery URL 用
         status: b.status,
         paymentStatus: b.paymentStatus,
+        paymentMethod: b.paymentMethod,  // v289
         totalAmount: b.totalAmount,
         depositAmount: b.depositAmount,
         paidAmount: b.paidAmount,
@@ -68,6 +77,10 @@ export async function GET(req: NextRequest) {
         participantDetails: b.participantDetails,
         notes: b.notes,
         createdAt: b.createdAt,
+        // v289：同意聲明資料
+        signatureUrl,
+        signedAt: b.signedAt,
+        agreedToTermsAt: b.agreedToTermsAt,
         ref: ref
           ? b.type === "daily"
             ? {

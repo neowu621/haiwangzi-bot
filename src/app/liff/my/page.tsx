@@ -82,6 +82,10 @@ interface MyBooking {
     url: string | null;
     uploadedAt: string;
   }>;
+  // v289：同意聲明
+  signatureUrl?: string | null;
+  signedAt?: string | null;
+  agreedToTermsAt?: string | null;
   // 後端：daily booking 額外加 refId 給 photo gallery 用（daily only）
   refId?: string;
   // 多人預約：本人以外的潛伴明細
@@ -189,10 +193,20 @@ export default function MyBookingsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [hydrated, setHydrated] = useState(false); // 標記 cache 已讀過、可顯 empty/skeleton
   const [editing, setEditing] = useState<MyBooking | null>(null);
+  const [agreementBooking, setAgreementBooking] = useState<MyBooking | null>(null); // v289：同意聲明彈窗
   const [gearOptions, setGearOptions] = useState<GearOption[]>(GEAR_OPTIONS_DEFAULT);
+  // v289：政策內容（給同意聲明彈窗用）
+  const [policies, setPolicies] = useState<{ cancellation: string; safety: string }>({ cancellation: "", safety: "" });
 
   useEffect(() => {
     fetchGearOptions().then(setGearOptions);
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setPolicies({
+        cancellation: c.cancellationPolicy ?? "",
+        safety: c.safetyPolicy ?? "",
+      }))
+      .catch(() => {});
   }, []);
 
   const reload = useCallback(() => {
@@ -296,13 +310,13 @@ export default function MyBookingsPage() {
             {hydrated && loading && bookings.length === 0 && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
             {hydrated && !loading && grouped.up.length === 0 && <EmptyState />}
             {grouped.up.map((b) => (
-              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
             ))}
           </TabsContent>
           <TabsContent value="done" className="space-y-3">
             {hydrated && grouped.done.length === 0 && <EmptyState text="還沒有完成紀錄" />}
             {grouped.done.map((b) => (
-              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
             ))}
           </TabsContent>
           <TabsContent value="cancelled" className="space-y-3">
@@ -310,7 +324,7 @@ export default function MyBookingsPage() {
               <EmptyState text="沒有已取消的訂單" />
             )}
             {grouped.cancelled.map((b) => (
-              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
             ))}
           </TabsContent>
         </Tabs>
@@ -325,7 +339,76 @@ export default function MyBookingsPage() {
           reload();
         }}
       />
+      {/* v289：同意聲明彈窗 */}
+      <AgreementDialog
+        booking={agreementBooking}
+        cancellationPolicy={policies.cancellation}
+        safetyPolicy={policies.safety}
+        onClose={() => setAgreementBooking(null)}
+      />
     </LiffShell>
+  );
+}
+
+// v289：同意聲明彈窗 — 簽名圖 + 簽署時間 + 取消政策 + 安全政策
+function AgreementDialog({
+  booking,
+  cancellationPolicy,
+  safetyPolicy,
+  onClose,
+}: {
+  booking: MyBooking | null;
+  cancellationPolicy: string;
+  safetyPolicy: string;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={!!booking} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>同意聲明</DialogTitle>
+        </DialogHeader>
+        {booking && (
+          <div className="space-y-4 text-sm">
+            {/* 1. 簽名圖 + 簽署時間 */}
+            <div>
+              <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-1">您的簽名</div>
+              {booking.signatureUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={booking.signatureUrl}
+                  alt="您的簽名"
+                  className="w-full rounded-md border border-[var(--border)] bg-white"
+                />
+              ) : (
+                <div className="rounded-md border border-dashed border-[var(--border)] p-4 text-center text-xs text-[var(--muted-foreground)]">
+                  此訂單無簽名紀錄（可能為較早版本建立）
+                </div>
+              )}
+              <div className="mt-1 text-[11px] text-[var(--muted-foreground)] tabular">
+                簽署時間：{booking.signedAt
+                  ? new Date(booking.signedAt).toLocaleString("zh-TW")
+                  : (booking.agreedToTermsAt ? new Date(booking.agreedToTermsAt).toLocaleString("zh-TW") : "—")}
+              </div>
+            </div>
+            {/* 2. 取消政策 */}
+            <div>
+              <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-1">📜 取消政策</div>
+              <div className="whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs leading-relaxed">
+                {cancellationPolicy || "（尚未設定取消政策）"}
+              </div>
+            </div>
+            {/* 3. 安全政策 */}
+            <div>
+              <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-1">🛟 潛水安全注意事項</div>
+              <div className="whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs leading-relaxed">
+                {safetyPolicy || "（尚未設定安全政策）"}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -354,9 +437,11 @@ function EmptyState({ text = "尚無預約紀錄" }: { text?: string }) {
 function BookingCard({
   b,
   onCancel,
+  onOpenAgreement,
 }: {
   b: MyBooking;
   onCancel: () => void;
+  onOpenAgreement: () => void;
 }) {
   const isDaily = b.type === "daily";
   const ref = b.ref;
@@ -641,6 +726,17 @@ function BookingCard({
             )}
           </div>
         )}
+
+        {/* v289：同意聲明 — 顯示簽名 + 政策內容 */}
+        <div className="mt-3 border-t border-[var(--border)] pt-2 text-right">
+          <button
+            type="button"
+            onClick={onOpenAgreement}
+            className="inline-flex items-center gap-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2 hover:opacity-70"
+          >
+            📜 同意聲明
+          </button>
+        </div>
       </CardContent>
 
       {/* Payment proof lightbox */}
