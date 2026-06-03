@@ -170,6 +170,28 @@ export default function AdminDashboard() {
                 color="#0a2342"
               />
             </div>
+            {/* v279：待確認付款 hot indicator */}
+            {stats.pendingProofs > 0 && (
+              <a
+                href="/admin/payment-proofs"
+                className="mt-4 flex items-center gap-3 rounded-xl border-2 px-4 py-3 transition-colors hover:bg-orange-50"
+                style={{ borderColor: "rgba(249,115,22,0.5)", background: "rgba(249,115,22,0.08)" }}
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+                  style={{ background: "rgba(249,115,22,0.15)" }}>
+                  💰
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-[#c2410c]">
+                    待確認付款：{stats.pendingProofs} 筆
+                  </div>
+                  <div className="text-xs text-[#a0522d]">
+                    客戶已上傳匯款證明，等老闆/教練審核 →
+                  </div>
+                </div>
+                <span className="text-2xl text-[#c2410c]">›</span>
+              </a>
+            )}
           </section>
 
           {/* ═══════ 區塊 4：業務洞察（次要） ═══════ */}

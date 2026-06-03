@@ -64,6 +64,10 @@ export async function PATCH(
     patch[k] = v === "" ? null : v;
   }
   try {
+    // v278：抓舊 status 才能 log 變化
+    const oldBooking = patch.status !== undefined
+      ? await prisma.booking.findUnique({ where: { id }, select: { status: true } })
+      : null;
     const updated = await prisma.booking.update({
       where: { id },
       data: patch,
@@ -75,6 +79,19 @@ export async function PATCH(
       targetId: id,
       metadata: patch,
     });
+    // v278：status 變化才 log
+    if (oldBooking && patch.status && oldBooking.status !== patch.status) {
+      void import("@/lib/booking-status-log").then((m) =>
+        m.logBookingStatusChange({
+          bookingId: id,
+          fromStatus: oldBooking.status,
+          toStatus: patch.status as string,
+          actorId: auth.user.lineUserId,
+          actorRole: "admin",
+          note: "admin 手動修改狀態",
+        }),
+      );
+    }
     return NextResponse.json({ ok: true, booking: updated });
   } catch (e) {
     console.error("[PATCH /admin/bookings]", e);

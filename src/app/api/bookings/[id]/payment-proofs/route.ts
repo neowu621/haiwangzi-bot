@@ -97,6 +97,17 @@ export async function POST(
         where: { id },
         data: { status: "awaiting_verify" },
       });
+      // v278：log
+      void import("@/lib/booking-status-log").then((m) =>
+        m.logBookingStatusChange({
+          bookingId: id,
+          fromStatus: "pending",
+          toStatus: "awaiting_verify",
+          actorId: auth.user.lineUserId,
+          actorRole: "customer",
+          note: `上傳付款證明（金額 NT$${data.amount}、後5碼 ${data.last5}）`,
+        }),
+      );
     }
     // 推 LINE 給 admin/boss（fire-and-forget）
     void (async () => {

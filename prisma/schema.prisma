@@ -417,6 +417,21 @@ model ReminderLog {
   @@map("reminder_logs")
 }
 
+// v278：訂單狀態歷史（event log）
+model BookingStatusLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String   @map("booking_id") @db.Uuid
+  fromStatus String?  @map("from_status") @db.VarChar(32)
+  toStatus   String   @map("to_status") @db.VarChar(32)
+  actorId    String?  @map("actor_id") @db.VarChar(64) // null = system
+  actorRole  String   @map("actor_role") @db.VarChar(16) // customer / coach / admin / boss / system
+  note       String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([bookingId, createdAt])
+  @@map("booking_status_logs")
+}
+
 // v274：退款申請（兩段式 — admin 發起 → 客戶確認 → 執行）
 model RefundRequest {
   id              String    @id @default(uuid()) @db.Uuid

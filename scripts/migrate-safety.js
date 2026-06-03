@@ -57,6 +57,19 @@ const PATCHES = [
   // v275: 退款備註
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,
   `ALTER TABLE refund_requests ADD COLUMN IF NOT EXISTS refund_note TEXT`,
+
+  // v278: 訂單狀態歷史
+  `CREATE TABLE IF NOT EXISTS booking_status_logs (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     booking_id UUID NOT NULL,
+     from_status VARCHAR(32),
+     to_status VARCHAR(32) NOT NULL,
+     actor_id VARCHAR(64),
+     actor_role VARCHAR(16) NOT NULL,
+     note TEXT,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS booking_status_logs_booking_idx ON booking_status_logs(booking_id, created_at)`,
   // v276: BookingStatus enum 加兩個值（Postgres enum ADD VALUE IF NOT EXISTS 是 PG12+ 支援）
   `DO $$ BEGIN
      IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'awaiting_verify'

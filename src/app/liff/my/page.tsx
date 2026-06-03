@@ -51,9 +51,11 @@ interface MyBooking {
   type: "daily" | "tour";
   status:
     | "pending"
+    | "awaiting_verify"     // v276
     | "confirmed"
     | "cancelled_by_user"
     | "cancelled_by_weather"
+    | "cancelled_unpaid"    // v276
     | "completed"
     | "no_show";
   paymentStatus:
@@ -97,10 +99,12 @@ interface MyBooking {
 }
 
 const STATUS_LABEL: Record<MyBooking["status"], string> = {
-  pending: "待確認",
+  pending: "待付款",
+  awaiting_verify: "匯款待確認",     // v276 / v279
   confirmed: "已確認",
   cancelled_by_user: "已取消",
   cancelled_by_weather: "天候取消",
+  cancelled_unpaid: "訂單未成立",     // v276 / v279
   completed: "已完成",
   no_show: "未到",
 };
@@ -137,6 +141,7 @@ function isUpcoming(b: MyBooking) {
   if (
     b.status === "cancelled_by_user" ||
     b.status === "cancelled_by_weather" ||
+    b.status === "cancelled_unpaid" ||
     b.status === "completed" ||
     b.status === "no_show"
   )
@@ -216,7 +221,7 @@ export default function MyBookingsPage() {
     const done: MyBooking[] = [];
     const cancelled: MyBooking[] = [];
     for (const b of bookings) {
-      if (b.status === "cancelled_by_user" || b.status === "cancelled_by_weather") {
+      if (b.status === "cancelled_by_user" || b.status === "cancelled_by_weather" || b.status === "cancelled_unpaid") {
         cancelled.push(b);
       } else if (b.status === "completed" || b.status === "no_show") {
         done.push(b);

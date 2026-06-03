@@ -60,6 +60,16 @@ interface AdminBooking {
     createdAt: string;
     respondedAt?: string | null;
   } | null;
+  // v278：訂單狀態歷史
+  statusLogs?: Array<{
+    id: string;
+    fromStatus: string | null;
+    toStatus: string;
+    actorId: string | null;
+    actorRole: string;
+    note: string | null;
+    createdAt: string;
+  }>;
   user: { displayName: string; realName: string | null; phone: string | null };
   ref: {
     date?: string;
@@ -1291,6 +1301,40 @@ export default function AdminBookingsPage() {
                   </div>
                 )}
               </div>
+
+              {/* v278：訂單狀態歷史 (event log) */}
+              {editing.statusLogs && editing.statusLogs.length > 0 && (
+                <div className="rounded-md p-3" style={{ border: "1px solid var(--border)" }}>
+                  <div className="mb-2 text-sm font-semibold flex items-center gap-2">
+                    📋 訂單狀態歷史
+                    <span className="text-[10px] font-normal text-[var(--muted-foreground)]">
+                      ({editing.statusLogs.length} 筆)
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                    {editing.statusLogs.map((log) => (
+                      <div key={log.id} className="flex gap-3 items-start text-[11px] border-b pb-1.5" style={{ borderColor: "var(--border)" }}>
+                        <div className="flex-shrink-0 font-mono text-[10px] text-[var(--muted-foreground)] w-24">
+                          {new Date(log.createdAt).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">
+                            {log.fromStatus
+                              ? `${BOOKING_STATUS_LABEL[log.fromStatus] ?? log.fromStatus} → ${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`
+                              : `初始：${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`}
+                          </span>
+                          {log.note && (
+                            <span className="ml-1 text-[var(--muted-foreground)]">— {log.note}</span>
+                          )}
+                          <span className="ml-1 inline-flex rounded-full bg-[var(--muted)] px-1.5 py-0 text-[9px] text-[var(--muted-foreground)]">
+                            {log.actorRole}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* 付款憑證審核區 — 只在 已付>0 OR 真的有憑證 時顯示 */}
               {(proofs.length > 0 || (proofsLoading && editing.paidAmount > 0)) && (

@@ -72,6 +72,18 @@ export async function POST(
         }),
       ]);
 
+      // v278：log
+      void import("@/lib/booking-status-log").then((m) =>
+        m.logBookingStatusChange({
+          bookingId: id,
+          fromStatus: booking.status,
+          toStatus: "completed",
+          actorId: auth.user.lineUserId,
+          actorRole: "admin",
+          note: `勾選到場（+${addLogs} 潛數）`,
+        }),
+      );
+
       // 重算 vipLevel — 用 haiwangziLogCount (避免使用者自填灌水)
       const user = await prisma.user.findUnique({
         where: { lineUserId: booking.userId },
@@ -161,6 +173,17 @@ export async function POST(
           data: { noShowCount: { increment: 1 } },
         }),
       ]);
+      // v278：log
+      void import("@/lib/booking-status-log").then((m) =>
+        m.logBookingStatusChange({
+          bookingId: id,
+          fromStatus: booking.status,
+          toStatus: "no_show",
+          actorId: auth.user.lineUserId,
+          actorRole: "admin",
+          note: "勾選未到場",
+        }),
+      );
       return NextResponse.json({ ok: true, action: "no_show" });
     }
   } catch (e) {

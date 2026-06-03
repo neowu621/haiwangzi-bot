@@ -255,6 +255,18 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // v278：記錄初始狀態
+  void import("@/lib/booking-status-log").then((m) =>
+    m.logBookingStatusChange({
+      bookingId: booking.id,
+      fromStatus: null,
+      toStatus: "confirmed",
+      actorId: auth.user.lineUserId,
+      actorRole: "customer",
+      note: `下單（付款狀態：${paymentStatus}）`,
+    }),
+  );
+
   // v260：手寫簽名上 R2 → 更新 booking.signatureImageKey + signedAt + UA
   if (data.signatureDataUrl) {
     try {

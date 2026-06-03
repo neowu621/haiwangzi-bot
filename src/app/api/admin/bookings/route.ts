@@ -72,6 +72,20 @@ export async function GET(req: NextRequest) {
       if (!refundReqByBooking.has(r.bookingId)) refundReqByBooking.set(r.bookingId, r);
     }
 
+    // v278：取得每筆 booking 的狀態歷史
+    const statusLogs = bookings.length
+      ? await prisma.bookingStatusLog.findMany({
+          where: { bookingId: { in: bookings.map((b) => b.id) } },
+          orderBy: { createdAt: "asc" },
+        })
+      : [];
+    const logsByBooking = new Map<string, typeof statusLogs>();
+    for (const log of statusLogs) {
+      const arr = logsByBooking.get(log.bookingId) ?? [];
+      arr.push(log);
+      logsByBooking.set(log.bookingId, arr);
+    }
+
     // v262：簽名圖 presigned URL（讓 admin UI 直接顯示）
     const { previewUrl, r2Configured } = await import("@/lib/r2");
     const signatureUrls = new Map<string, string>();
@@ -131,6 +145,16 @@ export async function GET(req: NextRequest) {
                 respondedAt: rr.respondedAt,
               }
             : null,
+          // v278：狀態歷史
+          statusLogs: (logsByBooking.get(b.id) ?? []).map((l) => ({
+            id: l.id,
+            fromStatus: l.fromStatus,
+            toStatus: l.toStatus,
+            actorId: l.actorId,
+            actorRole: l.actorRole,
+            note: l.note,
+            createdAt: l.createdAt,
+          })),
           ref,
         };
       }),

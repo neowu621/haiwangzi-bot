@@ -75,6 +75,20 @@ export async function POST(
       }),
     ]);
 
+    // v278：log status 變化
+    if (newBookingStatus !== proof.booking.status) {
+      void import("@/lib/booking-status-log").then((m) =>
+        m.logBookingStatusChange({
+          bookingId: proof.bookingId,
+          fromStatus: proof.booking.status,
+          toStatus: newBookingStatus,
+          actorId: auth.user.lineUserId,
+          actorRole: "admin",
+          note: `審核通過付款 NT$${proof.amount}`,
+        }),
+      );
+    }
+
     // 累計 + VIP 重算（fire-and-forget，失敗只 log）
     void promoteVipIfNeeded(proof.booking.userId, proof.amount).catch((e) =>
       console.error("[promote vip after verify]", e),
