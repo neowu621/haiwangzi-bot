@@ -98,28 +98,28 @@ interface MyBooking {
   createdAt: string;
 }
 
-// v286：合併 booking.status × paymentStatus → 單一語意 badge
-// confirmed + pending 不顯示 badge（已由「上傳付款資訊」按鈕 + 截止日提醒傳達）
-// 退款中 / 已退款優先顯示（payment 維度），其次 booking.status
+// v288：訂單狀態 + 付款狀態雙 badge（兩個維度都顯示）
 type BadgeVariant = "default" | "muted" | "coral" | "gold";
-function getStateBadge(b: Pick<MyBooking, "status" | "paymentStatus">):
-  { label: string; variant: BadgeVariant } | null {
-  // 取消類
-  if (b.status === "cancelled_unpaid") return { label: "訂單未成立", variant: "muted" };
-  if (b.status === "cancelled_by_user") return { label: "已取消", variant: "coral" };
-  if (b.status === "cancelled_by_weather") return { label: "天候取消", variant: "coral" };
-  // 結束類
-  if (b.status === "no_show") return { label: "⚠ 未到場", variant: "coral" };
-  if (b.status === "completed") return { label: "✓ 已完成", variant: "muted" };
-  // 退款流程（優先於 confirmed）
-  if (b.paymentStatus === "refunded") return { label: "↩ 已退款", variant: "muted" };
-  if (b.paymentStatus === "refunding") return { label: "退款處理中", variant: "gold" };
-  // 進行中
-  if (b.status === "awaiting_verify") return { label: "⏳ 匯款待確認", variant: "gold" };
-  if (b.paymentStatus === "fully_paid") return { label: "✓ 已付清", variant: "default" };
-  if (b.paymentStatus === "deposit_paid") return { label: "💰 訂金已付", variant: "default" };
-  // confirmed + pending → 預設狀態，不顯示 badge（畫面已有上傳付款資訊按鈕）
-  return null;
+function getOrderBadge(status: MyBooking["status"]): { label: string; variant: BadgeVariant } {
+  switch (status) {
+    case "pending":              return { label: "待確認",      variant: "gold" };
+    case "awaiting_verify":      return { label: "⏳ 匯款待確認", variant: "gold" };
+    case "confirmed":            return { label: "✓ 已確認",    variant: "default" };
+    case "completed":            return { label: "✓ 已完成",    variant: "muted" };
+    case "cancelled_unpaid":     return { label: "訂單未成立",   variant: "muted" };
+    case "cancelled_by_user":    return { label: "已取消",      variant: "coral" };
+    case "cancelled_by_weather": return { label: "天候取消",    variant: "coral" };
+    case "no_show":              return { label: "⚠ 未到場",    variant: "coral" };
+  }
+}
+function getPaymentBadge(p: MyBooking["paymentStatus"]): { label: string; variant: BadgeVariant } {
+  switch (p) {
+    case "pending":       return { label: "💴 待付款",    variant: "gold" };
+    case "deposit_paid":  return { label: "💰 訂金已付",   variant: "default" };
+    case "fully_paid":    return { label: "✅ 已付清",    variant: "default" };
+    case "refunding":     return { label: "退款處理中",   variant: "gold" };
+    case "refunded":      return { label: "↩ 已退款",    variant: "muted" };
+  }
 }
 
 interface GearOption { itemType: GearItemType; label: string; price: number; }
@@ -179,25 +179,15 @@ function isCancellable(b: MyBooking) {
 
 export default function MyBookingsPage() {
   const liff = useLiff();
-  // v267：localStorage cache — 進入頁面瞬間顯示上次訂單（不必等 LIFF init）
-  //   再背景拉新資料覆蓋。第一次訪問還是要等，但第二次起進入幾乎是「秒開」。
+  // v288：localStorage cache 改在 useEffect 讀 — 避免 SSR 與 client 狀態不一致造成骨架閃
+  //   SSR HTML 與 client 首次 render 都是「空 tabs」，瀏覽器不會先畫骨架再切資料
+  //   client mount 後 useEffect 同步讀 cache → setBookings，沒讀到才顯骨架等 fetch
   const BOOKINGS_CACHE_KEY = "haiwangzi:bookings:my:v1";
-  const cachedBookings = (() => {
-    if (typeof window === "undefined") return [] as MyBooking[];
-    try {
-      const raw = window.localStorage.getItem(BOOKINGS_CACHE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as MyBooking[]) : [];
-    } catch {
-      return [];
-    }
-  })();
 
-  const [bookings, setBookings] = useState<MyBooking[]>(cachedBookings);
-  // 有快取就先別顯示 loading；沒有快取才顯示
-  const [loading, setLoading] = useState(cachedBookings.length === 0);
-  const [refreshing, setRefreshing] = useState(false); // 背景刷新指示
+  const [bookings, setBookings] = useState<MyBooking[]>([]);
+  const [loading, setLoading] = useState(false);  // v288: 預設 false，useEffect 讀完 cache 再決定
+  const [refreshing, setRefreshing] = useState(false);
+  const [hydrated, setHydrated] = useState(false); // 標記 cache 已讀過、可顯 empty/skeleton
   const [editing, setEditing] = useState<MyBooking | null>(null);
   const [gearOptions, setGearOptions] = useState<GearOption[]>(GEAR_OPTIONS_DEFAULT);
 
@@ -206,29 +196,38 @@ export default function MyBookingsPage() {
   }, []);
 
   const reload = useCallback(() => {
-    // v287: 永遠用 refreshing（不再切 loading=true），避免有 cache 卻誤觸骨架
-    //   render 端用 `loading && bookings.length === 0` 雙重保險：只要還有資料就絕不顯骨架
     setRefreshing(true);
     liff
       .fetchWithAuth<{ bookings: MyBooking[] }>("/api/bookings/my")
       .then((d) => {
         setBookings(d.bookings);
-        // 寫回 cache
         try {
           window.localStorage.setItem(BOOKINGS_CACHE_KEY, JSON.stringify(d.bookings));
         } catch { /* quota or disabled — ignore */ }
       })
-      .catch(() => {
-        // 失敗時保留 cache，不清空
-      })
+      .catch(() => { /* 失敗時保留 cache，不清空 */ })
       .finally(() => {
         setLoading(false);
         setRefreshing(false);
+        setHydrated(true);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // 1. client mount 後同步讀 cache（在 effect 內讀避免 SSR mismatch）
+    let hasCache = false;
+    try {
+      const raw = window.localStorage.getItem(BOOKINGS_CACHE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setBookings(parsed as MyBooking[]);
+        hasCache = true;
+      }
+    } catch { /* ignore */ }
+    setHydrated(true);
+    // 2. 沒 cache → 顯骨架；有 cache → 直接拉刷新
+    if (!hasCache) setLoading(true);
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -293,21 +292,21 @@ export default function MyBookingsPage() {
           </TabsList>
 
           <TabsContent value="up" className="space-y-3">
-            {/* v287：只有「真的還沒任何資料」時才顯骨架；有 cache 就保持顯示，不閃 */}
-            {loading && bookings.length === 0 && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
-            {!loading && grouped.up.length === 0 && <EmptyState />}
+            {/* v288：所有 empty/skeleton 都等 hydrated 後才顯，避免 SSR HTML 與 client 不一致 */}
+            {hydrated && loading && bookings.length === 0 && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
+            {hydrated && !loading && grouped.up.length === 0 && <EmptyState />}
             {grouped.up.map((b) => (
               <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
             ))}
           </TabsContent>
           <TabsContent value="done" className="space-y-3">
-            {grouped.done.length === 0 && <EmptyState text="還沒有完成紀錄" />}
+            {hydrated && grouped.done.length === 0 && <EmptyState text="還沒有完成紀錄" />}
             {grouped.done.map((b) => (
               <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
             ))}
           </TabsContent>
           <TabsContent value="cancelled" className="space-y-3">
-            {grouped.cancelled.length === 0 && (
+            {hydrated && grouped.cancelled.length === 0 && (
               <EmptyState text="沒有已取消的訂單" />
             )}
             {grouped.cancelled.map((b) => (
@@ -416,11 +415,15 @@ function BookingCard({
               </Badge>
             )}
           </div>
-          {/* v286：合併語意 badge — 預設(confirmed+pending) 不顯示 */}
+          {/* v288：訂單狀態 + 付款狀態雙 badge */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             {(() => {
-              const s = getStateBadge(b);
-              return s ? <Badge variant={s.variant}>{s.label}</Badge> : null;
+              const o = getOrderBadge(b.status);
+              return <Badge variant={o.variant}>{o.label}</Badge>;
+            })()}
+            {(() => {
+              const p = getPaymentBadge(b.paymentStatus);
+              return <Badge variant={p.variant} className="text-[10px]">{p.label}</Badge>;
             })()}
             {/* v285：「修改」改為「取消訂單」— 客戶想改就取消再下單 */}
             {cancellable && (
@@ -545,14 +548,14 @@ function BookingCard({
             ) : (
               // 沒待付款 → 顯示金額 label
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                {isDaily ? "現場收費" : "總金額"}
+                總金額
               </div>
             )}
           </div>
           {/* 中：金額（永遠顯示） */}
           <div className="text-right flex-shrink-0">
             <div className="text-[10px] text-[var(--muted-foreground)]">
-              {needsPayment ? (isDaily ? "現場收費" : "應付總金額") : ""}
+              {needsPayment ? "應付金額" : ""}
             </div>
             <div className="text-base font-bold tabular text-[var(--color-coral)]">
               NT$ {b.totalAmount.toLocaleString()}
