@@ -123,8 +123,101 @@
 
 ---
 
+---
+
+## 🚧 已延後的中型功能（明確規劃但暫不做）
+
+### v272 (已延後) — 教練排班 + 客戶看到誰帶團
+**做了會解決**：客戶不知道帶團教練是誰；教練不知道自己排了哪些班
+**內容**：
+- Schema 加 `DivingTrip.assignedCoachIds: String[]`
+- `/admin/trips` 編輯頁加教練 picker（從 coach 用戶清單勾選）
+- LIFF 場次頁顯示「👨‍🏫 教練 A · B」
+- LIFF 詳情頁顯示每位教練頭像 + 證照 + 評價（評價依賴 v273）
+- 教練 `/liff/coach` 加「我今天的場次」自動篩 assignedCoachIds.includes(me)
+- 加「請假」按鈕設 `coach.unavailableDates: Date[]`
+
+**觸發條件**：教練數 > 3 人、客戶開始問「誰帶我」時
+
+### v273 (已延後) — 客戶評價系統
+**做了會解決**：沒有客戶反饋資料；無法挑出好教練
+**內容**：
+- Schema 加 `Review { id, bookingId, overallStars, siteStars, perCoach: Json[], publicVisible, createdAt }`
+- 訂單 status=completed 隔天 cron 推 LINE Flex 邀客戶評分
+- LIFF 評價頁：整體 / 教練 / 海況 三軸星星 + 文字評語（per coach）
+- Admin 後台看：每位教練平均星數、評語列表
+- LIFF 首頁公開展示好評 carousel
+- 依賴 v272（要先有教練排班才能 per-coach 評價）
+
+**觸發條件**：v272 上線後 1-2 個月有累積後做
+
+---
+
+## 📦 PM 未來需求（產品方向）
+
+### 客戶量擴張類
+- YouTube 自動抓最新影片寫入 MediaPost（task #14）
+- IG/FB 平台轉換評估（task #15）
+
+### 付款流程優化（v273 已做了部分，剩 12 點中 7 點）
+- **#6** 付款證明上傳時 default 顯示「應付 NT$ X」，金額不符警告
+- **#7** "other" 付款方式改強制必填說明 + 截圖
+- **#8** last5 標示各付款方式對應的意義（銀行帳號末 5 / LINE Pay 序號末 5）
+- **#9** dive/tour 預設付款方式不一致（cash vs bank）→ 統一或智慧預設
+- **#10** 訂單卡片加「進度條」：已預約 → 待付款 → 待審核 → 確認
+- **#11** 抵用金折抵改快捷按鈕「全部折抵 / 半額 / 不折抵」
+- **#12** 教練 LIFF 收 cash 後沒立刻標 fully_paid → 加「現場已收 N 元」按鈕
+
+### 重要安全 / 維運（待觸發）
+- **J** Rate limit 全 API 套用
+- **K** 自動備份還原演練（半年一次）
+- **L** 客戶資料 GDPR-style 自助下載
+
+### UX 升級類
+- **C** 骨架卡片加細節
+- **F** 頁面切換動畫
+- **G** 客戶端 Sentry 上報
+
+### 性能優化（觀察一陣再決定）
+- **A** Service Worker 預載
+- **B** SSR
+- **D** localStorage cache TTL
+- **E** R2 圖片 lazy load
+
+### 數據分析類
+- **H** 訂單漏斗分析
+- **I** 教練 / 場次 / 潛點熱門度報表
+- 客戶 LTV 分析
+
+### 天氣回報強化
+- **O** 接 CWA O-A0003-001 自動氣象站（鼻頭角 / 龍洞 等在地測站）
+- **P** 接潮汐 / 浪高 / 海溫 API
+
+### 平台延伸
+- **M** PWA 安裝
+- **N** 多語系（英文版）
+
+---
+
+## 📋 已完成 v256-v274 索引（便於回顧）
+
+| 範圍 | 版本 |
+|---|---|
+| Email 驗證 | v256 (後端) + v258 (UI) + v265 (redirect URL fix) |
+| 政策 / 簽署 / 隱私 | v257 (安全政策) + v259 (modal flow) + v260 (手寫簽名) + v262 (admin 看簽名) + v266 (強制查看 + URL chip) |
+| 首單獎勵 | v261 (規則) + v270 (改觸發 attendance + 通知模板) |
+| Admin 工具 | v263 (群發三欄) + v273 (今晚結帳 /admin/tonight) |
+| 自動發送 | v264 (天氣 cron + Tab) + v265 (URL fix) + v268 (picker + 測試) |
+| 效能 | v267 (兩階段載入加速 — 公開 API 不等 LIFF + localStorage cache) |
+| 預約強化 | v269 (缺資料 modal) |
+| 付款流程 | v271 (證明保留規則) + v272 (超時催繳 cron) + v273 (截止日顯示) |
+| 退款流程 | v274 (兩段式 — admin 發起 → 客戶 LIFF 確認 → 自動執行) |
+
+---
+
 ## 📝 記錄歷史
 
 | 日期 | 記錄項目 |
 |---|---|
 | 2026-06-03 | 創建本文件，記下 v267 之後的優化想法（Service Worker / SSR / 骨架細節）|
+| 2026-06-03 | v274 後追加：v272(舊)v273(舊) 教練排班與客戶評價詳細規劃 + 付款流程 12 點未做的 7 點 + 完整索引 |
