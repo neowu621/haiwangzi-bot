@@ -157,8 +157,25 @@ function isEditable(b: MyBooking) {
 
 export default function MyBookingsPage() {
   const liff = useLiff();
-  const [bookings, setBookings] = useState<MyBooking[]>([]);
-  const [loading, setLoading] = useState(true);
+  // v267：localStorage cache — 進入頁面瞬間顯示上次訂單（不必等 LIFF init）
+  //   再背景拉新資料覆蓋。第一次訪問還是要等，但第二次起進入幾乎是「秒開」。
+  const BOOKINGS_CACHE_KEY = "haiwangzi:bookings:my:v1";
+  const cachedBookings = (() => {
+    if (typeof window === "undefined") return [] as MyBooking[];
+    try {
+      const raw = window.localStorage.getItem(BOOKINGS_CACHE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as MyBooking[]) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const [bookings, setBookings] = useState<MyBooking[]>(cachedBookings);
+  // 有快取就先別顯示 loading；沒有快取才顯示
+  const [loading, setLoading] = useState(cachedBookings.length === 0);
+  const [refreshing, setRefreshing] = useState(false); // 背景刷新指示
   const [editing, setEditing] = useState<MyBooking | null>(null);
   const [gearOptions, setGearOptions] = useState<GearOption[]>(GEAR_OPTIONS_DEFAULT);
 
@@ -166,18 +183,26 @@ export default function MyBookingsPage() {
     fetchGearOptions().then(setGearOptions);
   }, []);
 
-  // v251：直接在 useEffect 內 fetch，不繞 useCallback。
-  //   舊寫法：useCallback([liff.ready]) + useEffect([load])
-  //   → load 在 ready false→true 時 reference 變動 → useEffect 重觸 → fetch 跑 2 次。
-  //   新寫法：fetchWithAuth 內部本來就有「等最多 3 秒 token」邏輯，
-  //   useEffect 在 mount 時 fire 一次就好，不必等 ready。
   const reload = useCallback(() => {
-    setLoading(true);
+    // 有快取資料時用 refreshing（小提示）取代 loading（全頁骨架）
+    if (cachedBookings.length === 0) setLoading(true);
+    else setRefreshing(true);
     liff
       .fetchWithAuth<{ bookings: MyBooking[] }>("/api/bookings/my")
-      .then((d) => setBookings(d.bookings))
-      .catch(() => setBookings([]))
-      .finally(() => setLoading(false));
+      .then((d) => {
+        setBookings(d.bookings);
+        // 寫回 cache
+        try {
+          window.localStorage.setItem(BOOKINGS_CACHE_KEY, JSON.stringify(d.bookings));
+        } catch { /* quota or disabled — ignore */ }
+      })
+      .catch(() => {
+        // 失敗時保留 cache，不清空
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -207,6 +232,15 @@ export default function MyBookingsPage() {
   return (
     <LiffShell title="我的預約" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <div className="px-4 pt-4">
+        {/* v267：背景刷新指示（有快取資料 + 正在拉新資料時顯示） */}
+        {refreshing && (
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-phosphor)]/10 px-3 py-1 text-[10px] text-[var(--color-phosphor)]">
+            <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="50 60" />
+            </svg>
+            正在更新最新訂單⋯
+          </div>
+        )}
         <Tabs defaultValue="up" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="up">

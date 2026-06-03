@@ -103,18 +103,15 @@ export default function CalendarPage() {
   useEffect(() => {
     if (!range) return;
     setLoading(true);
-    liff
-      .fetchWithAuth<{ trips: Trip[] }>(
-        `/api/trips?from=${fmtISODate(range.from)}&to=${fmtISODate(range.to)}`,
-      )
-      .then((d) => setTrips(d.trips))
+    // v267：/api/trips 是公開 endpoint，不需要 LIFF auth → 用原生 fetch 立即發送，
+    //   不必等 LIFF init 完成（省 1-1.5 秒）。原本走 liff.fetchWithAuth 會等 token，
+    //   但 token 對這支 API 來說根本沒用。
+    fetch(`/api/trips?from=${fmtISODate(range.from)}&to=${fmtISODate(range.to)}`)
+      .then((r) => r.json())
+      .then((d: { trips?: Trip[] }) => setTrips(d.trips ?? []))
       .catch(() => setTrips([]))
       .finally(() => setLoading(false));
-    // 用 optional chain 保護 from/to 可能 undefined（防止 .getTime() throw）
-    // v249：deps 不放整個 liff（會 4 次 setState 期間連環觸發 → 閃爍 + 3-5 秒延遲）
-    //   只看 liff.ready（從 false → true 一次），fetchWithAuth 內部會等 token
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range?.from?.getTime(), range?.to?.getTime(), liff.ready]);
+  }, [range?.from?.getTime(), range?.to?.getTime()]);
 
   const tripsByDate = useMemo(() => {
     const m = new Map<string, Trip[]>();

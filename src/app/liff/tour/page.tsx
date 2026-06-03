@@ -62,14 +62,13 @@ export default function TourListPage() {
   const [fBudget, setFBudget] = useState(30000);
 
   useEffect(() => {
-    liff
-      .fetchWithAuth<{ tours: TourSummary[] }>("/api/tours")
-      .then((d) => setTours(d.tours))
+    // v267：/api/tours 公開不需要 auth → 用原生 fetch 立即發送，不等 LIFF init
+    fetch("/api/tours")
+      .then((r) => r.json())
+      .then((d: { tours?: TourSummary[] }) => setTours(d.tours ?? []))
       .catch(() => setTours([]))
       .finally(() => setLoading(false));
-    // v249：deps 改用 liff.ready（一次 false→true），避免 init 期間 4 次 setState 造成連環觸發
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liff.ready]);
+  }, []);
 
   // 自動取 max budget
   const maxBudget = useMemo(() => {
