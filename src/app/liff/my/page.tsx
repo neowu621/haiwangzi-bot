@@ -532,8 +532,9 @@ function BookingCard({
               NT$ {b.totalAmount.toLocaleString()}
             </div>
           </div>
-          {/* 右：申請退款（已付款才出現） */}
-          {b.paidAmount > 0 && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding" && b.status !== "cancelled_unpaid" && (
+          {/* 右：申請退款 — v284：付款已被 admin 確認 (deposit_paid / fully_paid) 才顯示 */}
+          {/*   排除：pending（沒付）/ awaiting_verify（上傳但未審）/ refunded / refunding */}
+          {(b.paymentStatus === "fully_paid" || b.paymentStatus === "deposit_paid") && (
             <Link href={`/liff/refund-request/new?bookingId=${b.id}`}>
               <button className="inline-flex items-center gap-1 rounded-full border border-[var(--color-coral)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10 whitespace-nowrap">
                 💸 申請退款
