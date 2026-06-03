@@ -206,9 +206,9 @@ export default function MyBookingsPage() {
   }, []);
 
   const reload = useCallback(() => {
-    // 有快取資料時用 refreshing（小提示）取代 loading（全頁骨架）
-    if (cachedBookings.length === 0) setLoading(true);
-    else setRefreshing(true);
+    // v287: 永遠用 refreshing（不再切 loading=true），避免有 cache 卻誤觸骨架
+    //   render 端用 `loading && bookings.length === 0` 雙重保險：只要還有資料就絕不顯骨架
+    setRefreshing(true);
     liff
       .fetchWithAuth<{ bookings: MyBooking[] }>("/api/bookings/my")
       .then((d) => {
@@ -293,7 +293,8 @@ export default function MyBookingsPage() {
           </TabsList>
 
           <TabsContent value="up" className="space-y-3">
-            {loading && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
+            {/* v287：只有「真的還沒任何資料」時才顯骨架；有 cache 就保持顯示，不閃 */}
+            {loading && bookings.length === 0 && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
             {!loading && grouped.up.length === 0 && <EmptyState />}
             {grouped.up.map((b) => (
               <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} />
