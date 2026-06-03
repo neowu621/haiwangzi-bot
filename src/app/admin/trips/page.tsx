@@ -268,7 +268,8 @@ export default function AdminTripsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   // v180：日期預設 asc（近的在最上面）
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [filterRange, setFilterRange] = useState<"week" | "month" | "all">("week");
+  // v277：預設「全部」+ 加「過期」「未到期」filter
+  const [filterRange, setFilterRange] = useState<"week" | "month" | "all" | "past" | "upcoming">("all");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -785,10 +786,23 @@ export default function AdminTripsPage() {
   }
 
   // ── 衍生列表：filter → sort → paginate ────────────────────────────
+  // v277：加 past（過期）+ upcoming（未到期）filter
   const filteredTrips = (() => {
     if (filterRange === "all") return trips;
     const today = taipeiToday();
     const todayDate = new Date(`${today}T00:00:00+08:00`);
+    if (filterRange === "past") {
+      return trips.filter((t) => {
+        const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
+        return td < todayDate;
+      });
+    }
+    if (filterRange === "upcoming") {
+      return trips.filter((t) => {
+        const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
+        return td >= todayDate;
+      });
+    }
     const cutoff = new Date(todayDate);
     if (filterRange === "week") cutoff.setDate(cutoff.getDate() - 7);
     else if (filterRange === "month") cutoff.setMonth(cutoff.getMonth() - 1);
@@ -948,9 +962,11 @@ export default function AdminTripsPage() {
         <div className="flex items-center gap-2 text-xs">
           <span className="text-[var(--muted-foreground)]">範圍：</span>
           {([
+            { k: "all" as const, label: "全部" },
+            { k: "upcoming" as const, label: "未到期" },
             { k: "week" as const, label: "一週內" },
             { k: "month" as const, label: "一個月內" },
-            { k: "all" as const, label: "全部" },
+            { k: "past" as const, label: "過期" },
           ]).map(({ k, label }) => (
             <button
               key={k}

@@ -88,7 +88,8 @@ export default function TourDetailPage({
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
   // 付款方式 — 潛水團預設 bank（轉帳訂金）
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank" | "linepay" | "other">("bank");
+  // v275：tour 拿掉現場現金選項，只允許 bank / linepay / other
+  const [paymentMethod, setPaymentMethod] = useState<"bank" | "linepay" | "other">("bank");
   const [paymentNote, setPaymentNote] = useState("");
   // 公開付款資訊
   const [paymentInfo, setPaymentInfo] = useState<{
@@ -432,10 +433,10 @@ export default function TourDetailPage({
         <Card>
           <CardContent className="p-4">
             <div className="mb-2 text-sm font-semibold">付款方式</div>
-            <div className="grid grid-cols-4 gap-1.5">
+            {/* v275：tour 不允許現場付款，需先付訂金預訂位 */}
+            <div className="grid grid-cols-3 gap-1.5">
               {(
                 [
-                  ["cash", "💵 現場"],
                   ["bank", "🏦 轉帳"],
                   ["linepay", "💚 LINE Pay"],
                   ["other", "📝 其他"],
@@ -456,7 +457,6 @@ export default function TourDetailPage({
               ))}
             </div>
             <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-              {paymentMethod === "cash" && "現場結算（出發當日）"}
               {paymentMethod === "bank" && "預約後 7 日內匯訂金保留名額"}
               {paymentMethod === "linepay" && "預約後 7 日內 LINE Pay 轉帳並上傳截圖"}
               {paymentMethod === "other" && "請於下方填寫您要使用的付款方式"}

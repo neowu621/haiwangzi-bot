@@ -54,6 +54,25 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_last_sent_at TIMESTAMPTZ`,
 
+  // v275: 退款備註
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,
+  `ALTER TABLE refund_requests ADD COLUMN IF NOT EXISTS refund_note TEXT`,
+  // v276: BookingStatus enum 加兩個值（Postgres enum ADD VALUE IF NOT EXISTS 是 PG12+ 支援）
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'awaiting_verify'
+                    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'BookingStatus')) THEN
+       ALTER TYPE "BookingStatus" ADD VALUE 'awaiting_verify' AFTER 'pending';
+     END IF;
+   EXCEPTION WHEN undefined_object THEN NULL;
+   END $$;`,
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'cancelled_unpaid'
+                    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'BookingStatus')) THEN
+       ALTER TYPE "BookingStatus" ADD VALUE 'cancelled_unpaid' AFTER 'cancelled_by_weather';
+     END IF;
+   EXCEPTION WHEN undefined_object THEN NULL;
+   END $$;`,
+
   // v274: 退款申請（兩段式）
   `CREATE TABLE IF NOT EXISTS refund_requests (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

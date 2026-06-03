@@ -133,6 +133,7 @@ export default function ProfilePage() {
   // 折疊狀態
   const [personalOpen, setPersonalOpen] = useState(false);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
   const [companionsOpen, setCompanionsOpen] = useState(false);
   const [autoExpanded, setAutoExpanded] = useState(false);
 
@@ -676,9 +677,11 @@ export default function ProfilePage() {
                       >
                         {verifyBusy ? "發送中..." : "📧 發送驗證信"}
                       </button>
-                      <span className="text-[10px] text-[var(--muted-foreground)]">
-                        驗證後首單可得 100 元抵用金
-                      </span>
+                    </div>
+                  )}
+                  {!emailVerifiedAt && email.trim() === savedEmail && (
+                    <div className="text-[10px] leading-relaxed text-[var(--muted-foreground)]">
+                      🎁 完整資料 + Email 驗證，首單完成隔日自動發 100 元抵用金（限 30 天內使用）
                     </div>
                   )}
                   {verifyMsg && (
@@ -763,61 +766,66 @@ export default function ProfilePage() {
           </div>
         </CollapsibleCard>
 
-        {/* 通知偏好 */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+        {/* 通知偏好 — Collapsible */}
+        <CollapsibleCard
+          title="通知偏好"
+          complete={notifyByLine || (notifyByEmail && !!email)}
+          open={notifyOpen}
+          onToggle={() => setNotifyOpen(!notifyOpen)}
+          summary={
+            [
+              notifyByLine ? "LINE 推播" : null,
+              notifyByEmail && email ? "Email" : null,
+            ]
+              .filter(Boolean)
+              .join(" + ") || "未開啟任何通知管道"
+          }
+        >
+          <div className="mb-2 text-[11px] text-[var(--muted-foreground)]">
+            選擇你想接收通知的管道（兩個都可以開）
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
               <div>
-                <div className="text-sm font-bold">通知偏好</div>
+                <div className="text-sm font-semibold">LINE 推播</div>
                 <div className="text-[11px] text-[var(--muted-foreground)]">
-                  選擇你想接收通知的管道（兩個都可以開）
+                  透過 LINE 官方帳號收 Flex 卡片
                 </div>
               </div>
-            </div>
+              <input
+                type="checkbox"
+                checked={notifyByLine}
+                onChange={(e) => setNotifyByLine(e.target.checked)}
+                className="h-5 w-5"
+              />
+            </label>
 
-            <div className="mt-3 space-y-2">
-              <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
-                <div>
-                  <div className="text-sm font-semibold">LINE 推播</div>
-                  <div className="text-[11px] text-[var(--muted-foreground)]">
-                    透過 LINE 官方帳號收 Flex 卡片
-                  </div>
+            <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
+              <div>
+                <div className="text-sm font-semibold">
+                  Email{" "}
+                  {!email && (
+                    <span className="ml-1 rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
+                      請先填 email
+                    </span>
+                  )}
                 </div>
-                <input
-                  type="checkbox"
-                  checked={notifyByLine}
-                  onChange={(e) => setNotifyByLine(e.target.checked)}
-                  className="h-5 w-5"
-                />
-              </label>
-
-              <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
-                <div>
-                  <div className="text-sm font-semibold">
-                    Email{" "}
-                    {!email && (
-                      <span className="ml-1 rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
-                        請先填 email
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-[var(--muted-foreground)]">
-                    {email
-                      ? `收到 ${email}`
-                      : "需先填 email 才會生效"}
-                  </div>
+                <div className="text-[11px] text-[var(--muted-foreground)]">
+                  {email
+                    ? `收到 ${email}`
+                    : "需先填 email 才會生效"}
                 </div>
-                <input
-                  type="checkbox"
-                  checked={notifyByEmail}
-                  disabled={!email}
-                  onChange={(e) => setNotifyByEmail(e.target.checked)}
-                  className="h-5 w-5"
-                />
-              </label>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <input
+                type="checkbox"
+                checked={notifyByEmail}
+                disabled={!email}
+                onChange={(e) => setNotifyByEmail(e.target.checked)}
+                className="h-5 w-5"
+              />
+            </label>
+          </div>
+        </CollapsibleCard>
 
         {/* 緊急聯絡人 — Collapsible，必填 */}
         <CollapsibleCard

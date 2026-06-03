@@ -85,6 +85,52 @@ export async function POST(
     );
   }
 
+  // v276：客戶上傳付款證明後自動轉狀態 awaiting_verify（pending 才轉，其他狀態保留）
+  //  + 推 LINE Flex 給所有 admin/boss 提醒「有匯款待確認」
+  try {
+    const bk = await prisma.booking.findUnique({
+      where: { id },
+      include: { user: { select: { realName: true, displayName: true } } },
+    });
+    if (bk && bk.status === "pending") {
+      await prisma.booking.update({
+        where: { id },
+        data: { status: "awaiting_verify" },
+      });
+    }
+    // 推 LINE 給 admin/boss（fire-and-forget）
+    void (async () => {
+      try {
+        const { getLineClient } = await import("@/lib/line");
+        const lineClient = getLineClient();
+        if (!lineClient) return;
+        const admins = await prisma.user.findMany({
+          where: {
+            OR: [
+              { role: "admin" }, { role: "boss" },
+              { roles: { has: "admin" } }, { roles: { has: "boss" } },
+            ],
+            notifyByLine: true,
+          },
+          select: { lineUserId: true },
+        });
+        const customerName = bk?.user.realName ?? bk?.user.displayName ?? "客戶";
+        const text = `💰 待確認匯款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n金額：NT$ ${data.amount.toLocaleString()}\n後 5 碼：${data.last5}\n${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin/payment-proofs`;
+        for (const a of admins) {
+          try {
+            await lineClient.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text }] });
+          } catch (e) {
+            console.error("[push admin payment-proof]", e);
+          }
+        }
+      } catch (e) {
+        console.error("[notify admin awaiting_verify]", e);
+      }
+    })();
+  } catch (e) {
+    console.error("[awaiting_verify transition]", e);
+  }
+
   // 若 booking 是 tour 類型，重新計算 paidAmount = sum(deposit/final 驗證過的)
   // 此處先不在客戶上傳時自動標 paid，等教練「滑動確認」才更新
 

@@ -89,9 +89,11 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
 
 const BOOKING_STATUS_LABEL: Record<string, string> = {
   pending: "待確認",
+  awaiting_verify: "待確認匯款",  // v276
   confirmed: "已確認",
   cancelled_by_user: "客戶取消",
   cancelled_by_weather: "天氣取消",
+  cancelled_unpaid: "訂單不成立",   // v276
   completed: "已完成",
   no_show: "未到場",
 };
@@ -110,8 +112,9 @@ function payStatusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
   return "muted";
 }
 
-function bookStatusVariant(s: string): "ocean" | "coral" | "muted" {
+function bookStatusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
   if (s === "confirmed" || s === "completed") return "ocean";
+  if (s === "awaiting_verify") return "gold"; // v276：金色強調待處理
   if (s.startsWith("cancelled") || s === "no_show") return "coral";
   return "muted";
 }
@@ -144,6 +147,8 @@ export default function AdminBookingsPage() {
   const [refundAmount, setRefundAmount] = useState("");
   const [refundMethod, setRefundMethod] = useState<"cash" | "credit">("credit");
   const [refundReason, setRefundReason] = useState("");
+  // v275：退款備註（老闆寫實際退款管道，例：LINE Pay 訂單號、匯款帳號）
+  const [refundNote, setRefundNote] = useState("");
   const [refundBusy, setRefundBusy] = useState(false);
   const [refundCreditPct, setRefundCreditPct] = useState<number>(100); // 轉抵用金 % (例：110 = 退款金額的 110% 轉抵用金)
   // v199：新增一筆付款
@@ -541,6 +546,7 @@ export default function AdminBookingsPage() {
           amount: n,
           creditBonusPct,
           reason: refundReason || undefined,
+          refundNote: refundNote || undefined,
         }),
       });
       // 重抓資料拿到 refundRequest 狀態
@@ -1170,8 +1176,15 @@ export default function AdminBookingsPage() {
                         <Input type="text" inputMode="numeric" value={refundAmount}
                           onChange={(e) => setRefundAmount(e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"))}
                           placeholder="退款金額" />
-                        <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="原因（選填）" />
+                        <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="退款原因（選填，給客戶看）" />
                       </div>
+                      {/* v275：退款備註（內部用，記實際退款管道） */}
+                      <Input
+                        value={refundNote}
+                        onChange={(e) => setRefundNote(e.target.value)}
+                        placeholder="退款備註（內部）例：LINE Pay 訂單 #12345 / 匯款 X 銀行 482324"
+                        className="text-xs"
+                      />
                       <Button size="sm" className="w-full" style={{ background: "var(--color-coral)", color: "white" }}
                         disabled={refundBusy} onClick={doRefund}>
                         {refundBusy ? "處理中..." : `確認退款 ${Number(refundAmount || 0).toLocaleString()}`}

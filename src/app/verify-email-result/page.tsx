@@ -35,7 +35,7 @@ function ResultContent() {
       iconColor: "#06C755",
       title: "Email 驗證成功！",
       message: `${email ? email + " " : ""}已驗證完成。`,
-      hint: "🎁 您的首次訂單付款完成後，系統會自動將首單抵用金 100 元加入您的帳戶（下次潛水可用）。",
+      hint: "🎁 完成個人資料 + 首單完成後，隔日系統自動發放 100 元抵用金（限 30 天內使用）。",
       cta: "回到預約 App",
     },
     missing: {

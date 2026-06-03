@@ -15,6 +15,8 @@ const Body = z.object({
   amount: z.number().int().min(1),
   creditBonusPct: z.number().int().min(0).max(50).optional(),
   reason: z.string().max(1000).optional(),
+  // v275：退款備註（內部用，老闆寫實際退款管道）
+  refundNote: z.string().max(2000).optional(),
 });
 
 /**
@@ -74,6 +76,8 @@ export async function POST(
       amount: data.amount,
       creditBonusPct: data.creditBonusPct ?? 0,
       reason: data.reason,
+      // v275: 退款備註（admin 內部）
+      refundNote: data.refundNote,
     },
   });
 

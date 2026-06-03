@@ -81,9 +81,11 @@ enum PaymentMethod {
 
 enum BookingStatus {
   pending
+  awaiting_verify     // v276：客戶上傳匯款後，等老闆審核
   confirmed
   cancelled_by_user
   cancelled_by_weather
+  cancelled_unpaid    // v276：未付款的取消（訂單不成立，不必退款）
   completed
   no_show
 }
@@ -360,6 +362,8 @@ model Booking {
   refundedAt         DateTime?     @map("refunded_at") @db.Timestamptz
   // 退款方式：cash = 退現金 / credit = 轉成禮金（user.creditBalance）
   refundMethod       String?       @map("refund_method") @db.VarChar(16)
+  // v275：退款備註（老闆寫實際退款管道，例：「LINE Pay 訂單 #12345」「匯款到 X 銀行 482324」）
+  refundNote         String?       @map("refund_note") @db.Text
   // 預約時使用的禮金（從 user.creditBalance 扣，CreditTx 有對應紀錄）
   // 取消時若 paidAmount>0 系統會自動把這部份退回 creditBalance
   creditUsed         Int           @default(0) @map("credit_used")
@@ -422,6 +426,8 @@ model RefundRequest {
   amount          Int                          // 退款金額 NT$
   creditBonusPct  Int       @default(0) @map("credit_bonus_pct") // 抵用金額外加成 %
   reason          String?   @db.Text
+  // v275：退款備註（admin 寫實際退款管道，內部用，會 copy 到 booking.refundNote）
+  refundNote      String?   @map("refund_note") @db.Text
   // pending_customer (剛建，等客戶) / accepted (客戶同意) /
   // questioning (客戶有疑問) / executed (已執行) / cancelled (admin 取消申請)
   status          String    @default("pending_customer") @db.VarChar(32)

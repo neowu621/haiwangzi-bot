@@ -497,8 +497,8 @@ export function emailVerifyEmail(params: {
 ${params.verifyUrl}
 
 驗證後：
-✓ 您將可收到場次提醒、付款確認、行前通知
-✓ 首次訂單付款完成後，自動獲得 NT$${reward} 抵用金（下次潛水可用）
+✓ 收到場次提醒、付款確認、行前通知
+✓ 完成第一筆訂單活動後，隔天自動獲得 NT$${reward} 抵用金（下次潛水可用，使用期限 30 天）
 
 此連結 7 天內有效。若您未申請此驗證，請忽略本信。
 
@@ -520,7 +520,7 @@ ${params.verifyUrl}
     <div style="background:#f0f9f7;border-left:4px solid ${BRAND_PHOSPHOR};padding:14px 16px;border-radius:6px;margin:18px 0;font-size:13px;color:#374151;line-height:1.6;">
       <b>驗證後可獲得：</b><br>
       ✓ 收到場次提醒、付款確認、行前通知<br>
-      ✓ 首次訂單付款完成後，自動獲得 <b style="color:${BRAND_DEEP};">NT$${reward}</b> 抵用金（下次潛水可用）
+      ✓ 完成第一筆訂單活動後，隔天自動獲得 <b style="color:${BRAND_DEEP};">NT$${reward}</b> 抵用金（下次潛水可用，使用期限 30 天）
     </div>
     <p style="font-size:12px;color:#9ca3af;margin:18px 0 0 0;line-height:1.6;">
       此連結 7 天內有效。若您未申請此驗證，請忽略本信。<br>

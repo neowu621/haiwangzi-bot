@@ -54,8 +54,11 @@ export async function POST(
     const newPaid = proof.booking.paidAmount + proof.amount;
     const newPayStatus =
       newPaid >= proof.booking.totalAmount ? "fully_paid" : "deposit_paid";
+    // v276：pending 或 awaiting_verify 都轉 confirmed
     const newBookingStatus =
-      proof.booking.status === "pending" ? "confirmed" : proof.booking.status;
+      proof.booking.status === "pending" || proof.booking.status === "awaiting_verify"
+        ? "confirmed"
+        : proof.booking.status;
 
     await prisma.$transaction([
       prisma.paymentProof.update({

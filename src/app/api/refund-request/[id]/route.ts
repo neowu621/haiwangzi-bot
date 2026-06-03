@@ -118,7 +118,7 @@ export async function POST(
           refId: rr.bookingId,
           note: `退款轉抵用金 (v274 客戶確認)${rr.creditBonusPct > 0 ? ` +${rr.creditBonusPct}%` : ""}`,
         });
-        // 更新 booking
+        // 更新 booking（含 v275 退款備註）
         await prisma.booking.update({
           where: { id: rr.bookingId },
           data: {
@@ -126,6 +126,7 @@ export async function POST(
             refundAmount: rr.amount,
             refundedAt: new Date(),
             refundMethod: "credit",
+            refundNote: (rr as unknown as { refundNote?: string | null }).refundNote ?? null,
           },
         });
         executedNow = true;
