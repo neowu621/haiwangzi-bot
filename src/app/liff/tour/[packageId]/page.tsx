@@ -629,35 +629,43 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
-        {/* v259/v266：取消政策 Modal */}
+        {/* v259/v266/v281：取消政策 Modal */}
         <Dialog open={cancellationModalOpen} onOpenChange={(o) => {
           setCancellationModalOpen(o);
-          if (o) setCancellationViewed(true);
-          else setCancellationRead(true);
+          setCancellationViewed(true);
+          if (!o) setCancellationRead(true);
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>📋 取消政策</DialogTitle>
             </DialogHeader>
             <PolicyText>{cancellationPolicy || "（管理員尚未設定取消政策）"}</PolicyText>
-            <button type="button" onClick={() => setCancellationModalOpen(false)} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
+            <button type="button" onClick={() => {
+              setCancellationViewed(true);
+              setCancellationRead(true);
+              setCancellationModalOpen(false);
+            }} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
               我已閱讀，關閉並同意
             </button>
           </DialogContent>
         </Dialog>
 
-        {/* v259/v266：安全政策 Modal */}
+        {/* v259/v266/v281：安全政策 Modal */}
         <Dialog open={safetyModalOpen} onOpenChange={(o) => {
           setSafetyModalOpen(o);
-          if (o) setSafetyViewed(true);
-          else setSafetyRead(true);
+          setSafetyViewed(true);
+          if (!o) setSafetyRead(true);
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>🛡️ 安全政策</DialogTitle>
             </DialogHeader>
             <PolicyText>{safetyPolicy || "（管理員尚未設定安全政策）"}</PolicyText>
-            <button type="button" onClick={() => setSafetyModalOpen(false)} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
+            <button type="button" onClick={() => {
+              setSafetyViewed(true);
+              setSafetyRead(true);
+              setSafetyModalOpen(false);
+            }} className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]">
               我已閱讀，關閉並同意
             </button>
           </DialogContent>

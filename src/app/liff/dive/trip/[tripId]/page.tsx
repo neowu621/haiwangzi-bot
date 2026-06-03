@@ -1045,16 +1045,14 @@ export default function TripBookingPage({
           </CardContent>
         </Card>
 
-        {/* v259/v266：取消政策 Modal */}
+        {/* v259/v266/v281：取消政策 Modal */}
         <Dialog open={cancellationModalOpen} onOpenChange={(o) => {
           setCancellationModalOpen(o);
-          if (o) {
-            // 開啟時標記已查看 → 解鎖 checkbox
-            setCancellationViewed(true);
-          } else {
-            // 關閉時自動勾選同意
-            setCancellationRead(true);
-          }
+          // v281：開啟 或 關閉 都同時設 viewed=true + read=true
+          //   （Radix onOpenChange 在外部 state 變更時 不會 fire，所以這裡只當「點外面/Esc」的保險）
+          //   主要還是依賴下方按鈕 onClick 直接設 state
+          setCancellationViewed(true);
+          if (!o) setCancellationRead(true);
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -1063,7 +1061,12 @@ export default function TripBookingPage({
             <PolicyText>{cancellationPolicy || "（管理員尚未設定取消政策）"}</PolicyText>
             <button
               type="button"
-              onClick={() => setCancellationModalOpen(false)}
+              onClick={() => {
+                // v281：直接設兩個 state 不依賴 onOpenChange
+                setCancellationViewed(true);
+                setCancellationRead(true);
+                setCancellationModalOpen(false);
+              }}
               className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]"
             >
               我已閱讀，關閉並同意
@@ -1071,14 +1074,11 @@ export default function TripBookingPage({
           </DialogContent>
         </Dialog>
 
-        {/* v259/v266：安全政策 Modal */}
+        {/* v259/v266/v281：安全政策 Modal */}
         <Dialog open={safetyModalOpen} onOpenChange={(o) => {
           setSafetyModalOpen(o);
-          if (o) {
-            setSafetyViewed(true);
-          } else {
-            setSafetyRead(true);
-          }
+          setSafetyViewed(true);
+          if (!o) setSafetyRead(true);
         }}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -1087,7 +1087,11 @@ export default function TripBookingPage({
             <PolicyText>{safetyPolicy || "（管理員尚未設定安全政策）"}</PolicyText>
             <button
               type="button"
-              onClick={() => setSafetyModalOpen(false)}
+              onClick={() => {
+                setSafetyViewed(true);
+                setSafetyRead(true);
+                setSafetyModalOpen(false);
+              }}
               className="mt-3 w-full rounded-full bg-[var(--color-phosphor)] py-2.5 text-sm font-semibold text-[var(--color-ocean-deep)]"
             >
               我已閱讀，關閉並同意
