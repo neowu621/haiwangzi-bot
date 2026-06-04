@@ -712,7 +712,17 @@ function ProofListCard({
                   <div className="h-16 w-16 rounded border bg-white/50 flex items-center justify-center text-[10px] text-gray-400">無圖</div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold">{statusLabel} · NT$ {p.amount.toLocaleString()}</div>
+                  <div className="font-semibold flex items-center gap-1.5 flex-wrap">
+                    {statusLabel}
+                    {/* v301：訂金/尾款 標籤 */}
+                    {p.type === "deposit" && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">訂金</span>
+                    )}
+                    {p.type === "final" && (
+                      <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700">尾款</span>
+                    )}
+                    <span>· NT$ {p.amount.toLocaleString()}</span>
+                  </div>
                   <div className="text-[11px] opacity-80 tabular">
                     {new Date(p.uploadedAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </div>

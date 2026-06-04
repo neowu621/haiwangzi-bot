@@ -22,6 +22,7 @@ import { Check, X, RefreshCw, Sun, Moon, ImageIcon } from "lucide-react";
 interface ProofRow {
   id: string;
   bookingId: string;
+  type: "deposit" | "final" | "refund"; // v301
   amount: number;
   previewUrl: string | null;
   uploadedAt: string;
@@ -331,13 +332,23 @@ export default function TonightPage() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-sm">
+                          <div className="flex items-center gap-2 text-sm flex-wrap">
                             <span className="font-semibold">
                               {p.booking.user.realName ?? p.booking.user.displayName}
                             </span>
                             <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
                               {p.booking.code ?? p.booking.id.slice(0, 8)}
                             </span>
+                            {/* v301：訂金 / 尾款 / 退款 標籤 */}
+                            {p.type === "deposit" && (
+                              <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">訂金</span>
+                            )}
+                            {p.type === "final" && (
+                              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700">尾款</span>
+                            )}
+                            {p.type === "refund" && (
+                              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">退款</span>
+                            )}
                           </div>
                           <div className="mt-0.5 text-[12px]">
                             <span className="font-bold text-[var(--color-coral)]">NT$ {p.amount.toLocaleString()}</span>

@@ -536,7 +536,16 @@ function ProofListSection({
                   <div className="h-14 w-14 rounded border bg-white/50 flex items-center justify-center text-[10px] text-gray-400">無圖</div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">{label} · NT$ {p.amount.toLocaleString()}</div>
+                  <div className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                    <span>{label}</span>
+                    {p.type === "deposit" && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">訂金</span>
+                    )}
+                    {p.type === "final" && (
+                      <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700">尾款</span>
+                    )}
+                    <span>· NT$ {p.amount.toLocaleString()}</span>
+                  </div>
                   <div className="text-[11px] opacity-80">
                     {new Date(p.uploadedAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     {p.last5 ? ` · 後5碼 ${p.last5}` : ""}
