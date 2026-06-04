@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
     const proofs = await prisma.paymentProof.findMany({
       where: {
         ...(bookingId ? { bookingId } : {}),
-        ...(filterStatus === "pending" ? { verifiedAt: null } : {}),
+        // v297：pending = 未審核 AND 未駁回
+        ...(filterStatus === "pending" ? { verifiedAt: null, rejectedAt: null } : {}),
         ...(filterStatus === "verified" ? { verifiedAt: { not: null } } : {}),
       },
       orderBy: { uploadedAt: "desc" },
@@ -71,6 +72,10 @@ export async function GET(req: NextRequest) {
           uploadedAt: p.uploadedAt,
           verifiedAt: p.verifiedAt,
           verifiedBy: p.verifiedBy,
+          rejectedAt: p.rejectedAt,       // v297
+          rejectReason: p.rejectReason,   // v297
+          last5: p.last5,                 // v297：admin 對帳用
+          note: p.note,                   // v297
           booking: p.booking,
         };
       }),
