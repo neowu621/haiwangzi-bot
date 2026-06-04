@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     phone: u.phone,
     email: u.email,
     emailVerifiedAt: u.emailVerifiedAt, // v258：給 profile 頁顯示「已驗證 ✓」徽章用
+    onboardingCompletedAt: u.onboardingCompletedAt, // v311：給 LiffShell 判斷是否需強制 Onboarding
     notifyByLine: u.notifyByLine,
     notifyByEmail: u.notifyByEmail,
     cert: u.cert,
@@ -88,6 +89,8 @@ const PatchSchema = z.object({
     .nullable()
     .optional(),
   companions: z.array(CompanionSchema).optional(),
+  // v311：onboarding 完成 — client 在 onboarding modal 完成後送 markOnboardingComplete:true
+  markOnboardingComplete: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -106,14 +109,29 @@ export async function PATCH(req: NextRequest) {
   const data: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
     if (v !== undefined) {
+      // v311：markOnboardingComplete 是 client-side flag，不直接寫進 user table
+      if (k === "markOnboardingComplete") continue;
       // 空字串 → null（避免 DB 存空字串）
       if (k === "birthday") {
-        // birthday 是 Date 欄位，要把 YYYY-MM-DD 轉成 Date object
         data[k] = v && typeof v === "string" ? new Date(v as string) : null;
       } else {
         data[k] = v === "" ? null : v;
       }
     }
+  }
+  // v311：偵測 email 變更 → 自動清 emailVerifiedAt（強制重新驗證）
+  if (body.email !== undefined && body.email !== "" && body.email !== null) {
+    const current = await prisma.user.findUnique({
+      where: { lineUserId: auth.user.lineUserId },
+      select: { email: true, emailVerifiedAt: true },
+    });
+    if (current && current.email !== body.email && current.emailVerifiedAt) {
+      data.emailVerifiedAt = null;
+    }
+  }
+  // v311：完成 onboarding → 寫 onboardingCompletedAt
+  if (body.markOnboardingComplete === true) {
+    data.onboardingCompletedAt = new Date();
   }
   try {
     const updated = await prisma.user.update({

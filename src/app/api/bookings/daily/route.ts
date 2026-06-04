@@ -106,6 +106,16 @@ export async function POST(req: NextRequest) {
       { status: 403 },
     );
   }
+  // v313：擋未驗證 Email 客戶下單
+  if (!auth.user.emailVerifiedAt) {
+    return NextResponse.json(
+      {
+        error: "email_not_verified",
+        message: "請先完成 Email 驗證才能下單。請至「個人」分頁查看驗證信，或在頂部 banner 點「重寄驗證信」。",
+      },
+      { status: 403 },
+    );
+  }
 
   // v289：建立訂單時不再選付款方式，所以這裡 LV1 cash 限制移除
   //   付款方式在 /liff/payment/[bookingId] 才選；那邊會檢查 VIP 等級

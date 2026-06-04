@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { createdAt: "desc" },
       take: filterUserId || filterRefId ? 500 : 200,
-      include: { user: { select: { displayName: true, realName: true, phone: true } } },
+      include: { user: { select: { displayName: true, realName: true, phone: true, email: true, lineUserId: true } } },
     });
 
     // 撈所有相關 trip / tour，附加日期 + 時間

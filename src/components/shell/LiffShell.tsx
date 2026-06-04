@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/brand/Logo";
 import { SplashOverlay } from "@/components/shell/SplashOverlay";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
+import { OnboardingModal } from "@/components/liff/OnboardingModal";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "東北角海王子潛水";
 const LINE_OA = process.env.NEXT_PUBLIC_LINE_OA_ID ?? "@894bpmew";
@@ -165,6 +166,29 @@ export function LiffShell({
     liff.mode !== "mock" &&
     liff.isFriend === false;
 
+  // v311：onboarding gate — 未完成 onboarding → 強制顯示 OnboardingModal
+  type MeShape = {
+    realName: string | null;
+    phone: string | null;
+    email: string | null;
+    onboardingCompletedAt: string | null;
+    emailVerifiedAt: string | null;
+  };
+  const [me, setMe] = React.useState<MeShape | null>(null);
+  const [meLoaded, setMeLoaded] = React.useState(false);
+  React.useEffect(() => {
+    if (!liff.ready || skipFriendGate) return;
+    if (liff.mode === "mock") { setMeLoaded(true); return; }
+    if (liff.isFriend === false) return; // friend gate 還沒過，不必拉
+    let cancelled = false;
+    liff.fetchWithAuth<MeShape>("/api/me")
+      .then((u) => { if (!cancelled) setMe(u); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setMeLoaded(true); });
+    return () => { cancelled = true; };
+  }, [liff.ready, liff.isFriend, liff.mode, skipFriendGate, liff]);
+  const needsOnboarding = meLoaded && me !== null && me.onboardingCompletedAt === null;
+
   function handleBack() {
     // 永遠優先用瀏覽器歷史（router.back 對 Next.js App Router 客戶端導航是可靠的）
     // 只有真的「直接打 URL 進來、history 只有 1 筆」才走 backHref fallback。
@@ -275,12 +299,64 @@ export function LiffShell({
         <FriendGateBlock />
       ) : (
         <>
+          {/* v312：Email 未驗證提醒 banner（onboarding 完成但 email 未驗證）*/}
+          {me && me.onboardingCompletedAt && !me.emailVerifiedAt && me.email && (
+            <EmailVerifyBanner email={me.email} onResent={() => { /* noop, 重寄完不需重抓 me */ }} />
+          )}
           <main className="flex-1 pb-24">{children}</main>
           {bottomNav ? bottomNav : null}
         </>
       )}
 
+      {/* v311：強制 Onboarding Modal — 完成前完全擋住底層 children */}
+      {needsOnboarding && (
+        <OnboardingModal
+          open
+          defaultRealName={me?.realName ?? undefined}
+          defaultPhone={me?.phone ?? undefined}
+          defaultEmail={me?.email ?? undefined}
+          onComplete={() => {
+            // 重新拉 /api/me
+            liff.fetchWithAuth<MeShape>("/api/me").then(setMe).catch(() => {});
+          }}
+        />
+      )}
+
       {/* 版本已搬到 header 左上，footer 留空（讓底部 nav 不被擋） */}
+    </div>
+  );
+}
+
+// v312：Email 驗證提醒 banner
+function EmailVerifyBanner({ email, onResent }: { email: string; onResent: () => void }) {
+  const liff = useLiff();
+  const [sending, setSending] = React.useState(false);
+  const [msg, setMsg] = React.useState<string | null>(null);
+  async function resend() {
+    setSending(true);
+    setMsg(null);
+    try {
+      await liff.fetchWithAuth("/api/me/send-verify-email", { method: "POST", body: JSON.stringify({}) });
+      setMsg(`✓ 已重寄到 ${email}，請至信箱查收`);
+      onResent();
+    } catch (e) {
+      setMsg("重寄失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSending(false);
+    }
+  }
+  return (
+    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs flex items-center gap-2">
+      <span>✉ 請完成 Email 驗證（{email}）</span>
+      <button
+        type="button"
+        onClick={resend}
+        disabled={sending}
+        className="ml-auto rounded-full bg-amber-600 px-2.5 py-0.5 text-[11px] font-medium text-white disabled:opacity-50"
+      >
+        {sending ? "寄出中…" : "重寄驗證信"}
+      </button>
+      {msg && <div className="basis-full text-[11px] text-amber-700 mt-1">{msg}</div>}
     </div>
   );
 }

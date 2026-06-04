@@ -199,6 +199,8 @@ const PATCHES = [
   // v297: payment_proofs 駁回保留紀錄 + 老闆說明
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ`,
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS reject_reason TEXT`,
+  // v311: 客戶 onboarding 完成時間
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ`,
   // 取消原因 / 退款相關
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,

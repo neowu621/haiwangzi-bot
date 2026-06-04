@@ -74,7 +74,7 @@ interface AdminBooking {
     note: string | null;
     createdAt: string;
   }>;
-  user: { displayName: string; realName: string | null; phone: string | null };
+  user: { displayName: string; realName: string | null; phone: string | null; email?: string | null; lineUserId: string };
   ref: {
     date?: string;
     startTime?: string;
@@ -143,6 +143,11 @@ export default function AdminBookingsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   const [saving, setSaving] = useState(false);
+  // v310：客戶名稱點選 → quick action menu
+  const [customerActionFor, setCustomerActionFor] = useState<AdminBooking | null>(null);
+  const [linePushMessage, setLinePushMessage] = useState("");
+  const [linePushBusy, setLinePushBusy] = useState(false);
+  const [linePushResult, setLinePushResult] = useState<string | null>(null);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   // v294：依 URL ?status= 讀預設值（用 window.location 避免 useSearchParams 觸發 prerender error）
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -813,60 +818,26 @@ export default function AdminBookingsPage() {
                             </span>
                           )}
                         </td>
-                        {/* 客戶 — 一行 */}
+                        {/* v310：客戶名可點 → 開 quick action menu（LINE 私訊 / Email / 編輯訂單） */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <span className="font-medium text-sm">
+                          <button
+                            type="button"
+                            onClick={() => setCustomerActionFor(b)}
+                            className="text-left text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                          >
                             {b.user.realName ?? b.user.displayName}
-                          </span>
-                          {b.user.phone && (
-                            <span className="ml-1.5 text-xs text-[var(--muted-foreground)] tabular-nums">
-                              {b.user.phone}
-                            </span>
-                          )}
+                          </button>
                         </td>
-                        {/* 消費狀態：結合 booking status + 場次日期 */}
+                        {/* v310：消費欄位 — 只顯示老闆需要 action 的「待結算」，其他狀態跟「訂單」欄位重複 */}
                         <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                          {(() => {
-                            // 1. 已取消（不論時間）
-                            if (b.status === "cancelled_by_user" || b.status === "cancelled_by_weather") {
-                              return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--muted)] px-2 py-0.5 text-[10px] text-[var(--muted-foreground)] line-through">
-                                  已取消
-                                </span>
-                              );
-                            }
-                            // 2. 已完成 — 客戶實際有來
-                            if (b.status === "completed") {
-                              return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                  ✓ 已消費
-                                </span>
-                              );
-                            }
-                            // 3. 未到場 — 場次已過但客戶沒來
-                            if (b.status === "no_show") {
-                              return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-coral)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-coral)]">
-                                  ✗ 未到場
-                                </span>
-                              );
-                            }
-                            // 4. pending / confirmed
-                            if (tripDateStr && past) {
-                              // 過期了但 booking 還沒結算 — 提醒 admin
-                              return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700" title="場次已過，請更新訂單狀態為「已完成」或「未到場」">
-                                  ⚠ 待結算
-                                </span>
-                              );
-                            }
-                            // 5. 未來場次，未消費
-                            return (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-700">
-                                ⏳ 待消費
-                              </span>
-                            );
-                          })()}
+                          {(b.status === "pending" || b.status === "confirmed" || b.status === "awaiting_verify")
+                            && tripDateStr && past ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700" title="場次已過，請更新訂單狀態為「已完成」或「未到場」">
+                              ⚠ 待結算
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[var(--muted-foreground)]">—</span>
+                          )}
                         </td>
                         {/* 場次 — 一行 */}
                         {/* 場次時間 — daily 一行 / tour 兩行（開始 ~ 結束） */}
@@ -1598,6 +1569,109 @@ export default function AdminBookingsPage() {
                 <Button onClick={doNoShow} disabled={noShowBusy}
                   style={{ background: "var(--color-coral)", color: "white" }}>
                   {noShowBusy ? "處理中..." : "確認未到場"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* v310：客戶 quick action dialog */}
+      <Dialog open={customerActionFor !== null} onOpenChange={(o) => {
+        if (!o) {
+          setCustomerActionFor(null);
+          setLinePushMessage("");
+          setLinePushResult(null);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              聯絡客戶：{customerActionFor?.user.realName ?? customerActionFor?.user.displayName}
+            </DialogTitle>
+          </DialogHeader>
+          {customerActionFor && (
+            <div className="space-y-3 text-sm">
+              {/* 客戶基本資訊 */}
+              <div className="rounded-md border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs space-y-1">
+                <div><span className="text-[var(--muted-foreground)]">電話：</span><span className="tabular-nums font-mono">{customerActionFor.user.phone ?? "—"}</span></div>
+                <div><span className="text-[var(--muted-foreground)]">Email：</span><span className="font-mono break-all">{customerActionFor.user.email ?? "—"}</span></div>
+                <div><span className="text-[var(--muted-foreground)]">訂單：</span><span className="font-mono">{customerActionFor.code ?? customerActionFor.id.slice(0, 8)}</span></div>
+              </div>
+
+              {/* 直接發 LINE 私訊 */}
+              <div>
+                <Label className="text-xs">📱 發送 LINE 私訊</Label>
+                <textarea
+                  value={linePushMessage}
+                  onChange={(e) => setLinePushMessage(e.target.value.slice(0, 1000))}
+                  placeholder="輸入想發送給客戶的訊息（最多 1000 字）"
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                />
+                <div className="mt-2 flex items-center gap-2 justify-end">
+                  <span className="text-[10px] text-[var(--muted-foreground)]">
+                    {linePushMessage.length} / 1000
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={!linePushMessage.trim() || linePushBusy}
+                    onClick={async () => {
+                      if (!customerActionFor) return;
+                      setLinePushBusy(true);
+                      setLinePushResult(null);
+                      try {
+                        await adminFetch(`/api/admin/push-line`, {
+                          method: "POST",
+                          body: JSON.stringify({
+                            userId: customerActionFor.user.lineUserId,
+                            message: linePushMessage,
+                          }),
+                        });
+                        setLinePushResult("✓ 已送出");
+                        setLinePushMessage("");
+                      } catch (e) {
+                        setLinePushResult("❌ 送出失敗：" + (e instanceof Error ? e.message : String(e)));
+                      } finally {
+                        setLinePushBusy(false);
+                      }
+                    }}
+                  >
+                    {linePushBusy ? "送出中..." : "📤 送出 LINE"}
+                  </Button>
+                </div>
+                {linePushResult && (
+                  <div className={`mt-2 rounded-md p-2 text-xs ${linePushResult.startsWith("✓") ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                    {linePushResult}
+                  </div>
+                )}
+              </div>
+
+              {/* 寄 Email */}
+              {customerActionFor.user.email && (
+                <div>
+                  <Label className="text-xs">📧 寄 Email</Label>
+                  <a
+                    href={`mailto:${customerActionFor.user.email}?subject=${encodeURIComponent(`關於您的訂單 ${customerActionFor.code ?? customerActionFor.id.slice(0,8)}`)}`}
+                    className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--muted)]"
+                  >
+                    📧 開啟郵件程式
+                  </a>
+                </div>
+              )}
+
+              {/* 編輯訂單 */}
+              <div className="pt-2 border-t border-[var(--border)]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setEditing(customerActionFor);
+                    setCustomerActionFor(null);
+                  }}
+                >
+                  ✏ 編輯此訂單
                 </Button>
               </div>
             </div>

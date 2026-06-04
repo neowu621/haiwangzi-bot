@@ -124,6 +124,8 @@ model User {
   emailVerifyTokenSentAt DateTime? @map("email_verify_token_sent_at") @db.Timestamptz
   // v257：首單獎勵發放時間（null = 還沒發過）。發放條件：emailVerifiedAt 不為 null + 首筆 fully_paid 訂單
   firstOrderRewardGrantedAt DateTime? @map("first_order_reward_granted_at") @db.Timestamptz
+  // v311：客戶完成首次 onboarding（必填 realName/phone/email）的時間。null = 還沒完成，所有 LIFF 頁面強制顯示 OnboardingModal
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz
   // 通知偏好：客戶可在 /liff/profile 自己關掉。預設都開
   notifyByLine       Boolean    @default(true) @map("notify_by_line")
   notifyByEmail      Boolean    @default(true) @map("notify_by_email")

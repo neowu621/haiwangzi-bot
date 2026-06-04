@@ -53,6 +53,16 @@ export async function POST(req: NextRequest) {
       { status: 403 },
     );
   }
+  // v313：擋未驗證 Email 客戶下單
+  if (!auth.user.emailVerifiedAt) {
+    return NextResponse.json(
+      {
+        error: "email_not_verified",
+        message: "請先完成 Email 驗證才能下單。請至「個人」分頁查看驗證信，或在頂部 banner 點「重寄驗證信」。",
+      },
+      { status: 403 },
+    );
+  }
 
   // 容量檢查 (null = 無上限)
   const booked = await prisma.booking.aggregate({
