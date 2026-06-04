@@ -646,38 +646,61 @@ export default function AdminBookingsPage() {
       {!loading && (
         <div className="space-y-3">
           {/* Filters row */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="space-y-2">
             {/* Trip filter */}
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap">場次：</span>
+              <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap w-16">場次：</span>
               <select
                 value={filterTripKey}
                 onChange={(e) => setFilterTripKey(e.target.value)}
-                className="min-w-0 max-w-[200px] rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs truncate"
+                className="min-w-0 max-w-[280px] rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs truncate"
               >
                 {tripKeyOptions.map((o) => (
                   <option key={o.key} value={o.key} className="truncate">{o.label}</option>
                 ))}
               </select>
             </div>
+            {/* v298: 訂單狀態 filter */}
+            <div className="flex items-start gap-1.5 flex-wrap">
+              <span className="text-xs text-[var(--muted-foreground)] w-16 pt-1">訂單：</span>
+              <div className="flex flex-wrap gap-1.5 flex-1">
+                {["all", "pending", "awaiting_verify", "confirmed", "completed", "no_show", "cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { setFilterStatus(s); setPage(1); }}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                      filterStatus === s
+                        ? "bg-[var(--color-ocean-deep)] text-white"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                    )}
+                  >
+                    {s === "all" ? "全部" : BOOKING_STATUS_LABEL[s] ?? s}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* Payment filter */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-[var(--muted-foreground)]">付款：</span>
-              {["all", "pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setFilterPayStatus(s)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    filterPayStatus === s
-                      ? "bg-[var(--color-ocean-deep)] text-white"
-                      : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-                  )}
-                >
-                  {s === "all" ? "全部" : PAYMENT_STATUS_LABEL[s] ?? s}
-                </button>
-              ))}
+            <div className="flex items-start gap-1.5 flex-wrap">
+              <span className="text-xs text-[var(--muted-foreground)] w-16 pt-1">付款：</span>
+              <div className="flex flex-wrap gap-1.5 flex-1">
+                {["all", "pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setFilterPayStatus(s)}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                      filterPayStatus === s
+                        ? "bg-[var(--color-ocean-deep)] text-white"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                    )}
+                  >
+                    {s === "all" ? "全部" : PAYMENT_STATUS_LABEL[s] ?? s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
