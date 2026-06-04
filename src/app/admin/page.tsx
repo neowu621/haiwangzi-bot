@@ -173,7 +173,7 @@ export default function AdminDashboard() {
             {/* v279：待確認付款 hot indicator */}
             {stats.pendingProofs > 0 && (
               <a
-                href="/admin/payment-proofs"
+                href="/admin/bookings?status=awaiting_verify"
                 className="mt-4 flex items-center gap-3 rounded-xl border-2 px-4 py-3 transition-colors hover:bg-orange-50"
                 style={{ borderColor: "rgba(249,115,22,0.5)", background: "rgba(249,115,22,0.08)" }}
               >

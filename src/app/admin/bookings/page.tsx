@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +145,11 @@ export default function AdminBookingsPage() {
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   const [saving, setSaving] = useState(false);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
+  // v294：依 URL ?status= 讀預設值，給 dashboard「待確認付款」快捷連結用
+  const searchParams = useSearchParams();
+  const [filterStatus, setFilterStatus] = useState<string>(
+    searchParams.get("status") ?? "all",
+  );
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
@@ -380,8 +386,14 @@ export default function AdminBookingsPage() {
   const filteredBookings = bookings.filter((b) => {
     const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
     if (!payOk) return false;
-    const rangeOk = isInRange(b.ref.date ?? b.ref.dateStart);
-    if (!rangeOk) return false;
+    // v294：booking.status filter — 給「待確認付款」快捷連結 (?status=awaiting_verify)
+    const statusOk = filterStatus === "all" || b.status === filterStatus;
+    if (!statusOk) return false;
+    // 帶 ?status= filter 時不套日期區間（這些待處理單可能跨任何時段）
+    if (filterStatus === "all") {
+      const rangeOk = isInRange(b.ref.date ?? b.ref.dateStart);
+      if (!rangeOk) return false;
+    }
     if (filterTripKey === "all") return true;
     const key =
       b.type === "daily"
@@ -581,6 +593,19 @@ export default function AdminBookingsPage() {
 
   return (
     <AdminShell title="訂單管理">
+      {/* v294：?status= 快捷篩選提示 */}
+      {filterStatus !== "all" && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-2 text-sm">
+          <span>🔍 目前只顯示「{BOOKING_STATUS_LABEL[filterStatus] ?? filterStatus}」狀態的訂單</span>
+          <button
+            type="button"
+            onClick={() => { setFilterStatus("all"); setPage(1); }}
+            className="ml-auto rounded-full bg-white/80 px-2 py-0.5 text-xs hover:bg-white"
+          >
+            ✕ 清除篩選
+          </button>
+        </div>
+      )}
       {/* v183: 移除『依場次』分頁，僅留全部訂單視圖 + 強化 filter / sort / pagination */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
         <span className="text-sm text-[var(--muted-foreground)]">活動時間範圍：</span>
