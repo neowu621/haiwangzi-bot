@@ -142,6 +142,9 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminBooking | null>(null);
+  // v314：開啟編輯時 snapshot 原始值，儲存前比對差異
+  const [editingOriginal, setEditingOriginal] = useState<AdminBooking | null>(null);
+  const [pendingDiff, setPendingDiff] = useState<Array<{ key: string; label: string; from: string; to: string }> | null>(null);
   const [saving, setSaving] = useState(false);
   // v310：客戶名稱點選 → quick action menu
   const [customerActionFor, setCustomerActionFor] = useState<AdminBooking | null>(null);
@@ -263,6 +266,19 @@ export default function AdminBookingsPage() {
   }
 
   // 編輯 dialog 打開時自動載入付款憑證；關閉或切換 booking 時 abort 舊請求
+  // v314：開啟編輯時 snapshot 原始值
+  useEffect(() => {
+    if (editing) {
+      if (!editingOriginal || editingOriginal.id !== editing.id) {
+        setEditingOriginal({ ...editing });
+      }
+    } else {
+      setEditingOriginal(null);
+      setPendingDiff(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id]);
+
   useEffect(() => {
     if (!editing) {
       setProofs([]);
@@ -468,11 +484,46 @@ export default function AdminBookingsPage() {
   const currentPage = Math.min(page, totalPages);
   const pagedBookings = sortedBookings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  async function saveEdit() {
+  // v314：先計算差異 → 顯示 confirm dialog → 使用者確認後才真正打 API
+  function saveEdit() {
+    if (!editing || !editingOriginal) return;
+    // 比對哪些欄位有變動
+    const cmp: Array<{ key: keyof AdminBooking; label: string; format?: (v: unknown) => string }> = [
+      { key: "participants", label: "人數" },
+      { key: "totalAmount", label: "總金額", format: (v) => `NT$ ${Number(v ?? 0).toLocaleString()}` },
+      { key: "paidAmount", label: "已付", format: (v) => `NT$ ${Number(v ?? 0).toLocaleString()}` },
+      { key: "paymentStatus", label: "付款狀態", format: (v) => PAYMENT_STATUS_LABEL[String(v)] ?? String(v) },
+      { key: "paymentMethod", label: "付款方式", format: (v) => PAYMENT_METHOD_LABEL[String(v ?? "")] ?? String(v ?? "—") },
+      { key: "status", label: "訂單狀態", format: (v) => BOOKING_STATUS_LABEL[String(v)] ?? String(v) },
+      { key: "notes", label: "客戶備註", format: (v) => String(v ?? "（空）") },
+      { key: "siteNotes", label: "網站備註", format: (v) => String(v ?? "（空）") },
+      { key: "adminNotes", label: "管理備註", format: (v) => String(v ?? "（空）") },
+    ];
+    const diffs: Array<{ key: string; label: string; from: string; to: string }> = [];
+    for (const c of cmp) {
+      const fromV = editingOriginal[c.key];
+      const toV = editing[c.key];
+      if (fromV !== toV && !(fromV == null && toV == null)) {
+        diffs.push({
+          key: String(c.key),
+          label: c.label,
+          from: c.format ? c.format(fromV) : String(fromV ?? "（空）"),
+          to: c.format ? c.format(toV) : String(toV ?? "（空）"),
+        });
+      }
+    }
+    if (diffs.length === 0) {
+      alert("沒有變更");
+      return;
+    }
+    setPendingDiff(diffs);
+  }
+
+  async function doSaveEdit() {
     if (!editing) return;
     setSaving(true);
+    setPendingDiff(null);
     try {
-      // v191：已退款訂單僅准許更新 adminNotes，其他欄位不送
       const isRefunded = editing.paymentStatus === "refunded";
       const body = isRefunded
         ? { adminNotes: editing.adminNotes ?? null }
@@ -672,18 +723,35 @@ export default function AdminBookingsPage() {
         <div className="space-y-3">
           {/* Filters row */}
           <div className="space-y-2">
-            {/* Trip filter + v304 場次時段快捷 */}
+            {/* v314：場次搜尋（文字輸入 + datalist autocomplete） */}
             <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
               <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap w-16">場次：</span>
-              <select
-                value={filterTripKey}
-                onChange={(e) => setFilterTripKey(e.target.value)}
-                className="min-w-0 max-w-[280px] rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs truncate"
-              >
-                {tripKeyOptions.map((o) => (
-                  <option key={o.key} value={o.key} className="truncate">{o.label}</option>
+              <Input
+                list="trip-key-options"
+                value={filterTripKey === "all" ? "" : tripKeyOptions.find((o) => o.key === filterTripKey)?.label ?? filterTripKey}
+                placeholder="輸入場次名稱搜尋…（空白＝全部）"
+                onChange={(e) => {
+                  const text = e.target.value.trim();
+                  if (!text) { setFilterTripKey("all"); return; }
+                  // 嘗試對應 label → key；對不到就保留原樣（filter 不到時自動空列）
+                  const match = tripKeyOptions.find((o) => o.label === text);
+                  setFilterTripKey(match ? match.key : text);
+                  setPage(1);
+                }}
+                className="min-w-0 max-w-[280px] h-7 text-xs"
+              />
+              <datalist id="trip-key-options">
+                {tripKeyOptions.filter((o) => o.key !== "all").map((o) => (
+                  <option key={o.key} value={o.label} />
                 ))}
-              </select>
+              </datalist>
+              {filterTripKey !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setFilterTripKey("all")}
+                  className="text-[10px] text-[var(--muted-foreground)] underline"
+                >✕ 清除</button>
+              )}
               {/* v304：場次時段快捷 chip */}
               {([
                 ["all", "全部"],
@@ -1026,7 +1094,7 @@ export default function AdminBookingsPage() {
 
       {/* ── Edit Dialog ───────────────────────────────── */}
       <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null); }}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-[min(95vw,1200px)] overflow-y-auto sm:max-w-[min(95vw,1200px)]">
           <DialogHeader>
             <DialogTitle>訂單詳情 / 編輯</DialogTitle>
           </DialogHeader>
@@ -1569,6 +1637,42 @@ export default function AdminBookingsPage() {
                 <Button onClick={doNoShow} disabled={noShowBusy}
                   style={{ background: "var(--color-coral)", color: "white" }}>
                   {noShowBusy ? "處理中..." : "確認未到場"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* v314：儲存前差異確認 dialog */}
+      <Dialog open={pendingDiff !== null} onOpenChange={(o) => !o && setPendingDiff(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>確認變更內容</DialogTitle>
+          </DialogHeader>
+          {pendingDiff && (
+            <div className="space-y-3 text-sm">
+              <p className="text-xs text-[var(--muted-foreground)]">
+                以下欄位將被修改，確認無誤後送出。
+              </p>
+              <div className="rounded-md border border-[var(--border)] divide-y divide-[var(--border)]">
+                {pendingDiff.map((d) => (
+                  <div key={d.key} className="p-2.5 text-xs">
+                    <div className="font-semibold text-[var(--foreground)] mb-1">{d.label}</div>
+                    <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                      <span className="line-through opacity-60">{d.from}</span>
+                      <span className="text-[var(--color-coral)]">→</span>
+                      <span className="text-emerald-700 font-semibold">{d.to}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" size="sm" onClick={() => setPendingDiff(null)}>
+                  取消
+                </Button>
+                <Button size="sm" disabled={saving} onClick={doSaveEdit}>
+                  {saving ? "儲存中..." : "✓ 確認儲存"}
                 </Button>
               </div>
             </div>
