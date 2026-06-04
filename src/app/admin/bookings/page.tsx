@@ -152,6 +152,8 @@ export default function AdminBookingsPage() {
     if (s) setFilterStatus(s);
   }, []);
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
+  // v304：場次快捷篩選 — all / today_tomorrow / future / past
+  const [filterTripPeriod, setFilterTripPeriod] = useState<"all" | "today_tomorrow" | "future" | "past">("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
   const [filterRange, setFilterRange] = useState<"today" | "3days" | "week" | "month" | "all">("week");
@@ -384,14 +386,31 @@ export default function AdminBookingsPage() {
     return d >= today && d <= cutoffStr;
   }
 
+  // v304：場次快捷篩選邏輯
+  function periodOk(dateStr?: string): boolean {
+    if (filterTripPeriod === "all") return true;
+    if (!dateStr) return true;
+    const d = dateStr.slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    if (filterTripPeriod === "today_tomorrow") return d === todayStr || d === tomorrowStr;
+    if (filterTripPeriod === "future") return d >= todayStr;
+    if (filterTripPeriod === "past") return d < todayStr;
+    return true;
+  }
+
   const filteredBookings = bookings.filter((b) => {
     const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
     if (!payOk) return false;
     // v294：booking.status filter — 給「待確認付款」快捷連結 (?status=awaiting_verify)
     const statusOk = filterStatus === "all" || b.status === filterStatus;
     if (!statusOk) return false;
-    // 帶 ?status= filter 時不套日期區間（這些待處理單可能跨任何時段）
-    if (filterStatus === "all") {
+    // v304：場次快捷篩選（today_tomorrow / future / past）優先於活動時間範圍
+    if (!periodOk(b.ref.date ?? b.ref.dateStart)) return false;
+    // 帶 ?status= filter 或 場次快捷 時不套活動時間範圍
+    if (filterStatus === "all" && filterTripPeriod === "all") {
       const rangeOk = isInRange(b.ref.date ?? b.ref.dateStart);
       if (!rangeOk) return false;
     }
@@ -647,8 +666,8 @@ export default function AdminBookingsPage() {
         <div className="space-y-3">
           {/* Filters row */}
           <div className="space-y-2">
-            {/* Trip filter */}
-            <div className="flex items-center gap-1.5 min-w-0">
+            {/* Trip filter + v304 場次時段快捷 */}
+            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
               <span className="text-xs text-[var(--muted-foreground)] whitespace-nowrap w-16">場次：</span>
               <select
                 value={filterTripKey}
@@ -659,6 +678,27 @@ export default function AdminBookingsPage() {
                   <option key={o.key} value={o.key} className="truncate">{o.label}</option>
                 ))}
               </select>
+              {/* v304：場次時段快捷 chip */}
+              {([
+                ["all", "全部"],
+                ["today_tomorrow", "今明場次"],
+                ["future", "未來場次"],
+                ["past", "過期場次"],
+              ] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => { setFilterTripPeriod(k); setPage(1); }}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                    filterTripPeriod === k
+                      ? "bg-[var(--color-ocean-deep)] text-white"
+                      : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             {/* v298: 訂單狀態 filter */}
             <div className="flex items-start gap-1.5 flex-wrap">
