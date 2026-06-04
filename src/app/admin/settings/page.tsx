@@ -669,6 +669,11 @@ export default function SettingsPage() {
           <UploadTestPanel />
         </SectionCard>
 
+        {/* v302：儲存統計 + base64 → R2 遷移 */}
+        <SectionCard title="📊 儲存狀態 / Base64 遷移">
+          <StorageStatsPanel />
+        </SectionCard>
+
         </TabsContent>
 
         <TabsContent value="policy" className="mt-4">
@@ -1282,6 +1287,190 @@ function Row({ k, v }: { k: string; v: string }) {
     <div className="flex justify-between gap-2">
       <span className="text-slate-500">{k}</span>
       <span className="text-slate-800 truncate">{v}</span>
+    </div>
+  );
+}
+
+// v302：儲存統計 + base64 → R2 遷移 Panel
+interface StorageRow {
+  storage: string;
+  count: number;
+  bytes: number;
+  kb: number;
+  mb: number;
+}
+interface StorageStats {
+  paymentProofs: StorageRow[];
+  signatures: StorageRow[];
+}
+interface BackfillResult {
+  paymentProofs: { scanned: number; migrated: number; failed: number; kbFreed: number };
+  signatures: { scanned: number; migrated: number; failed: number; kbFreed: number };
+  hint?: string;
+}
+function StorageStatsPanel() {
+  const [stats, setStats] = useState<StorageStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [result, setResult] = useState<BackfillResult | null>(null);
+
+  async function reload() {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const r = await adminFetch<StorageStats>("/api/admin/storage-stats");
+      setStats(r);
+    } catch (e) {
+      setMsg("載入失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setLoading(false);
+    }
+  }
+  React.useEffect(() => { void reload(); }, []);
+
+  async function dryRun() {
+    setBusy(true);
+    setMsg(null);
+    setResult(null);
+    try {
+      const r = await adminFetch<{ paymentProofs: { count: number }; signatures: { count: number } }>(
+        "/api/admin/backfill-base64-to-r2?dryRun=1",
+        { method: "POST" },
+      );
+      setMsg(`📋 DRY RUN 預覽：付款證明 ${r.paymentProofs.count} 筆 base64 待遷移，簽名圖 ${r.signatures.count} 筆。\n沒問題就按「正式遷移」`);
+    } catch (e) {
+      setMsg("預覽失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function execute() {
+    if (!confirm("確定要把所有 base64 圖片遷移到 R2 嗎？\n（不會破壞資料，只是把 imageKey 從 base64 字串改成 R2 key）")) return;
+    setBusy(true);
+    setMsg(null);
+    setResult(null);
+    try {
+      const r = await adminFetch<BackfillResult>(
+        "/api/admin/backfill-base64-to-r2",
+        { method: "POST" },
+      );
+      setResult(r);
+      const totalKb = r.paymentProofs.kbFreed + r.signatures.kbFreed;
+      setMsg(`✅ 完成！付款證明遷移 ${r.paymentProofs.migrated} 筆、簽名圖 ${r.signatures.migrated} 筆，DB 釋放 ${totalKb} KB。${r.hint ?? ""}`);
+      // 重新載入統計
+      void reload();
+    } catch (e) {
+      setMsg("遷移失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function StorageTable({ title, rows }: { title: string; rows: StorageRow[] }) {
+    const labels: Record<string, { label: string; color: string }> = {
+      r2: { label: "✅ R2 雲端", color: "text-emerald-700 bg-emerald-50" },
+      base64: { label: "⚠ Base64 (DB 內嵌)", color: "text-amber-700 bg-amber-50" },
+      no_image: { label: "無圖", color: "text-slate-500 bg-slate-50" },
+      other: { label: "其他", color: "text-slate-700 bg-slate-100" },
+    };
+    return (
+      <div className="space-y-1">
+        <div className="text-xs font-semibold text-[var(--muted-foreground)]">{title}</div>
+        {rows.length === 0 ? (
+          <div className="text-xs text-[var(--muted-foreground)]">尚無資料</div>
+        ) : (
+          <div className="rounded-md overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+            <table className="w-full text-xs">
+              <thead className="bg-[var(--muted)]">
+                <tr>
+                  <th className="text-left px-2 py-1.5">類型</th>
+                  <th className="text-right px-2 py-1.5">筆數</th>
+                  <th className="text-right px-2 py-1.5">DB 容量</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const meta = labels[r.storage] ?? { label: r.storage, color: "" };
+                  return (
+                    <tr key={r.storage} className="border-t" style={{ borderColor: "var(--border)" }}>
+                      <td className="px-2 py-1.5">
+                        <span className={`rounded px-1.5 py-0.5 ${meta.color}`}>{meta.label}</span>
+                      </td>
+                      <td className="text-right px-2 py-1.5 tabular-nums font-mono">{r.count}</td>
+                      <td className="text-right px-2 py-1.5 tabular-nums font-mono">
+                        {r.mb > 1 ? `${r.mb} MB` : `${r.kb} KB`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const hasBase64 = stats && (
+    stats.paymentProofs.some((r) => r.storage === "base64" && r.count > 0) ||
+    stats.signatures.some((r) => r.storage === "base64" && r.count > 0)
+  );
+
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="-mt-2 text-[11px] text-[var(--muted-foreground)]">
+        圖片預設上 R2 雲端（DB 只存 key）。若 R2 暫時不可用，會 fallback 存 base64 直接進 DB（DB 會變肥）。<br />
+        此面板統計目前狀況，並可一鍵把舊的 base64 遷移到 R2，釋放 DB 容量。
+      </p>
+
+      {loading ? (
+        <p className="text-xs text-[var(--muted-foreground)]">載入中...</p>
+      ) : stats ? (
+        <div className="space-y-3">
+          <StorageTable title="付款證明 (payment_proofs)" rows={stats.paymentProofs} />
+          <StorageTable title="客戶簽名 (bookings.signature_image_key)" rows={stats.signatures} />
+        </div>
+      ) : (
+        <p className="text-xs text-[var(--color-coral)]">無法載入</p>
+      )}
+
+      <div className="flex flex-wrap gap-2 pt-2">
+        <Button size="sm" variant="outline" onClick={reload} disabled={loading || busy}>
+          🔄 重新統計
+        </Button>
+        {hasBase64 && (
+          <>
+            <Button size="sm" variant="outline" onClick={dryRun} disabled={busy}>
+              📋 預覽遷移筆數
+            </Button>
+            <Button size="sm" onClick={execute} disabled={busy}>
+              {busy ? "處理中..." : "🚀 正式遷移 base64 → R2"}
+            </Button>
+          </>
+        )}
+        {!hasBase64 && stats && (
+          <span className="text-[11px] text-emerald-700">
+            ✅ 沒有 base64 殘留，DB 已是最佳狀態
+          </span>
+        )}
+      </div>
+
+      {msg && (
+        <div className="rounded-lg p-2 text-xs whitespace-pre-wrap"
+          style={{ background: "rgba(99,235,164,0.12)", color: "var(--color-phosphor)", border: "1px solid rgba(99,235,164,0.25)" }}>
+          {msg}
+        </div>
+      )}
+      {result && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-[var(--muted-foreground)]">查看詳細結果 JSON</summary>
+          <pre className="mt-1 rounded bg-slate-50 p-2 text-[10px] overflow-x-auto">
+            {JSON.stringify(result, null, 2)}
+          </pre>
+        </details>
+      )}
     </div>
   );
 }
