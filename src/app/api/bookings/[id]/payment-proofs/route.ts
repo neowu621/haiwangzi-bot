@@ -92,30 +92,38 @@ export async function POST(
     );
   }
 
-  // v238：寫入 imageKey（可選）+ last5 + note；v289：同時更新 booking.paymentMethod / paymentNote
+  // v300：精簡 DB 寫入流程（從 4-5 次降到 2 次），避免冷啟動超時
+  //   1. 一次性 booking.update（paymentMethod + paymentNote + status 變化）
+  //   2. paymentProof.create
+  //   3. log + LINE 通知都改成 fire-and-forget
   const imageKey = data.r2Key ?? data.imageDataUrl ?? null;
+  const shouldTransitionStatus = booking.status === "pending";
+  const fromStatus = booking.status;
 
   let proof;
   try {
-    proof = await prisma.paymentProof.create({
-      data: {
-        bookingId: id,
-        type: data.type,
-        amount: data.amount,
-        imageKey,
-        last5: data.last5 ?? null, // v293：DB 欄位本身 nullable，bank 才有真實後 5 碼
-        note: data.note ?? null,
-      },
-    });
-    // v289：依本次選擇更新 booking 的付款方式（尾款若改方式就用最新的）
-    await prisma.booking.update({
-      where: { id },
-      data: {
-        paymentMethod: data.paymentMethod,
-        // 把 note 也寫進 booking.paymentNote（admin 後台看到）；overwrite OK
-        ...(data.note ? { paymentNote: data.note } : {}),
-      },
-    });
+    // 並行：booking 更新 + proof 建立（無依賴關係）
+    const [, createdProof] = await Promise.all([
+      prisma.booking.update({
+        where: { id },
+        data: {
+          paymentMethod: data.paymentMethod,
+          ...(data.note ? { paymentNote: data.note } : {}),
+          ...(shouldTransitionStatus ? { status: "awaiting_verify" } : {}),
+        },
+      }),
+      prisma.paymentProof.create({
+        data: {
+          bookingId: id,
+          type: data.type,
+          amount: data.amount,
+          imageKey,
+          last5: data.last5 ?? null,
+          note: data.note ?? null,
+        },
+      }),
+    ]);
+    proof = createdProof;
   } catch (e) {
     console.error("[POST payment-proofs]", e);
     return NextResponse.json(
@@ -124,23 +132,13 @@ export async function POST(
     );
   }
 
-  // v276：客戶上傳付款證明後自動轉狀態 awaiting_verify（pending 才轉，其他狀態保留）
-  //  + 推 LINE Flex 給所有 admin/boss 提醒「有匯款待確認」
+  // v300：log + LINE 通知都改 fire-and-forget，不擋 response
   try {
-    const bk = await prisma.booking.findUnique({
-      where: { id },
-      include: { user: { select: { realName: true, displayName: true } } },
-    });
-    if (bk && bk.status === "pending") {
-      await prisma.booking.update({
-        where: { id },
-        data: { status: "awaiting_verify" },
-      });
-      // v278：log
+    if (shouldTransitionStatus) {
       void import("@/lib/booking-status-log").then((m) =>
         m.logBookingStatusChange({
           bookingId: id,
-          fromStatus: "pending",
+          fromStatus,
           toStatus: "awaiting_verify",
           actorId: auth.user.lineUserId,
           actorRole: "customer",
@@ -164,7 +162,12 @@ export async function POST(
           },
           select: { lineUserId: true },
         });
-        const customerName = bk?.user.realName ?? bk?.user.displayName ?? "客戶";
+        // v300: 不再 findUnique，需要時自己查
+        const u = await prisma.user.findUnique({
+          where: { lineUserId: booking.userId },
+          select: { realName: true, displayName: true },
+        }).catch(() => null);
+        const customerName = u?.realName ?? u?.displayName ?? "客戶";
         const methodLabel = { bank: "🏦 轉帳", linepay: "💚 LINE Pay", other: "📝 其他" }[data.paymentMethod];
         const text = `💰 待確認付款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n方式：${methodLabel}\n金額：NT$ ${data.amount.toLocaleString()}\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin/bookings?status=awaiting_verify`;
         for (const a of admins) {

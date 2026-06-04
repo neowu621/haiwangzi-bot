@@ -230,7 +230,8 @@ export default function PaymentUploadPage({
           });
           clearTimeout(t1);
           const ctrl2 = new AbortController();
-          const t2 = setTimeout(() => ctrl2.abort(), 30000);
+          // v300：R2 PUT 超時 60s（大圖在慢網路會花較久）
+          const t2 = setTimeout(() => ctrl2.abort(), 60000);
           const putRes = await fetch(presign.url, {
             method: "PUT",
             body: file,
@@ -252,7 +253,8 @@ export default function PaymentUploadPage({
       }
 
       const ctrl3 = new AbortController();
-      const t3 = setTimeout(() => ctrl3.abort(), 30000);
+      // v300：拉長到 60s 涵蓋 Zeabur 冷啟動 + LINE WebView 慢網路
+      const t3 = setTimeout(() => ctrl3.abort(), 60000);
       try {
         await liff.fetchWithAuth(`/api/bookings/${bookingId}/payment-proofs`, {
           method: "POST",
@@ -274,7 +276,7 @@ export default function PaymentUploadPage({
       setTimeout(() => router.push("/liff/my"), 1500);
     } catch (e) {
       const msg = e instanceof Error
-        ? (e.name === "AbortError" ? "上傳超時（30 秒）— 請檢查網路或圖片大小" : e.message)
+        ? (e.name === "AbortError" ? "上傳超時 — 請檢查網路後再試一次。若反覆失敗請聯絡老闆" : e.message)
         : String(e);
       setError(msg);
     } finally {
