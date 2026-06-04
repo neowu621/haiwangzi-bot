@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email/send";
 import { bookingConfirmEmail } from "@/lib/email/templates";
 import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
+import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -249,6 +250,8 @@ export async function POST(req: NextRequest) {
       // v289：建立時不寫付款方式，等客戶到付款頁選
       paymentMethod: data.paymentMethod ?? null,
       paymentNote: data.paymentNote ?? null,
+      // v296：公開付款連結 token
+      payLinkToken: generatePayLinkToken(),
       creditUsed,
       status,
       agreedToTermsAt: new Date(),

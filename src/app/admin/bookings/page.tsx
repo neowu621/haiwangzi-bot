@@ -1,7 +1,6 @@
 "use client";
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
@@ -145,11 +144,13 @@ export default function AdminBookingsPage() {
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   const [saving, setSaving] = useState(false);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
-  // v294：依 URL ?status= 讀預設值，給 dashboard「待確認付款」快捷連結用
-  const searchParams = useSearchParams();
-  const [filterStatus, setFilterStatus] = useState<string>(
-    searchParams.get("status") ?? "all",
-  );
+  // v294：依 URL ?status= 讀預設值（用 window.location 避免 useSearchParams 觸發 prerender error）
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const s = new URLSearchParams(window.location.search).get("status");
+    if (s) setFilterStatus(s);
+  }, []);
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";

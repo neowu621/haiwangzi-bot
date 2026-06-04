@@ -71,6 +71,8 @@ export async function POST(
           paidAmount: newPaid,
           paymentStatus: newPayStatus,
           status: newBookingStatus,
+          // v296：fully_paid 時失效公開付款連結（客戶開連結會看到「已確認」）
+          ...(newPayStatus === "fully_paid" ? { payLinkVerifiedAt: new Date() } : {}),
         },
       }),
     ]);

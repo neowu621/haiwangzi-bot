@@ -87,7 +87,10 @@ export async function POST(req: NextRequest) {
       `📅 場次：${dateStr} ${trip.startTime}\n` +
       `💰 待繳餘額：NT$ ${remain.toLocaleString()}\n\n` +
       `⚠️ LV1 會員需在出發前 3 天付清。請儘速完成匯款並上傳憑證，否則訂單可能被自動取消。\n` +
-      (baseUrl ? `\n👉 ${baseUrl}/liff/payment/${b.id}` : "");
+      // v296：改用公開付款連結（無需 LINE 登入），含 token
+      (baseUrl && b.payLinkToken
+        ? `\n👉 ${baseUrl}/pay/${b.id}?t=${b.payLinkToken}`
+        : (baseUrl ? `\n👉 ${baseUrl}/liff/payment/${b.id}` : ""));
 
     try {
       await client.pushMessage({

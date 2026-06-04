@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
+import { generatePayLinkToken } from "@/lib/pay-link";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,6 +133,8 @@ export async function POST(req: NextRequest) {
       paidAmount,
       paymentStatus,
       paymentMethod: data.paymentMethod ?? null,
+      // v296：公開付款連結 token
+      payLinkToken: generatePayLinkToken(),
       paymentNote: data.paymentNote ?? null,
       creditUsed,
       status,

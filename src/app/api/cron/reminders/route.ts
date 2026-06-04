@@ -218,8 +218,11 @@ async function handle(req: NextRequest) {
     for (const b of bookings) {
       const remaining = b.totalAmount - b.paidAmount;
       if (remaining <= 0) continue;
+      // v296：優先用公開付款連結（無需 LINE 登入）
       const bookingUrl = process.env.NEXT_PUBLIC_BASE_URL
-        ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`
+        ? (b.payLinkToken
+            ? `${process.env.NEXT_PUBLIC_BASE_URL}/pay/${b.id}?t=${b.payLinkToken}`
+            : `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`)
         : "https://line.me/";
       const daysLeft = tour.finalReminderDays ?? 30;
       const deadline = tour.finalDeadline

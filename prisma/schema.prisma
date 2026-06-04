@@ -356,6 +356,9 @@ model Booking {
   paymentMethod      PaymentMethod? @map("payment_method")
   // 「其他」付款方式時客戶填寫的說明（如：街口支付、微信、現金匯款等）
   paymentNote        String?       @map("payment_note")
+  // v296：公開付款連結 token（無需 LINE 登入），老闆審核付款後設 verifiedAt 即失效
+  payLinkToken       String?       @unique @map("pay_link_token") @db.VarChar(64)
+  payLinkVerifiedAt  DateTime?     @map("pay_link_verified_at") @db.Timestamptz
   status             BookingStatus @default(pending)
   cancellationReason String?       @map("cancellation_reason")
   refundAmount       Int?          @map("refund_amount")
