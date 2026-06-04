@@ -146,11 +146,14 @@ export default function AdminBookingsPage() {
   const [editingOriginal, setEditingOriginal] = useState<AdminBooking | null>(null);
   const [pendingDiff, setPendingDiff] = useState<Array<{ key: string; label: string; from: string; to: string }> | null>(null);
   const [saving, setSaving] = useState(false);
-  // v310：客戶名稱點選 → quick action menu
+  // v310/v317：客戶聯絡 dialog — 一個訊息框、勾選 LINE/Email、一個送出鈕
   const [customerActionFor, setCustomerActionFor] = useState<AdminBooking | null>(null);
-  const [linePushMessage, setLinePushMessage] = useState("");
-  const [linePushBusy, setLinePushBusy] = useState(false);
-  const [linePushResult, setLinePushResult] = useState<string | null>(null);
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactEmailSubject, setContactEmailSubject] = useState("");
+  const [contactChannelLine, setContactChannelLine] = useState(true);
+  const [contactChannelEmail, setContactChannelEmail] = useState(false);
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactResult, setContactResult] = useState<string | null>(null);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   // v294：依 URL ?status= 讀預設值（用 window.location 避免 useSearchParams 觸發 prerender error）
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -1680,12 +1683,13 @@ export default function AdminBookingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* v310：客戶 quick action dialog */}
+      {/* v317：客戶聯絡 dialog — 一個訊息框、勾選通道、一次送出 */}
       <Dialog open={customerActionFor !== null} onOpenChange={(o) => {
         if (!o) {
           setCustomerActionFor(null);
-          setLinePushMessage("");
-          setLinePushResult(null);
+          setContactMessage("");
+          setContactEmailSubject("");
+          setContactResult(null);
         }
       }}>
         <DialogContent className="max-w-md">
@@ -1703,64 +1707,112 @@ export default function AdminBookingsPage() {
                 <div><span className="text-[var(--muted-foreground)]">訂單：</span><span className="font-mono">{customerActionFor.code ?? customerActionFor.id.slice(0, 8)}</span></div>
               </div>
 
-              {/* 直接發 LINE 私訊 */}
+              {/* 通道勾選 */}
               <div>
-                <Label className="text-xs">📱 發送 LINE 私訊</Label>
+                <Label className="text-xs">透過哪個通道發送？</Label>
+                <div className="mt-1 flex gap-3 text-sm">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={contactChannelLine}
+                      onChange={(e) => setContactChannelLine(e.target.checked)}
+                    />
+                    <span>📱 LINE 私訊</span>
+                  </label>
+                  <label className={cn(
+                    "flex items-center gap-1.5",
+                    !customerActionFor.user.email && "opacity-50 cursor-not-allowed"
+                  )}>
+                    <input
+                      type="checkbox"
+                      checked={contactChannelEmail && !!customerActionFor.user.email}
+                      disabled={!customerActionFor.user.email}
+                      onChange={(e) => setContactChannelEmail(e.target.checked)}
+                    />
+                    <span>📧 Email{!customerActionFor.user.email && "（客戶未填）"}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Email 主旨（只在勾 Email 時顯示） */}
+              {contactChannelEmail && customerActionFor.user.email && (
+                <div>
+                  <Label className="text-xs">Email 主旨（選填）</Label>
+                  <Input
+                    value={contactEmailSubject}
+                    onChange={(e) => setContactEmailSubject(e.target.value.slice(0, 200))}
+                    placeholder={`預設：東北角海王子潛水 — 訊息通知`}
+                  />
+                </div>
+              )}
+
+              {/* 訊息內容 */}
+              <div>
+                <Label className="text-xs">訊息內容</Label>
                 <textarea
-                  value={linePushMessage}
-                  onChange={(e) => setLinePushMessage(e.target.value.slice(0, 1000))}
-                  placeholder="輸入想發送給客戶的訊息（最多 1000 字）"
-                  rows={4}
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value.slice(0, 2000))}
+                  placeholder="輸入想發送給客戶的訊息（最多 2000 字）"
+                  rows={5}
                   className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                 />
-                <div className="mt-2 flex items-center gap-2 justify-end">
-                  <span className="text-[10px] text-[var(--muted-foreground)]">
-                    {linePushMessage.length} / 1000
-                  </span>
-                  <Button
-                    size="sm"
-                    disabled={!linePushMessage.trim() || linePushBusy}
-                    onClick={async () => {
-                      if (!customerActionFor) return;
-                      setLinePushBusy(true);
-                      setLinePushResult(null);
-                      try {
-                        await adminFetch(`/api/admin/push-line`, {
+                <div className="mt-1 text-[10px] text-right text-[var(--muted-foreground)]">
+                  {contactMessage.length} / 2000
+                </div>
+              </div>
+
+              {/* 送出按鈕 */}
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={
+                    !contactMessage.trim() ||
+                    contactBusy ||
+                    (!contactChannelLine && !contactChannelEmail)
+                  }
+                  onClick={async () => {
+                    if (!customerActionFor) return;
+                    const channels: string[] = [];
+                    if (contactChannelLine) channels.push("line");
+                    if (contactChannelEmail && customerActionFor.user.email) channels.push("email");
+                    if (channels.length === 0) return;
+                    setContactBusy(true);
+                    setContactResult(null);
+                    try {
+                      const r = await adminFetch<{ ok: boolean; results: Record<string, { ok: boolean; error?: string }> }>(
+                        `/api/admin/contact-customer`,
+                        {
                           method: "POST",
                           body: JSON.stringify({
                             userId: customerActionFor.user.lineUserId,
-                            message: linePushMessage,
+                            message: contactMessage,
+                            channels,
+                            emailSubject: contactEmailSubject || undefined,
                           }),
-                        });
-                        setLinePushResult("✓ 已送出");
-                        setLinePushMessage("");
-                      } catch (e) {
-                        setLinePushResult("❌ 送出失敗：" + (e instanceof Error ? e.message : String(e)));
-                      } finally {
-                        setLinePushBusy(false);
+                        },
+                      );
+                      const parts: string[] = [];
+                      if (r.results.line) parts.push(`LINE：${r.results.line.ok ? "✓" : "❌ " + r.results.line.error}`);
+                      if (r.results.email) parts.push(`Email：${r.results.email.ok ? "✓" : "❌ " + r.results.email.error}`);
+                      setContactResult((r.ok ? "✓ 全部送出成功 — " : "⚠ 部分失敗 — ") + parts.join(" / "));
+                      if (r.ok) {
+                        setContactMessage("");
+                        setContactEmailSubject("");
                       }
-                    }}
-                  >
-                    {linePushBusy ? "送出中..." : "📤 送出 LINE"}
-                  </Button>
-                </div>
-                {linePushResult && (
-                  <div className={`mt-2 rounded-md p-2 text-xs ${linePushResult.startsWith("✓") ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-                    {linePushResult}
-                  </div>
-                )}
+                    } catch (e) {
+                      setContactResult("❌ 送出失敗：" + (e instanceof Error ? e.message : String(e)));
+                    } finally {
+                      setContactBusy(false);
+                    }
+                  }}
+                >
+                  {contactBusy ? "送出中..." : "📤 送出訊息"}
+                </Button>
               </div>
 
-              {/* 寄 Email */}
-              {customerActionFor.user.email && (
-                <div>
-                  <Label className="text-xs">📧 寄 Email</Label>
-                  <a
-                    href={`mailto:${customerActionFor.user.email}?subject=${encodeURIComponent(`關於您的訂單 ${customerActionFor.code ?? customerActionFor.id.slice(0,8)}`)}`}
-                    className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--muted)]"
-                  >
-                    📧 開啟郵件程式
-                  </a>
+              {contactResult && (
+                <div className={`rounded-md p-2 text-xs ${contactResult.startsWith("✓") ? "bg-emerald-50 text-emerald-700" : contactResult.startsWith("⚠") ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>
+                  {contactResult}
                 </div>
               )}
 
