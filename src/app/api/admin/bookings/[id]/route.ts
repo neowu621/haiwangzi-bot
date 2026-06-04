@@ -15,8 +15,8 @@ const PatchSchema = z.object({
   paymentStatus: z
     .enum(["pending", "deposit_paid", "fully_paid", "refunding", "refunded"])
     .optional(),
-  // v293: paymentMethod nullable — 訂單建立時可能還沒選付款方式
-  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).nullable().optional(),
+  // v309: 移除 cash 選項（v289 起不再支援現場支付）；保留 nullable
+  paymentMethod: z.enum(["bank", "linepay", "other"]).nullable().optional(),
   status: z
     .enum([
       "pending",

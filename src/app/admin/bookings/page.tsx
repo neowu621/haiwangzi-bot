@@ -1189,13 +1189,15 @@ export default function AdminBookingsPage() {
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">付款方式</Label>
                       <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
-                        value={editing.paymentMethod ?? "cash"}
+                        value={editing.paymentMethod ?? ""}
                         disabled={locked}
-                        onChange={(e) => setEditing({ ...editing, paymentMethod: e.target.value })}>
-                        <option value="cash">現場支付</option>
+                        onChange={(e) => setEditing({ ...editing, paymentMethod: e.target.value || undefined })}>
+                        <option value="">— 未選 —</option>
                         <option value="bank">銀行轉帳</option>
                         <option value="linepay">LINE Pay</option>
                         <option value="other">其他</option>
+                        {/* v309：cash 為 legacy 舊訂單顯示用，新訂單不允許 */}
+                        {editing.paymentMethod === "cash" && <option value="cash">現場（舊）</option>}
                       </select>
                     </div>
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">

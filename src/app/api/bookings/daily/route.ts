@@ -34,7 +34,8 @@ const BodySchema = z.object({
   notes: z.string().optional(),
   // 付款方式：cash 現場 / bank 轉帳 / linepay / other
   // v289: paymentMethod 改為可選 — 建立訂單時不選，等客戶到「付款方式選擇」頁才寫入
-  paymentMethod: z.enum(["cash", "bank", "linepay", "other"]).nullable().optional(),
+  // v309：拿掉 cash（v289 起 daily 不再支援現場支付）
+  paymentMethod: z.enum(["bank", "linepay", "other"]).nullable().optional(),
   // 「其他」付款方式時客戶填寫的說明
   paymentNote: z.string().max(200).optional(),
   // 使用抵用金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount

@@ -199,13 +199,13 @@ export default function AdminGuidePage() {
               <Node color="blue">客戶 LIFF 預約場次</Node>
               <ArrowDown label="POST /api/bookings/daily" />
               <Node color="amber">status=pending · paymentStatus=pending</Node>
-              <ArrowDown label="客戶選擇付款方式" />
-              <Branch labels={["LV2+ 限定", "全會員", "全會員"]}>
-                <Node color="muted" small>💵 現場</Node>
+              <ArrowDown label="客戶到「我的預約 → 付款方式選擇」選付款方式" />
+              <Branch labels={["全會員", "全會員", "全會員"]}>
                 <Node color="muted" small>🏦 轉帳</Node>
                 <Node color="muted" small>💚 LINE Pay</Node>
+                <Node color="muted" small>📝 其他</Node>
               </Branch>
-              <ArrowDown label="bank/linepay：客戶上傳憑證" />
+              <ArrowDown label="客戶上傳付款憑證" />
               <Node color="purple">📄 PaymentProof (verifiedAt=null)</Node>
               <ArrowDown label="Boss 進編輯 dialog 看縮圖" />
               <Branch labels={["金額對", "金額錯/詐騙"]}>
