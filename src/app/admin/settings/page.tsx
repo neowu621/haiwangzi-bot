@@ -1067,11 +1067,11 @@ function AutoSendSection({
       <div className="mt-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(96,165,250,0.06)" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-[var(--foreground)]">📋 每日訂單日報</p>
+            <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日</p>
             <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              每天 07:00 自動發送日報（建議 Cronicle 排程 cron: <span className="font-mono">0 7 * * *</span>，timezone: Asia/Taipei）。<br/>
-              老闆/admin：完整版（場次+客戶+應收+待審+待結算+月統計）LINE + Email。<br/>
-              教練：精簡版 LINE，只列今日場次與客戶清單（不含金額）。
+              每天 21:00 自動發送「明日預報」（建議 Cronicle 排程 cron: <span className="font-mono">0 21 * * *</span>，timezone: Asia/Taipei）。<br/>
+              老闆/admin：完整版（明日場次+客戶+應收+待審匯款+今日待結算+月統計）LINE + Email。<br/>
+              教練：精簡版 LINE，只列明日場次與客戶清單+電話（不含金額）。
             </p>
           </div>
           <label className="flex items-center gap-2 text-sm shrink-0">

@@ -1,7 +1,8 @@
-// v315：每日訂單日報 (建議 Cronicle 排程：每天 07:00 Asia/Taipei)
+// v315/v316：每日訂單日報 (建議 Cronicle 排程：每天 21:00 Asia/Taipei)
+// v316：21:00 發送 → 報「明日」場次（前一天晚上就清楚明日狀況）
 // 兩種版本:
-//   - 老闆/admin（含 email）：今日場次 + 客戶 + 應收 + 待審核 + 待結算 + 統計
-//   - 教練（lightweight LINE）：今日場次 + 客戶清單（不含金額）
+//   - 老闆/admin（含 email）：明日場次 + 客戶 + 應收 + 待審核 + 今日待結算 + 月統計
+//   - 教練（lightweight LINE）：明日場次 + 客戶清單（不含金額）
 //
 // 認證: Authorization: Bearer ${CRON_SECRET}
 import { NextRequest, NextResponse } from "next/server";
@@ -35,30 +36,30 @@ export async function POST(req: NextRequest) {
   const todayStr = tw(now);
   const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tw(tomorrow);
-  const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = tw(yesterday);
+  const dayAfterTomorrow = new Date(now); dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+  const dayAfterTomorrowStr = tw(dayAfterTomorrow);
   const monthStart = new Date(now); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
-  // 1. 今日 daily trips + 訂單
-  const todayTrips = await prisma.divingTrip.findMany({
-    where: { date: { gte: new Date(todayStr + "T00:00:00+08:00"), lt: new Date(tomorrowStr + "T00:00:00+08:00") } },
+  // v316：報明日場次（前一晚 21:00 發送，老闆隔天 06:30 出門前已掌握）
+  const tomorrowTrips = await prisma.divingTrip.findMany({
+    where: { date: { gte: new Date(tomorrowStr + "T00:00:00+08:00"), lt: new Date(dayAfterTomorrowStr + "T00:00:00+08:00") } },
     select: { id: true, date: true, startTime: true, diveSiteIds: true },
   });
-  const todayTours = await prisma.tourPackage.findMany({
+  const tomorrowTours = await prisma.tourPackage.findMany({
     where: {
-      dateStart: { lte: new Date(todayStr + "T23:59:59+08:00") },
-      dateEnd: { gte: new Date(todayStr + "T00:00:00+08:00") },
+      dateStart: { lte: new Date(tomorrowStr + "T23:59:59+08:00") },
+      dateEnd: { gte: new Date(tomorrowStr + "T00:00:00+08:00") },
     },
     select: { id: true, title: true, dateStart: true, dateEnd: true },
   });
-  const todayTripIds = todayTrips.map((t) => t.id);
-  const todayTourIds = todayTours.map((t) => t.id);
+  const tomorrowTripIds = tomorrowTrips.map((t) => t.id);
+  const tomorrowTourIds = tomorrowTours.map((t) => t.id);
 
-  const todayBookings = await prisma.booking.findMany({
+  const tomorrowBookings = await prisma.booking.findMany({
     where: {
       OR: [
-        { type: "daily", refId: { in: todayTripIds } },
-        { type: "tour", refId: { in: todayTourIds } },
+        { type: "daily", refId: { in: tomorrowTripIds } },
+        { type: "tour", refId: { in: tomorrowTourIds } },
       ],
       status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"] },
     },
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   });
 
   // 取 dive sites name
-  const allSiteIds = Array.from(new Set(todayTrips.flatMap((t) => t.diveSiteIds)));
+  const allSiteIds = Array.from(new Set(tomorrowTrips.flatMap((t) => t.diveSiteIds)));
   const sites = await prisma.diveSite.findMany({ where: { id: { in: allSiteIds } }, select: { id: true, name: true } });
   const siteMap = new Map(sites.map((s) => [s.id, s.name]));
 
@@ -77,21 +78,21 @@ export async function POST(req: NextRequest) {
     take: 20,
   });
 
-  // 3. 昨日待結算 (場次過了還沒勾到場)
-  const pastUnsettledTrips = await prisma.divingTrip.findMany({
-    where: { date: { gte: new Date(yesterdayStr + "T00:00:00+08:00"), lt: new Date(todayStr + "T00:00:00+08:00") } },
+  // 3. 今日待結算 (今日場次過了但還沒勾到場 — 老闆夜間結帳前的提醒)
+  const todayUnsettledTrips = await prisma.divingTrip.findMany({
+    where: { date: { gte: new Date(todayStr + "T00:00:00+08:00"), lt: new Date(tomorrowStr + "T00:00:00+08:00") } },
     select: { id: true },
   });
-  const pastUnsettledTours = await prisma.tourPackage.findMany({
-    where: { dateEnd: { lt: new Date(todayStr + "T00:00:00+08:00") } },
+  const todayUnsettledTours = await prisma.tourPackage.findMany({
+    where: { dateEnd: { lt: new Date(tomorrowStr + "T00:00:00+08:00") } },
     select: { id: true },
     take: 30,
   });
   const pastUnsettled = await prisma.booking.count({
     where: {
       OR: [
-        { type: "daily", refId: { in: pastUnsettledTrips.map((t) => t.id) }, status: { in: ["pending", "confirmed", "awaiting_verify"] } },
-        { type: "tour", refId: { in: pastUnsettledTours.map((t) => t.id) }, status: { in: ["pending", "confirmed", "awaiting_verify"] } },
+        { type: "daily", refId: { in: todayUnsettledTrips.map((t) => t.id) }, status: { in: ["pending", "confirmed", "awaiting_verify"] } },
+        { type: "tour", refId: { in: todayUnsettledTours.map((t) => t.id) }, status: { in: ["pending", "confirmed", "awaiting_verify"] } },
       ],
     },
   });
@@ -106,9 +107,9 @@ export async function POST(req: NextRequest) {
     _sum: { paidAmount: true },
   });
 
-  // ── 場次分組 ──
-  const tripGroups = todayTrips.map((t) => {
-    const bookings = todayBookings.filter((b) => b.type === "daily" && b.refId === t.id);
+  // ── 明日場次分組 ──
+  const tripGroups = tomorrowTrips.map((t) => {
+    const bookings = tomorrowBookings.filter((b) => b.type === "daily" && b.refId === t.id);
     const totalAmt = bookings.reduce((s, b) => s + b.totalAmount, 0);
     const paidAmt = bookings.reduce((s, b) => s + b.paidAmount, 0);
     const totalPeople = bookings.reduce((s, b) => s + b.participants, 0);
@@ -121,8 +122,8 @@ export async function POST(req: NextRequest) {
       due: totalAmt - paidAmt,
     };
   });
-  const tourGroups = todayTours.map((t) => {
-    const bookings = todayBookings.filter((b) => b.type === "tour" && b.refId === t.id);
+  const tourGroups = tomorrowTours.map((t) => {
+    const bookings = tomorrowBookings.filter((b) => b.type === "tour" && b.refId === t.id);
     const totalAmt = bookings.reduce((s, b) => s + b.totalAmount, 0);
     const paidAmt = bookings.reduce((s, b) => s + b.paidAmount, 0);
     const totalPeople = bookings.reduce((s, b) => s + b.participants, 0);
@@ -136,19 +137,20 @@ export async function POST(req: NextRequest) {
     };
   });
   const allGroups = [...tripGroups, ...tourGroups];
-  const totalBookings = todayBookings.length;
-  const totalPeople = todayBookings.reduce((s, b) => s + b.participants, 0);
+  const totalBookings = tomorrowBookings.length;
+  const totalPeople = tomorrowBookings.reduce((s, b) => s + b.participants, 0);
 
   // ── 老闆/admin 完整訊息 ──
   function buildBossText(): string {
     const lines: string[] = [];
-    lines.push(`🌊 海王子日報｜${fmtDate(now)}`);
+    lines.push(`🌊 海王子明日預報｜${fmtDate(tomorrow)}`);
+    lines.push(`（今日 ${fmtDate(now)} 21:00 發送）`);
     lines.push("━━━━━━━━━━━━━━━");
     lines.push("");
     if (allGroups.length === 0) {
-      lines.push("📅 今日無場次");
+      lines.push("📅 明日無場次 — 可以休息");
     } else {
-      lines.push(`📅 今日場次（${allGroups.length} 場 / ${totalBookings} 筆 / ${totalPeople} 人）`);
+      lines.push(`📅 明日場次（${allGroups.length} 場 / ${totalBookings} 筆 / ${totalPeople} 人）`);
       for (const g of allGroups) {
         lines.push(`  ${g.label}`);
         if (g.bookings.length === 0) {
@@ -170,7 +172,7 @@ export async function POST(req: NextRequest) {
       lines.push("");
     }
     if (pastUnsettled > 0) {
-      lines.push(`⚠ 待結算（昨日場次未勾到場）：${pastUnsettled} 筆`);
+      lines.push(`⚠ 今日場次待結算（還沒勾到場）：${pastUnsettled} 筆`);
       lines.push(`  → 進「今晚結帳」處理`);
       lines.push("");
     }
@@ -183,11 +185,11 @@ export async function POST(req: NextRequest) {
   // ── 教練 lightweight 訊息 ──
   function buildCoachText(): string {
     const lines: string[] = [];
-    lines.push(`🤿 海王子今日場次｜${fmtDate(now)}`);
+    lines.push(`🤿 海王子明日場次｜${fmtDate(tomorrow)}`);
     lines.push("━━━━━━━━━━━━━━━");
     lines.push("");
     if (allGroups.length === 0) {
-      lines.push("今天沒有場次，好好休息 🌴");
+      lines.push("明天沒有場次，好好休息 🌴");
       return lines.join("\n");
     }
     for (const g of allGroups) {
