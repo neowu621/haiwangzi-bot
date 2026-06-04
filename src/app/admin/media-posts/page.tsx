@@ -234,12 +234,12 @@ export default function AdminMediaPostsPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button onClick={() => togglePinned(p)} className="rounded p-1 hover:bg-[var(--muted)]" title={p.pinned ? "取消置頂" : "置頂"}>
-                        {p.pinned ? <Pin className="h-4 w-4 text-[var(--color-phosphor)]" /> : <PinOff className="h-4 w-4 text-[var(--muted-foreground)]" />}
+                        {p.pinned ? <Pin className="h-4 w-4 text-emerald-600" /> : <PinOff className="h-4 w-4 text-[var(--muted-foreground)]" />}
                       </button>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button onClick={() => toggleVisible(p)} className="rounded p-1 hover:bg-[var(--muted)]" title={p.visible ? "隱藏" : "顯示"}>
-                        {p.visible ? <Eye className="h-4 w-4 text-[var(--color-phosphor)]" /> : <EyeOff className="h-4 w-4 text-[var(--muted-foreground)]" />}
+                        {p.visible ? <Eye className="h-4 w-4 text-emerald-600" /> : <EyeOff className="h-4 w-4 text-[var(--muted-foreground)]" />}
                       </button>
                     </td>
                     <td className="px-4 py-3">

@@ -129,7 +129,7 @@ function Legend() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl p-5 mb-4" style={cardStyle}>
-      <h2 className="mb-3 text-base font-bold" style={{ color: "var(--color-phosphor)" }}>{title}</h2>
+      <h2 className="mb-3 text-base font-bold" style={{ color: "#047857" }}>{title}</h2>
       <div className="space-y-3 text-sm" style={subStyle}>{children}</div>
     </section>
   );
@@ -357,7 +357,7 @@ export default function AdminGuidePage() {
               </div>
               <div className="flex flex-col items-center rounded-md p-3" style={{ background: "rgba(99,235,164,0.05)", border: "1px solid rgba(99,235,164,0.2)" }}>
                 <Node color="phosphor" small>3️⃣</Node>
-                <div className="mt-2 text-xs font-semibold text-center" style={{ color: "var(--color-phosphor)" }}>結算提醒</div>
+                <div className="mt-2 text-xs font-semibold text-center" style={{ color: "#047857" }}>結算提醒</div>
                 <div className="mt-1 text-[10px] text-center" style={subStyle}>場次過了未結算 → LINE 推 admin</div>
               </div>
             </div>

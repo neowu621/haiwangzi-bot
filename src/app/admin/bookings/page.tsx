@@ -838,7 +838,7 @@ export default function AdminBookingsPage() {
                             // 2. 已完成 — 客戶實際有來
                             if (b.status === "completed") {
                               return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-phosphor)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-phosphor)]">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                                   ✓ 已消費
                                 </span>
                               );
@@ -962,7 +962,7 @@ export default function AdminBookingsPage() {
                                   onClick={() => quickComplete(b)}
                                   disabled={completing === b.id}
                                   title="標記已完成（已收齊）"
-                                  className="border-[var(--color-phosphor)] text-[var(--color-phosphor)] hover:bg-[var(--color-phosphor)]/10"
+                                  className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
                                 >
                                   ✓
                                 </Button>
@@ -1485,11 +1485,12 @@ export default function AdminBookingsPage() {
                             （已清理 / 30 天前）
                           </div>
                         )}
-                        <div className="text-[10px] text-[var(--muted-foreground)]">
-                          {new Date(p.uploadedAt).toLocaleDateString("zh-TW")}
+                        {/* v308：日期顏色由淡灰改深灰，已核可由螢光綠改深綠，提升白底可讀性 */}
+                        <div className="text-[10px] text-slate-700">
+                          上傳：{new Date(p.uploadedAt).toLocaleDateString("zh-TW")}
                         </div>
                         {p.verifiedAt ? (
-                          <div className="text-[10px] font-semibold text-[var(--color-phosphor)]">
+                          <div className="text-[10px] font-semibold text-emerald-700">
                             ✓ 已核可 {new Date(p.verifiedAt).toLocaleDateString("zh-TW")}
                           </div>
                         ) : (

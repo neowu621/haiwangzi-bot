@@ -291,7 +291,7 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Status */}
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
-        {ok && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "var(--color-phosphor)", border: "1px solid rgba(99,235,164,0.25)" }}>✓ {ok}</div>}
+        {ok && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "#047857", border: "1px solid rgba(99,235,164,0.25)" }}>✓ {ok}</div>}
 
         {/* v255：8 大分類改用 Tab 切換（原本一直捲容易漏 — 例如 VIP 升等獎金藏在金額底部找不到） */}
         <Tabs defaultValue="home" className="w-full">
@@ -805,7 +805,7 @@ export default function SettingsPage() {
           <div className="space-y-4">
             {/* Version */}
             <FieldRow label="目前版本">
-              <span className="rounded bg-[var(--muted)] px-2 py-1 font-mono text-sm" style={{ color: "var(--color-phosphor)" }}>
+              <span className="rounded bg-[var(--muted)] px-2 py-1 font-mono text-sm" style={{ color: "#047857" }}>
                 v{APP_VERSION}
               </span>
             </FieldRow>
@@ -827,11 +827,11 @@ export default function SettingsPage() {
             <FieldRow label="健康檢查">
               <div className="flex gap-3">
                 <a href="/api/healthz" target="_blank" rel="noreferrer"
-                  className="flex items-center gap-1 text-sm hover:underline" style={{ color: "var(--color-phosphor)" }}>
+                  className="flex items-center gap-1 text-sm hover:underline" style={{ color: "#047857" }}>
                   /api/healthz <ExternalLink className="h-3 w-3" />
                 </a>
                 <a href="/api/dbcheck" target="_blank" rel="noreferrer"
-                  className="flex items-center gap-1 text-sm hover:underline" style={{ color: "var(--color-phosphor)" }}>
+                  className="flex items-center gap-1 text-sm hover:underline" style={{ color: "#047857" }}>
                   /api/dbcheck <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
@@ -1459,7 +1459,7 @@ function StorageStatsPanel() {
 
       {msg && (
         <div className="rounded-lg p-2 text-xs whitespace-pre-wrap"
-          style={{ background: "rgba(99,235,164,0.12)", color: "var(--color-phosphor)", border: "1px solid rgba(99,235,164,0.25)" }}>
+          style={{ background: "rgba(99,235,164,0.12)", color: "#047857", border: "1px solid rgba(99,235,164,0.25)" }}>
           {msg}
         </div>
       )}
