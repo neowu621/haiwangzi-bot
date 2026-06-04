@@ -88,6 +88,9 @@ const PatchSchema = z.object({
   // v264：自動發送（每日天氣回報）
   dailyWeatherReportEnabled: z.boolean().optional(),
   dailyWeatherReportRecipients: z.array(z.string()).optional(),
+  // v315：訂單日報（每日 07:00 自動發給 admin/boss）
+  dailyBriefingEnabled: z.boolean().optional(),
+  dailyBriefingIncludeCoaches: z.boolean().optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -154,6 +157,9 @@ export async function GET(req: NextRequest) {
       dailyWeatherReportEnabled: (row as unknown as { dailyWeatherReportEnabled?: boolean }).dailyWeatherReportEnabled ?? false,
       dailyWeatherReportRecipients: ((row as unknown as { dailyWeatherReportRecipients?: unknown }).dailyWeatherReportRecipients as string[] | undefined) ?? [],
       dailyWeatherReportLastSentAt: (row as unknown as { dailyWeatherReportLastSentAt?: Date | null }).dailyWeatherReportLastSentAt ?? null,
+      // v315 訂單日報
+      dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
+      dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,
     },
     isDefault: false,
     updatedAt: row.updatedAt,

@@ -201,6 +201,10 @@ const PATCHES = [
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS reject_reason TEXT`,
   // v311: 客戶 onboarding 完成時間
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ`,
+  // v315: 訂單日報設定
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_enabled BOOLEAN DEFAULT TRUE`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_include_coaches BOOLEAN DEFAULT TRUE`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_last_sent_at TIMESTAMPTZ`,
   // 取消原因 / 退款相關
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,

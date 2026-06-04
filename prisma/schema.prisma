@@ -585,6 +585,12 @@ model SiteConfig {
   dailyWeatherReportRecipients Json @default("[]") @map("daily_weather_report_recipients")
   dailyWeatherReportLastSentAt DateTime? @map("daily_weather_report_last_sent_at") @db.Timestamptz
 
+  // v315：每日訂單日報（早 07:00 由 Cronicle 觸發）
+  dailyBriefingEnabled Boolean @default(true) @map("daily_briefing_enabled")
+  // 是否也發給有 coach 角色的人（教練版只列場次+客戶，不含金額）
+  dailyBriefingIncludeCoaches Boolean @default(true) @map("daily_briefing_include_coaches")
+  dailyBriefingLastSentAt DateTime? @map("daily_briefing_last_sent_at") @db.Timestamptz
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

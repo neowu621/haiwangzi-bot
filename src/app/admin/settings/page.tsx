@@ -88,6 +88,9 @@ interface Config {
   dailyWeatherReportEnabled?: boolean;
   dailyWeatherReportRecipients?: string[];
   dailyWeatherReportLastSentAt?: string | null;
+  // v315：訂單日報
+  dailyBriefingEnabled?: boolean;
+  dailyBriefingIncludeCoaches?: boolean;
 }
 
 const DEFAULT_GEAR: GearPrices = {
@@ -1060,11 +1063,45 @@ function AutoSendSection({
         )}
       </div>
 
+      {/* v315：訂單日報設定 */}
+      <div className="mt-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(96,165,250,0.06)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--foreground)]">📋 每日訂單日報</p>
+            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              每天 07:00 自動發送日報（建議 Cronicle 排程 cron: <span className="font-mono">0 7 * * *</span>，timezone: Asia/Taipei）。<br/>
+              老闆/admin：完整版（場次+客戶+應收+待審+待結算+月統計）LINE + Email。<br/>
+              教練：精簡版 LINE，只列今日場次與客戶清單（不含金額）。
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <input
+              type="checkbox"
+              checked={cfg.dailyBriefingEnabled ?? true}
+              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingEnabled: e.target.checked } : c)}
+            />
+            <span className="text-[var(--foreground)]">啟用</span>
+          </label>
+        </div>
+        {cfg.dailyBriefingEnabled !== false && (
+          <label className="mt-3 flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={cfg.dailyBriefingIncludeCoaches ?? true}
+              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingIncludeCoaches: e.target.checked } : c)}
+            />
+            <span className="text-[var(--foreground)]">也發給教練（精簡版）</span>
+          </label>
+        )}
+      </div>
+
       <div className="flex justify-end">
         <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
           onClick={() => save("自動發送", {
             dailyWeatherReportEnabled: cfg.dailyWeatherReportEnabled ?? false,
             dailyWeatherReportRecipients: cfg.dailyWeatherReportRecipients ?? [],
+            dailyBriefingEnabled: cfg.dailyBriefingEnabled ?? true,
+            dailyBriefingIncludeCoaches: cfg.dailyBriefingIncludeCoaches ?? true,
           })}
           disabled={saving === "自動發送"}>
           <Save className="mr-1.5 h-4 w-4" />
