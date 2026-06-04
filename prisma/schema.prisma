@@ -400,6 +400,9 @@ model PaymentProof {
   uploadedAt DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz
   verifiedBy String?          @map("verified_by") @db.VarChar(64)
   verifiedAt DateTime?        @map("verified_at") @db.Timestamptz
+  // v297：駁回保留紀錄而不刪，客戶看得到老闆說明
+  rejectedAt   DateTime? @map("rejected_at")   @db.Timestamptz
+  rejectReason String?   @map("reject_reason") @db.Text
 
   booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   verifier User?   @relation(fields: [verifiedBy], references: [lineUserId], onDelete: SetNull)

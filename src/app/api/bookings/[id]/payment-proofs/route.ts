@@ -60,14 +60,33 @@ export async function POST(
   }
   const data = parsed.data;
 
-  // 防止 client 上傳金額超過 booking 應付金額（避免「假裝多付」干擾 admin）
+  // v297：先擋已付清 / 已退款 / 已取消的訂單（友善文案）
+  if (booking.paymentStatus === "fully_paid" ||
+      (booking.totalAmount > 0 && booking.paidAmount >= booking.totalAmount)) {
+    return NextResponse.json(
+      { error: "此訂單已付清 ✅，無需再上傳付款證明。如有問題請聯絡老闆" },
+      { status: 400 },
+    );
+  }
+  if (booking.paymentStatus === "refunded" || booking.paymentStatus === "refunding") {
+    return NextResponse.json(
+      { error: "此訂單為退款狀態，無法再上傳付款證明" },
+      { status: 400 },
+    );
+  }
+  if (booking.status === "cancelled_by_user" || booking.status === "cancelled_by_weather" ||
+      booking.status === "cancelled_unpaid") {
+    return NextResponse.json(
+      { error: "此訂單已取消，無法再上傳付款證明" },
+      { status: 400 },
+    );
+  }
+  // 防止上傳金額超過餘額（給 100 容差）
   const remaining = booking.totalAmount - booking.paidAmount;
   if (data.amount > remaining + 100) {
-    // 給 100 NT$ 容差（避免四捨五入問題）
     return NextResponse.json(
       {
-        error: `上傳金額 ${data.amount} 超過應付餘額 ${remaining}`,
-        hint: "若實際多付，請聯絡客服處理",
+        error: `上傳金額 NT$${data.amount.toLocaleString()} 超過應付餘額 NT$${remaining.toLocaleString()}。若實際多付請聯絡老闆`,
       },
       { status: 400 },
     );

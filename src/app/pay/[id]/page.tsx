@@ -31,6 +31,11 @@ interface PayApiOK {
     amount: number;
     uploadedAt: string;
     verifiedAt: string | null;
+    rejectedAt: string | null;
+    rejectReason: string | null;
+    last5: string | null;
+    note: string | null;
+    url: string | null;
   }>;
 }
 
@@ -184,29 +189,57 @@ export default function PublicPayPage({
     );
   }
 
-  // 已被 admin 確認（連結失效，僅檢視）
+  // 已被 admin 確認 / 已付清 / 已退款 / 已取消（連結失效，僅檢視）
   if (data.state === "verified") {
     return (
       <Shell>
-        <VerifiedView booking={data.booking} />
+        <VerifiedView booking={data.booking} reason={(data as PayApiOK & { reason?: string }).reason ?? "verified"} />
       </Shell>
     );
   }
 
-  // 已送出待審核（沒有 verifiedAt 但有 unverified proof）
-  const hasPendingProof = (data.proofs ?? []).some((p) => !p.verifiedAt);
-  if (submitted || hasPendingProof) {
-    return (
-      <Shell>
-        <PendingReviewView booking={data.booking} />
-      </Shell>
-    );
+  // v297：永遠顯示 proof 列表 + 上傳表單（不再因為有 pending proof 就強制跳 PendingReview）
+  //   讓客戶看到全部歷史 + 駁回理由，可自由刪除未審 / 補上傳
+
+  async function deleteProof(proofId: string) {
+    if (!confirm("確定要刪除這筆未審核的付款證明嗎？")) return;
+    try {
+      const r = await fetch(`/api/pay/${id}/proofs/${proofId}?t=${encodeURIComponent(token)}`, {
+        method: "DELETE",
+      });
+      if (!r.ok) {
+        const j = await r.json();
+        alert("刪除失敗：" + (j.error ?? "未知錯誤"));
+        return;
+      }
+      // 重新拉資料
+      const r2 = await fetch(`/api/pay/${id}?t=${encodeURIComponent(token)}`);
+      const j2 = (await r2.json()) as PayApiOK;
+      setData(j2);
+    } catch {
+      alert("網路錯誤");
+    }
   }
+
+  const proofs = data.proofs ?? [];
+  const hasPending = proofs.some((p) => !p.verifiedAt && !p.rejectedAt);
 
   // 一般待付款狀態
   return (
     <Shell>
       <BookingSummary booking={data.booking} />
+
+      {/* v297：付款證明列表（有的話）*/}
+      {proofs.length > 0 && (
+        <ProofListSection proofs={proofs} onDelete={deleteProof} />
+      )}
+
+      {/* 剛送出成功提示 */}
+      {(submitted || hasPending) && (
+        <section className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          ⏳ 您有未審核的證明，老闆會盡快處理。如有錯誤可在上方刪除或補上傳。
+        </section>
+      )}
 
       <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
         <div className="text-sm font-semibold mb-2">選擇付款方式</div>
@@ -389,11 +422,17 @@ function BookingSummary({ booking }: { booking: BookingPublic }) {
   );
 }
 
-function VerifiedView({ booking }: { booking: BookingPublic }) {
+function VerifiedView({ booking, reason }: { booking: BookingPublic; reason: string }) {
+  const isRefunded = reason === "refunded";
+  const isCancelled = reason === "cancelled";
+  const icon = isRefunded ? "↩" : isCancelled ? "✕" : "✅";
+  const title = isRefunded ? "此訂單已退款" : isCancelled ? "此訂單已取消" : "此訂單付款已確認";
+  const color = isRefunded ? "border-gray-200" : isCancelled ? "border-rose-200" : "border-emerald-200";
+  const textColor = isRefunded ? "text-gray-700" : isCancelled ? "text-rose-700" : "text-emerald-700";
   return (
-    <section className="rounded-lg border border-emerald-200 bg-white p-6 text-center">
-      <div className="text-5xl mb-3">✅</div>
-      <div className="text-lg font-bold text-emerald-700 mb-4">此訂單付款已確認</div>
+    <section className={`rounded-lg border ${color} bg-white p-6 text-center`}>
+      <div className="text-5xl mb-3">{icon}</div>
+      <div className={`text-lg font-bold ${textColor} mb-4`}>{title}</div>
       <div className="grid grid-cols-[80px_1fr] gap-y-2 text-sm text-left">
         <div className="text-gray-500">訂單編號</div>
         <div className="font-mono">{booking.code}</div>
@@ -402,7 +441,9 @@ function VerifiedView({ booking }: { booking: BookingPublic }) {
         <div className="text-gray-500">金額</div>
         <div>NT$ {booking.totalAmount.toLocaleString()}</div>
         <div className="text-gray-500">狀態</div>
-        <div className="text-emerald-700 font-semibold">✓ 已確認 · ✓ 已付清</div>
+        <div className={`${textColor} font-semibold`}>
+          {isRefunded ? "↩ 已退款" : isCancelled ? "✕ 已取消" : "✓ 已確認 · ✓ 已付清"}
+        </div>
       </div>
       <p className="mt-4 text-xs text-gray-500">詳細資訊請至 LINE 內「我的預約」查看</p>
     </section>
@@ -458,5 +499,71 @@ function Footer() {
     <footer className="mt-6 text-center text-xs text-gray-500">
       有問題請聯絡 LINE 官方帳號 @海王子潛水
     </footer>
+  );
+}
+
+// v297：付款證明列表
+type Proof = NonNullable<PayApiOK["proofs"]>[number];
+function ProofListSection({
+  proofs,
+  onDelete,
+}: {
+  proofs: Proof[];
+  onDelete: (id: string) => Promise<void>;
+}) {
+  return (
+    <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="text-sm font-semibold mb-2">📋 我已上傳的付款證明（{proofs.length}）</div>
+      <div className="space-y-2">
+        {proofs.map((p) => {
+          const status: "verified" | "rejected" | "pending" =
+            p.verifiedAt ? "verified" : p.rejectedAt ? "rejected" : "pending";
+          const label =
+            status === "verified" ? "✅ 已核可"
+            : status === "rejected" ? "❌ 審核未通過"
+            : "⏳ 審核中";
+          const color =
+            status === "verified" ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+            : status === "rejected" ? "text-rose-700 bg-rose-50 border-rose-200"
+            : "text-amber-700 bg-amber-50 border-amber-200";
+          return (
+            <div key={p.id} className={`rounded-md border p-2 text-sm ${color}`}>
+              <div className="flex items-start gap-3">
+                {p.url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={p.url} alt="proof" className="h-14 w-14 object-cover rounded border bg-white" />
+                ) : (
+                  <div className="h-14 w-14 rounded border bg-white/50 flex items-center justify-center text-[10px] text-gray-400">無圖</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm">{label} · NT$ {p.amount.toLocaleString()}</div>
+                  <div className="text-[11px] opacity-80">
+                    {new Date(p.uploadedAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {p.last5 ? ` · 後5碼 ${p.last5}` : ""}
+                  </div>
+                  {status === "rejected" && p.rejectReason && (
+                    <div className="mt-1 rounded bg-white/80 p-1.5 text-[11px]">
+                      <span className="font-semibold">老闆說明：</span>{p.rejectReason}
+                    </div>
+                  )}
+                </div>
+                {status === "pending" && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(p.id)}
+                    className="flex-shrink-0 rounded bg-white px-2 py-1 text-[11px] border border-rose-300 text-rose-600"
+                  >🗑 刪除</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {proofs.some((p) => p.rejectedAt) && (
+        <p className="mt-2 text-[11px] text-gray-500">
+          ⓘ 駁回的證明保留作為紀錄。請依老闆說明在下方重新上傳。
+        </p>
+      )}
+    </section>
   );
 }

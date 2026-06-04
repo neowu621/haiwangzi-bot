@@ -196,6 +196,9 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pay_link_token VARCHAR(64)`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS pay_link_verified_at TIMESTAMPTZ`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_pay_link_token ON bookings(pay_link_token) WHERE pay_link_token IS NOT NULL`,
+  // v297: payment_proofs 駁回保留紀錄 + 老闆說明
+  `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ`,
+  `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS reject_reason TEXT`,
   // 取消原因 / 退款相關
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,

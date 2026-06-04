@@ -110,6 +110,7 @@ export async function POST(
         where: { id: rr.bookingId },
         data: {
           paymentStatus: "refunded",
+          payLinkVerifiedAt: new Date(), // v297：退款後公開付款連結失效
           refundAmount: finalAmount,
           refundedAt: new Date(),
           refundMethod: "credit",

@@ -43,7 +43,7 @@ export async function POST(
 
   const proof = await prisma.paymentProof.findUnique({
     where: { id },
-    include: { booking: { select: { code: true, id: true } } },
+    include: { booking: { select: { code: true, id: true, userId: true } } },
   });
   if (!proof)
     return NextResponse.json({ error: "proof not found" }, { status: 404 });
@@ -53,9 +53,22 @@ export async function POST(
       { status: 400 },
     );
   }
+  if (proof.rejectedAt) {
+    return NextResponse.json(
+      { error: "此憑證已被駁回過" },
+      { status: 400 },
+    );
+  }
 
   try {
-    await prisma.paymentProof.delete({ where: { id } });
+    // v297：不再 delete，改 update 加 rejectedAt + rejectReason（保留審計軌跡 + 客戶看到老闆說明）
+    await prisma.paymentProof.update({
+      where: { id },
+      data: {
+        rejectedAt: new Date(),
+        rejectReason: parsed.data.reason,
+      },
+    });
     await logAudit({
       actorId: auth.user.lineUserId,
       action: "payment_proof.reject",
@@ -68,6 +81,21 @@ export async function POST(
         reason: parsed.data.reason,
       },
     });
+    // v297：通知客戶（fire-and-forget LINE push）
+    void (async () => {
+      try {
+        const { getLineClient } = await import("@/lib/line");
+        const lc = getLineClient();
+        if (!lc) return;
+        const text = `❌ 您的付款證明審核未通過\n\n訂單：${proof.booking.code ?? proof.booking.id.slice(0, 8)}\n金額：NT$ ${proof.amount.toLocaleString()}\n\n老闆說明：\n${parsed.data.reason}\n\n請至「我的預約」查看詳情並重新上傳付款證明。`;
+        await lc.pushMessage({
+          to: proof.booking.userId,
+          messages: [{ type: "text", text }],
+        });
+      } catch (e) {
+        console.error("[reject notify customer]", e);
+      }
+    })();
     return NextResponse.json({ ok: true, rejected: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

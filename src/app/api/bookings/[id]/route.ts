@@ -249,6 +249,7 @@ export async function DELETE(
     data: {
       status: newStatus,
       cancellationReason: hasPaid ? "user_cancel_after_payment" : "user_cancel_unpaid",
+      payLinkVerifiedAt: new Date(), // v297：客戶取消後公開付款連結失效
     },
   });
   // v278：log

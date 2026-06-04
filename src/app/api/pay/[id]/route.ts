@@ -27,6 +27,11 @@ async function loadBookingByToken(id: string, token: string) {
           amount: true,
           uploadedAt: true,
           verifiedAt: true,
+          rejectedAt: true,        // v297
+          rejectReason: true,      // v297
+          last5: true,             // v297：顯示給客戶看的
+          note: true,
+          imageKey: true,          // v297：給 client 預覽（base64 或 R2 key）
         },
         orderBy: { uploadedAt: "desc" },
       },
@@ -58,10 +63,16 @@ export async function GET(
     );
   }
 
-  // 已被 admin 確認 → 連結失效（只回 view-only 資料）
-  if (booking.payLinkVerifiedAt) {
+  // 已被 admin 確認 / 已付清 / 已退款 / 已取消 → 連結失效（只回 view-only 資料）
+  // v297：擴大失效條件，不只看 payLinkVerifiedAt
+  const isFullyPaid = booking.paymentStatus === "fully_paid" ||
+    (booking.totalAmount > 0 && booking.paidAmount >= booking.totalAmount);
+  const isRefunded = booking.paymentStatus === "refunded" || booking.paymentStatus === "refunding";
+  const isCancelled = booking.status?.startsWith("cancelled");
+  if (booking.payLinkVerifiedAt || isFullyPaid || isRefunded || isCancelled) {
     return NextResponse.json({
       state: "verified",
+      reason: isFullyPaid ? "fully_paid" : isRefunded ? "refunded" : isCancelled ? "cancelled" : "verified",
       booking: {
         id: booking.id,
         code: booking.code,
@@ -138,14 +149,36 @@ export async function GET(
     liteId: paymentInfo.linepay?.liteId ?? "",
   };
 
-  // 已上傳的付款證明（不暴露 imageKey / R2 url）
-  const proofs = booking.paymentProofs.map((p) => ({
-    id: p.id,
-    type: p.type,
-    amount: p.amount,
-    uploadedAt: p.uploadedAt,
-    verifiedAt: p.verifiedAt,
-  }));
+  // 已上傳的付款證明 — v297：含完整狀態 + 縮圖 presigned URL
+  const { previewUrl, isPrivate, r2Configured } = await import("@/lib/r2");
+  type R2Prefix = "payments" | "signatures" | "avatars" | "sites" | "richmenu" | "media" | "trips" | "tours";
+  const proofs = await Promise.all(
+    booking.paymentProofs.map(async (p) => {
+      let url: string | null = null;
+      if (p.imageKey?.startsWith("data:")) {
+        url = p.imageKey;
+      } else if (p.imageKey && r2Configured()) {
+        try {
+          const prefix = p.imageKey.split("/")[0] as R2Prefix;
+          url = isPrivate(prefix) ? await previewUrl(prefix, p.imageKey) : await previewUrl(prefix, p.imageKey);
+        } catch {
+          url = null;
+        }
+      }
+      return {
+        id: p.id,
+        type: p.type,
+        amount: p.amount,
+        uploadedAt: p.uploadedAt,
+        verifiedAt: p.verifiedAt,
+        rejectedAt: p.rejectedAt,
+        rejectReason: p.rejectReason,
+        last5: p.last5,
+        note: p.note,
+        url,
+      };
+    }),
+  );
 
   return NextResponse.json({
     state: "active",

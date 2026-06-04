@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
           amount: true,
           uploadedAt: true,
           verifiedAt: true,
+          rejectedAt: true,         // v297
+          rejectReason: true,       // v297
           imageKey: true,
         },
       },
@@ -129,6 +131,8 @@ export async function GET(req: NextRequest) {
               amount: p.amount,
               uploadedAt: p.uploadedAt,
               verifiedAt: p.verifiedAt,
+              rejectedAt: p.rejectedAt,       // v297
+              rejectReason: p.rejectReason,   // v297
               url,
             };
           }),

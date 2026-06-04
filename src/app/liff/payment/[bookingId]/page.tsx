@@ -29,6 +29,16 @@ interface MyBookingMini {
     | { date: string; startTime: string; sites: string[] }
     | { title: string; dateStart: string; dateEnd: string; sites: string[] }
     | null;
+  paymentProofs?: Array<{
+    id: string;
+    type: "deposit" | "final" | "refund";
+    amount: number;
+    uploadedAt: string;
+    verifiedAt: string | null;
+    rejectedAt: string | null;
+    rejectReason: string | null;
+    url: string | null;
+  }>;
 }
 
 interface Config {
@@ -294,6 +304,35 @@ export default function PaymentUploadPage({
 
   const isDaily = booking.type === "daily";
 
+  // v297：訂單已完結（已付清 / 已退款 / 已取消）→ 不顯示上傳表單
+  const isAlreadyPaid = booking.paymentStatus === "fully_paid" ||
+    (booking.totalAmount > 0 && booking.paidAmount >= booking.totalAmount);
+  const isRefunded = booking.paymentStatus === "refunded" || booking.paymentStatus === "refunding";
+  if (isAlreadyPaid || isRefunded) {
+    return (
+      <LiffShell title="付款方式選擇" backHref="/liff/my">
+        <div className="space-y-4 px-4 pt-6">
+          <Card className="bg-[var(--color-phosphor)]/10">
+            <CardContent className="p-6 text-center">
+              <div className="text-5xl mb-3">{isRefunded ? "↩" : "✅"}</div>
+              <div className="text-lg font-bold text-[var(--color-ocean-deep)]">
+                {isRefunded ? "此訂單已退款" : "此訂單已付清"}
+              </div>
+              <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+                {isRefunded
+                  ? "退款流程處理中，無需再付款"
+                  : "感謝您的付款，期待見到您！"}
+              </p>
+              <Button variant="outline" className="mt-4" onClick={() => router.push("/liff/my")}>
+                回我的預約
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </LiffShell>
+    );
+  }
+
   return (
     <LiffShell title="付款方式選擇" backHref="/liff/my">
       <div className="space-y-4 px-4 pt-4">
@@ -319,10 +358,24 @@ export default function PaymentUploadPage({
           </CardContent>
         </Card>
 
+        {/* v297：我已上傳的付款證明 — 顯示歷史 + 可刪除未審核 + 顯示駁回理由 */}
+        {booking.paymentProofs && booking.paymentProofs.length > 0 && (
+          <ProofListCard
+            proofs={booking.paymentProofs}
+            onDeleted={async (proofId) => {
+              await liff.fetchWithAuth(`/api/bookings/${bookingId}/payment-proofs/${proofId}`, { method: "DELETE" });
+              // 簡單重新拉一次
+              const d = await liff.fetchWithAuth<{ bookings: MyBookingMini[] }>("/api/bookings/my");
+              const b = d.bookings.find((x) => x.id === bookingId);
+              if (b) setBooking(b);
+            }}
+          />
+        )}
+
         {/* v289：付款方式選擇 — 3 選 1 */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">選擇付款方式</CardTitle>
+            <CardTitle className="text-base">{(booking.paymentProofs?.length ?? 0) > 0 ? "補上傳付款證明" : "選擇付款方式"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-1.5">
@@ -597,5 +650,96 @@ export default function PaymentUploadPage({
         )}
       </div>
     </LiffShell>
+  );
+}
+
+// v297：付款證明列表卡片
+interface ProofItem {
+  id: string;
+  type: "deposit" | "final" | "refund";
+  amount: number;
+  uploadedAt: string;
+  verifiedAt: string | null;
+  rejectedAt: string | null;
+  rejectReason: string | null;
+  url: string | null;
+}
+function ProofListCard({
+  proofs,
+  onDeleted,
+}: {
+  proofs: ProofItem[];
+  onDeleted: (proofId: string) => Promise<void>;
+}) {
+  const [deleting, setDeleting] = useState<string | null>(null);
+  async function handleDelete(id: string) {
+    if (!confirm("確定要刪除這筆未審核的付款證明嗎？")) return;
+    setDeleting(id);
+    try {
+      await onDeleted(id);
+    } catch (e) {
+      alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setDeleting(null);
+    }
+  }
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">📋 我已上傳的付款證明（{proofs.length}）</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {proofs.map((p) => {
+          const status: "verified" | "rejected" | "pending" =
+            p.verifiedAt ? "verified" : p.rejectedAt ? "rejected" : "pending";
+          const statusLabel =
+            status === "verified" ? "✅ 已核可"
+            : status === "rejected" ? "❌ 審核未通過"
+            : "⏳ 審核中";
+          const statusColor =
+            status === "verified" ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+            : status === "rejected" ? "text-rose-700 bg-rose-50 border-rose-200"
+            : "text-amber-700 bg-amber-50 border-amber-200";
+          return (
+            <div key={p.id} className={cn("rounded-lg border p-3 text-sm", statusColor)}>
+              <div className="flex items-start gap-3">
+                {p.url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={p.url} alt="proof" className="h-16 w-16 object-cover rounded border bg-white" />
+                ) : (
+                  <div className="h-16 w-16 rounded border bg-white/50 flex items-center justify-center text-[10px] text-gray-400">無圖</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold">{statusLabel} · NT$ {p.amount.toLocaleString()}</div>
+                  <div className="text-[11px] opacity-80 tabular">
+                    {new Date(p.uploadedAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                  {status === "rejected" && p.rejectReason && (
+                    <div className="mt-1 rounded bg-white/60 p-1.5 text-[11px]">
+                      <span className="font-semibold">老闆說明：</span>{p.rejectReason}
+                    </div>
+                  )}
+                </div>
+                {status === "pending" && (
+                  <button
+                    type="button"
+                    disabled={deleting === p.id}
+                    onClick={() => handleDelete(p.id)}
+                    className="flex-shrink-0 rounded bg-white px-2 py-1 text-[11px] border border-rose-300 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    {deleting === p.id ? "刪除中" : "🗑 刪除"}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {proofs.some((p) => p.rejectedAt) && (
+          <p className="text-[11px] text-[var(--muted-foreground)] pt-1">
+            ⓘ 駁回的證明會保留作為紀錄。您可在下方依老闆說明重新上傳新的證明。
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
