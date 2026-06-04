@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authFromRequest, requireRole } from "@/lib/auth";
+import { authAdminOrCron } from "@/lib/admin-or-cron-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,12 +29,8 @@ const TERMINAL = [
 ];
 
 export async function POST(req: NextRequest) {
-  const auth = await authFromRequest(req);
-  if (!auth.ok)
-    return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["admin", "boss"]);
-  if (!role.ok)
-    return NextResponse.json({ error: role.message }, { status: role.status });
+  const a = await authAdminOrCron(req);
+  if (!a.ok) return a.res;
 
   const url = new URL(req.url);
   const dryRun = url.searchParams.get("dryRun") === "1";
