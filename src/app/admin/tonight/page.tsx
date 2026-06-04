@@ -81,13 +81,13 @@ export default function TonightPage() {
       );
       setProofs(proofData.proofs ?? []);
 
-      // 2. 待確認到場（confirmed + 今/昨日）
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const from = yesterday.toISOString().slice(0, 10);
-      const to = today.toISOString().slice(0, 10);
+      // 2. 待確認到場（confirmed + 今/昨日）— v306 用台北時區
+      const tw = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+      const todayDate = new Date();
+      const yesterdayDate = new Date();
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const from = tw(yesterdayDate);
+      const to = tw(todayDate);
 
       const bookingData = await adminFetch<{ bookings: BookingRow[] }>(
         `/api/admin/bookings?status=confirmed`,

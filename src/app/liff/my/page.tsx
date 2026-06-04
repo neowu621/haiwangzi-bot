@@ -481,7 +481,7 @@ function BookingCard({
     isDaily &&
     b.refId &&
     (b.status === "completed" ||
-      (ref && "date" in ref && ref.date < new Date().toISOString().slice(0, 10)));
+      (ref && "date" in ref && ref.date < new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" })));
 
   // v293：依使用者指定 5 行排版
   //   1. 📅 類型 + ×人 + ×支

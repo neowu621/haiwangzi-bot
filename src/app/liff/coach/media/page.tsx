@@ -62,7 +62,7 @@ export default function CoachMediaPage() {
   const [loading, setLoading] = useState(true);
 
   // 新增表單
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState<string>(new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }));
   const [url, setUrl] = useState("");
   const [caption, setCaption] = useState("");
   const [platform, setPlatform] = useState<Platform>("fb");

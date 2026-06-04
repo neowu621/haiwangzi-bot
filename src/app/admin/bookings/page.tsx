@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
-import { cn, weekdayTW, toTaipeiDateString } from "@/lib/utils";
+import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   const ctrl = new AbortController();
@@ -376,25 +376,26 @@ export default function AdminBookingsPage() {
     if (filterRange === "all") return true;
     if (!dateStr) return true;
     const d = dateStr.slice(0, 10);
-    const today = new Date().toISOString().slice(0, 10);
-    const t = new Date(today + "T00:00:00+08:00");
+    // v306: 用台北時區算「今天」，避免 UTC 跨日問題（深夜 0-8 點 toISOString 還是昨天）
+    const today = toTaipeiISODate(new Date());
     if (filterRange === "today") return d === today;
+    const t = new Date(today + "T00:00:00+08:00");
     const days = filterRange === "3days" ? 3 : filterRange === "week" ? 7 : 30;
     const cutoff = new Date(t);
     cutoff.setDate(t.getDate() + (days - 1)); // N-1 → 共 N 天
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const cutoffStr = toTaipeiISODate(cutoff);
     return d >= today && d <= cutoffStr;
   }
 
-  // v304：場次快捷篩選邏輯
+  // v304：場次快捷篩選邏輯（v306：用台北時區算今天/明天，避免 UTC 跨日 bug）
   function periodOk(dateStr?: string): boolean {
     if (filterTripPeriod === "all") return true;
     if (!dateStr) return true;
     const d = dateStr.slice(0, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = toTaipeiISODate(new Date());
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    const tomorrowStr = toTaipeiISODate(tomorrow);
     if (filterTripPeriod === "today_tomorrow") return d === todayStr || d === tomorrowStr;
     if (filterTripPeriod === "future") return d >= todayStr;
     if (filterTripPeriod === "past") return d < todayStr;
@@ -422,8 +423,8 @@ export default function AdminBookingsPage() {
     return key === filterTripKey;
   });
 
-  // v183：排序（日期排序時未來在前、過去在後）
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // v183：排序（日期排序時未來在前、過去在後）— v306 改台北時區
+  const todayStr = toTaipeiISODate(new Date());
   const sortedBookings = [...filteredBookings].sort((a, b) => {
     if (sortKey === "date") {
       const ad = (a.ref.date ?? a.ref.dateStart ?? "").slice(0, 10);
