@@ -52,6 +52,7 @@ export default function PaymentUploadPage({
   const [booking, setBooking] = useState<MyBookingMini | null>(null);
   const [bank, setBank] = useState<Config["bank"] | null>(null);
   const [linepay, setLinepay] = useState<Config["linepay"] | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false); // v294：避免 bank/linepay 後到造成內容跳動
   const [paymentType, setPaymentType] = useState<"deposit" | "final">(
     (search.get("type") as "deposit" | "final") ?? "deposit",
   );
@@ -87,7 +88,9 @@ export default function PaymentUploadPage({
       });
     fetch("/api/config")
       .then((r) => r.json())
-      .then((c: Config) => { setBank(c.bank); setLinepay(c.linepay); });
+      .then((c: Config) => { setBank(c.bank); setLinepay(c.linepay); })
+      .catch(() => { /* 失敗就 fallback，bank/linepay 保持 null */ })
+      .finally(() => setConfigLoaded(true));
     // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId, liff.ready]);
@@ -269,9 +272,10 @@ export default function PaymentUploadPage({
     }
   }
 
-  if (!booking) {
+  // v294：等 booking + config 都載完才顯示內容，避免 bank/linepay 卡片後到造成跳動
+  if (!booking || !configLoaded) {
     return (
-      <LiffShell title="付款上傳" backHref="/liff/my">
+      <LiffShell title="付款方式選擇" backHref="/liff/my">
         {error ? (
           <div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">
             {error}
