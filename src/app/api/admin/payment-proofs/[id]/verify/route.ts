@@ -49,6 +49,21 @@ export async function POST(
       { status: 400 },
     );
   }
+  // v305-B：擋已取消訂單，避免「取消後又核可付款」造成資料衝突
+  if (proof.booking.status.startsWith("cancelled")) {
+    return NextResponse.json(
+      {
+        error: `訂單已${proof.booking.status === "cancelled_by_user" ? "被客戶取消" : proof.booking.status === "cancelled_by_weather" ? "因天候取消" : "不成立"}，無法核可付款證明。如需處理請改用退款流程。`,
+      },
+      { status: 400 },
+    );
+  }
+  if (proof.booking.status === "completed" || proof.booking.status === "no_show") {
+    return NextResponse.json(
+      { error: "訂單已結束，無法再核可付款證明" },
+      { status: 400 },
+    );
+  }
 
   try {
     const newPaid = proof.booking.paidAmount + proof.amount;

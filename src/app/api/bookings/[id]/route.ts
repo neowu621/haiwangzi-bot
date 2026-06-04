@@ -241,23 +241,35 @@ export async function DELETE(
       { status: 400 },
     );
   }
-  // 區分有沒有真實付款（純抵用金折抵也算）
+  // v305：客戶取消「一律」cancelled_by_user，不再依 paidAmount 區分
+  //   cancelled_unpaid 保留給「系統自動催繳取消」或「admin 手動標記」
   const hasPaid = booking.paidAmount > 0;
-  const newStatus = hasPaid ? "cancelled_by_user" : "cancelled_unpaid";
   const updated = await prisma.booking.update({
     where: { id },
     data: {
-      status: newStatus,
+      status: "cancelled_by_user",
       cancellationReason: hasPaid ? "user_cancel_after_payment" : "user_cancel_unpaid",
       payLinkVerifiedAt: new Date(), // v297：客戶取消後公開付款連結失效
     },
   });
+  // v305-A：自動駁回所有未審 proof，避免老闆事後又審核造成資料不一致
+  void prisma.paymentProof.updateMany({
+    where: {
+      bookingId: id,
+      verifiedAt: null,
+      rejectedAt: null,
+    },
+    data: {
+      rejectedAt: new Date(),
+      rejectReason: "客戶在審核前取消訂單",
+    },
+  }).catch((e) => console.error("[cancel auto-reject proofs]", e));
   // v278：log
   void import("@/lib/booking-status-log").then((m) =>
     m.logBookingStatusChange({
       bookingId: id,
       fromStatus: booking.status,
-      toStatus: newStatus,
+      toStatus: "cancelled_by_user",
       actorId: auth.user.lineUserId,
       actorRole: "customer",
       note: hasPaid
