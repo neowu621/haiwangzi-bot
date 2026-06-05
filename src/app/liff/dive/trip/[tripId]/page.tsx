@@ -669,16 +669,6 @@ export default function TripBookingPage({
                 />
               </div>
             </div>
-            <div>
-              <Label htmlFor="notes">備註 (教練可見)</Label>
-              <Input
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="耳壓不適 / 過敏 / 用藥..."
-              />
-            </div>
-
           </div>
         </CollapsibleCard>
 
@@ -718,6 +708,24 @@ export default function TripBookingPage({
             />
           </div>
         </CollapsibleCard>
+
+        {/* 備註（v353：抽出成獨立、永遠可見的卡，避免埋在折疊卡裡看不到）*/}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">📝 備註 / 特殊需求（教練可見）</CardTitle>
+            <p className="-mt-1 text-[11px] text-[var(--muted-foreground)]">選填。耳壓不適 / 過敏 / 用藥 / 其他想讓教練知道的事。</p>
+          </CardHeader>
+          <CardContent>
+            <textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="例：右耳曾耳壓不適、對蝦過敏…"
+              rows={3}
+              className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40 resize-y"
+            />
+          </CardContent>
+        </Card>
 
         {/* 潛伴清單 (人數 > 1 才出現) */}
         {companionSlots.length > 0 && (

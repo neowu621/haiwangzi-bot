@@ -423,10 +423,22 @@ export default function TourDetailPage({
               maxLength={11}
               placeholder="0912-345678"
             />
-            <Input
+          </CardContent>
+        </Card>
+
+        {/* 備註（v353：抽出成獨立、清楚標題的卡）*/}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">📝 備註 / 特殊需求</CardTitle>
+            <p className="-mt-1 text-[11px] text-[var(--muted-foreground)]">選填。飲食 / 房型偏好 / 同行者 / 其他需求。</p>
+          </CardHeader>
+          <CardContent>
+            <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="備註 (飲食 / 房型偏好 / 同行者)"
+              placeholder="例：素食、想住雙人房、與 OOO 同房…"
+              rows={3}
+              className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40 resize-y"
             />
           </CardContent>
         </Card>
