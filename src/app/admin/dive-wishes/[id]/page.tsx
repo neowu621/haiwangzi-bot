@@ -271,21 +271,39 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
   );
 }
 
-// 開場次 Dialog
+// v332：開場次 Dialog — 老闆選 daily / tour、表單對齊 trips/tours 新增格式
 function ConvertDialog({ open, wish, onClose, onDone }: { open: boolean; wish: Wish; onClose: () => void; onDone: () => void }) {
-  const isTour = wish.type === "tour";
+  // v332：老闆主動選擇，預設依 wish.type
+  const [asType, setAsType] = useState<"daily" | "tour">(wish.type === "tour" ? "tour" : "daily");
   // daily defaults
   const [date, setDate] = useState(wish.preferredDate.slice(0, 10));
-  const [startTime, setStartTime] = useState("08:00");
+  const [startTime, setStartTime] = useState(wish.type === "night" ? "16:00" : "08:00");
   const [tankCount, setTankCount] = useState(2);
   const [capacity, setCapacity] = useState(Math.max(8, wish.participants + 5));
   const [baseTrip, setBaseTrip] = useState(wish.budgetPerPerson ?? 1200);
+  const [extraTank, setExtraTank] = useState(500);
+  const [scooterRental, setScooterRental] = useState(500);
+  const [isNightDive, setIsNightDive] = useState(wish.type === "night");
+  const [isScooter, setIsScooter] = useState(false);
+  const [dailyNotes, setDailyNotes] = useState(wish.customerNote ?? "");
   // tour defaults
   const [tourTitle, setTourTitle] = useState("");
+  const [tourSubtitle, setTourSubtitle] = useState("");
   const [tourEnd, setTourEnd] = useState(wish.preferredDate.slice(0, 10));
-  const [destination, setDestination] = useState<"northeast" | "green_island" | "lanyu" | "kenting" | "other">("other");
+  const [destination, setDestination] = useState<"northeast" | "green_island" | "lanyu" | "kenting" | "other">(
+    wish.otherSites?.includes("綠島") ? "green_island" :
+    wish.otherSites?.includes("蘭嶼") ? "lanyu" :
+    wish.otherSites?.includes("墾丁") ? "kenting" : "other",
+  );
   const [basePrice, setBasePrice] = useState(wish.budgetPerPerson ?? 8000);
-  const [deposit, setDeposit] = useState((wish.budgetPerPerson ?? 8000) / 3 | 0);
+  const [deposit, setDeposit] = useState(((wish.budgetPerPerson ?? 8000) / 3) | 0);
+  const [tourExtraNote, setTourExtraNote] = useState(wish.customerNote ?? "");
+  // v332：通知客戶
+  const [notifyLine, setNotifyLine] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(false);
+  const [notifyMessage, setNotifyMessage] = useState(
+    `您好 ${wish.user.realName ?? wish.user.displayName}，您的潛水願望單已開出正式場次，請點下方連結預約：`,
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -293,10 +311,15 @@ function ConvertDialog({ open, wish, onClose, onDone }: { open: boolean; wish: W
     setBusy(true);
     setErr(null);
     try {
-      const body = isTour
+      const channels = [
+        ...(notifyLine ? ["line" as const] : []),
+        ...(notifyEmail ? ["email" as const] : []),
+      ];
+      const body = asType === "tour"
         ? {
             asType: "tour" as const,
             title: tourTitle.trim() || `${wish.otherSites ?? wish.diveSiteIds.join("/")} 潛水團`,
+            subtitle: tourSubtitle || undefined,
             destination,
             dateStart: wish.preferredDate.slice(0, 10),
             dateEnd: tourEnd,
@@ -304,7 +327,9 @@ function ConvertDialog({ open, wish, onClose, onDone }: { open: boolean; wish: W
             basePrice,
             deposit,
             capacity,
-            description: wish.customerNote ?? undefined,
+            description: tourExtraNote || undefined,
+            notifyChannels: channels,
+            notifyMessage: notifyMessage || undefined,
           }
         : {
             asType: "daily" as const,
@@ -313,9 +338,12 @@ function ConvertDialog({ open, wish, onClose, onDone }: { open: boolean; wish: W
             diveSiteIds: wish.diveSiteIds,
             tankCount,
             capacity,
-            pricing: { baseTrip, extraTank: 500, nightDive: 300, scooterRental: 500 },
-            isNightDive: wish.type === "night",
-            notes: wish.customerNote ?? undefined,
+            pricing: { baseTrip, extraTank, nightDive: 0, scooterRental },
+            isNightDive,
+            isScooter,
+            notes: dailyNotes || undefined,
+            notifyChannels: channels,
+            notifyMessage: notifyMessage || undefined,
           };
       await adminFetch(`/api/admin/dive-wishes/${wish.id}/convert`, {
         method: "POST",
@@ -331,42 +359,147 @@ function ConvertDialog({ open, wish, onClose, onDone }: { open: boolean; wish: W
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[min(95vw,640px)] max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>✓ 確認開場次 — {isTour ? "潛水團" : "日潛"}</DialogTitle>
+          <DialogTitle>✓ 確認開場次</DialogTitle>
         </DialogHeader>
+
+        {/* v332：類型選擇 — 老闆自主決定，預設依 wish.type */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setAsType("daily")}
+            className={`rounded-lg border-2 p-3 text-left transition-colors ${
+              asType === "daily"
+                ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10"
+                : "border-[var(--border)] hover:bg-[var(--muted)]"
+            }`}
+          >
+            <div className="text-sm font-semibold">🚤 開日潛水場次</div>
+            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">一天行程、東北角 / 龍洞 / 鼻頭等</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAsType("tour")}
+            className={`rounded-lg border-2 p-3 text-left transition-colors ${
+              asType === "tour"
+                ? "border-[var(--color-coral)] bg-[var(--color-coral)]/10"
+                : "border-[var(--border)] hover:bg-[var(--muted)]"
+            }`}
+          >
+            <div className="text-sm font-semibold">✈️ 開旅行潛水場次</div>
+            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">跨日旅遊、綠島 / 蘭嶼 / 墾丁等</div>
+          </button>
+        </div>
+
         <div className="space-y-3 text-sm">
-          {isTour ? (
+          {asType === "tour" ? (
             <>
-              <div><Label>標題</Label><Input value={tourTitle} onChange={(e) => setTourTitle(e.target.value)} placeholder="例：綠島 3 天 2 夜" /></div>
-              <div>
-                <Label>地區</Label>
-                <select value={destination} onChange={(e) => setDestination(e.target.value as typeof destination)} className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm">
-                  <option value="northeast">東北角</option>
-                  <option value="green_island">綠島</option>
-                  <option value="lanyu">蘭嶼</option>
-                  <option value="kenting">墾丁</option>
-                  <option value="other">其他 / 國外</option>
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="col-span-2"><Label>標題 *</Label><Input value={tourTitle} onChange={(e) => setTourTitle(e.target.value)} placeholder="例：綠島 3 天 2 夜" /></div>
+                <div className="col-span-2"><Label>副標 / 團別</Label><Input value={tourSubtitle} onChange={(e) => setTourSubtitle(e.target.value)} placeholder="例：端午團、中秋海之星（選填）" /></div>
+                <div>
+                  <Label>地區</Label>
+                  <select value={destination} onChange={(e) => setDestination(e.target.value as typeof destination)} className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm">
+                    <option value="northeast">東北角</option>
+                    <option value="green_island">綠島</option>
+                    <option value="lanyu">蘭嶼</option>
+                    <option value="kenting">墾丁</option>
+                    <option value="other">其他 / 國外</option>
+                  </select>
+                </div>
+                <div><Label>容量</Label><Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} /></div>
+                <div><Label>開始日期</Label><Input type="date" value={wish.preferredDate.slice(0, 10)} disabled className="opacity-70" /></div>
+                <div><Label>結束日期</Label><Input type="date" value={tourEnd} onChange={(e) => setTourEnd(e.target.value)} /></div>
+                <div><Label>基本費 / 人</Label><Input type="number" value={basePrice} onChange={(e) => setBasePrice(Number(e.target.value))} /></div>
+                <div><Label>訂金 / 人</Label><Input type="number" value={deposit} onChange={(e) => setDeposit(Number(e.target.value))} /></div>
               </div>
-              <div><Label>結束日期</Label><Input type="date" value={tourEnd} onChange={(e) => setTourEnd(e.target.value)} /></div>
-              <div><Label>基本費 / 人</Label><Input type="number" value={basePrice} onChange={(e) => setBasePrice(Number(e.target.value))} /></div>
-              <div><Label>訂金 / 人</Label><Input type="number" value={deposit} onChange={(e) => setDeposit(Number(e.target.value))} /></div>
-              <div><Label>容量</Label><Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} /></div>
+              <div>
+                <Label>備註（行程說明 / 注意事項）</Label>
+                <textarea
+                  value={tourExtraNote}
+                  onChange={(e) => setTourExtraNote(e.target.value.slice(0, 2000))}
+                  rows={3}
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="已自動帶入願望單客戶備註，可再編輯"
+                />
+              </div>
             </>
           ) : (
             <>
-              <div><Label>場次日期</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-              <div><Label>開始時間</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
-              <div><Label>氣瓶數</Label><Input type="number" value={tankCount} onChange={(e) => setTankCount(Number(e.target.value))} /></div>
-              <div><Label>容量</Label><Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} /></div>
-              <div><Label>基本費</Label><Input type="number" value={baseTrip} onChange={(e) => setBaseTrip(Number(e.target.value))} /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>場次日期</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+                <div><Label>開始時間</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
+                <div><Label>氣瓶數</Label><Input type="number" value={tankCount} onChange={(e) => setTankCount(Number(e.target.value))} /></div>
+                <div><Label>容量</Label><Input type="number" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} /></div>
+              </div>
+              <div className="rounded-md bg-[var(--muted)]/30 p-2 space-y-2">
+                <div className="text-xs font-semibold text-[var(--muted-foreground)]">💰 費用設定</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><Label className="text-[10px]">基本費</Label><Input type="number" value={baseTrip} onChange={(e) => setBaseTrip(Number(e.target.value))} /></div>
+                  <div><Label className="text-[10px]">每瓶 +</Label><Input type="number" value={extraTank} onChange={(e) => setExtraTank(Number(e.target.value))} /></div>
+                  <div><Label className="text-[10px]">水推 +</Label><Input type="number" value={scooterRental} onChange={(e) => setScooterRental(Number(e.target.value))} /></div>
+                </div>
+              </div>
+              <div className="flex gap-4 text-xs">
+                <label className="inline-flex items-center gap-1.5">
+                  <input type="checkbox" checked={isNightDive} onChange={(e) => setIsNightDive(e.target.checked)} />
+                  🌙 夜潛場次
+                </label>
+                <label className="inline-flex items-center gap-1.5">
+                  <input type="checkbox" checked={isScooter} onChange={(e) => setIsScooter(e.target.checked)} />
+                  🛵 水上摩托車
+                </label>
+              </div>
+              <div>
+                <Label>備註（教練可見）</Label>
+                <textarea
+                  value={dailyNotes}
+                  onChange={(e) => setDailyNotes(e.target.value.slice(0, 2000))}
+                  rows={2}
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="已自動帶入願望單客戶備註，可再編輯"
+                />
+              </div>
             </>
           )}
+
+          {/* v332：通知客戶設定 */}
+          <div className="rounded-md border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 space-y-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-ocean-deep)]">
+              📨 開出後通知客戶（自動附上預約連結）
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <label className="inline-flex items-center gap-1">
+                <input type="checkbox" checked={notifyLine} onChange={(e) => setNotifyLine(e.target.checked)} />
+                📱 LINE
+              </label>
+              <label className={`inline-flex items-center gap-1 ${!wish.user.email ? "opacity-40" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.checked)}
+                  disabled={!wish.user.email}
+                />
+                ✉ Email {!wish.user.email && "(未填)"}
+              </label>
+            </div>
+            <textarea
+              value={notifyMessage}
+              onChange={(e) => setNotifyMessage(e.target.value.slice(0, 500))}
+              rows={2}
+              placeholder="開頭訊息（系統會自動接上預約連結）"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs"
+            />
+            <div className="text-[10px] text-[var(--muted-foreground)]">{notifyMessage.length} / 500</div>
+          </div>
+
           {err && <div className="rounded-md bg-rose-50 p-2 text-xs text-rose-700">{err}</div>}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={onClose}>取消</Button>
-            <Button disabled={busy} onClick={go}>{busy ? "建立中..." : "✓ 確認開場次"}</Button>
+            <Button disabled={busy || (!notifyLine && !notifyEmail)} onClick={go}>
+              {busy ? "建立中..." : `✓ 開${asType === "tour" ? "旅行潛水" : "日潛水"}場次 + 通知客戶`}
+            </Button>
           </div>
         </div>
       </DialogContent>
