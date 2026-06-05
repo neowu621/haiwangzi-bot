@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     // 重算所有 user vipLevel + 升等者發放抵用金
     const users = await prisma.user.findMany({
-      select: { lineUserId: true, logCount: true, totalSpend: true, vipLevel: true },
+      select: { lineUserId: true, haiwangziLogCount: true, totalSpend: true, vipLevel: true },
     });
     let promoted = 0;
     let totalCreditGranted = 0;
