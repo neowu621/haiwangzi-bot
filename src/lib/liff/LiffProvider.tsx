@@ -225,9 +225,11 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
       error,
       login: () => {
         if (isMock) return;
+        // v351：即使 isLoggedIn=true 也強制重登 —— idToken 過期時 isLoggedIn 仍為 true，
+        //   不重登就無法刷新 token（「重新登入」按鈕原本因 isLoggedIn 守衛而無效）。
         import("@line/liff").then((m) => {
-          if (!m.default.isLoggedIn())
-            m.default.login({ redirectUri: window.location.href });
+          idTokenRef.current = null;
+          m.default.login({ redirectUri: window.location.href });
         });
       },
       logout: () => {
@@ -324,6 +326,29 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch(url, { ...init, headers });
         if (!res.ok) {
           const text = await res.text();
+          // v351：idToken 過期 → LINE getIDToken() 不會自動刷新，唯一辦法是重新登入。
+          //   偵測到 401 + idToken/exp/session 過期，自動觸發 liff.login() 取得新 token。
+          //   用 sessionStorage 時間戳防無限重導（60 秒內最多一次）。
+          if (
+            !isMock &&
+            res.status === 401 &&
+            /idToken|exp|session expired|過期/i.test(text)
+          ) {
+            try {
+              const key = "liff_relogin_at";
+              const last = Number(sessionStorage.getItem(key) ?? "0");
+              if (Date.now() - last > 60000) {
+                sessionStorage.setItem(key, String(Date.now()));
+                idTokenRef.current = null; // 丟掉過期 token
+                const liffMod = await import("@line/liff");
+                liffMod.default.login({ redirectUri: window.location.href });
+                throw new Error("LINE 登入已過期，正在重新登入…");
+              }
+            } catch (e) {
+              if (e instanceof Error && e.message.includes("重新登入")) throw e;
+              /* sessionStorage 不可用等 → 落回原錯誤 */
+            }
+          }
           throw new Error(`HTTP ${res.status}: ${text}`);
         }
         return (await res.json()) as T;

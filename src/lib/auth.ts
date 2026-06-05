@@ -134,6 +134,7 @@ async function verifyIdToken(idToken: string): Promise<AuthResult> {
     const { payload } = await jwtVerify(idToken, JWKS, {
       issuer: "https://access.line.me",
       audience, // 必驗 audience（dev 環境可選）
+      clockTolerance: 120, // v351：容忍 120 秒時鐘誤差，避免剛過期/微小 skew 誤殺
     });
     const lineUserId = payload.sub;
     const displayName =
