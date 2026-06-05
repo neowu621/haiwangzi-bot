@@ -69,6 +69,9 @@ export default function TonightPage() {
   const [acting, setActing] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState<string | null>(null);
   const [openCustomerId, setOpenCustomerId] = React.useState<string | null>(null); // v320
+  // v325：booking.status=awaiting_verify 但無對應 pending PaymentProof
+  //   (客戶按了「我已匯款」但跳過附圖、或上傳失敗、或 proof 被駁回後 booking 沒同步)
+  const [orphanAwaitingVerify, setOrphanAwaitingVerify] = React.useState<BookingRow[]>([]);
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [selectedBookings, setSelectedBookings] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
@@ -83,6 +86,12 @@ export default function TonightPage() {
       );
       setProofs(proofData.proofs ?? []);
 
+      // 拉一次完整 booking list（API 不支援 status filter，client side filter）
+      const bookingData = await adminFetch<{ bookings: BookingRow[] }>(
+        `/api/admin/bookings`,
+      );
+      const allBookings = bookingData.bookings ?? [];
+
       // 2. 待確認到場（confirmed + 今/昨日）— v306 用台北時區
       const tw = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
       const todayDate = new Date();
@@ -91,16 +100,21 @@ export default function TonightPage() {
       const from = tw(yesterdayDate);
       const to = tw(todayDate);
 
-      const bookingData = await adminFetch<{ bookings: BookingRow[] }>(
-        `/api/admin/bookings?status=confirmed`,
-      );
-      const filtered = (bookingData.bookings ?? []).filter((b) => {
+      const filtered = allBookings.filter((b) => {
         if (b.status !== "confirmed") return false;
         const refDate = b.ref?.date ?? b.ref?.dateStart;
         if (!refDate) return false;
         return refDate >= from && refDate <= to;
       });
       setBookings(filtered);
+
+      // v325：orphan = booking.status=awaiting_verify 但無對應 pending proof
+      const proofBookingIds = new Set((proofData.proofs ?? []).map((p) => p.booking.id));
+      const orphans = allBookings.filter(
+        (b) => b.status === "awaiting_verify" && !proofBookingIds.has(b.id),
+      );
+      setOrphanAwaitingVerify(orphans);
+
       setSelectedProofs(new Set());
       setSelectedBookings(new Set());
     } catch (e) {
@@ -231,7 +245,7 @@ export default function TonightPage() {
     void reload();
   }
 
-  const allEmpty = !loading && proofs.length === 0 && groups.length === 0;
+  const allEmpty = !loading && proofs.length === 0 && groups.length === 0 && orphanAwaitingVerify.length === 0;
 
   return (
     <AdminShell>
@@ -240,7 +254,7 @@ export default function TonightPage() {
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
               <Moon className="h-5 w-5" />
-              今晚待確認 — 老闆結帳介面
+              老闆結帳
             </h1>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
               💰 待確認匯款（不限日期）＋ ✅ 今／昨日 confirmed 待勾到場。可批次處理。
@@ -255,6 +269,51 @@ export default function TonightPage() {
         {msg && (
           <div className="mb-3 rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "#047857", border: "1px solid rgba(99,235,164,0.25)" }}>
             {msg}
+          </div>
+        )}
+
+        {/* v325：booking 標待確認匯款但無證明 — 提示老闆到訂單管理手動處理 */}
+        {orphanAwaitingVerify.length > 0 && (
+          <div className="mb-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
+            <div className="text-sm font-bold text-amber-900 mb-2">
+              ⚠ {orphanAwaitingVerify.length} 筆訂單標記「待確認匯款」但沒有對應的付款證明
+            </div>
+            <p className="text-xs text-amber-800 mb-2">
+              可能原因：客戶按了「我已匯款」但跳過附圖 / 上傳失敗 / 證明被駁回後訂單狀態未同步。
+              請手動聯絡客戶補證明、或直接到訂單管理頁手動結算。
+            </p>
+            <div className="space-y-1.5">
+              {orphanAwaitingVerify.map((b) => {
+                const refDate = b.ref?.date ?? b.ref?.dateStart;
+                const refLabel = b.ref?.title
+                  ? b.ref.title
+                  : `${refDate ?? ""} ${b.ref?.startTime ?? ""} ${b.ref?.sites?.join("/") ?? ""}`.trim();
+                return (
+                  <div key={b.id} className="flex items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-xs flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="rounded bg-amber-200 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-900">
+                        {b.code ?? b.id.slice(0, 8)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setOpenCustomerId(b.userId)}
+                        className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                      >
+                        {b.user.realName ?? b.user.displayName}
+                      </button>
+                      {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
+                      <span className="text-[var(--muted-foreground)]">{refLabel}</span>
+                      <span className="tabular-nums font-semibold">NT$ {b.totalAmount.toLocaleString()}</span>
+                    </div>
+                    <Link href={`/admin/bookings?status=awaiting_verify`}>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]">
+                        → 至訂單管理處理
+                      </Button>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
