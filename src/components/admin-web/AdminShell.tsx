@@ -24,26 +24,58 @@ import {
   Newspaper,
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
-  { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
-  { href: "/admin/bookings", icon: BookOpen, label: "訂單管理" },
-  { href: "/admin/dive-wishes", icon: BookOpen, label: "📝 願望單" },
-  { href: "/admin/trips", icon: Waves, label: "日潛場次" },
-  { href: "/admin/tours", icon: Ship, label: "潛水旅行" },
-  { href: "/admin/users", icon: Users, label: "會員管理" },
-  { href: "/admin/coaches", icon: GraduationCap, label: "教練管理" },
-  // 潛點管理已移除（v153）— 改為在場次/潛水團 dialog 直接輸入潛點名稱
-  { href: "/admin/credits", icon: Star, label: "抵用金管理" },
-  { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
-  { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
-  { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
-  { href: "/admin/reports", icon: BarChart2, label: "報表" },
-  { href: "/admin/settings", icon: Settings, label: "系統設定" },
-  { href: "/admin/audit-logs", icon: ClipboardCheck, label: "操作紀錄" },
-  { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
-  { href: "/admin/guide", icon: HelpCircle, label: "操作說明" },
+// v350：側欄改「功能分組」由上而下（即時營運 → 訂單客戶 → 商品 → 行銷 → 分析 → 系統）
+const NAV_GROUPS = [
+  {
+    label: "即時營運",
+    items: [
+      { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
+      { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
+    ],
+  },
+  {
+    label: "訂單 / 客戶",
+    items: [
+      { href: "/admin/bookings", icon: BookOpen, label: "訂單管理" },
+      { href: "/admin/dive-wishes", icon: BookOpen, label: "📝 願望單" },
+      { href: "/admin/users", icon: Users, label: "會員管理" },
+      { href: "/admin/credits", icon: Star, label: "抵用金管理" },
+    ],
+  },
+  {
+    label: "商品 / 人員",
+    items: [
+      { href: "/admin/trips", icon: Waves, label: "日潛場次" },
+      { href: "/admin/tours", icon: Ship, label: "潛水旅行" },
+      { href: "/admin/coaches", icon: GraduationCap, label: "教練管理" },
+    ],
+  },
+  {
+    label: "行銷 / 通知",
+    items: [
+      { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
+      { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
+      { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
+    ],
+  },
+  {
+    label: "分析",
+    items: [
+      { href: "/admin/reports", icon: BarChart2, label: "報表" },
+      { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
+    ],
+  },
+  {
+    label: "系統",
+    items: [
+      { href: "/admin/settings", icon: Settings, label: "系統設定" },
+      { href: "/admin/audit-logs", icon: ClipboardCheck, label: "操作紀錄" },
+      { href: "/admin/guide", icon: HelpCircle, label: "操作說明" },
+    ],
+  },
 ];
+// 扁平清單（給頂部標題對照用）
+const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 function NavLink({
   href,
@@ -163,21 +195,33 @@ export function AdminShell({
 
       <div className="mx-3 mb-2 border-t border-white/10" />
 
-      {/* Nav */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            active={
-              item.exact
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(item.href + "/")
-            }
-            onClick={() => setMobileOpen(false)}
-          />
+      {/* Nav（v350：功能分組）*/}
+      <nav className="flex-1 overflow-y-auto p-3">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="mb-3">
+            <div
+              className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ color: "rgba(230,240,255,0.35)" }}
+            >
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  active={
+                    "exact" in item && item.exact
+                      ? pathname === item.href
+                      : pathname === item.href || pathname.startsWith(item.href + "/")
+                  }
+                  onClick={() => setMobileOpen(false)}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
     </div>
@@ -228,7 +272,7 @@ export function AdminShell({
           >
             {title ??
               NAV_ITEMS.find((n) =>
-                n.exact
+                "exact" in n && n.exact
                   ? pathname === n.href
                   : pathname === n.href || pathname.startsWith(n.href + "/"),
               )?.label ??
