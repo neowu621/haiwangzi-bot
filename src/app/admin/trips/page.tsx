@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// v192：Dialog 已改為固定右側面板，不再需要
-import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight } from "lucide-react";
+// v192：Dialog 已改為固定右側面板；v336 重新引入給 Dump 一週用
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight, FileText, Check } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
 import ExcelJS from "exceljs";
 
@@ -219,6 +220,18 @@ export default function AdminTripsPage() {
   const [cancelTarget, setCancelTarget] = useState<Trip | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelBusy, setCancelBusy] = useState(false);
+
+  // v336：Dump 一週場次（給 LINE 筆記本用）
+  const [dumpOpen, setDumpOpen] = useState(false);
+  const [dumpStartDate, setDumpStartDate] = useState<string>(() => {
+    // 預設下週一
+    const d = new Date();
+    const day = d.getDay(); // 0=Sun, 1=Mon ... 6=Sat
+    const daysUntilNextMonday = day === 1 ? 7 : (8 - day) % 7;
+    d.setDate(d.getDate() + daysUntilNextMonday);
+    return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  });
+  const [dumpCopied, setDumpCopied] = useState(false);
 
   // v183：展開查看訂單
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -850,6 +863,60 @@ export default function AdminTripsPage() {
     return 0;
   });
 
+  // v336：Dump 一週場次（給 LINE 筆記本貼）
+  function computeDumpText(): string {
+    const start = new Date(`${dumpStartDate}T00:00:00+08:00`);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const fmtMD = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const weekdayMap = ["日", "一", "二", "三", "四", "五", "六"];
+    // 過濾出落在 [start, end] 區間、且非取消的場次
+    const inRange = trips.filter((t) => {
+      const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
+      return td >= start && td <= end && t.status !== "cancelled";
+    });
+    inRange.sort((a, b) => {
+      const da = a.date.slice(0, 10);
+      const db = b.date.slice(0, 10);
+      if (da !== db) return da < db ? -1 : 1;
+      return a.startTime.localeCompare(b.startTime);
+    });
+    const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? id;
+    const lines: string[] = [];
+    const startLabel = `${fmtMD(start).replace("-", "/")}(週${weekdayMap[start.getDay()]})`;
+    const endLabel = `${fmtMD(end).replace("-", "/")}(週${weekdayMap[end.getDay()]})`;
+    lines.push(`🌊 ${startLabel} ~ ${endLabel} 日潛場次`);
+    lines.push("");
+    if (inRange.length === 0) {
+      lines.push("（此週尚無場次）");
+    } else {
+      for (const t of inRange) {
+        const d = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
+        const dateStr = fmtMD(d);
+        const wd = weekdayMap[d.getDay()];
+        const sitesStr = t.diveSiteIds.map(siteName).join("·") || "未設潛點";
+        const moonIcon = t.isNightDive ? " 🌙" : "";
+        lines.push(`${dateStr}(週${wd})${moonIcon} ${t.startTime} ${sitesStr} ${t.tankCount} 支`);
+      }
+    }
+    lines.push("");
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
+    lines.push(`🔗 報名：${baseUrl}/liff/calendar`);
+    return lines.join("\n");
+  }
+  async function copyDumpText() {
+    const text = computeDumpText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setDumpCopied(true);
+      setTimeout(() => setDumpCopied(false), 2000);
+    } catch {
+      // fallback：選取 textarea
+      const ta = document.getElementById("dump-textarea") as HTMLTextAreaElement | null;
+      if (ta) { ta.select(); document.execCommand("copy"); setDumpCopied(true); setTimeout(() => setDumpCopied(false), 2000); }
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(sortedTrips.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pagedTrips = sortedTrips.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -901,6 +968,11 @@ export default function AdminTripsPage() {
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
             <Upload className="mr-1.5 h-4 w-4" />
             {importing ? "匯入中..." : "Excel 匯入"}
+          </Button>
+          {/* v336：Dump 一週場次 — 給 LINE 筆記本貼 */}
+          <Button size="sm" variant="outline" onClick={() => setDumpOpen(true)} title="dump 一週場次成可貼 LINE 的文字">
+            <FileText className="mr-1.5 h-4 w-4" />
+            Dump 一週
           </Button>
           <Button onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />
@@ -1702,6 +1774,51 @@ export default function AdminTripsPage() {
           </div>
         </div>
       )}
+
+      {/* v336：Dump 一週場次 dialog */}
+      <Dialog open={dumpOpen} onOpenChange={(o) => setDumpOpen(o)}>
+        <DialogContent className="max-w-[min(95vw,560px)]">
+          <DialogHeader>
+            <DialogTitle>📋 Dump 一週場次（給 LINE 筆記本）</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-[80px_1fr] items-center gap-2">
+              <Label className="text-xs">起始日期</Label>
+              <Input
+                type="date"
+                value={dumpStartDate}
+                onChange={(e) => setDumpStartDate(e.target.value)}
+              />
+            </div>
+            <div className="text-[11px] text-[var(--muted-foreground)] pl-[80px]">
+              範圍：選定日期起算 7 天（含當日）
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">預覽（可直接編輯）</Label>
+              <textarea
+                id="dump-textarea"
+                value={computeDumpText()}
+                onChange={() => { /* read-only via key, but allow select+modify */ }}
+                rows={Math.max(8, computeDumpText().split("\n").length + 1)}
+                className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-xs font-mono whitespace-pre"
+                spellCheck={false}
+                readOnly
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="text-[11px] text-[var(--muted-foreground)]">
+                {dumpCopied ? "✓ 已複製到剪貼簿" : "點下方按鈕複製、或直接拖選文字"}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setDumpOpen(false)}>關閉</Button>
+                <Button size="sm" onClick={copyDumpText} className={dumpCopied ? "bg-emerald-600 hover:bg-emerald-600" : ""}>
+                  {dumpCopied ? <><Check className="mr-1.5 h-3.5 w-3.5" />已複製</> : <><Copy className="mr-1.5 h-3.5 w-3.5" />一鍵複製</>}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }
