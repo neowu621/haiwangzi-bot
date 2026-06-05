@@ -31,7 +31,7 @@ import { LiffLoading } from "@/components/shell/LiffLoading";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
-import { cn } from "@/lib/utils";
+import { cn, isBookingClosed } from "@/lib/utils";
 
 interface TripDetail {
   id: string;
@@ -332,9 +332,13 @@ export default function TripBookingPage({
     (c) => c.name.trim().length >= 2 && c.cert !== null,
   );
 
+  // v341：場次開始前 2 小時截止預約
+  const bookingClosed = trip ? isBookingClosed(trip.date, trip.startTime) : false;
+
   const canSubmit =
     trip &&
     !submitting &&
+    !bookingClosed &&
     cancellationRead &&
     safetyRead &&
     signedHasInk &&
@@ -472,7 +476,7 @@ export default function TripBookingPage({
                   {trip.tankCount} 潛
                 </Badge>
                 {trip.isNightDive && (
-                  <Badge variant="ocean" className="gap-0.5 text-[10px]">
+                  <Badge className="gap-0.5 text-[10px] border-transparent bg-indigo-500 text-white">
                     <Moon className="h-2.5 w-2.5" />夜潛
                   </Badge>
                 )}
@@ -1040,9 +1044,16 @@ export default function TripBookingPage({
                 disabled={!canSubmit}
                 onClick={submit}
               >
-                {submitting ? "送出中..." : "確認預約"}
+                {bookingClosed ? "已截止預約" : submitting ? "送出中..." : "確認預約"}
               </Button>
             </div>
+            {/* v341：截止提示 */}
+            {bookingClosed && (
+              <div className="mt-2 rounded-lg bg-[var(--color-coral)]/10 p-2.5 text-center text-xs text-[var(--color-coral)]">
+                ⛔ 此場次已於開始前 2 小時截止預約。<br />
+                想潛這天？可到「📝 預約潛水」提出需求，老闆會另外安排。
+              </div>
+            )}
           </CardContent>
         </Card>
 

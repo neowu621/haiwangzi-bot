@@ -9,7 +9,7 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
-import { cn } from "@/lib/utils";
+import { cn, isBookingClosed } from "@/lib/utils";
 
 // capacity / available 可能為 null（場次無上限時）
 interface Trip {
@@ -255,9 +255,10 @@ export default function CalendarPage() {
             const wd = ["日", "一", "二", "三", "四", "五", "六"][
               new Date(t.date).getDay()
             ];
-            return (
-            <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>
-              <Card className="flex items-center gap-3 p-3">
+            // v341：場次開始前 2 小時截止 → 灰底、不可點、顯示「無法預約」
+            const closed = isBookingClosed(t.date, t.startTime);
+            const card = (
+              <Card className={cn("flex items-center gap-3 p-3", closed && "opacity-50 grayscale")}>
                 <div className="flex w-14 flex-col items-center leading-tight">
                   <div className="text-lg font-bold tabular">
                     {t.date.slice(8)}
@@ -281,8 +282,8 @@ export default function CalendarPage() {
                       {t.tankCount} 潛
                     </Badge>
                     {t.isNightDive && (
-                      <Badge variant="ocean" className="text-[10px]">
-                        夜潛
+                      <Badge className="gap-0.5 text-[10px] border-transparent bg-indigo-500 text-white">
+                        🌙 夜潛
                       </Badge>
                     )}
                     {t.isScooter && (
@@ -301,17 +302,23 @@ export default function CalendarPage() {
                   </div>
                 </div>
                 <Badge
-                  variant={t.available != null && t.available <= 2 ? "coral" : "muted"}
-                  className="tabular"
+                  variant={closed ? "muted" : t.available != null && t.available <= 2 ? "coral" : "muted"}
+                  className="tabular whitespace-nowrap"
                 >
-                  {t.available === 0
+                  {closed
+                    ? "無法預約"
+                    : t.available === 0
                     ? "已滿"
                     : t.available != null && t.available <= 2
                     ? "即將額滿"
                     : "可預約"}
                 </Badge>
               </Card>
-            </Link>
+            );
+            return closed ? (
+              <div key={t.id} className="cursor-not-allowed">{card}</div>
+            ) : (
+              <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>{card}</Link>
             );
           })}
         </div>

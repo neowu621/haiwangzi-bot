@@ -95,6 +95,19 @@ export async function POST(req: NextRequest) {
   if (trip.status !== "open")
     return NextResponse.json({ error: `trip status: ${trip.status}` }, { status: 400 });
 
+  // v341：場次開始前 2 小時截止預約（server-side guard，防 UI 繞過）
+  {
+    const tripDateStr = trip.date.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+    const startMs = new Date(`${tripDateStr}T${trip.startTime.slice(0, 5)}:00+08:00`).getTime();
+    const cutoffMs = startMs - 2 * 60 * 60 * 1000;
+    if (Date.now() >= cutoffMs) {
+      return NextResponse.json(
+        { error: "booking_closed", message: "此場次已截止預約（開始前 2 小時截止）" },
+        { status: 400 },
+      );
+    }
+  }
+
   // 黑名單檢查
   if (auth.user.blacklisted) {
     return NextResponse.json(

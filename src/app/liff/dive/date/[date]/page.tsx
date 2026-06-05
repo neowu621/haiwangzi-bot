@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { cn, isBookingClosed } from "@/lib/utils";
 
 interface Trip {
   id: string;
@@ -65,14 +66,14 @@ export default function DiveDateListPage({
           const base =
             t.pricing.baseTrip +
             t.pricing.extraTank * t.tankCount;
-          return (
-            <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>
+          // v341：開始前 2 小時截止
+          const closed = isBookingClosed(t.date, t.startTime);
+          const card = (
               <Card
-                className={
-                  t.isNightDive
-                    ? "bg-[var(--color-midnight)] text-white"
-                    : ""
-                }
+                className={cn(
+                  t.isNightDive ? "bg-[var(--color-midnight)] text-white" : "",
+                  closed && "opacity-50 grayscale",
+                )}
               >
                 <div className="flex items-start justify-between p-4">
                   <div>
@@ -82,7 +83,7 @@ export default function DiveDateListPage({
                         {t.startTime}
                       </span>
                       {t.isNightDive && (
-                        <Badge variant="ocean" className="gap-1">
+                        <Badge className="gap-1 border-transparent bg-indigo-500 text-white">
                           <Moon className="h-3 w-3" /> 夜潛
                         </Badge>
                       )}
@@ -112,16 +113,17 @@ export default function DiveDateListPage({
                     </div>
                     <Badge
                       variant={
-                        // available=null 視為「無上限可預約」
-                        t.available === 0
+                        closed || t.available === 0
                           ? "muted"
                           : t.available != null && t.available <= 2
                           ? "coral"
                           : "default"
                       }
-                      className="mt-2 tabular"
+                      className="mt-2 tabular whitespace-nowrap"
                     >
-                      {t.available === 0
+                      {closed
+                        ? "無法預約"
+                        : t.available === 0
                         ? "已滿"
                         : t.available != null && t.available <= 2
                         ? `剩 ${t.available}`
@@ -130,7 +132,11 @@ export default function DiveDateListPage({
                   </div>
                 </div>
               </Card>
-            </Link>
+          );
+          return closed ? (
+            <div key={t.id} className="cursor-not-allowed">{card}</div>
+          ) : (
+            <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>{card}</Link>
           );
         })}
       </section>

@@ -49,3 +49,22 @@ export function weekdayTW(dateStr: string): string {
   const d = new Date(`${dateStr.slice(0, 10)}T00:00:00+08:00`);
   return `週${WEEKDAYS[d.getDay()]}`;
 }
+
+/**
+ * v341：場次是否已截止預約
+ *   規則：現在時間 >= 場次開始時間 - 2 小時 → 截止
+ *   (場次開始前 2 小時內、或已開始、或已過 → 無法預約)
+ * @param dateStr  "YYYY-MM-DD"（場次日期）
+ * @param startTime "HH:MM"（場次開始時間，台北時區）
+ */
+export const BOOKING_CUTOFF_HOURS = 2;
+export function isBookingClosed(dateStr?: string | null, startTime?: string | null): boolean {
+  if (!dateStr || !startTime) return false;
+  const d = dateStr.slice(0, 10);
+  const t = startTime.length >= 5 ? startTime.slice(0, 5) : "00:00";
+  // 場次開始時間（台北時區）
+  const startMs = new Date(`${d}T${t}:00+08:00`).getTime();
+  if (Number.isNaN(startMs)) return false;
+  const cutoffMs = startMs - BOOKING_CUTOFF_HOURS * 60 * 60 * 1000;
+  return Date.now() >= cutoffMs;
+}
