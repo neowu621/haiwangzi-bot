@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKey } from "@/lib/flex";
 import { sendEmail } from "@/lib/email/send";
-import { tripGuideEmail, finalReminderEmail } from "@/lib/email/templates";
+import { tripGuideEmail, finalReminderEmail, depositReminderEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -184,6 +184,211 @@ async function handle(req: NextRequest) {
               userId: b.userId,
               bookingId: b.id,
             });
+          }
+        }
+      }
+    }
+  }
+
+  // ── 5b. v348/A：潛水團「訂金催繳」 ──────────────────────────────
+  // 規則：每位客人下訂後 depositDueDays(預設7) 天內繳訂金；
+  //       於「截止前 2 天」(＝下訂後第5天) 催繳一次（ReminderLog 去重，僅一次）
+  {
+    const DEPOSIT_REMIND_BEFORE = 2;
+    const dStart = new Date();
+    dStart.setHours(0, 0, 0, 0);
+    const dEnd = new Date(dStart.getTime() + 86400000);
+    const pend = await prisma.booking.findMany({
+      where: {
+        type: "tour",
+        paymentStatus: "pending", // 訂金尚未付
+        status: {
+          notIn: [
+            "cancelled_by_user",
+            "cancelled_by_weather",
+            "cancelled_unpaid",
+            "awaiting_verify", // 已上傳匯款待審，不催
+            "completed",
+            "no_show",
+          ],
+        },
+      },
+      include: { user: true },
+    });
+    for (const b of pend) {
+      const tour = await prisma.tourPackage.findUnique({ where: { id: b.refId } });
+      if (!tour || tour.dateStart < dStart) continue; // 找不到團 / 已出發 → 跳過
+      const dueDays = tour.depositDueDays ?? 7;
+      const remindDay = new Date(b.createdAt);
+      remindDay.setHours(0, 0, 0, 0);
+      remindDay.setDate(remindDay.getDate() + Math.max(1, dueDays - DEPOSIT_REMIND_BEFORE));
+      if (!(remindDay >= dStart && remindDay < dEnd)) continue;
+
+      const depositAmt = b.depositAmount > 0 ? b.depositAmount : tour.deposit;
+      const dueDate = new Date(b.createdAt);
+      dueDate.setDate(dueDate.getDate() + dueDays);
+      const deadlineStr = dueDate.toISOString().slice(0, 10);
+      const payUrl = process.env.NEXT_PUBLIC_BASE_URL
+        ? (b.payLinkToken
+            ? `${process.env.NEXT_PUBLIC_BASE_URL}/pay/${b.id}?t=${b.payLinkToken}`
+            : `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=deposit`)
+        : "https://line.me/";
+
+      // LINE
+      if (b.user.notifyByLine) {
+        const dup = await prisma.reminderLog.findFirst({
+          where: { bookingId: b.id, type: "deposit_reminder", channel: "line" },
+        });
+        if (!dup) {
+          try {
+            const msg = buildFlexByKey(
+              "deposit_notice",
+              {
+                tourTitle: tour.title,
+                deposit: depositAmt,
+                deadline: deadlineStr,
+                bankName: process.env.BANK_NAME ?? "—",
+                holder: process.env.BANK_HOLDER ?? "—",
+                bankAccount: process.env.BANK_ACCOUNT ?? "—",
+                refCode: b.code ?? "",
+                url: payUrl,
+              },
+              `${tour.title} 訂金催繳`,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await client.pushMessage({ to: b.userId, messages: [msg as any] });
+            await prisma.reminderLog.create({
+              data: { bookingId: b.id, type: "deposit_reminder", channel: "line" },
+            });
+            sent.push({ type: "deposit_reminder", userId: b.userId, bookingId: b.id });
+          } catch (e) {
+            const em = e instanceof Error ? e.message : String(e);
+            await prisma.reminderLog.create({
+              data: { bookingId: b.id, type: "deposit_reminder", channel: "line", error: em },
+            });
+            errors.push({ type: "deposit_reminder", bookingId: b.id, error: em });
+          }
+        }
+      }
+      // Email
+      if (b.user.notifyByEmail && b.user.email) {
+        const dup = await prisma.reminderLog.findFirst({
+          where: { bookingId: b.id, type: "deposit_reminder", channel: "email" },
+        });
+        if (!dup) {
+          const tpl = depositReminderEmail({
+            name: b.user.realName ?? b.user.displayName,
+            tourTitle: tour.title,
+            deposit: depositAmt,
+            deadline: deadlineStr,
+            bankAccount: process.env.BANK_ACCOUNT ?? "—",
+            bookingUrl: payUrl,
+          });
+          const r = await sendEmail({ to: b.user.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
+          await prisma.reminderLog.create({
+            data: {
+              bookingId: b.id,
+              type: "deposit_reminder",
+              channel: "email",
+              error: r.ok ? null : r.error ?? r.reason ?? null,
+            },
+          });
+          if (r.ok) sent.push({ type: "deposit_reminder_email", userId: b.userId, bookingId: b.id });
+        }
+      }
+    }
+  }
+
+  // ── 6a. v348/A：潛水團「尾款預告」（尾款截止前3天 ＝ 出發前33天） ──────
+  // 既有的「6. 尾款提醒」保留作為截止當天(出發前30天)那段；此段為提前 3 天的預告
+  {
+    const FINAL_EARLY_OFFSET = 33;
+    const dStart = new Date();
+    dStart.setHours(0, 0, 0, 0);
+    const dEnd = new Date(dStart.getTime() + 86400000);
+    const upcoming = await prisma.tourPackage.findMany({ where: { dateStart: { gte: tomorrow } } });
+    const earlyTours = upcoming.filter((t) => {
+      const rd = new Date(t.dateStart);
+      rd.setDate(rd.getDate() - FINAL_EARLY_OFFSET);
+      rd.setHours(0, 0, 0, 0);
+      return rd >= dStart && rd < dEnd;
+    });
+    for (const tour of earlyTours) {
+      const bookings = await prisma.booking.findMany({
+        where: { refId: tour.id, type: "tour", status: "confirmed", paymentStatus: "deposit_paid" },
+        include: { user: true },
+      });
+      for (const b of bookings) {
+        const remaining = b.totalAmount - b.paidAmount;
+        if (remaining <= 0) continue;
+        const payUrl = process.env.NEXT_PUBLIC_BASE_URL
+          ? (b.payLinkToken
+              ? `${process.env.NEXT_PUBLIC_BASE_URL}/pay/${b.id}?t=${b.payLinkToken}`
+              : `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=final`)
+          : "https://line.me/";
+        const deadline = tour.finalDeadline
+          ? tour.finalDeadline.toISOString().slice(0, 10)
+          : (() => { const d = new Date(tour.dateStart); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); })();
+
+        // LINE
+        if (b.user.notifyByLine) {
+          const dup = await prisma.reminderLog.findFirst({
+            where: { bookingId: b.id, type: "final_reminder_early", channel: "line" },
+          });
+          if (!dup) {
+            try {
+              const msg = buildFlexByKey(
+                "final_reminder",
+                {
+                  tourTitle: tour.title,
+                  remaining,
+                  deadline,
+                  daysLeft: 3,
+                  bankAccount: process.env.BANK_ACCOUNT ?? "—",
+                  url: payUrl,
+                },
+                `${tour.title} 尾款預告`,
+              );
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await client.pushMessage({ to: b.userId, messages: [msg as any] });
+              await prisma.reminderLog.create({
+                data: { bookingId: b.id, type: "final_reminder_early", channel: "line" },
+              });
+              sent.push({ type: "final_reminder_early", userId: b.userId, bookingId: b.id });
+            } catch (e) {
+              const em = e instanceof Error ? e.message : String(e);
+              await prisma.reminderLog.create({
+                data: { bookingId: b.id, type: "final_reminder_early", channel: "line", error: em },
+              });
+              errors.push({ type: "final_reminder_early", bookingId: b.id, error: em });
+            }
+          }
+        }
+        // Email
+        if (b.user.notifyByEmail && b.user.email) {
+          const dup = await prisma.reminderLog.findFirst({
+            where: { bookingId: b.id, type: "final_reminder_early", channel: "email" },
+          });
+          if (!dup) {
+            const tpl = finalReminderEmail({
+              name: b.user.realName ?? b.user.displayName,
+              tourTitle: tour.title,
+              remaining,
+              deadline,
+              daysLeft: 3,
+              bankAccount: process.env.BANK_ACCOUNT ?? "—",
+              bookingUrl: payUrl,
+            });
+            const r = await sendEmail({ to: b.user.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
+            await prisma.reminderLog.create({
+              data: {
+                bookingId: b.id,
+                type: "final_reminder_early",
+                channel: "email",
+                error: r.ok ? null : r.error ?? r.reason ?? null,
+              },
+            });
+            if (r.ok) sent.push({ type: "final_reminder_early_email", userId: b.userId, bookingId: b.id });
           }
         }
       }

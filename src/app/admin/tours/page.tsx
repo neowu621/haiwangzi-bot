@@ -960,13 +960,13 @@ export default function ToursPage() {
                       ↺ 帶入「出發前30天」（{startMinusDays(form.dateStart, 30) || "請先填出發日"}）
                     </button>
                   </Field>
-                  <Field label="訂金前 N 天提醒"><input type="text" inputMode="numeric" value={form.depositReminderDays}
-                    onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, depositReminderDays: c === "" ? 0 : parseInt(c, 10) })); }}
-                    style={inputStyle} /></Field>
-                  <Field label="尾款前 N 天提醒"><input type="text" inputMode="numeric" value={form.finalReminderDays}
+                  <Field label="尾款提醒：出發前 N 天（截止當天推，預設30）"><input type="text" inputMode="numeric" value={form.finalReminderDays}
                     onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, finalReminderDays: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
                 </Row3>
+                <div style={{ marginTop: 4, padding: "8px 10px", background: "#f0f9ff", borderRadius: 8, fontSize: 11, color: "#0a4d78", lineHeight: 1.6 }}>
+                  ⏰ <b>自動提醒排程（系統固定）</b>：訂金催繳＝<b>下訂後第 5 天</b>（未付訂金）・尾款預告＝<b>出發前 33 天</b>・尾款催繳＝<b>出發前 30 天</b>（上方數字可調）・行前手冊＝出發前 2 天
+                </div>
                 <Field label="早鳥 / 加價 / 優惠（每行一條）">
                   <textarea value={form.pricingNotes}
                     onChange={(e) => setForm((f) => ({ ...f, pricingNotes: e.target.value }))}
