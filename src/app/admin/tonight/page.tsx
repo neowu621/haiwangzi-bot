@@ -5,6 +5,7 @@ import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun, Moon, ImageIcon } from "lucide-react";
+import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 /**
  * v298：老闆夜間結帳介面 — 兩段式 + 批次處理
@@ -67,6 +68,7 @@ export default function TonightPage() {
   const [loading, setLoading] = React.useState(true);
   const [acting, setActing] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState<string | null>(null);
+  const [openCustomerId, setOpenCustomerId] = React.useState<string | null>(null); // v320
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [selectedBookings, setSelectedBookings] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
@@ -333,9 +335,13 @@ export default function TonightPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 text-sm flex-wrap">
-                            <span className="font-semibold">
+                            <button
+                              type="button"
+                              onClick={() => setOpenCustomerId(p.booking.userId)}
+                              className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                            >
                               {p.booking.user.realName ?? p.booking.user.displayName}
-                            </span>
+                            </button>
                             <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
                               {p.booking.code ?? p.booking.id.slice(0, 8)}
                             </span>
@@ -450,7 +456,13 @@ export default function TonightPage() {
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="font-medium">{b.user.realName ?? b.user.displayName}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenCustomerId(b.userId)}
+                                  className="font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                                >
+                                  {b.user.realName ?? b.user.displayName}
+                                </button>
                                 <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px]">
                                   {b.participants}人
                                 </span>
@@ -514,6 +526,9 @@ export default function TonightPage() {
           <img src={lightbox} alt="proof full" className="max-h-[90vh] max-w-full object-contain" />
         </div>
       )}
+
+      {/* v320：全站統一客戶詳情 modal */}
+      <CustomerDetailDialog userId={openCustomerId} onClose={() => setOpenCustomerId(null)} />
     </AdminShell>
   );
 }

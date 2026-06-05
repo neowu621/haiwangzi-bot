@@ -17,6 +17,7 @@ import {
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
 import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, type BookingStatusKey } from "@/lib/booking-status"; // v319
+import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   const ctrl = new AbortController();
@@ -140,6 +141,7 @@ export default function AdminBookingsPage() {
   const isAdminOrBoss = adminUser?.effectiveRoles.some((r) => r === "admin" || r === "boss") ?? false;
 
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [openCustomerId, setOpenCustomerId] = useState<string | null>(null); // v320
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminBooking | null>(null);
@@ -847,16 +849,17 @@ export default function AdminBookingsPage() {
                 <thead>
                   <tr className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}>
-                    <th className="px-4 py-3 font-medium"><SortBtn k="code" curK={sortKey} dir={sortDir} onClick={toggleSort}>訂單編號</SortBtn></th>
+                    {/* v320：訂單編號縮到最小、消費換成付款狀態、狀態移到方式右側 */}
+                    <th className="px-2 py-3 font-medium" style={{ width: "1%" }}><SortBtn k="code" curK={sortKey} dir={sortDir} onClick={toggleSort}>編號</SortBtn></th>
                     <th className="px-3 py-3 font-medium"><SortBtn k="type" curK={sortKey} dir={sortDir} onClick={toggleSort}>類型</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
-                    <th className="px-3 py-3 font-medium text-center">消費</th>
+                    <th className="px-3 py-3 font-medium"><SortBtn k="payment" curK={sortKey} dir={sortDir} onClick={toggleSort}>付款</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
-                    <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>狀態</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>狀態</SortBtn></th>
                     <th className="px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
@@ -884,14 +887,14 @@ export default function AdminBookingsPage() {
                           setAddPaymentNote("");
                         }}
                       >
-                        {/* 訂單編號 */}
-                        <td className="px-4 py-2.5 whitespace-nowrap">
+                        {/* v320：訂單編號縮到最小 */}
+                        <td className="px-2 py-2.5 whitespace-nowrap" style={{ width: "1%" }}>
                           {b.code ? (
-                            <span className="inline-block rounded-md bg-teal-50 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wide text-teal-800">
+                            <span className="inline-block rounded bg-teal-50 px-1 py-0.5 font-mono text-[10px] font-semibold tracking-tight text-teal-800">
                               {b.code}
                             </span>
                           ) : (
-                            <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                            <span className="text-[10px] text-[var(--muted-foreground)]">—</span>
                           )}
                         </td>
                         {/* 類型：日潛 / 潛水團 */}
@@ -908,26 +911,21 @@ export default function AdminBookingsPage() {
                             </span>
                           )}
                         </td>
-                        {/* v310：客戶名可點 → 開 quick action menu（LINE 私訊 / Email / 編輯訂單） */}
+                        {/* v320：客戶名可點 → 開全站統一客戶詳情 modal */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setCustomerActionFor(b)}
+                            onClick={(e) => { e.stopPropagation(); setOpenCustomerId(b.user.lineUserId); }}
                             className="text-left text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
                           >
                             {b.user.realName ?? b.user.displayName}
                           </button>
                         </td>
-                        {/* v310：消費欄位 — 只顯示老闆需要 action 的「待結算」，其他狀態跟「訂單」欄位重複 */}
-                        <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                          {(b.status === "pending" || b.status === "confirmed" || b.status === "awaiting_verify")
-                            && tripDateStr && past ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700" title="場次已過，請更新訂單狀態為「已完成」或「未到場」">
-                              ⚠ 待結算
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-[var(--muted-foreground)]">—</span>
-                          )}
+                        {/* v320：消費欄位改為付款狀態 chip — 老闆掃一眼看出有沒有收到錢 */}
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
+                            {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
+                          </Badge>
                         </td>
                         {/* 場次 — 一行 */}
                         {/* 場次時間 — daily 一行 / tour 兩行（開始 ~ 結束） */}
@@ -967,7 +965,11 @@ export default function AdminBookingsPage() {
                         <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                           {b.paidAmount.toLocaleString()}
                         </td>
-                        {/* v319: 衍生單一狀態 + 退款申請 sub-chips */}
+                        {/* v320：方式先（原本中段） */}
+                        <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+                          {PAYMENT_METHOD_LABEL[b.paymentMethod ?? ""] ?? b.paymentMethod ?? "—"}
+                        </td>
+                        {/* v320：狀態移到方式之後（更靠近操作欄，老闆順手點動作） */}
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1 items-start">
                             {(() => {
@@ -983,13 +985,11 @@ export default function AdminBookingsPage() {
                                 </Badge>
                               );
                             })()}
-                            {/* 進度副提示：已付 / 應付（給老闆掃一眼看出有沒有缺尾款） */}
                             {b.totalAmount > 0 && b.paidAmount > 0 && b.paidAmount < b.totalAmount && (
                               <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] text-amber-700 whitespace-nowrap tabular-nums">
                                 已付 {b.paidAmount.toLocaleString()} / {b.totalAmount.toLocaleString()}
                               </span>
                             )}
-                            {/* v274 / v280：退款申請 badges */}
                             {b.refundRequest?.status === "pending_customer" && (
                               <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] text-blue-700 whitespace-nowrap">
                                 💸 退款待客戶確認
@@ -1016,10 +1016,6 @@ export default function AdminBookingsPage() {
                               </span>
                             )}
                           </div>
-                        </td>
-                        {/* 方式 */}
-                        <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
-                          {PAYMENT_METHOD_LABEL[b.paymentMethod ?? ""] ?? b.paymentMethod ?? "—"}
                         </td>
                         {/* 操作 */}
                         <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -1863,6 +1859,9 @@ export default function AdminBookingsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* v320：全站統一客戶詳情 modal */}
+      <CustomerDetailDialog userId={openCustomerId} onClose={() => setOpenCustomerId(null)} />
     </AdminShell>
   );
 }

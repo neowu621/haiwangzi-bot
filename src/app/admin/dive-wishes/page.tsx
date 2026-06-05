@@ -6,6 +6,7 @@ import { adminFetch } from "@/lib/admin-web-auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 interface Wish {
   id: string;
@@ -20,7 +21,7 @@ interface Wish {
   status: string;
   lastActivityAt: string;
   createdAt: string;
-  user: { displayName: string; realName: string | null; phone: string | null };
+  user: { lineUserId: string; displayName: string; realName: string | null; phone: string | null };
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -41,6 +42,7 @@ export default function AdminDiveWishesPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<string>("pending");
   const [loading, setLoading] = useState(true);
+  const [openCustomerId, setOpenCustomerId] = useState<string | null>(null); // v320
 
   async function load() {
     setLoading(true);
@@ -99,7 +101,13 @@ export default function AdminDiveWishesPage() {
                   <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className={meta.cls}>{meta.label}</Badge>
-                      <span className="text-sm font-bold">{w.user.realName ?? w.user.displayName}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenCustomerId(w.user.lineUserId); }}
+                        className="text-sm font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                      >
+                        {w.user.realName ?? w.user.displayName}
+                      </button>
                       {w.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">{w.user.phone}</span>}
                       <span className="text-xs">{TYPE_LABEL[w.type] ?? w.type}</span>
                     </div>
@@ -123,6 +131,9 @@ export default function AdminDiveWishesPage() {
       <div className="mt-6 text-center">
         <Button variant="outline" size="sm" onClick={() => void load()}>🔄 重新整理</Button>
       </div>
+
+      {/* v320：全站統一客戶詳情 modal */}
+      <CustomerDetailDialog userId={openCustomerId} onClose={() => setOpenCustomerId(null)} />
     </AdminShell>
   );
 }

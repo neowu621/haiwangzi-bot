@@ -28,6 +28,7 @@ import {
 import { cn, toTaipeiDateString } from "@/lib/utils";
 import { formatPhoneTW } from "@/lib/phone";
 import { VIP_TIERS, getVipTier } from "@/lib/vip-tier";
+import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 type Role = "customer" | "coach" | "boss" | "admin";
 type Cert = "OW" | "AOW" | "Rescue" | "DM" | "Instructor";
@@ -143,6 +144,7 @@ function roleBadgeVariant(r: Role): "coral" | "ocean" | "muted" {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [openCustomerId, setOpenCustomerId] = useState<string | null>(null); // v320
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<AdminUser | null>(null);
@@ -640,9 +642,8 @@ export default function AdminUsersPage() {
                       <SortIcon k="displayName" />
                     </th>
                     <th className="px-2 py-3 font-medium" style={{ width: "1%" }}>角色</th>
-                    <th className="px-4 py-3 font-medium">電話</th>
+                    {/* v320：電話/證照 改在客戶詳情 modal 內顯示 */}
                     <th className="px-4 py-3 font-medium">Email / LINE ID</th>
-                    <th className="px-4 py-3 font-medium">證照</th>
                     <th className="px-4 py-3 font-medium">VIP</th>
                     <th
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
@@ -699,7 +700,14 @@ export default function AdminUsersPage() {
                       {/* 姓名 — 強制不換行 + LINE 名字縮字（左 padding 縮小靠左） */}
                       <td className="pl-2 pr-3 py-3 whitespace-nowrap">
                         <div className={cn("font-medium whitespace-nowrap", u.deletedAt && "line-through text-[var(--muted-foreground)]")}>
-                          {u.realName ?? u.displayName}
+                          {/* v320：可點開客戶詳情 modal */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setOpenCustomerId(u.lineUserId); }}
+                            className="text-left underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                          >
+                            {u.realName ?? u.displayName}
+                          </button>
                         </div>
                         {u.realName && (
                           <div className="text-[10px] text-[var(--muted-foreground)] whitespace-nowrap truncate max-w-[10rem]">
@@ -740,10 +748,7 @@ export default function AdminUsersPage() {
                           })}
                         </div>
                       </td>
-                      {/* 電話 — 不換行 */}
-                      <td className="px-4 py-3 tabular-nums text-xs whitespace-nowrap">
-                        {u.phone ?? "—"}
-                      </td>
+                      {/* v320：電話欄移除 — 改在客戶詳情 modal 內顯示 */}
                       {/* Email + LINE ID 合併欄 — 點擊開啟傳送視窗 */}
                       <td className="px-4 py-3 text-xs">
                         {u.email ? (
@@ -763,18 +768,7 @@ export default function AdminUsersPage() {
                           {u.lineUserId.slice(0, 10)}...
                         </div>
                       </td>
-                      {/* 證照 */}
-                      <td className="px-4 py-3">
-                        {u.cert ? (
-                          <Badge variant="muted" className="text-[10px]" title={u.cert}>
-                            {({ OW: "開放水域", AOW: "進階", Rescue: "救援", DM: "潛水長", Instructor: "潛水教練" } as Record<string, string>)[u.cert] ?? u.cert}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-[var(--muted-foreground)]">
-                            —
-                          </span>
-                        )}
-                      </td>
+                      {/* v320：證照欄移除 — 改在客戶詳情 modal 內顯示 */}
                       {/* VIP — 純文字「LV1 鯨鯊」格式，不換行 */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         {u.vipLevel > 0 ? (
@@ -1710,6 +1704,9 @@ export default function AdminUsersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* v320：客戶詳情 modal — 全站統一 */}
+      <CustomerDetailDialog userId={openCustomerId} onClose={() => setOpenCustomerId(null)} />
     </AdminShell>
   );
 }
