@@ -105,10 +105,7 @@ const GEAR_LABELS: Record<keyof GearPrices, string> = {
 const DEFAULT_TRIP: TripPricing = {
   baseTrip: 1200, extraTank: 500, nightDive: 0, scooterRental: 0,
 };
-// v184：移除夜潛加成 + 水上摩托車（v155 已停用業務功能）
-const TRIP_LABELS: Record<string, string> = {
-  baseTrip: "基本潛水費", extraTank: "額外氣瓶",
-};
+// v346：場次預設定價 UI 移除（不需初始設定），但 defaultTripPricing 仍保留現值寫回
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -126,6 +123,27 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
     <div className="grid grid-cols-[10rem_1fr] items-center gap-3">
       <Label className="text-sm text-[var(--foreground)]">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+// 精簡金額欄位：label 與輸入框同一行，縮減垂直高度
+function CompactNum({
+  label, value, onChange, min = 0, max, labelW = "w-24",
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  max?: number;
+  labelW?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Label className={cn("shrink-0 text-[11px] leading-tight text-[var(--muted-foreground)]", labelW)}>{label}</Label>
+      <div className="min-w-0 flex-1">
+        <NumberInput min={min} max={max} value={value} onChange={onChange} />
+      </div>
     </div>
   );
 }
@@ -530,58 +548,31 @@ export default function SettingsPage() {
         {/* ── B. 金額設定 ──────────────────── */}
         <SectionCard title="💰 金額設定">
 
-          {/* B1 裝備租借 */}
+          {/* B1 裝備租借 — 精簡兩行 inline label */}
           <div className="mb-5">
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">裝備租借費率（NT$）</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
               {(Object.keys(GEAR_LABELS) as Array<keyof GearPrices>).map(key => (
-                <div key={key}>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{GEAR_LABELS[key]}</Label>
-                  <NumberInput min={0} value={gear[key]}
-                    onChange={(n) => setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: n } } : c)} />
-                </div>
+                <CompactNum key={key} label={GEAR_LABELS[key]} labelW="w-24" value={gear[key]}
+                  onChange={(n) => setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: n } } : c)} />
               ))}
             </div>
           </div>
 
-          {/* B2 場次預設定價 — v184: 移除夜潛加成 + 水上摩托車 */}
-          <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">場次預設定價（新增場次時的預設值，NT$）</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(["baseTrip", "extraTank"] as const).map(key => (
-                <div key={key}>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">{TRIP_LABELS[key]}</Label>
-                  <NumberInput min={0} value={trip[key as keyof TripPricing]}
-                    onChange={(n) => setCfg(c => c ? { ...c, defaultTripPricing: { ...trip, [key]: n } } : c)} />
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* B2 場次預設定價 — v346: 移除（不需要初始設定）。defaultTripPricing 仍保留現值，由各場次自填 */}
 
-          {/* B3 其他費用 */}
+          {/* B3 其他費用 — 精簡兩行 inline label */}
           <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">其他費用</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">教練預設費用/潛（NT$）</Label>
-                <NumberInput min={0} value={cfg.defaultCoachFee}
-                  onChange={(n) => setCfg(c => c ? { ...c, defaultCoachFee: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日抵用金（NT$，0=停用）</Label>
-                <NumberInput min={0} value={cfg.birthdayCreditAmount}
-                  onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日抵用金有效天數（0=永不過期）</Label>
-                <NumberInput min={0} value={cfg.birthdayCreditExpiryDays ?? 360}
-                  onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">天氣取消風速門檻（m/s）</Label>
-                <NumberInput min={0} value={cfg.weatherWindThreshold}
-                  onChange={(n) => setCfg(c => c ? { ...c, weatherWindThreshold: n || 10 } : c)} />
-              </div>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+              <CompactNum label="教練預設費用/潛（NT$）" labelW="w-36" value={cfg.defaultCoachFee}
+                onChange={(n) => setCfg(c => c ? { ...c, defaultCoachFee: n } : c)} />
+              <CompactNum label="生日抵用金（NT$，0=停用）" labelW="w-36" value={cfg.birthdayCreditAmount}
+                onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} />
+              <CompactNum label="生日抵用金有效天數（0=不過期）" labelW="w-36" value={cfg.birthdayCreditExpiryDays ?? 360}
+                onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
+              <CompactNum label="天氣取消風速門檻（m/s）" labelW="w-36" value={cfg.weatherWindThreshold}
+                onChange={(n) => setCfg(c => c ? { ...c, weatherWindThreshold: n || 10 } : c)} />
             </div>
           </div>
 
@@ -618,26 +609,7 @@ export default function SettingsPage() {
           </div>
 
           {/* v345：VIP 升等獎金已移至「⭐ VIP」tab（每等級的「升級獎勵」才是真正生效的設定） */}
-
-          {/* v261 B5：首單付款獎勵 */}
-          <div className="mb-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <p className="mb-1 text-sm font-medium text-[var(--foreground)]">🎁 首單付款獎勵</p>
-            <p className="mb-3 text-[11px] text-[var(--muted-foreground)]">
-              客戶第一筆訂單付款完成 + Email 已驗證 → 自動發抵用金（一人僅一次）。
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">金額（NT$，0=停用）</Label>
-                <NumberInput min={0} value={cfg.firstOrderRewardAmount ?? 100}
-                  onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardAmount: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">有效天數（0=永不過期）</Label>
-                <NumberInput min={0} max={3650} value={cfg.firstOrderRewardExpiryDays ?? 360}
-                  onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardExpiryDays: n } : c)} />
-              </div>
-            </div>
-          </div>
+          {/* v346：首單付款獎勵已移至「⭐ VIP」tab（= LV1 新客禮） */}
 
           <div className="flex justify-end">
             <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
@@ -652,8 +624,6 @@ export default function SettingsPage() {
                 refundCreditExpiryDays: cfg.refundCreditExpiryDays ?? 0,
                 weatherWindThreshold: cfg.weatherWindThreshold,
                 vipUpgradeCredits: vipCredits,
-                firstOrderRewardAmount: cfg.firstOrderRewardAmount ?? 100,
-                firstOrderRewardExpiryDays: cfg.firstOrderRewardExpiryDays ?? 360,
               })}
               disabled={saving === "金額設定"}>
               <Save className="mr-1.5 h-4 w-4" />
@@ -666,9 +636,35 @@ export default function SettingsPage() {
 
         {/* v345：⭐ VIP — VIP 等級設定（含每等級的升級獎勵 = VIP 升等金額） */}
         <TabsContent value="vip" className="mt-4">
-          <SectionCard title="⭐ VIP 等級設定">
-            <VipTiersEditor />
+          {/* v346：首單付款獎勵 = LV1 新客禮，整合進 VIP tab */}
+          <SectionCard title="🎁 LV1 新客禮（首單付款獎勵）">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              新客戶第一筆訂單付款完成 + Email 已驗證 → 自動發抵用金（一人僅一次）。視為踏入 VIP LV1 的入會禮。
+            </p>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+              <CompactNum label="金額（NT$，0=停用）" labelW="w-32" value={cfg.firstOrderRewardAmount ?? 100}
+                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardAmount: n } : c)} />
+              <CompactNum label="有效天數（0=永不過期）" labelW="w-32" max={3650} value={cfg.firstOrderRewardExpiryDays ?? 360}
+                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardExpiryDays: n } : c)} />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("LV1 新客禮", {
+                  firstOrderRewardAmount: cfg.firstOrderRewardAmount ?? 100,
+                  firstOrderRewardExpiryDays: cfg.firstOrderRewardExpiryDays ?? 360,
+                })}
+                disabled={saving === "LV1 新客禮"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "LV1 新客禮" ? "儲存中..." : "儲存新客禮"}
+              </Button>
+            </div>
           </SectionCard>
+
+          <div className="mt-4">
+            <SectionCard title="⭐ VIP 等級設定">
+              <VipTiersEditor />
+            </SectionCard>
+          </div>
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
