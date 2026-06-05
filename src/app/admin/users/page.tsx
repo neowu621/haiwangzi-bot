@@ -781,7 +781,7 @@ export default function AdminUsersPage() {
                           </span>
                         )}
                       </td>
-                      {/* 抵用金 — 點擊看紀錄 */}
+                      {/* 抵用金 — 點擊看紀錄（v340：移除 NT$ 前綴） */}
                       <td className="px-4 py-3 tabular-nums text-xs">
                         <button
                           type="button"
@@ -792,9 +792,7 @@ export default function AdminUsersPage() {
                           }}
                           title="點擊查看抵用金紀錄"
                         >
-                          {u.creditBalance > 0
-                            ? `NT$${u.creditBalance.toLocaleString()}`
-                            : "0"}
+                          {u.creditBalance.toLocaleString()}
                         </button>
                       </td>
                       {/* 潛水次數 — 點擊看詳情 */}
@@ -815,11 +813,21 @@ export default function AdminUsersPage() {
                           ? `NT$${(u.totalSpend ?? 0).toLocaleString()}`
                           : "—"}
                       </td>
-                      {/* 最後活躍 */}
-                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                        {u.lastActiveAt
-                          ? toTaipeiDateString(u.lastActiveAt)
-                          : "—"}
+                      {/* 最後活躍 — v340：日期上、時間下 */}
+                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)] whitespace-nowrap tabular-nums">
+                        {u.lastActiveAt ? (
+                          <>
+                            <div>{toTaipeiDateString(u.lastActiveAt)}</div>
+                            <div className="text-[10px] opacity-70">
+                              {new Date(u.lastActiveAt).toLocaleTimeString("zh-TW", {
+                                timeZone: "Asia/Taipei",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })}
+                            </div>
+                          </>
+                        ) : "—"}
                       </td>
                       {/* 操作 */}
                       <td className="px-4 py-3">
