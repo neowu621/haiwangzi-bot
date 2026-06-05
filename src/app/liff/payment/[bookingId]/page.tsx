@@ -496,17 +496,18 @@ export default function PaymentUploadPage({
               )}
               {linepay.liteId && (
                 <div className="flex items-center gap-2 text-green-900 justify-center">
-                  <span>Lite ID：</span>
+                  <span className="font-semibold">LINE Pay ID：</span>
                   <span className="font-mono font-bold">{linepay.liteId}</span>
                   <button
                     type="button"
-                    onClick={() => navigator.clipboard?.writeText(linepay.liteId).then(() => alert("✓ Lite ID 已複製"))}
+                    onClick={() => navigator.clipboard?.writeText(linepay.liteId).then(() => alert("✓ LINE Pay ID 已複製"))}
                     className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white"
                   >📋 複製</button>
                 </div>
               )}
-              <div className="mt-2 rounded bg-green-100 p-2 text-xs text-green-900">
-                請轉帳 <span className="tabular font-bold">NT$ {expected.toLocaleString()}</span>，並在下方<b>上傳轉帳成功截圖</b>送出
+              <div className="mt-2 rounded bg-green-100 p-2 text-xs text-green-900 leading-relaxed">
+                💚 <b>直接 LINE Pay 給老闆</b>：開啟 LINE Pay → 掃上方 QR 或搜尋上方 ID，轉帳{" "}
+                <span className="tabular font-bold">NT$ {expected.toLocaleString()}</span>，再到下方<b>上傳轉帳成功截圖</b>送出。
               </div>
             </CardContent>
           </Card>

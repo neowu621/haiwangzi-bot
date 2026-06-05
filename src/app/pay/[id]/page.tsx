@@ -287,15 +287,18 @@ export default function PublicPayPage({
             )}
             {data.linepay.liteId && (
               <div className="mt-2 flex items-center justify-center gap-2 text-green-900">
-                <span>Lite ID:</span>
+                <span className="font-semibold">LINE Pay ID:</span>
                 <span className="font-mono font-bold">{data.linepay.liteId}</span>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard?.writeText(data.linepay!.liteId).then(() => alert("✓ Lite ID 已複製"))}
+                  onClick={() => navigator.clipboard?.writeText(data.linepay!.liteId).then(() => alert("✓ LINE Pay ID 已複製"))}
                   className="rounded bg-green-600 px-2 py-0.5 text-xs text-white"
                 >📋 複製</button>
               </div>
             )}
+            <div className="mt-2 rounded bg-green-100 p-2 text-xs text-green-900 leading-relaxed">
+              💚 <b>直接 LINE Pay 給老闆</b>：開啟 LINE Pay → 掃上方 QR 或搜尋上方 ID 轉帳，再上傳轉帳截圖。
+            </div>
           </div>
         )}
       </section>

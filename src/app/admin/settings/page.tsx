@@ -472,7 +472,7 @@ export default function SettingsPage() {
           <div className="mb-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <p className="mb-1 text-sm font-medium text-[var(--foreground)]">💚 LINE Pay（半手動）</p>
             <p className="mb-3 text-xs text-[var(--muted-foreground)]">
-              客戶選 LINE Pay 時，會看到下方 QR 圖片 + Lite ID。客戶完成轉帳後需上傳截圖。
+              客戶選 LINE Pay 時，會看到下方 QR 圖片 + LINE Pay ID，可直接轉帳給老闆。客戶完成轉帳後需上傳截圖。
             </p>
             <div className="space-y-3">
               <FieldRow label="LINE Pay QR 圖片 URL">
@@ -482,11 +482,11 @@ export default function SettingsPage() {
                   placeholder="https://i.imgur.com/xxxxx.png 或其他圖床網址"
                 />
               </FieldRow>
-              <FieldRow label="LINE Pay Lite ID">
+              <FieldRow label="LINE Pay ID">
                 <Input
                   value={cfg?.paymentInfo?.linepay?.liteId ?? ""}
                   onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), linepay: { ...(c.paymentInfo?.linepay ?? {}), liteId: e.target.value } } } : c)}
-                  placeholder="例：@haiwangzi 或您的個人 LINE Pay ID"
+                  placeholder="例：a26463030（老闆個人 LINE Pay ID）"
                 />
               </FieldRow>
               {cfg?.paymentInfo?.linepay?.qrUrl && (

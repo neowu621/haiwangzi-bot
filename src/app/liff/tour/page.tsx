@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
@@ -48,18 +48,10 @@ function destType(dest: string): "taiwan" | "overseas" {
   return dest === "other" ? "overseas" : "taiwan";
 }
 
-const ALL_STYLES = ["水推", "岸潛", "船潛", "夜潛", "沉船潛水"];
-
 export default function TourListPage() {
   const liff = useLiff();
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 篩選條件
-  const [fType, setFType] = useState<"all" | "taiwan" | "overseas">("all");
-  const [fStyles, setFStyles] = useState<Set<string>>(new Set());
-  const [fLevel, setFLevel] = useState<"all" | "beginner">("all");
-  const [fBudget, setFBudget] = useState(30000);
 
   useEffect(() => {
     // v267：/api/tours 公開不需要 auth → 用原生 fetch 立即發送，不等 LIFF init
@@ -70,31 +62,8 @@ export default function TourListPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 自動取 max budget
-  const maxBudget = useMemo(() => {
-    if (!tours.length) return 30000;
-    const m = Math.max(...tours.map((t) => t.basePrice));
-    return Math.max(30000, Math.ceil(m / 1000) * 1000);
-  }, [tours]);
-
-  const filtered = useMemo(() => {
-    return tours.filter((t) => {
-      if (fType !== "all" && destType(t.destination) !== fType) return false;
-      if (fLevel === "beginner" && !t.beginnerFriendly) return false;
-      if (t.basePrice > fBudget) return false;
-      if (fStyles.size) {
-        for (const s of fStyles) if (!t.diveStyles.includes(s)) return false;
-      }
-      return true;
-    });
-  }, [tours, fType, fStyles, fLevel, fBudget]);
-
-  function toggleStyle(s: string) {
-    const next = new Set(fStyles);
-    if (next.has(s)) next.delete(s);
-    else next.add(s);
-    setFStyles(next);
-  }
+  // v339：篩選條件已移除，直接顯示所有行程
+  const filtered = tours;
 
   return (
     <LiffShell title="旅行潛水" backHref="/liff/welcome" bottomNav={<BottomNav />}>
@@ -133,68 +102,16 @@ export default function TourListPage() {
             boxShadow: "0 1px 2px rgba(0,0,0,.06)", maxWidth: "78%",
           }}>
             嗨～歡迎報名潛旅！<br />
-            先選好你想要的<b style={{ color: LINE_GREEN_D }}>條件</b>，挑一個團，馬上預約 👇
+            挑一個喜歡的<b style={{ color: LINE_GREEN_D }}>行程</b>，馬上預約 👇
           </div>
         </div>
 
-        {/* 篩選卡 */}
-        <div style={{
-          background: "#fff", borderRadius: 16, padding: 16, marginBottom: 14,
-          boxShadow: "0 1px 3px rgba(20,30,40,.05)",
-        }}>
-          <CardHead n="1" title="篩選條件" />
-          {/* 旅遊類型 */}
-          <Group label="旅遊類型">
-            {(["all", "taiwan", "overseas"] as const).map((v) => (
-              <Chip key={v} on={fType === v} onClick={() => setFType(v)}>
-                {v === "all" ? "全部" : v === "taiwan" ? "台灣離島" : "海外潛旅"}
-              </Chip>
-            ))}
-          </Group>
-          {/* 潛水型態 */}
-          <Group label="潛水型態（可複選）">
-            {ALL_STYLES.map((s) => (
-              <Chip key={s} on={fStyles.has(s)} coral onClick={() => toggleStyle(s)}>
-                {s}
-              </Chip>
-            ))}
-          </Group>
-          {/* 經驗門檻 */}
-          <Group label="經驗門檻">
-            <Chip on={fLevel === "all"} onClick={() => setFLevel("all")}>不限</Chip>
-            <Chip on={fLevel === "beginner"} onClick={() => setFLevel("beginner")}>新手友善</Chip>
-          </Group>
-          {/* 預算 */}
-          <div style={{ marginBottom: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: SUB2 }}>每人預算上限</span>
-              <span style={{ fontSize: 16, fontWeight: 900, color: LINE_GREEN_D }}>
-                NT$ {fBudget.toLocaleString()}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={10000}
-              max={maxBudget}
-              step={500}
-              value={fBudget}
-              onChange={(e) => setFBudget(+e.target.value)}
-              style={{
-                width: "100%", height: 5, borderRadius: 5,
-                background: HAIR2, outline: "none",
-                accentColor: LINE_GREEN,
-                appearance: "none", WebkitAppearance: "none",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* 行程列表 */}
+        {/* 行程列表（v339：篩選條件已移除，直接列出所有行程） */}
         <div style={{
           background: "#fff", borderRadius: 16, padding: 16,
           boxShadow: "0 1px 3px rgba(20,30,40,.05)",
         }}>
-          <CardHead n="2" title="選擇行程" rightCount={filtered.length} />
+          <CardHead n="1" title="選擇行程" rightCount={filtered.length} />
           {loading && <LiffLoading variant="bubbles" label="正在載入潛水團行程..." />}
           {!loading && filtered.length === 0 && (
             <div style={{ padding: "30px 10px", textAlign: "center", color: SUB2, fontSize: 13 }}>
@@ -287,49 +204,6 @@ function CardHead({ n, title, rightCount }: { n: string; title: string; rightCou
         </span>
       )}
     </div>
-  );
-}
-
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <span style={{ fontSize: 12, color: SUB, fontWeight: 500, marginBottom: 8, display: "block" }}>
-        {label}
-      </span>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{children}</div>
-    </div>
-  );
-}
-
-function Chip({
-  children,
-  on,
-  coral,
-  onClick,
-}: {
-  children: React.ReactNode;
-  on: boolean;
-  coral?: boolean;
-  onClick: () => void;
-}) {
-  const activeBg = coral ? CORAL : LINE_GREEN;
-  return (
-    <span
-      onClick={onClick}
-      style={{
-        padding: "7px 14px",
-        borderRadius: 99,
-        fontSize: 13,
-        border: `1.5px solid ${on ? activeBg : HAIR2}`,
-        background: on ? activeBg : "#fff",
-        color: on ? "#fff" : "#555",
-        cursor: "pointer",
-        fontWeight: on ? 700 : 500,
-        userSelect: "none",
-      }}
-    >
-      {children}
-    </span>
   );
 }
 
