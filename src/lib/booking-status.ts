@@ -108,30 +108,48 @@ export function deriveBookingDisplay(b: BookingForDisplay): BookingDisplay {
 }
 
 /**
- * 給 filter chips 用：依「訂單生命週期」時序排列
+ * 給 filter chips 用：依「訂單生命週期」時序排列 + 三層分組
  *
- * 正常流程：建立 → 等待付款 → 待確認匯款 → 已確認付款（訂金）→ 已完成付款 → 客戶活動完成
- * 異常結局：客戶未到場（活動日後）
- * 取消分支：客戶取消 / 天氣取消 / 訂單不成立（D+10 自動）
- * 退款分支：退款處理中 → 已退款
+ * 第 1 層 正常流程：建立 → 等待付款 → 待確認匯款 → 已確認付款（訂金）→ 已完成付款 → 客戶活動完成
+ * 第 2 層 結局/取消：客戶未到場 / 客戶取消 / 天氣取消 / 訂單不成立
+ * 第 3 層 退款分支：退款處理中 → 已退款
  */
-export const BOOKING_STATUS_FILTER_KEYS: Array<{ key: BookingStatusKey; label: string }> = [
-  // ── 正常流程 ──
-  { key: "created",           label: "🟡 建立訂單" },
-  { key: "awaiting_pay",      label: "🟡 等待付款" },
-  { key: "awaiting_verify",   label: "🟠 待確認匯款" },
-  { key: "deposit_paid",      label: "🔵 已確認付款（訂金）" },
-  { key: "fully_paid",        label: "🟢 已完成付款" },
-  { key: "completed",         label: "✅ 客戶活動完成" },
-  // ── 結局 / 取消分支 ──
-  { key: "no_show",           label: "⚠ 客戶未到場" },
-  { key: "cancelled_user",    label: "⚪ 客戶取消" },
-  { key: "cancelled_weather", label: "🌧 天氣取消" },
-  { key: "cancelled_unpaid",  label: "⛔ 訂單不成立" },
-  // ── 退款分支 ──
-  { key: "refunding",         label: "💸 退款處理中" },
-  { key: "refunded",          label: "↩ 已退款" },
+export const BOOKING_STATUS_FILTER_GROUPS: Array<{
+  group: string;
+  items: Array<{ key: BookingStatusKey; label: string }>;
+}> = [
+  {
+    group: "正常流程",
+    items: [
+      { key: "created",         label: "🟡 建立訂單" },
+      { key: "awaiting_pay",    label: "🟡 等待付款" },
+      { key: "awaiting_verify", label: "🟠 待確認匯款" },
+      { key: "deposit_paid",    label: "🔵 已確認付款（訂金）" },
+      { key: "fully_paid",      label: "🟢 已完成付款" },
+      { key: "completed",       label: "✅ 客戶活動完成" },
+    ],
+  },
+  {
+    group: "結局 / 取消",
+    items: [
+      { key: "no_show",           label: "⚠ 客戶未到場" },
+      { key: "cancelled_user",    label: "⚪ 客戶取消" },
+      { key: "cancelled_weather", label: "🌧 天氣取消" },
+      { key: "cancelled_unpaid",  label: "⛔ 訂單不成立" },
+    ],
+  },
+  {
+    group: "退款",
+    items: [
+      { key: "refunding", label: "💸 退款處理中" },
+      { key: "refunded",  label: "↩ 已退款" },
+    ],
+  },
 ];
+
+/** 攤平版本（保留給其他地方用、例如查 label） */
+export const BOOKING_STATUS_FILTER_KEYS: Array<{ key: BookingStatusKey; label: string }> =
+  BOOKING_STATUS_FILTER_GROUPS.flatMap((g) => g.items);
 
 /** 給後台 dashboard 顯示用 — derived key 是否屬於「老闆要處理」 */
 export function isActionable(key: BookingStatusKey): boolean {

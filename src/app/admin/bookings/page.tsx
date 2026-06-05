@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
-import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, type BookingStatusKey } from "@/lib/booking-status"; // v319
+import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, BOOKING_STATUS_FILTER_GROUPS, type BookingStatusKey } from "@/lib/booking-status"; // v319 / v324
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
@@ -787,10 +787,11 @@ export default function AdminBookingsPage() {
                 </button>
               ))}
             </div>
-            {/* v319: 衍生狀態 filter — 合併為單一線性 label */}
-            <div className="flex items-start gap-1.5 flex-wrap">
-              <span className="text-xs text-[var(--muted-foreground)] w-16 pt-1">狀態：</span>
-              <div className="flex flex-wrap gap-1.5 flex-1">
+            {/* v324: 衍生狀態 filter — 依三層分組（正常 / 結局 / 退款） */}
+            <div className="space-y-1.5">
+              {/* 全部 + 三層 group label  */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-[var(--muted-foreground)] w-16">狀態：</span>
                 <button
                   type="button"
                   onClick={() => { setFilterStatus("all"); setPage(1); }}
@@ -803,22 +804,31 @@ export default function AdminBookingsPage() {
                 >
                   全部
                 </button>
-                {BOOKING_STATUS_FILTER_KEYS.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => { setFilterStatus(key); setPage(1); }}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                      filterStatus === key
-                        ? "bg-[var(--color-ocean-deep)] text-white"
-                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
               </div>
+              {BOOKING_STATUS_FILTER_GROUPS.map((grp) => (
+                <div key={grp.group} className="flex items-start gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-[var(--muted-foreground)] w-16 pt-1.5 text-right">
+                    {grp.group}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 flex-1">
+                    {grp.items.map(({ key, label }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { setFilterStatus(key); setPage(1); }}
+                        className={cn(
+                          "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                          filterStatus === key
+                            ? "bg-[var(--color-ocean-deep)] text-white"
+                            : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
             {/* v321：付款 filter chip 列移除（已合併進狀態 filter） */}
           </div>
