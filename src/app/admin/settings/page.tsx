@@ -902,6 +902,26 @@ function AutoSendSection({
   const recipients = cfg.dailyWeatherReportRecipients ?? [];
   const recipientSet = new Set(recipients);
 
+  // v346：偵測「孤兒標籤」— 存在清單但對不到任何現役 admin/coach（信箱改過、角色變更、UID 變動）
+  // 這些標籤畫面上沒有對應勾選框，卻仍會被計入與寄送 → 列出來讓 admin 確認後手動清除
+  const validTags = new Set<string>();
+  for (const u of users) {
+    validTags.add(`line:${u.lineUserId}`);
+    if (u.email) validTags.add(`email:${u.email}`);
+  }
+  // 只有在用戶清單載入完成後才判定孤兒，避免載入中誤判全部為孤兒
+  const orphanTags = usersLoading ? [] : recipients.filter((r) => !validTags.has(r));
+  const liveRecipients = recipients.filter((r) => validTags.has(r));
+  // 計數用「能比對到現役用戶」的數量（載入中先用原始長度避免閃 0）
+  const sendableCount = usersLoading ? recipients.length : liveRecipients.length;
+
+  function clearOrphans() {
+    if (orphanTags.length === 0) return;
+    if (!confirm(`確定要清除 ${orphanTags.length} 個無效收件人嗎？\n\n${orphanTags.join("\n")}`)) return;
+    const next = recipients.filter((r) => validTags.has(r));
+    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+  }
+
   function toggleLine(userId: string) {
     const tag = `line:${userId}`;
     const next = recipientSet.has(tag)
@@ -1023,8 +1043,38 @@ function AutoSendSection({
           </div>
         )}
 
+        {/* v346：孤兒收件人警告 — 對不到現役 admin/coach 的舊標籤 */}
+        {orphanTags.length > 0 && (
+          <div className="mt-2 rounded-md border p-2.5 text-[11px]" style={{ borderColor: "#f59e0b", background: "rgba(245,158,11,0.08)" }}>
+            <p className="font-medium text-[#92400e]">
+              ⚠️ 偵測到 {orphanTags.length} 個無效收件人（對不到現役管理員 / 教練，可能是信箱改過或角色變更後的殘留）：
+            </p>
+            <ul className="mt-1 ml-4 list-disc text-[#92400e]">
+              {orphanTags.map((t) => (
+                <li key={t} className="font-mono break-all">
+                  {t.startsWith("email:") ? `📧 ${t.slice(6)}` : t.startsWith("line:") ? `💬 LINE ${t.slice(5)}` : t}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-[10px] text-[#92400e]/80">
+              這些對象畫面上沒有勾選框，卻仍會被自動 / 測試發送寄到。清除後請按下方「儲存自動發送設定」才會生效。
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2 h-7 text-[11px]"
+              onClick={clearOrphans}
+              style={{ borderColor: "#f59e0b", color: "#92400e" }}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              🧹 清除無效收件人
+            </Button>
+          </div>
+        )}
+
         <div className="mt-2 rounded bg-[var(--muted)]/30 p-2 text-[10px] text-[var(--muted-foreground)]">
-          已選 {recipients.length} 個目標。最後一次發送：
+          已選 {sendableCount} 個目標
+          {orphanTags.length > 0 ? `（另有 ${orphanTags.length} 個無效，未計入）` : ""}。最後一次發送：
           {cfg.dailyWeatherReportLastSentAt
             ? new Date(cfg.dailyWeatherReportLastSentAt).toLocaleString("zh-TW")
             : "（尚未發送）"}
@@ -1045,7 +1095,10 @@ function AutoSendSection({
           <Button
             size="sm"
             onClick={() => {
-              if (!confirm(`真的要立即發送給 ${recipients.length} 個收件人嗎？`)) return;
+              const warn = orphanTags.length > 0
+                ? `\n\n⚠️ 注意：目前還有 ${orphanTags.length} 個無效收件人未清除/未儲存，若直接發送仍會寄到它們。建議先清除並儲存。`
+                : "";
+              if (!confirm(`真的要立即發送給 ${sendableCount} 個收件人嗎？${warn}`)) return;
               void runTest(false);
             }}
             disabled={testBusy !== null || recipients.length === 0}
