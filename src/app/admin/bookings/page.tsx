@@ -820,27 +820,7 @@ export default function AdminBookingsPage() {
                 ))}
               </div>
             </div>
-            {/* Payment filter */}
-            <div className="flex items-start gap-1.5 flex-wrap">
-              <span className="text-xs text-[var(--muted-foreground)] w-16 pt-1">付款：</span>
-              <div className="flex flex-wrap gap-1.5 flex-1">
-                {["all", "pending", "deposit_paid", "fully_paid", "refunding", "refunded"].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setFilterPayStatus(s)}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                      filterPayStatus === s
-                        ? "bg-[var(--color-ocean-deep)] text-white"
-                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-                    )}
-                  >
-                    {s === "all" ? "全部" : PAYMENT_STATUS_LABEL[s] ?? s}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* v321：付款 filter chip 列移除（已合併進狀態 filter） */}
           </div>
 
           <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
@@ -849,11 +829,10 @@ export default function AdminBookingsPage() {
                 <thead>
                   <tr className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}>
-                    {/* v320：訂單編號縮到最小、消費換成付款狀態、狀態移到方式右側 */}
+                    {/* v321：付款欄移除（狀態欄已涵蓋付款進度，重複資訊） */}
                     <th className="px-2 py-3 font-medium" style={{ width: "1%" }}><SortBtn k="code" curK={sortKey} dir={sortDir} onClick={toggleSort}>編號</SortBtn></th>
                     <th className="px-3 py-3 font-medium"><SortBtn k="type" curK={sortKey} dir={sortDir} onClick={toggleSort}>類型</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
-                    <th className="px-3 py-3 font-medium"><SortBtn k="payment" curK={sortKey} dir={sortDir} onClick={toggleSort}>付款</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
@@ -921,12 +900,7 @@ export default function AdminBookingsPage() {
                             {b.user.realName ?? b.user.displayName}
                           </button>
                         </td>
-                        {/* v320：消費欄位改為付款狀態 chip — 老闆掃一眼看出有沒有收到錢 */}
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
-                            {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
-                          </Badge>
-                        </td>
+                        {/* v321：付款欄移除（狀態欄已涵蓋） */}
                         {/* 場次 — 一行 */}
                         {/* 場次時間 — daily 一行 / tour 兩行（開始 ~ 結束） */}
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap">
