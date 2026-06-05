@@ -683,19 +683,6 @@ export default function AdminBookingsPage() {
 
   return (
     <AdminShell title="訂單管理">
-      {/* v294：?status= 快捷篩選提示 */}
-      {filterStatus !== "all" && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-2 text-sm">
-          <span>🔍 目前只顯示「{BOOKING_STATUS_FILTER_KEYS.find((k) => k.key === filterStatus)?.label ?? BOOKING_STATUS_LABEL[filterStatus] ?? filterStatus}」狀態的訂單</span>
-          <button
-            type="button"
-            onClick={() => { setFilterStatus("all"); setPage(1); }}
-            className="ml-auto rounded-full bg-white/80 px-2 py-0.5 text-xs hover:bg-white"
-          >
-            ✕ 清除篩選
-          </button>
-        </div>
-      )}
       {/* v183: 移除『依場次』分頁，僅留全部訂單視圖 + 強化 filter / sort / pagination */}
       <div className="mb-4 flex items-center gap-2 flex-wrap">
         <span className="text-sm text-[var(--muted-foreground)]">活動時間範圍：</span>
@@ -789,7 +776,7 @@ export default function AdminBookingsPage() {
             </div>
             {/* v324: 衍生狀態 filter — 依三層分組（正常 / 結局 / 退款） */}
             <div className="space-y-1.5">
-              {/* 全部 + 三層 group label  */}
+              {/* 全部 + 篩選提示 inline */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs text-[var(--muted-foreground)] w-16">狀態：</span>
                 <button
@@ -804,6 +791,19 @@ export default function AdminBookingsPage() {
                 >
                   全部
                 </button>
+                {/* v326：篩選提示 inline 緊跟在 [全部] 後面 */}
+                {filterStatus !== "all" && (
+                  <div className="flex items-center gap-2 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs">
+                    <span>🔍 只顯示「{BOOKING_STATUS_FILTER_KEYS.find((k) => k.key === filterStatus)?.label ?? BOOKING_STATUS_LABEL[filterStatus] ?? filterStatus}」</span>
+                    <button
+                      type="button"
+                      onClick={() => { setFilterStatus("all"); setPage(1); }}
+                      className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] hover:bg-white"
+                    >
+                      ✕ 清除
+                    </button>
+                  </div>
+                )}
               </div>
               {BOOKING_STATUS_FILTER_GROUPS.map((grp) => (
                 <div key={grp.group} className="flex items-start gap-1.5 flex-wrap">
