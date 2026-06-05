@@ -155,3 +155,39 @@ export const BOOKING_STATUS_FILTER_KEYS: Array<{ key: BookingStatusKey; label: s
 export function isActionable(key: BookingStatusKey): boolean {
   return key === "awaiting_verify" || key === "awaiting_pay" || key === "refunding";
 }
+
+/**
+ * v327：reverse mapping — 老闆從衍生狀態下拉選 → 反推 DB 兩維度該改成什麼
+ *
+ * 回傳值是 partial：只設定該設定的維度，其他維度維持 (undefined)。
+ * 例如選「completed」只動 bookingStatus、不動 paymentStatus（活動完成不應改付款）。
+ *
+ * 注意：「awaiting_pay」是衍生狀態，無法手動設定（純粹 derive 自 createdAt + payment=pending）。
+ *   下拉選單應隱藏這個選項。
+ */
+export function reverseDerivedStatus(key: BookingStatusKey): {
+  bookingStatus?: string;
+  paymentStatus?: string;
+} {
+  switch (key) {
+    case "created":           return { bookingStatus: "pending", paymentStatus: "pending" };
+    case "awaiting_pay":      return { bookingStatus: "pending", paymentStatus: "pending" };
+    case "awaiting_verify":   return { bookingStatus: "awaiting_verify" };
+    case "deposit_paid":      return { bookingStatus: "confirmed", paymentStatus: "deposit_paid" };
+    case "fully_paid":        return { bookingStatus: "confirmed", paymentStatus: "fully_paid" };
+    case "completed":         return { bookingStatus: "completed" };
+    case "no_show":           return { bookingStatus: "no_show" };
+    case "cancelled_user":    return { bookingStatus: "cancelled_by_user" };
+    case "cancelled_weather": return { bookingStatus: "cancelled_by_weather" };
+    case "cancelled_unpaid":  return { bookingStatus: "cancelled_unpaid" };
+    case "refunding":         return { paymentStatus: "refunding" };
+    case "refunded":          return { paymentStatus: "refunded" };
+  }
+}
+
+/**
+ * 給編輯 dialog 下拉用：可手動設定的選項
+ * （排除 awaiting_pay — 純衍生、無法手動設）
+ */
+export const BOOKING_STATUS_EDITABLE_KEYS: Array<{ key: BookingStatusKey; label: string }> =
+  BOOKING_STATUS_FILTER_KEYS.filter((k) => k.key !== "awaiting_pay");

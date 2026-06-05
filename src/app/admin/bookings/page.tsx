@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
-import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, BOOKING_STATUS_FILTER_GROUPS, type BookingStatusKey } from "@/lib/booking-status"; // v319 / v324
+import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, BOOKING_STATUS_FILTER_GROUPS, BOOKING_STATUS_EDITABLE_KEYS, reverseDerivedStatus, type BookingStatusKey } from "@/lib/booking-status"; // v319 / v324 / v327
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
@@ -1251,34 +1251,51 @@ export default function AdminBookingsPage() {
                         {editing.paymentMethod === "cash" && <option value="cash">現場（舊）</option>}
                       </select>
                     </div>
-                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                      <Label className="text-xs">付款狀態</Label>
-                      {/* v191：dropdown 鎖死，只剩 3 個正常狀態；refunding/refunded 由「退款」按鈕自動寫入 */}
-                      {editing.paymentStatus === "refunded" || editing.paymentStatus === "refunding" ? (
-                        <div className="rounded-md border px-2 py-1.5 text-sm font-semibold"
-                          style={{ borderColor: "var(--color-coral)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
-                          🔒 {PAYMENT_STATUS_LABEL[editing.paymentStatus]}（系統自動）
-                        </div>
-                      ) : (
-                        <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                          value={editing.paymentStatus}
-                          onChange={(e) => setEditing({ ...editing, paymentStatus: e.target.value })}>
-                          <option value="pending">未付款</option>
-                          <option value="deposit_paid">已付訂金</option>
-                          <option value="fully_paid">已付清</option>
-                        </select>
-                      )}
-                    </div>
+                    {/* v327：合併為單一「訂單狀態」下拉（含付款進度）— 反推回 DB 兩維度 */}
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">訂單狀態</Label>
-                      <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
-                        value={editing.status}
-                        disabled={locked}
-                        onChange={(e) => setEditing({ ...editing, status: e.target.value })}>
-                        {["pending", "confirmed", "cancelled_by_user", "cancelled_by_weather", "completed", "no_show"].map((s) => (
-                          <option key={s} value={s}>{BOOKING_STATUS_LABEL[s]}</option>
-                        ))}
-                      </select>
+                      {(() => {
+                        // 退款狀態鎖死、由「退款」按鈕自動寫入
+                        if (editing.paymentStatus === "refunded" || editing.paymentStatus === "refunding") {
+                          const derived = deriveBookingDisplay({
+                            status: editing.status,
+                            paymentStatus: editing.paymentStatus,
+                            createdAt: editing.createdAt,
+                          });
+                          return (
+                            <div className="rounded-md border px-2 py-1.5 text-sm font-semibold"
+                              style={{ borderColor: "var(--color-coral)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
+                              🔒 {derived.label}（系統自動）
+                            </div>
+                          );
+                        }
+                        const currentKey = deriveBookingDisplay({
+                          status: editing.status,
+                          paymentStatus: editing.paymentStatus,
+                          createdAt: editing.createdAt,
+                        }).key;
+                        return (
+                          <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
+                            value={currentKey}
+                            disabled={locked}
+                            onChange={(e) => {
+                              const key = e.target.value as BookingStatusKey;
+                              const mapped = reverseDerivedStatus(key);
+                              setEditing({
+                                ...editing,
+                                ...(mapped.bookingStatus !== undefined ? { status: mapped.bookingStatus } : {}),
+                                ...(mapped.paymentStatus !== undefined ? { paymentStatus: mapped.paymentStatus } : {}),
+                              });
+                            }}>
+                            {BOOKING_STATUS_EDITABLE_KEYS.map(({ key, label }) => (
+                              <option key={key} value={key}>{label}</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
+                    </div>
+                    <div className="text-[10px] text-[var(--muted-foreground)] pl-[7rem]">
+                      💡 已合併付款狀態 — 選對應的狀態，系統會自動寫入訂單 + 付款兩維度
                     </div>
                   </>
                 );
