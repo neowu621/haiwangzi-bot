@@ -181,6 +181,7 @@ model User {
   deletedReason      String?    @map("deleted_reason")
 
   bookings          Booking[]
+  diveWishes        DiveWish[]  // v318：客製化潛水願望單
   coachProfile      Coach?
   verifiedProofs    PaymentProof[]
   creditTxs         CreditTx[]
@@ -500,6 +501,49 @@ model TripMedia {
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("trip_media")
+}
+
+// v318：客製化潛水願望單
+// 客戶提出想潛的時間/地點/方式 → 老闆與客戶來回討論 → 老闆確認後開正式場次
+model DiveWish {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.VarChar(64)
+  // 願望內容
+  type            String   @db.VarChar(16) // "boat" 船潛 / "shore" 岸潛 / "night" 夜潛 / "tour" 潛水團
+  preferredDate   DateTime @map("preferred_date") @db.Date
+  // 備選日期: ["YYYY-MM-DD", ...]
+  alternativeDates Json    @default("[]") @map("alternative_dates")
+  // 標準潛點 id: ["龍洞", "鼻頭", ...]
+  diveSiteIds     Json     @default("[]") @map("dive_site_ids")
+  // 客戶自填的「其他潛點」（如：綠島、墾丁）
+  otherSites      String?  @map("other_sites")
+  participants    Int      @default(1)
+  budgetPerPerson Int?     @map("budget_per_person")
+  customerNote    String?  @map("customer_note") @db.Text
+  // 參考圖片: [{ url, key?, type: "r2"|"link", caption? }]
+  referenceImages Json     @default("[]") @map("reference_images")
+  // 討論串: [{ from: "customer"|"boss", text, at: ISO string, actorId, attachments? }]
+  messages        Json     @default("[]")
+  // 狀態
+  status          String   @default("pending") @db.VarChar(16) // pending / discussing / converted / cancelled
+  cancelledBy     String?  @map("cancelled_by") @db.VarChar(16) // customer / boss / system (7天自動)
+  cancellationReason String? @map("cancellation_reason") @db.Text
+  // 7 天無互動自動關閉
+  lastActivityAt  DateTime @default(now()) @map("last_activity_at") @db.Timestamptz
+  // 轉成正式場次
+  convertedTripId String?  @map("converted_trip_id") @db.Uuid
+  convertedTourId String?  @map("converted_tour_id") @db.Uuid
+  convertedAt     DateTime? @map("converted_at") @db.Timestamptz
+  cancelledAt     DateTime? @map("cancelled_at") @db.Timestamptz
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user            User     @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([lastActivityAt])
+  @@map("dive_wishes")
 }
 
 // 首頁 / 全站設定 — Admin 在 /liff/admin/site-config 可改

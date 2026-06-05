@@ -113,6 +113,18 @@ export const DEFAULT_CARDS: SiteCard[] = [
     order: 3,
   },
   {
+    id: "wishes",
+    label: "📝 客製願望",
+    enLabel: "CUSTOM WISH",
+    desc: "想潛沒場次？提需求",
+    href: "/liff/wishes/new",
+    external: false,
+    icon: "Sparkles",
+    accent: "gold",
+    enabled: true,
+    order: 7,
+  },
+  {
     id: "my",
     label: "我的預約",
     enLabel: "BOOKING",

@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
   { href: "/admin/tonight", icon: ClipboardCheck, label: "今晚結帳" },
   { href: "/admin/bookings", icon: BookOpen, label: "訂單管理" },
+  { href: "/admin/dive-wishes", icon: BookOpen, label: "📝 願望單" },
   { href: "/admin/trips", icon: Waves, label: "日潛場次" },
   { href: "/admin/tours", icon: Ship, label: "潛水旅行" },
   { href: "/admin/users", icon: Users, label: "會員管理" },

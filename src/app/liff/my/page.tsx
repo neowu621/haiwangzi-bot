@@ -189,6 +189,18 @@ export default function MyBookingsPage() {
   const BOOKINGS_CACHE_KEY = "haiwangzi:bookings:my:v1";
 
   const [bookings, setBookings] = useState<MyBooking[]>([]);
+  const [wishes, setWishes] = useState<Array<{
+    id: string;
+    type: string;
+    preferredDate: string;
+    diveSiteIds: string[];
+    otherSites: string | null;
+    participants: number;
+    status: "pending" | "discussing" | "converted" | "cancelled";
+    lastActivityAt: string;
+    convertedTripId: string | null;
+    convertedTourId: string | null;
+  }>>([]);
   const [loading, setLoading] = useState(false);  // v288: 預設 false，useEffect 讀完 cache 再決定
   const [refreshing, setRefreshing] = useState(false);
   const [hydrated, setHydrated] = useState(false); // 標記 cache 已讀過、可顯 empty/skeleton
@@ -211,6 +223,11 @@ export default function MyBookingsPage() {
 
   const reload = useCallback(() => {
     setRefreshing(true);
+    // 並行載入願望單（失敗不影響訂單）
+    liff
+      .fetchWithAuth<{ wishes: typeof wishes }>("/api/dive-wishes")
+      .then((d) => setWishes(d.wishes ?? []))
+      .catch(() => {});
     liff
       .fetchWithAuth<{ bookings: MyBooking[] }>("/api/bookings/my")
       .then((d) => {
@@ -299,9 +316,15 @@ export default function MyBookingsPage() {
           </div>
         )}
         <Tabs defaultValue="up" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="up">
               即將前往 ({grouped.up.length})
+            </TabsTrigger>
+            <TabsTrigger value="wishes" className="relative">
+              📝 願望單
+              {wishes.filter((w) => w.status === "pending" || w.status === "discussing" || w.status === "converted").length > 0 && (
+                <span className="ml-1 text-[10px]">({wishes.filter((w) => w.status === "pending" || w.status === "discussing" || w.status === "converted").length})</span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="done">
               已完成 ({grouped.done.length})
@@ -318,6 +341,53 @@ export default function MyBookingsPage() {
             {grouped.up.map((b) => (
               <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
             ))}
+          </TabsContent>
+          <TabsContent value="wishes" className="space-y-3">
+            <div className="rounded-lg bg-[var(--color-phosphor)]/10 p-3 text-xs text-[var(--color-ocean-deep)]">
+              💡 找不到喜歡的場次嗎？告訴老闆您想潛的日期、潛點、人數，老闆會回覆討論並開出專屬場次。
+            </div>
+            <Link href="/liff/wishes/new">
+              <Button className="w-full" variant="ocean">📝 提出新願望單</Button>
+            </Link>
+            {hydrated && wishes.length === 0 && (
+              <Card className="p-6 text-center text-sm text-[var(--muted-foreground)]">
+                還沒有願望單
+              </Card>
+            )}
+            {wishes.map((w) => {
+              const typeLabel: Record<string, string> = {
+                boat: "🚤 船潛", shore: "🏖 岸潛", night: "🌙 夜潛", tour: "✈️ 潛水團",
+              };
+              const statusMeta: Record<string, { label: string; variant: BadgeVariant }> = {
+                pending: { label: "🟡 待回覆", variant: "gold" },
+                discussing: { label: "💬 討論中", variant: "gold" },
+                converted: { label: "🟢 場次已開", variant: "default" },
+                cancelled: { label: "⚪ 已取消", variant: "muted" },
+              };
+              const meta = statusMeta[w.status] ?? { label: w.status, variant: "muted" as const };
+              return (
+                <Link key={w.id} href={`/liff/wishes/${w.id}`}>
+                  <Card className="p-3 cursor-pointer hover:bg-[var(--muted)]/30">
+                    <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={meta.variant} className="text-[11px]">{meta.label}</Badge>
+                        <span className="text-sm font-semibold">{typeLabel[w.type] ?? w.type}</span>
+                      </div>
+                      <span className="text-[10px] text-[var(--muted-foreground)] tabular">
+                        {new Date(w.lastActivityAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <div className="text-xs space-y-0.5 text-[var(--muted-foreground)]">
+                      <div>📅 {w.preferredDate.slice(0, 10)} · 👥 ×{w.participants}</div>
+                      <div className="line-clamp-1">📍 {[...w.diveSiteIds, w.otherSites ?? ""].filter(Boolean).join("、") || "—"}</div>
+                    </div>
+                    {w.status === "converted" && (w.convertedTripId || w.convertedTourId) && (
+                      <div className="mt-1.5 text-[11px] text-emerald-700 font-bold">🎉 已開場次，點進去預約</div>
+                    )}
+                  </Card>
+                </Link>
+              );
+            })}
           </TabsContent>
           <TabsContent value="done" className="space-y-3">
             {hydrated && grouped.done.length === 0 && <EmptyState text="還沒有完成紀錄" />}

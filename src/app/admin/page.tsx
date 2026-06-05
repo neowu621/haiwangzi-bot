@@ -86,6 +86,7 @@ const PAY_STATUS_COLOR: Record<string, string> = {
 export default function AdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [pendingWishes, setPendingWishes] = useState(0); // v318
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,6 +102,15 @@ export default function AdminDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
+    // v318：拉願望單 pending + discussing 數，獨立失敗不影響主 dashboard
+    try {
+      const w = await adminFetch<{ counts: Array<{ status: string; _count: { _all: number } }> }>(
+        "/api/admin/dive-wishes?status=all"
+      );
+      const map: Record<string, number> = {};
+      for (const c of w.counts ?? []) map[c.status] = c._count._all;
+      setPendingWishes((map.pending ?? 0) + (map.discussing ?? 0));
+    } catch { /* ignore */ }
   }
 
   useEffect(() => { load(); }, []);
@@ -170,6 +180,28 @@ export default function AdminDashboard() {
                 color="#0a2342"
               />
             </div>
+            {/* v318：待回覆願望單 hot indicator */}
+            {pendingWishes > 0 && (
+              <a
+                href="/admin/dive-wishes"
+                className="mt-4 flex items-center gap-3 rounded-xl border-2 px-4 py-3 transition-colors hover:bg-amber-50"
+                style={{ borderColor: "rgba(245,158,11,0.5)", background: "rgba(245,158,11,0.08)" }}
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+                  style={{ background: "rgba(245,158,11,0.15)" }}>
+                  📝
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-[#92400e]">
+                    待回覆願望單：{pendingWishes} 筆
+                  </div>
+                  <div className="text-xs text-[#a16207]">
+                    客戶提出客製化潛水願望，等老闆討論回覆 →
+                  </div>
+                </div>
+                <span className="text-2xl text-[#92400e]">›</span>
+              </a>
+            )}
             {/* v279：待確認付款 hot indicator */}
             {stats.pendingProofs > 0 && (
               <a
