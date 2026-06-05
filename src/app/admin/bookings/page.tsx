@@ -184,7 +184,7 @@ export default function AdminBookingsPage() {
   const [filterTripPeriod, setFilterTripPeriod] = useState<"all" | "today_tomorrow" | "future" | "past">("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
-  const [filterRange, setFilterRange] = useState<"today" | "3days" | "week" | "month" | "all">("all");
+  // v338：filterRange 已移除（活動時間範圍 filter 拿掉）
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -408,25 +408,7 @@ export default function AdminBookingsPage() {
     }
   }
 
-  // v215：日期區間 filter — 嚴格 N 天（未來 N 天，含今天）
-  //   今天     → 只今天
-  //   3 天內   → 今天 + 後 2 天   = 3 個日曆天
-  //   一週內   → 今天 + 後 6 天   = 7 個日曆天
-  //   一個月內 → 今天 + 後 29 天 = 30 個日曆天
-  function isInRange(dateStr?: string): boolean {
-    if (filterRange === "all") return true;
-    if (!dateStr) return true;
-    const d = dateStr.slice(0, 10);
-    // v306: 用台北時區算「今天」，避免 UTC 跨日問題（深夜 0-8 點 toISOString 還是昨天）
-    const today = toTaipeiISODate(new Date());
-    if (filterRange === "today") return d === today;
-    const t = new Date(today + "T00:00:00+08:00");
-    const days = filterRange === "3days" ? 3 : filterRange === "week" ? 7 : 30;
-    const cutoff = new Date(t);
-    cutoff.setDate(t.getDate() + (days - 1)); // N-1 → 共 N 天
-    const cutoffStr = toTaipeiISODate(cutoff);
-    return d >= today && d <= cutoffStr;
-  }
+  // v338：isInRange 已移除（活動時間範圍 filter 拿掉）
 
   // v304：場次快捷篩選邏輯（v306：用台北時區算今天/明天，避免 UTC 跨日 bug）
   function periodOk(dateStr?: string): boolean {
@@ -456,13 +438,9 @@ export default function AdminBookingsPage() {
     }).key;
     const statusOk = filterStatusSet.size === 0 || filterStatusSet.has(derivedKey);
     if (!statusOk) return false;
-    // v304：場次快捷篩選（today_tomorrow / future / past）優先於活動時間範圍
+    // v304：場次快捷篩選（today_tomorrow / future / past）
     if (!periodOk(b.ref.date ?? b.ref.dateStart)) return false;
-    // 帶 ?status= filter 或 場次快捷 時不套活動時間範圍
-    if (filterStatusSet.size === 0 && filterTripPeriod === "all") {
-      const rangeOk = isInRange(b.ref.date ?? b.ref.dateStart);
-      if (!rangeOk) return false;
-    }
+    // v338：活動時間範圍 filter 已移除
     if (filterTripKey === "all") return true;
     const key =
       b.type === "daily"
@@ -697,25 +675,9 @@ export default function AdminBookingsPage() {
 
   return (
     <AdminShell title="訂單管理">
-      {/* v183: 移除『依場次』分頁，僅留全部訂單視圖 + 強化 filter / sort / pagination */}
-      <div className="mb-4 flex items-center gap-2 flex-wrap">
-        <span className="text-sm text-[var(--muted-foreground)]">活動時間範圍：</span>
-        {(["today", "3days", "week", "month", "all"] as const).map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => { setFilterRange(r); setPage(1); }}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-              filterRange === r
-                ? "bg-[var(--color-ocean-deep)] text-white"
-                : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-            )}
-          >
-            {r === "today" ? "今天" : r === "3days" ? "3 天內" : r === "week" ? "一週內" : r === "month" ? "一個月內" : "全部"}
-          </button>
-        ))}
-        <span className="ml-auto text-xs text-[var(--muted-foreground)]">
+      {/* v183/v338: 「活動時間範圍」filter 已移除（場次搜尋 + 狀態 filter + 老闆結帳已覆蓋） */}
+      <div className="mb-4 flex items-center justify-end">
+        <span className="text-xs text-[var(--muted-foreground)]">
           共 {sortedBookings.length} 筆 · 每頁 {PAGE_SIZE} 筆 · 第 {currentPage}/{totalPages} 頁
         </span>
       </div>
