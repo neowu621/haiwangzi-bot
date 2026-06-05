@@ -95,7 +95,7 @@ function NavLink({
       href={href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+        "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
         active
           ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
           : "text-[rgba(230,240,255,0.7)] hover:bg-white/10 hover:text-white",
@@ -196,16 +196,16 @@ export function AdminShell({
       <div className="mx-3 mb-2 border-t border-white/10" />
 
       {/* Nav（v350：功能分組）*/}
-      <nav className="flex-1 overflow-y-auto p-3">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-1.5">
         {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="mb-3">
+          <div key={group.label} className="mb-1.5">
             <div
-              className="px-3 pb-1 pt-1 text-[11px] font-bold tracking-wide"
+              className="px-3 pb-0.5 pt-1.5 text-[10px] font-bold tracking-wide"
               style={{ color: "var(--color-phosphor)" }}
             >
               {group.label}
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-px">
               {group.items.map((item) => (
                 <NavLink
                   key={item.href}
