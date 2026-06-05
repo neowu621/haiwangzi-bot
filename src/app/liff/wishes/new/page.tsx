@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,8 +86,8 @@ export default function NewWishPage() {
   }, {});
 
   return (
-    <LiffShell title="提出潛水願望" backHref="/liff/welcome">
-      <div className="space-y-4 px-4 pt-4 pb-20">
+    <LiffShell title="預約潛水" backHref="/liff/welcome" bottomNav={<BottomNav />}>
+      <div className="space-y-4 px-4 pt-4 pb-28">
         <div className="rounded-lg bg-[var(--color-phosphor)]/10 p-3 text-xs text-[var(--color-ocean-deep)]">
           🌊 找不到喜歡的場次嗎？提出您理想的潛水組合，老闆會回覆討論。<br />
           達成共識後會開出正式場次給您預約。

@@ -3,6 +3,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LiffShell } from "@/components/shell/LiffShell";
+import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,18 +102,18 @@ export default function WishDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   if (loading) {
-    return <LiffShell title="願望單"><div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div></LiffShell>;
+    return <LiffShell title="預約潛水" bottomNav={<BottomNav />}><div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div></LiffShell>;
   }
   if (!wish) {
-    return <LiffShell title="願望單"><div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">{error ?? "找不到此願望單"}</div></LiffShell>;
+    return <LiffShell title="預約潛水" bottomNav={<BottomNav />}><div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">{error ?? "找不到此願望單"}</div></LiffShell>;
   }
 
   const statusMeta = STATUS_LABEL[wish.status] ?? { label: wish.status, variant: "muted" as const };
   const canInteract = wish.status === "pending" || wish.status === "discussing";
 
   return (
-    <LiffShell title="願望單" backHref="/liff/my">
-      <div className="space-y-3 px-4 pt-4 pb-20">
+    <LiffShell title="預約潛水" backHref="/liff/my" bottomNav={<BottomNav />}>
+      <div className="space-y-3 px-4 pt-4 pb-28">
         <div className="flex items-center justify-between">
           <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
           <span className="text-[11px] text-[var(--muted-foreground)] tabular">{new Date(wish.createdAt).toLocaleDateString("zh-TW")}</span>
