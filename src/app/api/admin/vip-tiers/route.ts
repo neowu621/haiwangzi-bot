@@ -100,7 +100,9 @@ export async function POST(req: NextRequest) {
     let totalCreditGranted = 0;
     for (const u of users) {
       const oldLevel = u.vipLevel ?? 1;
-      const newLevel = computeVipLevel(u.logCount ?? 0, u.totalSpend ?? 0, tiers);
+      // v348：用「海王子累積潛次」haiwangziLogCount（到場簽到才+1），
+      //        不可用自填總經驗 logCount（會灌水）—— 與其他重算入口一致
+      const newLevel = computeVipLevel(u.haiwangziLogCount ?? 0, u.totalSpend ?? 0, tiers);
       if (newLevel !== oldLevel) {
         await prisma.user.update({
           where: { lineUserId: u.lineUserId },
