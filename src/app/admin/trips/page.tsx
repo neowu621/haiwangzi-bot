@@ -786,7 +786,7 @@ export default function AdminTripsPage() {
   }
 
   // ── 衍生列表：filter → sort → paginate ────────────────────────────
-  // v277：加 past（過期）+ upcoming（未到期）filter
+  // v277/v319：past=過期、upcoming=未到期（含今天起所有）、week=未來 7 天、month=未來 30 天
   const filteredTrips = (() => {
     if (filterRange === "all") return trips;
     const today = taipeiToday();
@@ -803,12 +803,13 @@ export default function AdminTripsPage() {
         return td >= todayDate;
       });
     }
-    const cutoff = new Date(todayDate);
-    if (filterRange === "week") cutoff.setDate(cutoff.getDate() - 7);
-    else if (filterRange === "month") cutoff.setMonth(cutoff.getMonth() - 1);
+    // v319：week/month 改為「未來 N 天內」（today ~ today + N）
+    const future = new Date(todayDate);
+    if (filterRange === "week") future.setDate(future.getDate() + 7);
+    else if (filterRange === "month") future.setDate(future.getDate() + 30);
     return trips.filter((t) => {
       const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
-      return td >= cutoff;
+      return td >= todayDate && td <= future;
     });
   })();
 
@@ -963,9 +964,9 @@ export default function AdminTripsPage() {
           <span className="text-[var(--muted-foreground)]">範圍：</span>
           {([
             { k: "all" as const, label: "全部" },
-            { k: "upcoming" as const, label: "未到期" },
-            { k: "week" as const, label: "一週內" },
-            { k: "month" as const, label: "一個月內" },
+            { k: "upcoming" as const, label: "未到期（全部未來）" },
+            { k: "week" as const, label: "未來 7 天" },
+            { k: "month" as const, label: "未來 30 天" },
             { k: "past" as const, label: "過期" },
           ]).map(({ k, label }) => (
             <button

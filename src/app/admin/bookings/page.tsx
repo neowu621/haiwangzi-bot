@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
+import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, type BookingStatusKey } from "@/lib/booking-status"; // v319
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   const ctrl = new AbortController();
@@ -430,7 +431,14 @@ export default function AdminBookingsPage() {
     const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
     if (!payOk) return false;
     // v294：booking.status filter — 給「待確認付款」快捷連結 (?status=awaiting_verify)
-    const statusOk = filterStatus === "all" || b.status === filterStatus;
+    // v319: filter 用衍生 status key（合併線性 label）
+    const derivedKey = deriveBookingDisplay({
+      status: b.status,
+      paymentStatus: b.paymentStatus,
+      createdAt: b.createdAt,
+      activityDate: b.ref?.date ?? b.ref?.dateStart ?? null,
+    }).key;
+    const statusOk = filterStatus === "all" || derivedKey === filterStatus;
     if (!statusOk) return false;
     // v304：場次快捷篩選（today_tomorrow / future / past）優先於活動時間範圍
     if (!periodOk(b.ref.date ?? b.ref.dateStart)) return false;
@@ -676,7 +684,7 @@ export default function AdminBookingsPage() {
       {/* v294：?status= 快捷篩選提示 */}
       {filterStatus !== "all" && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-2 text-sm">
-          <span>🔍 目前只顯示「{BOOKING_STATUS_LABEL[filterStatus] ?? filterStatus}」狀態的訂單</span>
+          <span>🔍 目前只顯示「{BOOKING_STATUS_FILTER_KEYS.find((k) => k.key === filterStatus)?.label ?? BOOKING_STATUS_LABEL[filterStatus] ?? filterStatus}」狀態的訂單</span>
           <button
             type="button"
             onClick={() => { setFilterStatus("all"); setPage(1); }}
@@ -777,23 +785,35 @@ export default function AdminBookingsPage() {
                 </button>
               ))}
             </div>
-            {/* v298: 訂單狀態 filter */}
+            {/* v319: 衍生狀態 filter — 合併為單一線性 label */}
             <div className="flex items-start gap-1.5 flex-wrap">
-              <span className="text-xs text-[var(--muted-foreground)] w-16 pt-1">訂單：</span>
+              <span className="text-xs text-[var(--muted-foreground)] w-16 pt-1">狀態：</span>
               <div className="flex flex-wrap gap-1.5 flex-1">
-                {["all", "pending", "awaiting_verify", "confirmed", "completed", "no_show", "cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"].map((s) => (
+                <button
+                  type="button"
+                  onClick={() => { setFilterStatus("all"); setPage(1); }}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                    filterStatus === "all"
+                      ? "bg-[var(--color-ocean-deep)] text-white"
+                      : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                  )}
+                >
+                  全部
+                </button>
+                {BOOKING_STATUS_FILTER_KEYS.map(({ key, label }) => (
                   <button
-                    key={s}
+                    key={key}
                     type="button"
-                    onClick={() => { setFilterStatus(s); setPage(1); }}
+                    onClick={() => { setFilterStatus(key); setPage(1); }}
                     className={cn(
                       "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                      filterStatus === s
+                      filterStatus === key
                         ? "bg-[var(--color-ocean-deep)] text-white"
                         : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
                     )}
                   >
-                    {s === "all" ? "全部" : BOOKING_STATUS_LABEL[s] ?? s}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -835,8 +855,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
-                    <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>訂單</SortBtn></th>
-                    <th className="px-4 py-3 font-medium"><SortBtn k="payment" curK={sortKey} dir={sortDir} onClick={toggleSort}>付款</SortBtn></th>
+                    <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>狀態</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
                     <th className="px-4 py-3 font-medium">操作</th>
                   </tr>
@@ -948,18 +967,28 @@ export default function AdminBookingsPage() {
                         <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                           {b.paidAmount.toLocaleString()}
                         </td>
-                        {/* 訂單狀態 */}
-                        <td className="px-4 py-2.5">
-                          <Badge variant={bookStatusVariant(b.status)} className="text-[10px] whitespace-nowrap">
-                            {BOOKING_STATUS_LABEL[b.status] ?? b.status}
-                          </Badge>
-                        </td>
-                        {/* 付款狀態 */}
+                        {/* v319: 衍生單一狀態 + 退款申請 sub-chips */}
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-1 items-start">
-                            <Badge variant={payStatusVariant(b.paymentStatus)} className="text-[10px] whitespace-nowrap">
-                              {PAYMENT_STATUS_LABEL[b.paymentStatus] ?? b.paymentStatus}
-                            </Badge>
+                            {(() => {
+                              const d = deriveBookingDisplay({
+                                status: b.status,
+                                paymentStatus: b.paymentStatus,
+                                createdAt: b.createdAt,
+                                activityDate: b.ref?.date ?? b.ref?.dateStart ?? null,
+                              });
+                              return (
+                                <Badge variant={d.variant} className="text-[10px] whitespace-nowrap">
+                                  {d.label}
+                                </Badge>
+                              );
+                            })()}
+                            {/* 進度副提示：已付 / 應付（給老闆掃一眼看出有沒有缺尾款） */}
+                            {b.totalAmount > 0 && b.paidAmount > 0 && b.paidAmount < b.totalAmount && (
+                              <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] text-amber-700 whitespace-nowrap tabular-nums">
+                                已付 {b.paidAmount.toLocaleString()} / {b.totalAmount.toLocaleString()}
+                              </span>
+                            )}
                             {/* v274 / v280：退款申請 badges */}
                             {b.refundRequest?.status === "pending_customer" && (
                               <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] text-blue-700 whitespace-nowrap">

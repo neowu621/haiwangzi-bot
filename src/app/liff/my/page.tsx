@@ -30,6 +30,7 @@ import { TripPhotoGallery } from "@/components/admin/TripPhotoGallery";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+import { deriveBookingDisplay } from "@/lib/booking-status"; // v319
 
 type GearItemType =
   | "BCD"
@@ -594,15 +595,16 @@ function BookingCard({
           </div>
         )}
 
-        {/* Row 3：狀態 + 動作橫排（訂單狀態 / 付款狀態 / 取消 / 同意聲明）*/}
+        {/* Row 3：狀態 + 動作橫排（v319：單一衍生 status / 取消 / 同意聲明）*/}
         <div className="flex items-center gap-2 flex-wrap">
           {(() => {
-            const o = getOrderBadge(b.status);
-            return <Badge variant={o.variant} className="text-[11px]">{o.label}</Badge>;
-          })()}
-          {(() => {
-            const p = getPaymentBadge(b.paymentStatus);
-            return <Badge variant={p.variant} className="text-[11px]">{p.label}</Badge>;
+            const d = deriveBookingDisplay({
+              status: b.status,
+              paymentStatus: b.paymentStatus,
+              createdAt: b.createdAt,
+              activityDate: (b.ref && "date" in b.ref) ? b.ref.date : (b.ref && "dateStart" in b.ref ? b.ref.dateStart : null),
+            });
+            return <Badge variant={d.variant} className="text-[11px]">{d.label}</Badge>;
           })()}
           {cancellable && (
             <Button
