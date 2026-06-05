@@ -111,12 +111,11 @@ export default function TourListPage() {
           background: "#fff", borderRadius: 16, padding: 16,
           boxShadow: "0 1px 3px rgba(20,30,40,.05)",
         }}>
-          <CardHead n="1" title="選擇行程" rightCount={filtered.length} />
           {loading && <LiffLoading variant="bubbles" label="正在載入潛水團行程..." />}
           {!loading && filtered.length === 0 && (
             <div style={{ padding: "30px 10px", textAlign: "center", color: SUB2, fontSize: 13 }}>
               <div style={{ fontSize: 34, marginBottom: 6 }}>🌊</div>
-              沒有符合的行程<br />試著放寬預算或型態
+              目前沒有開放中的潛旅行程<br />可用上方「找不到日期？」提出預約
             </div>
           )}
           {!loading && filtered.map((t) => {
@@ -184,26 +183,6 @@ export default function TourListPage() {
         </div>
       </div>
     </LiffShell>
-  );
-}
-
-function CardHead({ n, title, rightCount }: { n: string; title: string; rightCount?: number }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-      <span style={{
-        width: 22, height: 22, borderRadius: 7, background: LINE_GREEN,
-        color: "#fff", display: "flex", alignItems: "center",
-        justifyContent: "center", fontSize: 12, fontWeight: 700,
-      }}>
-        {n}
-      </span>
-      <h3 style={{ fontSize: 15, fontWeight: 700 }}>{title}</h3>
-      {rightCount !== undefined && (
-        <span style={{ marginLeft: "auto", fontSize: 12, color: SUB }}>
-          符合 <b style={{ color: LINE_GREEN_D, fontSize: 15, margin: "0 2px" }}>{rightCount}</b> 團
-        </span>
-      )}
-    </div>
   );
 }
 
