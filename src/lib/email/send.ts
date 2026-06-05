@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { getSocialFooter } from "../social-footer"; // v344
 
 // Gmail SMTP via App Password
 //
@@ -87,6 +88,17 @@ export async function sendEmail(
     });
     return { ok: false, skipped: true, reason: "GMAIL_* env not configured" };
   }
+  // v344：在 html 結尾自動附加社群連結 footer（FB / YT / IG）
+  let htmlWithFooter = params.html;
+  if (htmlWithFooter) {
+    try {
+      const footer = await getSocialFooter();
+      if (footer.emailHtml) htmlWithFooter = htmlWithFooter + footer.emailHtml;
+    } catch {
+      // footer 失敗不影響主訊息
+    }
+  }
+
   try {
     const info = await getTransporter().sendMail({
       from: FROM_DEFAULT,
@@ -94,7 +106,7 @@ export async function sendEmail(
       replyTo: params.replyTo ?? REPLY_TO_DEFAULT,
       subject: params.subject,
       text: params.text,
-      html: params.html,
+      html: htmlWithFooter,
       attachments: params.attachments,
     });
     console.log("[email] sent", {

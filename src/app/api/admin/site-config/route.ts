@@ -8,6 +8,7 @@ import {
   DEFAULT_SITE_CONFIG,
 } from "@/lib/site-config";
 import { logAudit } from "@/lib/audit";
+import { invalidateSocialFooterCache } from "@/lib/social-footer"; // v344
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -193,6 +194,7 @@ export async function POST(req: NextRequest) {
     targetId: "default",
     metadata: data as Record<string, unknown>,
   });
+  invalidateSocialFooterCache(); // v344：外部連結若有改，立即生效不等 5 分快取
   return NextResponse.json({ ok: true, config: row });
 }
 
