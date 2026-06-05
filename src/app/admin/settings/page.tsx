@@ -12,6 +12,7 @@ import { APP_VERSION } from "@/lib/version";
 import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VipTiersEditor } from "@/components/admin-web/VipTiersEditor"; // v345
 
 /* ─── Types ─────────────────────────────────────────── */
 interface GearPrices {
@@ -132,6 +133,14 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 /* ─── Main Page ──────────────────────────────────────── */
 export default function SettingsPage() {
   const [cfg, setCfg] = useState<Config | null>(null);
+  // v345：支援 ?tab= 直接開特定分頁（VIP 設定從舊頁 redirect 進來時用）
+  const [activeTab, setActiveTab] = useState("home");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("tab");
+    const valid = ["home", "links", "payment", "money", "vip", "upload", "policy", "autosend", "danger", "tools"];
+    if (t && valid.includes(t)) setActiveTab(t);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -296,13 +305,14 @@ export default function SettingsPage() {
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
         {ok && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "#047857", border: "1px solid rgba(99,235,164,0.25)" }}>✓ {ok}</div>}
 
-        {/* v255：8 大分類改用 Tab 切換（原本一直捲容易漏 — 例如 VIP 升等獎金藏在金額底部找不到） */}
-        <Tabs defaultValue="home" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-9">
+        {/* v255/v345：9 大分類 Tab 切換（含 ⭐ VIP）；支援 ?tab= 直接開特定分頁 */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:grid-cols-10">
             <TabsTrigger value="home">🏠 首頁</TabsTrigger>
             <TabsTrigger value="links">🔗 連結</TabsTrigger>
             <TabsTrigger value="payment">💳 付款</TabsTrigger>
             <TabsTrigger value="money">💰 金額</TabsTrigger>
+            <TabsTrigger value="vip">⭐ VIP</TabsTrigger>
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
             <TabsTrigger value="autosend">📨 發送</TabsTrigger>
@@ -607,19 +617,7 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* B4 VIP 升等獎金 */}
-          <div className="mb-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">VIP 升等獎金（NT$，0=停用）</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(["2","3","4","5"] as const).map(lv => (
-                <div key={lv}>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升到 LV{lv}</Label>
-                  <NumberInput min={0} value={vipCredits[lv] ?? 0}
-                    onChange={(n) => setCfg(c => c ? { ...c, vipUpgradeCredits: { ...vipCredits, [lv]: n } } : c)} />
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* v345：VIP 升等獎金已移至「⭐ VIP」tab（每等級的「升級獎勵」才是真正生效的設定） */}
 
           {/* v261 B5：首單付款獎勵 */}
           <div className="mb-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
@@ -664,6 +662,13 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
+        </TabsContent>
+
+        {/* v345：⭐ VIP — VIP 等級設定（含每等級的升級獎勵 = VIP 升等金額） */}
+        <TabsContent value="vip" className="mt-4">
+          <SectionCard title="⭐ VIP 等級設定">
+            <VipTiersEditor />
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
