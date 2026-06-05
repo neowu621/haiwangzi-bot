@@ -362,9 +362,41 @@ export default function AdminGuidePage() {
               </div>
             </div>
           </DiagramBox>
+
+          {/* v349：付款提醒時間軸（日潛 vs 潛旅 兩條獨立流程）*/}
+          <DiagramBox title="💰 付款提醒時間軸（系統自動，每筆訂單每段只發一次）">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-1">
+              {/* 日潛 */}
+              <div className="rounded-md p-3" style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.25)" }}>
+                <div className="mb-2 text-xs font-bold" style={{ color: "#60a5fa" }}>🤿 一日潛水（daily）</div>
+                <div className="text-[11px]" style={{ color: "rgba(230,240,255,0.55)" }}>由 <code>/api/cron/payment-reminders</code></div>
+                <ul className="mt-2 space-y-1.5 text-[11px]" style={{ color: "rgba(230,240,255,0.8)" }}>
+                  <li>📋 <b>下訂後第 2 天</b>未付款 → 友善提醒</li>
+                  <li>🚨 <b>第 7 天</b>未付款 → 最後通知</li>
+                  <li>⚠️ <b>第 10 天</b>未付款 → <b>自動取消</b>並釋出名額</li>
+                </ul>
+              </div>
+              {/* 潛旅 */}
+              <div className="rounded-md p-3" style={{ background: "rgba(99,235,164,0.06)", border: "1px solid rgba(99,235,164,0.25)" }}>
+                <div className="mb-2 text-xs font-bold" style={{ color: "#047857" }}>🚢 潛水旅行團（tour）</div>
+                <div className="text-[11px]" style={{ color: "rgba(230,240,255,0.55)" }}>由 <code>/api/cron/reminders</code></div>
+                <ul className="mt-2 space-y-1.5 text-[11px]" style={{ color: "rgba(230,240,255,0.8)" }}>
+                  <li>💰 <b>下訂後第 5 天</b>訂金未付 → 訂金催繳（截止＝下訂後7天）</li>
+                  <li>🛟 <b>出發前 33 天</b> → 尾款預告</li>
+                  <li>🛟 <b>出發前 30 天</b> → 尾款催繳（截止當天）</li>
+                  <li>📘 <b>出發前 2 天</b> → 行前手冊</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-2 text-[10px]" style={{ color: "rgba(230,240,255,0.5)" }}>
+              ※ 訂金截止＝每位客人「下訂日＋7天」（動態）；尾款截止＝「出發前30天」。提醒天數可在潛水團編輯頁微調。
+            </div>
+          </DiagramBox>
+
           <ul className="list-disc space-y-1 pl-5 text-xs">
             <li><code>/api/cron/weather-check</code> — 中央氣象局風速 → 超過門檻自動取消場次</li>
-            <li><code>/api/cron/reminders</code> — D-1 提醒、付款催繳</li>
+            <li><code>/api/cron/payment-reminders</code> — 【日潛】D+2 提醒 / D+7 警告 / D+10 自動取消</li>
+            <li><code>/api/cron/reminders</code> — 【潛旅】訂金催繳 + 尾款兩段 + 行前手冊 + 日潛 D-1 行前提醒</li>
             <li><code>/api/cron/birthday-credits</code> — 本月生日會員自動發抵用金</li>
           </ul>
         </Section>
