@@ -234,6 +234,9 @@ const PATCHES = [
   `CREATE INDEX IF NOT EXISTS idx_dive_wishes_user ON dive_wishes(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_dive_wishes_status ON dive_wishes(status)`,
   `CREATE INDEX IF NOT EXISTS idx_dive_wishes_last_activity ON dive_wishes(last_activity_at)`,
+  // v328：願望單編號 W20260605-XX
+  `ALTER TABLE dive_wishes ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_dive_wishes_code ON dive_wishes(code) WHERE code IS NOT NULL`,
   // 取消原因 / 退款相關
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,

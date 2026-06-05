@@ -507,6 +507,8 @@ model TripMedia {
 // 客戶提出想潛的時間/地點/方式 → 老闆與客戶來回討論 → 老闆確認後開正式場次
 model DiveWish {
   id              String   @id @default(uuid()) @db.Uuid
+  // v328：願望單編號 W20260605-XX
+  code            String?  @unique @map("code") @db.VarChar(12)
   userId          String   @map("user_id") @db.VarChar(64)
   // 願望內容
   type            String   @db.VarChar(16) // "boat" 船潛 / "shore" 岸潛 / "night" 夜潛 / "tour" 潛水團

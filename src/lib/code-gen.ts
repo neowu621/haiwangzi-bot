@@ -72,6 +72,15 @@ export async function genCreditCode(): Promise<string> {
   return genCode("C", async (code) => !!(await prisma.creditTx.findUnique({ where: { code } })));
 }
 
+// v328：願望單編號 W20260605-XX
+export async function genWishCode(): Promise<string> {
+  return genCode("W", async (code) => !!(await prisma.diveWish.findUnique({ where: { code } })));
+}
+
+export async function genWishCodeForDate(createdAt: Date): Promise<string> {
+  return genCodeWithDate("W", formatDateTW(createdAt), async (code) => !!(await prisma.diveWish.findUnique({ where: { code } })));
+}
+
 // ── 補發舊資料用（使用 createdAt 日期）────────────────────────────────────
 
 export async function genMemberCodeForDate(createdAt: Date): Promise<string> {

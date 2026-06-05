@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
+import { genWishCode } from "@/lib/code-gen"; // v328
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,8 +82,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const code = await genWishCode(); // v328
     const wish = await prisma.diveWish.create({
       data: {
+        code,
         userId: auth.user.lineUserId,
         type: data.type,
         preferredDate: new Date(data.preferredDate + "T00:00:00+08:00"),
