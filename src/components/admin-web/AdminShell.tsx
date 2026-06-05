@@ -152,7 +152,7 @@ export function AdminShell({
               </span>
               <span
                 className="rounded px-1.5 py-0.5 font-mono text-[9px]"
-                style={{ background: "rgba(255,255,255,0.08)", color: "rgba(230,240,255,0.4)" }}
+                style={{ background: "rgba(0,217,203,0.18)", color: "var(--color-phosphor)" }}
               >
                 v{APP_VERSION}
               </span>
@@ -200,8 +200,8 @@ export function AdminShell({
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="mb-3">
             <div
-              className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: "rgba(230,240,255,0.35)" }}
+              className="px-3 pb-1 pt-1 text-[11px] font-bold tracking-wide"
+              style={{ color: "var(--color-phosphor)" }}
             >
               {group.label}
             </div>
