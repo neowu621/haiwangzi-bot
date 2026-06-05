@@ -943,32 +943,9 @@ export default function AdminTripsPage() {
     <AdminShell title="場次管理">
       {/* v192：與潛水團相同的 雙欄佈局；外層固定高度 + overflow:hidden 讓左右各自獨立 scroll */}
       <div style={{ height: "calc(100vh - 56px)", margin: "-1rem", display: "flex", flexDirection: "column", overflow: "hidden", background: "#EEF1F5" }}>
-        {/* 共用 topbar */}
+        {/* 共用 topbar（v342：移除下載範本 / Excel 匯出 / Excel 匯入）*/}
         <div className="flex flex-wrap items-center justify-end gap-2"
           style={{ padding: "12px 24px", borderBottom: "1px solid #E4E8ED", background: "#fff", flexShrink: 0 }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={handleTripFileUpload}
-            className="hidden"
-          />
-          <Button size="sm" variant="outline" onClick={downloadTripTemplate} title="下載 Excel 範本（空白格式）">
-            <Download className="mr-1.5 h-4 w-4" />下載範本
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportTripsExcel}
-            disabled={loading || trips.length === 0}
-            title="把目前所有日潛場次匯出 Excel"
-          >
-            <FileSpreadsheet className="mr-1.5 h-4 w-4" />Excel 匯出
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
-            <Upload className="mr-1.5 h-4 w-4" />
-            {importing ? "匯入中..." : "Excel 匯入"}
-          </Button>
           {/* v336：Dump 一週場次 — 給 LINE 筆記本貼 */}
           <Button size="sm" variant="outline" onClick={() => setDumpOpen(true)} title="dump 一週場次成可貼 LINE 的文字">
             <FileText className="mr-1.5 h-4 w-4" />

@@ -440,11 +440,10 @@ export default function TripBookingPage({
     <LiffShell
       title="日潛預約"
       backHref="/liff/calendar"
-      midnight={trip.isNightDive}
     >
       <div className="space-y-3 px-4 pt-3">
-        {/* 場次資訊（緊湊排版，與行事曆預覽卡一致） */}
-        <Card className={trip.isNightDive ? "bg-[var(--color-midnight)] text-white" : ""}>
+        {/* 場次資訊（v342：夜潛卡改亮靛藍漸層、文字清晰可讀） */}
+        <Card className={trip.isNightDive ? "border-indigo-400 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white" : ""}>
           <CardContent className="flex items-center gap-3 p-3">
             <div className="flex w-14 flex-col items-center leading-tight">
               <div className="text-xl font-bold tabular">
@@ -453,7 +452,7 @@ export default function TripBookingPage({
               <div className={cn("text-[11px] font-semibold", trip.isNightDive ? "text-white" : "text-[var(--color-ocean-deep)]")}>
                 週 {weekday}
               </div>
-              <div className={cn("text-[10px]", trip.isNightDive ? "opacity-70" : "text-[var(--muted-foreground)]")}>
+              <div className={cn("text-[10px]", trip.isNightDive ? "text-indigo-100" : "text-[var(--muted-foreground)]")}>
                 {trip.date.slice(5, 7)} 月
               </div>
             </div>
@@ -476,7 +475,7 @@ export default function TripBookingPage({
                   {trip.tankCount} 潛
                 </Badge>
                 {trip.isNightDive && (
-                  <Badge className="gap-0.5 text-[10px] border-transparent bg-indigo-500 text-white">
+                  <Badge className="gap-0.5 text-[10px] border-transparent bg-white text-indigo-700 font-bold">
                     <Moon className="h-2.5 w-2.5" />夜潛
                   </Badge>
                 )}
@@ -484,7 +483,7 @@ export default function TripBookingPage({
                   <Badge variant="gold" className="text-[10px]">水推</Badge>
                 )}
               </div>
-              <div className={cn("mt-1 text-xs tabular", trip.isNightDive ? "opacity-70" : "text-[var(--muted-foreground)]")}>
+              <div className={cn("mt-1 text-xs tabular", trip.isNightDive ? "text-indigo-100" : "text-[var(--muted-foreground)]")}>
                 {trip.startTime}
                 {/* capacity null = 無上限 → 顯示「已報 N」；否則「剩 X/Y」 */}
                 {" · "}

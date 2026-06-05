@@ -571,12 +571,7 @@ export default function ToursPage() {
             <h1 style={{ fontSize: 16, fontWeight: 900 }}>潛水旅行團</h1>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleUpload} style={{ display: "none" }} />
-            <TopBtn onClick={downloadTemplate}>⬇ 範本</TopBtn>
-            <TopBtn onClick={exportExcel} disabled={!tours.length}>⬇ 匯出 Excel</TopBtn>
-            <TopBtn onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? "匯入中..." : "⬆ 匯入 Excel"}
-            </TopBtn>
+            {/* v342：移除 範本 / 匯出 Excel / 匯入 Excel */}
             <TopBtn primary onClick={newTrip}>＋ 新增行程</TopBtn>
           </div>
         </div>

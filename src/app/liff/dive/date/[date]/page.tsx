@@ -71,7 +71,7 @@ export default function DiveDateListPage({
           const card = (
               <Card
                 className={cn(
-                  t.isNightDive ? "bg-[var(--color-midnight)] text-white" : "",
+                  t.isNightDive ? "border-indigo-400 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white" : "",
                   closed && "opacity-50 grayscale",
                 )}
               >
@@ -83,7 +83,7 @@ export default function DiveDateListPage({
                         {t.startTime}
                       </span>
                       {t.isNightDive && (
-                        <Badge className="gap-1 border-transparent bg-indigo-500 text-white">
+                        <Badge className="gap-1 border-transparent bg-white text-indigo-700 font-bold">
                           <Moon className="h-3 w-3" /> 夜潛
                         </Badge>
                       )}
