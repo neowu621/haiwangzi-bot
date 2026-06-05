@@ -368,6 +368,23 @@ export default function BroadcastPage() {
           </div>
           <div className="bcn-pane-b">
             <div className="bcn-setgrid">
+              {/* 管道 segmented（v349：移到最前，第一行）*/}
+              <div>
+                <span className="bcn-lbl">發送管道</span>
+                <div className="bcn-seg">
+                  {(Object.keys(CHANNEL_LABELS) as Channel[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setChannel(c)}
+                      className={channel === c ? "on" : ""}
+                    >
+                      {c === "line" ? "💬 LINE" : c === "email" ? "✉️ Email" : "LINE + Email"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* 對象 chips */}
               <div>
                 <span className="bcn-lbl">發送對象</span>
@@ -426,23 +443,6 @@ export default function BroadcastPage() {
                     </select>
                   </div>
                 )}
-              </div>
-
-              {/* 管道 segmented */}
-              <div>
-                <span className="bcn-lbl">發送管道</span>
-                <div className="bcn-seg">
-                  {(Object.keys(CHANNEL_LABELS) as Channel[]).map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setChannel(c)}
-                      className={channel === c ? "on" : ""}
-                    >
-                      {c === "line" ? "💬 LINE" : c === "email" ? "✉️ Email" : "LINE + Email"}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* 模板 */}
@@ -746,11 +746,9 @@ function BroadcastStyles() {
         font-size: 11px; letter-spacing: 1px; color: var(--bcn-mute);
         font-weight: 700; margin-bottom: 9px; display: block;
       }
+      /* v349：Pane 1 僅 300px 寬，改單欄堆疊（管道→對象→模板），各段橫向排整齊 */
       .bcn-setgrid {
-        display: grid; grid-template-columns: 1.4fr 1fr 1.1fr; gap: 24px;
-      }
-      @media (max-width: 1040px) {
-        .bcn-setgrid { grid-template-columns: 1fr; }
+        display: flex; flex-direction: column; gap: 18px;
       }
 
       .bcn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
