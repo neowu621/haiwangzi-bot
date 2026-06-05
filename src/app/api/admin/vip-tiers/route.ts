@@ -109,12 +109,12 @@ export async function POST(req: NextRequest) {
         promoted++;
         // 只有實際升等才發抵用金（降等不退、不補發舊獎勵）
         if (newLevel > oldLevel) {
+          // v347：VIP 升等獎勵一律記系統發，不傳 admin 作為經辦人
           totalCreditGranted += await grantVipUpgradeRewards(
             u.lineUserId,
             oldLevel,
             newLevel,
             tiers,
-            auth.user.lineUserId,
           );
         }
       }

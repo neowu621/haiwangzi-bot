@@ -15,6 +15,9 @@ import type { VipTier } from "./vip-tier";
 
 /**
  * 在會員等級升級後呼叫，自動發放對應的 upgradeCredit
+ * v347：VIP 升等一律是「系統規則自動發放」，經辦人固定記 "system"（顯示為 🤖 系統發），
+ *        即使由 admin 儲存 VIP 設定觸發全員重算也一樣 — 不歸在某個管理員名下。
+ *        actorId 參數保留僅供相容，已不再用於 createdBy。
  * @returns 實際發放的金額總和
  */
 export async function grantVipUpgradeRewards(
@@ -22,7 +25,7 @@ export async function grantVipUpgradeRewards(
   oldLevel: number,
   newLevel: number,
   tiers: VipTier[],
-  actorId?: string,
+  _actorId?: string,
 ): Promise<number> {
   if (newLevel <= oldLevel) return 0;
 
@@ -50,7 +53,7 @@ export async function grantVipUpgradeRewards(
         refType: "vip",
         refId,
         note: `升等 LV${tier.level} ${tier.name} 獎勵`,
-        createdBy: actorId ?? null,
+        createdBy: "system", // v347：VIP 升等固定系統發，不歸管理員
         expiresAt,
       });
       totalGranted += tier.upgradeCredit;
