@@ -18,6 +18,7 @@ const CreateSchema = z.object({
   capacity: z.number().int().min(0).nullable().default(10),
   depositDeadline: z.string().nullable().optional(),
   finalDeadline: z.string().nullable().optional(),
+  depositDueDays: z.number().int().min(0).max(60).default(7), // v347：下訂後 N 天繳訂金
   depositReminderDays: z.number().int().min(0).default(7),
   finalReminderDays: z.number().int().min(0).default(30),
   guideReminderDays: z.number().int().min(0).default(2),
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
         capacity: data.capacity === 0 ? null : data.capacity,
         depositDeadline: data.depositDeadline ? new Date(data.depositDeadline) : null,
         finalDeadline: data.finalDeadline ? new Date(data.finalDeadline) : null,
+        depositDueDays: data.depositDueDays,
         depositReminderDays: data.depositReminderDays,
         finalReminderDays: data.finalReminderDays,
         guideReminderDays: data.guideReminderDays,

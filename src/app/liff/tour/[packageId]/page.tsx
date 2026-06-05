@@ -37,6 +37,7 @@ interface TourDetail {
   deposit: number;
   depositDeadline: string | null;
   finalDeadline: string | null;
+  depositDueDays?: number;
   capacity: number;
   booked: number;
   available: number;
@@ -243,6 +244,12 @@ export default function TourDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* v347：繳費期限說明 */}
+        <div className="rounded-lg border border-[var(--color-coral)]/30 bg-[var(--color-coral)]/5 px-3 py-2 text-[12px] leading-relaxed text-[var(--foreground)]">
+          💰 <b>繳費期限</b>：訂金請於<b>下訂後 {tour.depositDueDays ?? 7} 天內</b>繳清以保留名額；尾款請於<b>出發前 30 天</b>繳清
+          {tour.finalDeadline ? `（${tour.finalDeadline.slice(0, 10)} 前）` : ""}。
+        </div>
 
         {tour.sites.length > 0 && (
           <Card>

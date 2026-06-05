@@ -58,6 +58,7 @@ interface Tour {
   capacity: number | null;
   depositDeadline: string | null;
   finalDeadline: string | null;
+  depositDueDays?: number;
   depositReminderDays: number;
   finalReminderDays: number;
   guideReminderDays: number;
@@ -80,6 +81,15 @@ interface Tour {
 
 const today = new Date().toISOString().split("T")[0];
 
+// v347：尾款截止日預設 = 出發日 − 30 天
+function startMinusDays(dateStr: string, days: number): string {
+  if (!dateStr) return "";
+  const d = new Date(`${dateStr.split("T")[0]}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split("T")[0];
+}
+
 interface FormState {
   title: string;
   subtitle: string;
@@ -91,7 +101,7 @@ interface FormState {
   basePrice: number;
   deposit: number;
   capacity: number;
-  depositDeadline: string;
+  depositDueDays: number;
   finalDeadline: string;
   depositReminderDays: number;
   finalReminderDays: number;
@@ -112,7 +122,7 @@ const BLANK: FormState = {
   dateStart: today, dateEnd: today,
   durationLabel: "", roomLabel: "",
   basePrice: 15000, deposit: 5000, capacity: 10,
-  depositDeadline: "", finalDeadline: "",
+  depositDueDays: 7, finalDeadline: "",
   depositReminderDays: 7, finalReminderDays: 30, guideReminderDays: 2,
   diveStyles: [], beginnerFriendly: false, tanksCount: 0,
   siteList: "", pricingNotes: "", extraNote: "",
@@ -229,7 +239,7 @@ export default function ToursPage() {
       basePrice: t.basePrice,
       deposit: t.deposit,
       capacity: t.capacity ?? 10,
-      depositDeadline: t.depositDeadline ? t.depositDeadline.split("T")[0] : "",
+      depositDueDays: t.depositDueDays ?? 7,
       finalDeadline: t.finalDeadline ? t.finalDeadline.split("T")[0] : "",
       depositReminderDays: t.depositReminderDays,
       finalReminderDays: t.finalReminderDays,
@@ -266,7 +276,7 @@ export default function ToursPage() {
         basePrice: form.basePrice,
         deposit: form.deposit,
         capacity: form.capacity === 0 ? null : form.capacity,
-        depositDeadline: form.depositDeadline || null,
+        depositDueDays: form.depositDueDays,
         finalDeadline: form.finalDeadline || null,
         depositReminderDays: form.depositReminderDays,
         finalReminderDays: form.finalReminderDays,
@@ -843,7 +853,13 @@ export default function ToursPage() {
                 </Row2>
                 <Row3>
                   <Field label="出發日"><input type="date" value={form.dateStart}
-                    onChange={(e) => setForm((f) => ({ ...f, dateStart: e.target.value }))} style={inputStyle} /></Field>
+                    onChange={(e) => setForm((f) => {
+                      const ds = e.target.value;
+                      // v347：出發日變更時，尾款截止日若為空（或仍等於舊出發日−30）自動帶入新出發日−30
+                      const autoFinal = startMinusDays(ds, 30);
+                      const keepFinal = f.finalDeadline && f.finalDeadline !== startMinusDays(f.dateStart, 30);
+                      return { ...f, dateStart: ds, finalDeadline: keepFinal ? f.finalDeadline : autoFinal };
+                    })} style={inputStyle} /></Field>
                   <Field label="結束日"><input type="date" value={form.dateEnd}
                     onChange={(e) => setForm((f) => ({ ...f, dateEnd: e.target.value }))} style={inputStyle} /></Field>
                   <Field label="天數標籤"><input value={form.durationLabel}
@@ -923,14 +939,27 @@ export default function ToursPage() {
                   <Field label="人數上限（0=∞）"><input type="text" inputMode="numeric" value={form.capacity}
                     onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, capacity: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>
-                  <Field label="訂金截止日"><input type="date" value={form.depositDeadline}
-                    onChange={(e) => setForm((f) => ({ ...f, depositDeadline: e.target.value }))}
-                    style={inputStyle} /></Field>
+                  <Field label="訂金繳費期限（下訂後 N 天）">
+                    <input type="text" inputMode="numeric" value={form.depositDueDays}
+                      onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, depositDueDays: c === "" ? 0 : parseInt(c, 10) })); }}
+                      style={inputStyle} />
+                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                      每位客人從「下訂當天」起算 {form.depositDueDays || 7} 天內繳訂金（動態，非整團固定日）
+                    </div>
+                  </Field>
                 </Row2>
                 <Row3>
-                  <Field label="尾款截止日"><input type="date" value={form.finalDeadline}
-                    onChange={(e) => setForm((f) => ({ ...f, finalDeadline: e.target.value }))}
-                    style={inputStyle} /></Field>
+                  <Field label="尾款截止日（＝出發前30天）">
+                    <input type="date" value={form.finalDeadline}
+                      onChange={(e) => setForm((f) => ({ ...f, finalDeadline: e.target.value }))}
+                      style={inputStyle} />
+                    <button type="button"
+                      onClick={() => setForm((f) => ({ ...f, finalDeadline: startMinusDays(f.dateStart, 30) }))}
+                      disabled={!form.dateStart}
+                      style={{ marginTop: 4, fontSize: 11, color: "#0a4d78", background: "none", border: "none", cursor: form.dateStart ? "pointer" : "default", padding: 0, textDecoration: "underline" }}>
+                      ↺ 帶入「出發前30天」（{startMinusDays(form.dateStart, 30) || "請先填出發日"}）
+                    </button>
+                  </Field>
                   <Field label="訂金前 N 天提醒"><input type="text" inputMode="numeric" value={form.depositReminderDays}
                     onChange={(e) => { const c = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"); setForm((f) => ({ ...f, depositReminderDays: c === "" ? 0 : parseInt(c, 10) })); }}
                     style={inputStyle} /></Field>

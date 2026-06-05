@@ -327,6 +327,8 @@ model TourPackage {
   siteList            String?    @map("site_list") // 潛點清單（每行一個）
   pricingNotes        String?    @map("pricing_notes") // 早鳥/加價說明
   extraNote           String?    @map("extra_note") // 自由備註
+  // v347：訂金繳費期限改為「每位客人下訂日 + N 天」(動態，取代固定 depositDeadline 日期)
+  depositDueDays      Int        @default(7) @map("deposit_due_days") // 下訂後 N 天內繳訂金
   // 提醒天數設定（開團時可調）
   // 規則：訂金確認後 7 天內付款保留名額；尾款出發前 30 天繳清；行前 2 天再次通知
   depositReminderDays Int        @default(7) @map("deposit_reminder_days") // 訂金截止前 N 天推

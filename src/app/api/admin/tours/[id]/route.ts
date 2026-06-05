@@ -19,6 +19,7 @@ const PatchSchema = z.object({
   capacity: z.number().int().nullable().optional(),
   depositDeadline: z.string().nullable().optional(),
   finalDeadline: z.string().nullable().optional(),
+  depositDueDays: z.number().int().min(0).max(60).optional(), // v347
   depositReminderDays: z.number().int().optional(),
   finalReminderDays: z.number().int().optional(),
   guideReminderDays: z.number().int().optional(),
@@ -77,6 +78,7 @@ export async function PATCH(
       : null;
   if (data.finalDeadline !== undefined)
     patch.finalDeadline = data.finalDeadline ? new Date(data.finalDeadline) : null;
+  if (data.depositDueDays !== undefined) patch.depositDueDays = data.depositDueDays;
   if (data.depositReminderDays !== undefined)
     patch.depositReminderDays = data.depositReminderDays;
   if (data.finalReminderDays !== undefined)

@@ -149,6 +149,7 @@ const PATCHES = [
    EXCEPTION WHEN others THEN NULL;
    END $$`,
 
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS deposit_due_days INT NOT NULL DEFAULT 7`,
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
   `DO $$ BEGIN
      ALTER TABLE tour_packages ALTER COLUMN code TYPE VARCHAR(12);
