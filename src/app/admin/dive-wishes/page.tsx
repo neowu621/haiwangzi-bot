@@ -97,9 +97,11 @@ export default function AdminDiveWishesPage() {
             const meta = STATUS_LABEL[w.status] ?? { label: w.status, cls: "" };
             return (
               <Link key={w.id} href={`/admin/dive-wishes/${w.id}`}>
-                <div className="rounded-xl border bg-white p-3 hover:bg-[var(--muted)]/30 cursor-pointer" style={{ borderColor: "var(--border)" }}>
-                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
+                {/* v322：左右兩欄 — 左身份＋類型＋時間、右詳情（日期/潛點/人數預算/備註） */}
+                <div className="rounded-xl border bg-white p-3 hover:bg-[var(--muted)]/30 cursor-pointer flex gap-4 items-start" style={{ borderColor: "var(--border)" }}>
+                  {/* 左欄：身份 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
                       <Badge className={meta.cls}>{meta.label}</Badge>
                       <button
                         type="button"
@@ -108,14 +110,17 @@ export default function AdminDiveWishesPage() {
                       >
                         {w.user.realName ?? w.user.displayName}
                       </button>
-                      {w.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">{w.user.phone}</span>}
-                      <span className="text-xs">{TYPE_LABEL[w.type] ?? w.type}</span>
                     </div>
-                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                    {w.user.phone && (
+                      <div className="text-[11px] text-[var(--muted-foreground)] tabular mb-0.5">📞 {w.user.phone}</div>
+                    )}
+                    <div className="text-xs">{TYPE_LABEL[w.type] ?? w.type}</div>
+                    <div className="text-[10px] text-[var(--muted-foreground)] mt-1">
                       {new Date(w.lastActivityAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                    </div>
                   </div>
-                  <div className="text-xs space-y-0.5 text-[var(--muted-foreground)]">
+                  {/* 右欄：詳情 */}
+                  <div className="text-xs space-y-0.5 text-[var(--muted-foreground)] flex-1 min-w-0 border-l border-[var(--border)] pl-3">
                     <div>📅 {w.preferredDate.slice(0, 10)} {w.alternativeDates.length > 0 && `（備選 ${w.alternativeDates.map(d => d.slice(0, 10)).join(", ")}）`}</div>
                     <div>📍 {[...w.diveSiteIds, w.otherSites ?? ""].filter(Boolean).join("、")}</div>
                     <div>👥 ×{w.participants} 人 {w.budgetPerPerson && `· 💰 預算 NT$ ${w.budgetPerPerson.toLocaleString()}/人`}</div>
