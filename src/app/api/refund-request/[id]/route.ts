@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { grantCredit } from "@/lib/credit";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,6 +148,14 @@ export async function POST(
         customerNote: parsed.data.note,
       },
     });
+    void logCustomerActivity({
+      req,
+      user: auth.user,
+      action: "customer.refund.decide",
+      targetType: "refund",
+      targetId: id,
+      metadata: { decision: "accepted", executed: executedNow },
+    });
     return NextResponse.json({ ok: true, executed: executedNow });
   }
 
@@ -178,5 +187,13 @@ export async function POST(
       }
     }
   }
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.refund.decide",
+    targetType: "refund",
+    targetId: id,
+    metadata: { decision: "questioning" },
+  });
   return NextResponse.json({ ok: true });
 }

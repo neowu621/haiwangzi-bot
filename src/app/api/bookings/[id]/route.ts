@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -153,6 +154,15 @@ export async function PATCH(
         totalAmount,
       },
     });
+    void logCustomerActivity({
+      req,
+      user: auth.user,
+      action: "customer.booking.update",
+      targetType: "booking",
+      targetId: updated.id,
+      targetLabel: updated.code ?? undefined,
+      metadata: { type: "daily", participants: updated.participants, totalAmount },
+    });
     return NextResponse.json({ ok: true, booking: updated });
   }
 
@@ -205,6 +215,15 @@ export async function PATCH(
         totalAmount,
         depositAmount,
       },
+    });
+    void logCustomerActivity({
+      req,
+      user: auth.user,
+      action: "customer.booking.update",
+      targetType: "booking",
+      targetId: updated.id,
+      targetLabel: updated.code ?? undefined,
+      metadata: { type: "tour", participants: updated.participants, totalAmount },
     });
     return NextResponse.json({ ok: true, booking: updated });
   }
@@ -277,5 +296,14 @@ export async function DELETE(
         : "客戶主動取消（未付款）",
     }),
   );
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.booking.cancel",
+    targetType: "booking",
+    targetId: updated.id,
+    targetLabel: updated.code ?? undefined,
+    metadata: { hasPaid, paidAmount: booking.paidAmount },
+  });
   return NextResponse.json({ ok: true, booking: updated, hasPaid });
 }

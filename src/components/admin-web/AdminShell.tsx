@@ -42,6 +42,7 @@ const NAV_ITEMS = [
   { href: "/admin/reports", icon: BarChart2, label: "報表" },
   { href: "/admin/settings", icon: Settings, label: "系統設定" },
   { href: "/admin/audit-logs", icon: ClipboardCheck, label: "操作紀錄" },
+  { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
   { href: "/admin/guide", icon: HelpCircle, label: "操作說明" },
 ];
 

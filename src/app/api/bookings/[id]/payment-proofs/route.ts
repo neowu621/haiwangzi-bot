@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { publicUrl, isPrivate, type R2Prefix } from "@/lib/r2";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -195,6 +196,20 @@ export async function POST(
     const prefix = data.r2Key.split("/")[0] as R2Prefix;
     pubUrl = isPrivate(prefix) ? null : publicUrl(data.r2Key);
   }
+
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.payment_proof.upload",
+    targetType: "booking",
+    targetId: id,
+    targetLabel: booking.code ?? undefined,
+    metadata: {
+      amount: data.amount,
+      type: data.type,
+      last5: data.last5 ?? null,
+    },
+  });
 
   return NextResponse.json({
     ok: true,

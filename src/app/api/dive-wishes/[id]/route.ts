@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,5 +64,14 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
       }
     } catch (e) { console.error("[notify admin wish cancelled]", e); }
   })();
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.wish.cancel",
+    targetType: "wish",
+    targetId: updated.id,
+    targetLabel: updated.code ?? undefined,
+    metadata: { reason: reason ?? null },
+  });
   return NextResponse.json({ ok: true, wish: updated });
 }

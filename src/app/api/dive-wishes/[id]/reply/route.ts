@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,6 +83,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }
     } catch (e) { console.error("[customer reply notify admin]", e); }
   })();
+
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.wish.reply",
+    targetType: "wish",
+    targetId: updated.id,
+    targetLabel: updated.code ?? undefined,
+    metadata: { textPreview: parsed.data.text.slice(0, 100) },
+  });
 
   return NextResponse.json({ ok: true, wish: updated });
 }

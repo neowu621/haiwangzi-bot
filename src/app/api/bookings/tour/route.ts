@@ -5,6 +5,7 @@ import { authFromRequest } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -208,6 +209,21 @@ export async function POST(req: NextRequest) {
   }
 
   // v270：首單獎勵改在 attendance=completed 時觸發，不在這裡
+
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.booking.create",
+    targetType: "booking",
+    targetId: booking.id,
+    targetLabel: booking.code ?? undefined,
+    metadata: {
+      type: "tour",
+      packageId: data.tourId,
+      participants: data.participants,
+      totalAmount,
+    },
+  });
 
   return NextResponse.json({ ok: true, booking });
 }

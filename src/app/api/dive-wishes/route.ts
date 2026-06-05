@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { genWishCode } from "@/lib/code-gen"; // v328
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,6 +127,20 @@ export async function POST(req: NextRequest) {
         }
       } catch (e) { console.error("[notify admin new wish]", e); }
     })();
+
+    void logCustomerActivity({
+      req,
+      user: auth.user,
+      action: "customer.wish.create",
+      targetType: "wish",
+      targetId: wish.id,
+      targetLabel: wish.code ?? undefined,
+      metadata: {
+        type: data.type,
+        preferredDate: data.preferredDate,
+        participants: data.participants,
+      },
+    });
 
     return NextResponse.json({ ok: true, wish });
   } catch (e) {

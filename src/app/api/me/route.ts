@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,11 @@ export async function GET(req: NextRequest) {
   });
 
   const u = auth.user;
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.login",
+  });
   return NextResponse.json({
     lineUserId: u.lineUserId,
     displayName: u.displayName,
@@ -137,6 +143,14 @@ export async function PATCH(req: NextRequest) {
     const updated = await prisma.user.update({
       where: { lineUserId: auth.user.lineUserId },
       data,
+    });
+    void logCustomerActivity({
+      req,
+      user: auth.user,
+      action: "customer.profile.update",
+      targetType: "user",
+      targetId: auth.user.lineUserId,
+      metadata: { fields: Object.keys(data) },
     });
     return NextResponse.json({ ok: true, user: updated });
   } catch (e) {

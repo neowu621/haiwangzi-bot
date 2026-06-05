@@ -237,6 +237,11 @@ const PATCHES = [
   // v328：願望單編號 W20260605-XX
   `ALTER TABLE dive_wishes ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dive_wishes_code ON dive_wishes(code) WHERE code IS NOT NULL`,
+  // v334：前台活動紀錄 — audit_log 加 actor_role / actor_ip / actor_user_agent
+  `ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS actor_role VARCHAR(16)`,
+  `ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS actor_ip VARCHAR(64)`,
+  `ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS actor_user_agent TEXT`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_log_actor_role ON audit_log(actor_role)`,
   // 取消原因 / 退款相關
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount INTEGER`,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +135,20 @@ export async function POST(req: NextRequest) {
       console.error("[customer refund request notify]", e);
     }
   })();
+
+  void logCustomerActivity({
+    req,
+    user: auth.user,
+    action: "customer.refund.request",
+    targetType: "refund",
+    targetId: rr.id,
+    targetLabel: booking.code ?? undefined,
+    metadata: {
+      bookingId: data.bookingId,
+      amount: data.amount,
+      reason: data.reason,
+    },
+  });
 
   return NextResponse.json({ ok: true, refundRequest: rr });
 }

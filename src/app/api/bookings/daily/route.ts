@@ -10,6 +10,7 @@ import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -351,6 +352,17 @@ export async function POST(req: NextRequest) {
   }).catch((e) => console.error("[booking confirm email]", e));
 
   // v270：首單獎勵改在 attendance=completed 時觸發，不在這裡
+
+  // v334：客戶活動紀錄
+  void logCustomerActivity({
+    req,
+    user: { lineUserId: auth.user.lineUserId, realName: auth.user.realName, displayName: auth.user.displayName },
+    action: "customer.booking.create",
+    targetType: "booking",
+    targetId: booking.id,
+    targetLabel: booking.code ?? undefined,
+    metadata: { type: "daily", tripId: data.tripId, participants: data.participants, totalAmount: booking.totalAmount },
+  });
 
   return NextResponse.json({ ok: true, booking, overCapacity });
 }

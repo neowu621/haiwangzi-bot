@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,6 +69,13 @@ export async function GET(req: NextRequest) {
       data: { usedAt: new Date() },
     }),
   ]);
+
+  void logCustomerActivity({
+    req,
+    user: { lineUserId: user.lineUserId, realName: user.realName, displayName: user.displayName },
+    action: "customer.email.verify",
+    metadata: { email: user.email ?? null },
+  });
 
   return resultRedirect("ok", { email: user.email ?? "" });
 }

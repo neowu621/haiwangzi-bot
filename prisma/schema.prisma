@@ -669,8 +669,12 @@ model AuditLog {
   // 操作者
   actorId   String? @map("actor_id") @db.VarChar(64) // lineUserId 或 "system"
   actorName String? @map("actor_name") @db.VarChar(128)
+  // v334：操作者角色（customer / admin / boss / system）+ IP + UA
+  actorRole      String? @map("actor_role") @db.VarChar(16)
+  actorIp        String? @map("actor_ip") @db.VarChar(64)
+  actorUserAgent String? @map("actor_user_agent") @db.Text
 
-  // 操作類型：auth.login / booking.update / trip.create / config.update 等
+  // 操作類型：auth.login / booking.update / trip.create / config.update / customer.xxx 等
   action String @db.VarChar(64)
 
   // 對象
@@ -683,6 +687,7 @@ model AuditLog {
 
   @@index([actorId])
   @@index([action])
+  @@index([actorRole])
   @@index([createdAt(sort: Desc)])
   @@map("audit_log")
 }
