@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 /**
  * v272: /api/cron/payment-reminders
  *
- * 每天跑（建議 09:00 Asia/Taipei）。三段式催繳：
- *   D+3 提醒：訂單 createdAt > 3 天，paymentStatus 還是 pending → 推 LINE + Email
+ * 每天跑（建議 09:00 Asia/Taipei）。三段式催繳（v349：僅【日潛 daily】，潛旅走 /api/cron/reminders）：
+ *   D+2 提醒：訂單 createdAt > 2 天，paymentStatus 還是 pending → 推 LINE + Email
  *   D+7 警告：> 7 天還沒付 → 推「最後通知」訊息
  *   D+10 自動取消：> 10 天還沒付 → status=cancelled_by_user + 通知
  *
@@ -33,16 +33,18 @@ async function handle(req: NextRequest) {
   }
 
   const now = new Date();
-  const d3 = new Date(now); d3.setDate(d3.getDate() - 3);
+  // v349：第一段提醒改「下訂後 2 天」(D+2)；本 cron 只管【日潛 daily】，
+  //        潛旅 (tour) 的訂金/尾款催繳走 /api/cron/reminders，避免重複催繳
+  const d2 = new Date(now); d2.setDate(d2.getDate() - 2);
   const d7 = new Date(now); d7.setDate(d7.getDate() - 7);
   const d10 = new Date(now); d10.setDate(d10.getDate() - 10);
 
-  // 撈所有未付款訂單（含 pending + deposit_paid 但尾款未付的也可考慮，這版先只看 pending）
   const pendingBookings = await prisma.booking.findMany({
     where: {
+      type: "daily", // v349：只催日潛
       paymentStatus: "pending",
       status: { in: ["pending", "confirmed"] },
-      createdAt: { lt: d3 }, // 至少 3 天以上才需要管
+      createdAt: { lt: d2 }, // 至少 2 天以上才需要管
     },
     include: { user: true, reminderLogs: true },
   });
@@ -100,10 +102,10 @@ async function handle(req: NextRequest) {
         continue;
       }
     }
-    // D+3：友善提醒
-    if (b.createdAt < d3 && !reminderTypes.has("payment_d3")) {
+    // D+2：友善提醒（v349：下訂 2 天未付款）
+    if (b.createdAt < d2 && !reminderTypes.has("payment_d3")) {
       try {
-        const text = `📋 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已預約成功 3 天，目前尚未收到付款。\n\n金額 NT$ ${b.totalAmount.toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖，\n以保留您的名額。\n\n— 海王子潛水`;
+        const text = `📋 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已預約成功 2 天，目前尚未收到付款。\n\n金額 NT$ ${b.totalAmount.toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖，\n以保留您的名額。\n\n— 海王子潛水`;
         if ((b.user.notifyByLine ?? true) && lineClient) {
           await lineClient.pushMessage({ to: b.userId, messages: [{ type: "text", text }] });
         }
@@ -124,6 +126,6 @@ async function handle(req: NextRequest) {
     ok: true,
     pendingBookingsScanned: pendingBookings.length,
     ...results,
-    rule: "D+3 提醒 / D+7 警告 / D+10 自動取消",
+    rule: "（僅日潛）D+2 提醒 / D+7 警告 / D+10 自動取消",
   });
 }
