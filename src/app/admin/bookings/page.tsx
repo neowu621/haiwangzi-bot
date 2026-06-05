@@ -158,13 +158,27 @@ export default function AdminBookingsPage() {
   const [contactBusy, setContactBusy] = useState(false);
   const [contactResult, setContactResult] = useState<string | null>(null);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
-  // v294：依 URL ?status= 讀預設值（用 window.location 避免 useSearchParams 觸發 prerender error）
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  // v294/v329：依 URL ?status= 讀預設值，支援多選（逗號分隔）
+  //   filterStatusSet 為 empty Set = "全部"；有東西在 set 內 = 只顯示這些
+  const [filterStatusSet, setFilterStatusSet] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (typeof window === "undefined") return;
     const s = new URLSearchParams(window.location.search).get("status");
-    if (s) setFilterStatus(s);
+    if (s) setFilterStatusSet(new Set(s.split(",").filter(Boolean)));
   }, []);
+  function toggleStatusFilter(key: string) {
+    setFilterStatusSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setPage(1);
+  }
+  function clearStatusFilter() {
+    setFilterStatusSet(new Set());
+    setPage(1);
+  }
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
   // v304：場次快捷篩選 — all / today_tomorrow / future / past
   const [filterTripPeriod, setFilterTripPeriod] = useState<"all" | "today_tomorrow" | "future" | "past">("all");
@@ -440,12 +454,12 @@ export default function AdminBookingsPage() {
       createdAt: b.createdAt,
       activityDate: b.ref?.date ?? b.ref?.dateStart ?? null,
     }).key;
-    const statusOk = filterStatus === "all" || derivedKey === filterStatus;
+    const statusOk = filterStatusSet.size === 0 || filterStatusSet.has(derivedKey);
     if (!statusOk) return false;
     // v304：場次快捷篩選（today_tomorrow / future / past）優先於活動時間範圍
     if (!periodOk(b.ref.date ?? b.ref.dateStart)) return false;
     // 帶 ?status= filter 或 場次快捷 時不套活動時間範圍
-    if (filterStatus === "all" && filterTripPeriod === "all") {
+    if (filterStatusSet.size === 0 && filterTripPeriod === "all") {
       const rangeOk = isInRange(b.ref.date ?? b.ref.dateStart);
       if (!rangeOk) return false;
     }
@@ -776,28 +790,27 @@ export default function AdminBookingsPage() {
             </div>
             {/* v324: 衍生狀態 filter — 依三層分組（正常 / 結局 / 退款） */}
             <div className="space-y-1.5">
-              {/* 全部 + 篩選提示 inline */}
+              {/* v329：複選 — 全部 = 清空所有勾選；其他 chip = toggle in/out */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs text-[var(--muted-foreground)] w-16">狀態：</span>
                 <button
                   type="button"
-                  onClick={() => { setFilterStatus("all"); setPage(1); }}
+                  onClick={clearStatusFilter}
                   className={cn(
                     "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                    filterStatus === "all"
+                    filterStatusSet.size === 0
                       ? "bg-[var(--color-ocean-deep)] text-white"
                       : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
                   )}
                 >
                   全部
                 </button>
-                {/* v326：篩選提示 inline 緊跟在 [全部] 後面 */}
-                {filterStatus !== "all" && (
+                {filterStatusSet.size > 0 && (
                   <div className="flex items-center gap-2 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs">
-                    <span>🔍 只顯示「{BOOKING_STATUS_FILTER_KEYS.find((k) => k.key === filterStatus)?.label ?? BOOKING_STATUS_LABEL[filterStatus] ?? filterStatus}」</span>
+                    <span>🔍 只顯示 {filterStatusSet.size} 項</span>
                     <button
                       type="button"
-                      onClick={() => { setFilterStatus("all"); setPage(1); }}
+                      onClick={clearStatusFilter}
                       className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] hover:bg-white"
                     >
                       ✕ 清除
@@ -811,21 +824,25 @@ export default function AdminBookingsPage() {
                     {grp.group}
                   </span>
                   <div className="flex flex-wrap gap-1.5 flex-1">
-                    {grp.items.map(({ key, label }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => { setFilterStatus(key); setPage(1); }}
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                          filterStatus === key
-                            ? "bg-[var(--color-ocean-deep)] text-white"
-                            : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    {grp.items.map(({ key, label }) => {
+                      const active = filterStatusSet.has(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => toggleStatusFilter(key)}
+                          className={cn(
+                            "rounded-full px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap inline-flex items-center gap-1",
+                            active
+                              ? "bg-[var(--color-ocean-deep)] text-white"
+                              : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                          )}
+                        >
+                          {active && <span className="text-[10px]">✓</span>}
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
