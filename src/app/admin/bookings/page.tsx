@@ -184,7 +184,7 @@ export default function AdminBookingsPage() {
   const [filterTripPeriod, setFilterTripPeriod] = useState<"all" | "today_tomorrow" | "future" | "past">("all");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
-  const [filterRange, setFilterRange] = useState<"today" | "3days" | "week" | "month" | "all">("week");
+  const [filterRange, setFilterRange] = useState<"today" | "3days" | "week" | "month" | "all">("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
