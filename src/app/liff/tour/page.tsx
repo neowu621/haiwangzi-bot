@@ -97,8 +97,28 @@ export default function TourListPage() {
   }
 
   return (
-    <LiffShell title="潛水團報名" backHref="/liff/welcome" bottomNav={<BottomNav />}>
+    <LiffShell title="旅行潛水" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <div style={{ background: "#EBECF0", minHeight: "100%", padding: "14px 14px 110px" }}>
+        {/* v330：找不到日期 → 引導至願望單 */}
+        <Link href="/liff/wishes/new" style={{ display: "block", textDecoration: "none", marginBottom: 14 }}>
+          <div style={{
+            background: "#fff",
+            border: "2px dashed rgba(0,217,203,0.45)",
+            borderRadius: 12,
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}>
+            <span style={{ fontSize: 20 }}>📝</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0A2342" }}>找不到日期？</div>
+              <div style={{ fontSize: 11, color: "#6b7280" }}>可提預約潛水日期（老闆會回覆討論）</div>
+            </div>
+            <span style={{ color: "rgba(0,217,203,0.8)", fontSize: 16 }}>›</span>
+          </div>
+        </Link>
+
         {/* 歡迎 bubble */}
         <div style={{ display: "flex", gap: 9, marginBottom: 16, alignItems: "flex-end" }}>
           <div style={{

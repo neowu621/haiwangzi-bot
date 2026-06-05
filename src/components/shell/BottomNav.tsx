@@ -11,10 +11,10 @@ const NAV: Array<{
   match: RegExp;
   Icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { href: "/liff/calendar", label: "日潛", match: /^\/liff\/(calendar|dive)/, Icon: CalendarDays },
-  { href: "/liff/tour", label: "潛水團", match: /^\/liff\/tour/, Icon: Plane },
-  { href: "/liff/my", label: "我的", match: /^\/liff\/my/, Icon: ListChecks },
-  { href: "/liff/profile", label: "個人", match: /^\/liff\/profile/, Icon: User },
+  { href: "/liff/calendar", label: "一日潛水", match: /^\/liff\/(calendar|dive)/, Icon: CalendarDays },
+  { href: "/liff/tour", label: "旅行潛水", match: /^\/liff\/tour/, Icon: Plane },
+  { href: "/liff/my", label: "我的預約", match: /^\/liff\/my/, Icon: ListChecks },
+  { href: "/liff/profile", label: "個人中心", match: /^\/liff\/profile/, Icon: User },
 ];
 
 export function BottomNav() {

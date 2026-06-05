@@ -25,7 +25,7 @@ interface Trip {
   sites: Array<{ id: string; name: string } | null>;
 }
 
-type View = "2weeks" | "month";
+type View = "1week" | "2weeks";
 
 function fmtISODate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -48,24 +48,9 @@ function addDays(d: Date, n: number) {
 }
 
 function buildCells(view: View, cursor: Date): Array<{ date: Date | null }> {
-  if (view === "2weeks") {
-    const sun = startOfWeek(cursor);
-    return Array.from({ length: 14 }, (_, i) => ({ date: addDays(sun, i) }));
-  }
-  // month
-  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-  const startWeekday = first.getDay();
-  const daysInMonth = new Date(
-    cursor.getFullYear(),
-    cursor.getMonth() + 1,
-    0,
-  ).getDate();
-  const cells: Array<{ date: Date | null }> = [];
-  for (let i = 0; i < startWeekday; i++) cells.push({ date: null });
-  for (let d = 1; d <= daysInMonth; d++)
-    cells.push({ date: new Date(cursor.getFullYear(), cursor.getMonth(), d) });
-  while (cells.length % 7 !== 0) cells.push({ date: null });
-  return cells;
+  const sun = startOfWeek(cursor);
+  const days = view === "1week" ? 7 : 14;
+  return Array.from({ length: days }, (_, i) => ({ date: addDays(sun, i) }));
 }
 
 function rangeFromCells(cells: Array<{ date: Date | null }>) {
@@ -75,13 +60,7 @@ function rangeFromCells(cells: Array<{ date: Date | null }>) {
   return { from: sorted[0], to: sorted[sorted.length - 1] };
 }
 
-function headerLabel(view: View, cursor: Date, cells: Array<{ date: Date | null }>) {
-  if (view === "month") {
-    return `${cursor.getFullYear()}.${String(cursor.getMonth() + 1).padStart(
-      2,
-      "0",
-    )}`;
-  }
+function headerLabel(_view: View, _cursor: Date, cells: Array<{ date: Date | null }>) {
   const r = rangeFromCells(cells);
   if (!r) return "";
   const a = `${r.from.getMonth() + 1}/${r.from.getDate()}`;
@@ -92,7 +71,7 @@ function headerLabel(view: View, cursor: Date, cells: Array<{ date: Date | null 
 export default function CalendarPage() {
   const liff = useLiff();
   const today = new Date();
-  const [view, setView] = useState<View>("2weeks");
+  const [view, setView] = useState<View>("1week"); // v330：預設本週
   const [cursor, setCursor] = useState<Date>(today);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,27 +103,34 @@ export default function CalendarPage() {
   }, [trips]);
 
   function shiftCursor(direction: 1 | -1) {
-    if (view === "month") {
-      setCursor(
-        new Date(cursor.getFullYear(), cursor.getMonth() + direction, 1),
-      );
-    } else {
-      // 2weeks: 一次推 14 天
-      setCursor(addDays(cursor, 14 * direction));
-    }
+    // v330: 1week 一次推 7 天、2weeks 一次推 14 天
+    const days = view === "1week" ? 7 : 14;
+    setCursor(addDays(cursor, days * direction));
   }
 
   const todayIso = fmtISODate(today);
 
   return (
-    <LiffShell title="日潛行事曆" backHref="/liff/welcome" bottomNav={<BottomNav />}>
+    <LiffShell title="一日潛水" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <section className="px-4 pt-3">
+        {/* v330：找不到日期 → 引導至願望單 */}
+        <Link href="/liff/wishes/new" className="mb-3 block">
+          <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 hover:bg-[var(--color-phosphor)]/10 transition-colors">
+            <span className="text-xl">📝</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-[var(--color-ocean-deep)]">找不到日期？</div>
+              <div className="text-[11px] text-[var(--muted-foreground)]">可提預約潛水日期（老闆會回覆討論）</div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-[var(--color-phosphor)]" />
+          </div>
+        </Link>
+
         {/* 視圖切換 */}
         <div className="mb-2 inline-flex w-full rounded-full bg-[var(--muted)] p-1 text-xs">
           {(
             [
-              ["2weeks", "近 2 週"],
-              ["month", "本月"],
+              ["1week", "本週"],
+              ["2weeks", "近兩週"],
             ] as const
           ).map(([v, label]) => (
             <button
@@ -256,7 +242,7 @@ export default function CalendarPage() {
 
       <section className="mt-4 px-4">
         <h2 className="text-sm font-semibold text-[var(--muted-foreground)]">
-          {view === "month" ? "本月場次預覽" : "此期場次預覽"}
+          {view === "1week" ? "本週場次預覽" : "近兩週場次預覽"}
         </h2>
         <div className="mt-2 space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
@@ -265,7 +251,7 @@ export default function CalendarPage() {
               此期暫無場次
             </div>
           )}
-          {trips.slice(0, view === "2weeks" ? 10 : 8).map((t) => {
+          {trips.slice(0, view === "2weeks" ? 10 : 7).map((t) => {
             const wd = ["日", "一", "二", "三", "四", "五", "六"][
               new Date(t.date).getDay()
             ];
