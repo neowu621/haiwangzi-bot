@@ -4,6 +4,7 @@ import { createAdminWebJwt } from "@/lib/auth";
 import { verifyWebPassword } from "@/lib/admin-web-crypto";
 import { logAudit } from "@/lib/audit";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   if (!secret) {
     return NextResponse.json({ error: "missing secret" }, { status: 401 });
   }
-  if (secret !== process.env.ADMIN_WEB_SECRET) {
+  if (!safeEqual(secret, process.env.ADMIN_WEB_SECRET)) {
     return NextResponse.json({ error: "invalid secret" }, { status: 401 });
   }
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
   if (!secret) {
     return NextResponse.json({ error: "missing secret" }, { status: 401 });
   }
-  if (secret !== process.env.ADMIN_WEB_SECRET) {
+  if (!safeEqual(secret, process.env.ADMIN_WEB_SECRET)) {
     return NextResponse.json({ error: "invalid secret" }, { status: 401 });
   }
   if (!lineUserId) {

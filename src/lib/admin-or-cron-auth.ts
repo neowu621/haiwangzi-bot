@@ -4,6 +4,7 @@
 //   2. Bearer <CRON_SECRET>（給 server 端 / curl 觸發用）
 import { NextRequest, NextResponse } from "next/server";
 import { authFromRequest, requireRole } from "./auth";
+import { safeEqual } from "./safe-compare";
 
 export async function authAdminOrCron(
   req: NextRequest,
@@ -13,7 +14,7 @@ export async function authAdminOrCron(
   if (authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && token === cronSecret) {
+    if (cronSecret && safeEqual(token, cronSecret)) {
       return { ok: true };
     }
   }

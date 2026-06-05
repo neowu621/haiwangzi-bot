@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hashWebPassword, verifyWebPassword } from "@/lib/admin-web-crypto";
 import { logAudit } from "@/lib/audit";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   const { secret, lineUserId, newPassword, oldPassword } = parsed.data;
 
   // 1. 驗共用管理密碼
-  if (secret !== process.env.ADMIN_WEB_SECRET) {
+  if (!safeEqual(secret, process.env.ADMIN_WEB_SECRET)) {
     return NextResponse.json({ error: "invalid secret" }, { status: 401 });
   }
 

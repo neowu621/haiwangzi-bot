@@ -95,8 +95,8 @@ export function findDevPersona(lineUserId: string): DevPersona | undefined {
 }
 
 export function isDevModeEnabled(): boolean {
-  return (
-    process.env.NODE_ENV !== "production" ||
-    process.env.DEV_MODE_ENABLED === "1"
-  );
+  // v355：production 一律關閉 dev 模式，不接受 DEV_MODE_ENABLED 環境變數覆寫
+  //   （避免單一 env 設錯就能用 /api/dev/login 造出 admin persona）
+  //   非 production 環境一律啟用（與原本行為一致）
+  return process.env.NODE_ENV !== "production";
 }

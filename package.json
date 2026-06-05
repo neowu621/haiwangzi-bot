@@ -14,7 +14,6 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
-    "richmenu:build": "tsx scripts/build-richmenu.ts",
     "ship": "powershell -ExecutionPolicy Bypass -File scripts/ship.ps1 -Message"
   },
   "dependencies": {

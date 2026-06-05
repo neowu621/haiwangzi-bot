@@ -47,10 +47,16 @@ export interface RateLimitOptions {
  * 從 request 取出客戶端 IP（Zeabur 透過 proxy，看 x-forwarded-for header）
  */
 function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
+  // v355：優先用代理（Zeabur 邊緣）填入的 x-real-ip —— 客戶端無法偽造。
+  //   x-forwarded-for 最左欄是客戶端可任意塞的值，拿來當 rate-limit key 會被輪換繞過；
+  //   退而求其次取 XFF 最右欄（最接近我方代理）。
   const realIp = req.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
   return "unknown";
 }
 

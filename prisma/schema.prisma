@@ -390,6 +390,12 @@ model Booking {
   reminderLogs    ReminderLog[]
   refundRequests  RefundRequest[] // v274
 
+  // v355：效能索引（原本完全沒有，所有 admin/coach/cron 查詢都是 seq scan）
+  @@index([refId, type, status]) // by-trip / coach-today / reminders
+  @@index([userId, createdAt(sort: Desc)]) // 我的預約 / 會員 LTV
+  @@index([type, paymentStatus, status]) // 統計 / 付款 cron
+  @@index([status]) // dashboard 計數
+  @@index([createdAt(sort: Desc)]) // 全站訂單列表
   @@map("bookings")
 }
 
@@ -425,6 +431,8 @@ model ReminderLog {
 
   booking Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
+  // v355：dedup 查詢 findFirst(bookingId+type+channel) 原本是 seq scan
+  @@index([bookingId, type, channel])
   @@map("reminder_logs")
 }
 
@@ -691,6 +699,9 @@ model AuditLog {
   @@index([action])
   @@index([actorRole])
   @@index([createdAt(sort: Desc)])
+  // v355：前台活動 / 操作紀錄常用複合查詢（actorRole/actorId + 時間倒序）
+  @@index([actorRole, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
   @@map("audit_log")
 }
 

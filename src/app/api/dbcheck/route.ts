@@ -4,28 +4,14 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Phase 1 開發期確認 DB 連通用,Phase 2 之後可移除
+// DB 連通健康檢查（公開，但 v355 起不再回傳營運筆數 / 原始錯誤訊息，避免資訊洩漏）
 export async function GET() {
   try {
     const start = Date.now();
-    const [userCount, tripCount, tourCount, bookingCount] = await Promise.all([
-      prisma.user.count(),
-      prisma.divingTrip.count(),
-      prisma.tourPackage.count(),
-      prisma.booking.count(),
-    ]);
-    return NextResponse.json({
-      ok: true,
-      latencyMs: Date.now() - start,
-      counts: {
-        users: userCount,
-        divingTrips: tripCount,
-        tourPackages: tourCount,
-        bookings: bookingCount,
-      },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    await prisma.$queryRaw`SELECT 1`;
+    return NextResponse.json({ ok: true, latencyMs: Date.now() - start });
+  } catch {
+    // 不回傳 err.message（可能含連線字串 / schema / driver 內部資訊）
+    return NextResponse.json({ ok: false, error: "db_unreachable" }, { status: 500 });
   }
 }
