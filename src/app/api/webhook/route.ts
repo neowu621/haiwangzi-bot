@@ -47,9 +47,9 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
       break;
 
     case "message":
-      if (event.message.type === "text" && userId) {
-        await handleTextMessage(userId, event.message.text, event.replyToken);
-      }
+      // v343：移除關鍵字自動回覆。客戶傳訊只更新「最後活躍時間」，不自動回覆
+      //   （由老闆/教練親自回覆，或 LINE 官方帳號的自動回應設定處理）
+      if (userId) await touchUserActivity(userId);
       break;
 
     case "postback":
@@ -111,12 +111,8 @@ async function handleUnfollow(userId: string): Promise<void> {
   console.log(`[webhook] user unfollowed: ${userId}`);
 }
 
-async function handleTextMessage(
-  userId: string,
-  text: string,
-  replyToken: string,
-): Promise<void> {
-  const client = getLineClient();
+// v343：客戶傳訊只記錄活躍時間，不自動回覆
+async function touchUserActivity(userId: string): Promise<void> {
   await prisma.user.update({
     where: { lineUserId: userId },
     data: { lastActiveAt: new Date() },
@@ -128,59 +124,5 @@ async function handleTextMessage(
       create: { lineUserId: userId, displayName: `User ${userId.slice(0, 8)}`, ...(code && { code }) },
       update: {},
     });
-  });
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.zeabur.app";
-  // v233：fallback chain — 同 follow handler
-  const liffId = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
-  const liffBase = liffId ? `https://liff.line.me/${liffId}` : `${baseUrl}/liff`;
-
-  // 簡單關鍵字 routing,Phase 2 換成 Rich Menu
-  if (text.includes("日潛") || text.includes("預約") || text.includes("行事曆")) {
-    await client.replyMessage({
-      replyToken,
-      messages: [{ type: "text", text: `🤿 日潛預約\n${liffBase}/calendar` }],
-    });
-    return;
-  }
-  if (text.includes("潛水團") || text.includes("旅遊")) {
-    await client.replyMessage({
-      replyToken,
-      messages: [{ type: "text", text: `🏝️ 潛水團列表\n${liffBase}/tour` }],
-    });
-    return;
-  }
-  if (text.includes("我的") || text.includes("訂單")) {
-    await client.replyMessage({
-      replyToken,
-      messages: [{ type: "text", text: `📋 我的預約\n${liffBase}/my` }],
-    });
-    return;
-  }
-  if (text.includes("教練") || text.includes("今日")) {
-    await client.replyMessage({
-      replyToken,
-      messages: [{ type: "text", text: `🤿 教練 - 今日場次\n${liffBase}/coach/today` }],
-    });
-    return;
-  }
-  if (text.includes("admin") || text === "後台") {
-    await client.replyMessage({
-      replyToken,
-      messages: [{ type: "text", text: `⚙️ 後台 (僅限 Admin)\n${liffBase}/admin` }],
-    });
-    return;
-  }
-  // fallback echo
-  await client.replyMessage({
-    replyToken,
-    messages: [
-      {
-        type: "text",
-        text:
-          `您說: ${text}\n\n` +
-          `試試傳「日潛」「潛水團」「我的訂單」 或 「後台」`,
-      },
-    ],
   });
 }
