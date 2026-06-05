@@ -33,6 +33,7 @@ interface Row {
 // 動作 → 中文 + emoji
 const ACTION_LABELS: Record<string, { label: string; emoji: string; group: string }> = {
   "customer.login":                  { label: "LIFF 登入",      emoji: "🔐", group: "login" },
+  "customer.view.product":           { label: "瀏覽產品",       emoji: "👀", group: "view" },
   "customer.booking.create":         { label: "建立預約",       emoji: "📋", group: "booking" },
   "customer.booking.update":         { label: "修改預約",       emoji: "📋", group: "booking" },
   "customer.booking.cancel":         { label: "取消預約",       emoji: "📋", group: "booking" },
@@ -51,6 +52,7 @@ const ACTION_LABELS: Record<string, { label: string; emoji: string; group: strin
 const FILTER_CHIPS = [
   { key: "all",     label: "全部" },
   { key: "login",   label: "🔐 登入" },
+  { key: "view",    label: "👀 瀏覽" },
   { key: "booking", label: "📋 訂單" },
   { key: "payment", label: "💰 付款" },
   { key: "refund",  label: "💸 退款" },

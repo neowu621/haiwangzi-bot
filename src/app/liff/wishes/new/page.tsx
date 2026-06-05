@@ -34,7 +34,6 @@ export default function NewWishPage() {
   const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
   const [otherSites, setOtherSites] = useState<string>("");
   const [participants, setParticipants] = useState(1);
-  const [budget, setBudget] = useState<string>("");
   const [note, setNote] = useState("");
   const [refLinks, setRefLinks] = useState<string[]>([""]);
   const [submitting, setSubmitting] = useState(false);
@@ -65,7 +64,7 @@ export default function NewWishPage() {
           diveSiteIds: selectedSiteIds,
           otherSites: otherSites.trim() || null,
           participants,
-          budgetPerPerson: budget ? Number(budget) : null,
+          budgetPerPerson: null,
           customerNote: note || null,
           referenceImages,
         }),
@@ -186,30 +185,21 @@ export default function NewWishPage() {
           </CardContent>
         </Card>
 
-        {/* 人數 + 預算 */}
+        {/* 人數（v335：預算欄位移除，老闆會依需求報價） */}
         <Card>
-          <CardContent className="p-4 space-y-3">
-            <div>
-              <Label className="text-sm font-semibold">
-                <span className="text-rose-600">＊</span>預計人數
-              </Label>
-              <div className="mt-1 flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setParticipants(Math.max(1, participants - 1))}>－</Button>
-                <span className="w-12 text-center font-bold">{participants}</span>
-                <Button size="sm" variant="outline" onClick={() => setParticipants(Math.min(20, participants + 1))}>＋</Button>
-                <span className="ml-1 text-xs text-[var(--muted-foreground)]">人</span>
-              </div>
+          <CardContent className="p-4">
+            <Label className="text-sm font-semibold">
+              <span className="text-rose-600">＊</span>預計人數
+            </Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setParticipants(Math.max(1, participants - 1))}>－</Button>
+              <span className="w-12 text-center font-bold">{participants}</span>
+              <Button size="sm" variant="outline" onClick={() => setParticipants(Math.min(20, participants + 1))}>＋</Button>
+              <span className="ml-1 text-xs text-[var(--muted-foreground)]">人</span>
             </div>
-            <div>
-              <Label className="text-sm font-semibold">預算 / 人（選填，NT$）</Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="例：1500"
-              />
-            </div>
+            <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
+              💬 報價由老闆依您需求回覆，不需自填預算
+            </p>
           </CardContent>
         </Card>
 

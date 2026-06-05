@@ -1604,6 +1604,54 @@ export default function AdminBookingsPage() {
                 <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
                 <Button onClick={saveEdit} disabled={saving}>{saving ? "儲存中..." : "儲存"}</Button>
               </div>
+
+              {/* v335：🚨 危險區 — 永久刪除（boss only） */}
+              {adminUser?.effectiveRoles.includes("boss") && (
+                <div className="mt-4 rounded-lg border-2 border-rose-400 bg-rose-50 p-3">
+                  <div className="text-xs font-bold text-rose-900 mb-2">🚨 危險區 — 永久刪除</div>
+                  <p className="text-[11px] text-rose-800 mb-2 leading-relaxed">
+                    完全從資料庫移除這筆訂單，**包含**付款證明、退款紀錄、狀態歷史。
+                    僅用於測試訂單 / 爛資料 / 垃圾單。<b>正常取消請走「取消訂單」</b>。
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    style={{ borderColor: "rgb(220, 38, 38)", color: "rgb(220, 38, 38)" }}
+                    onClick={async () => {
+                      if (!editing) return;
+                      const code = editing.code ?? editing.id.slice(0, 8);
+                      const confirm1 = window.prompt(
+                        `🚨 永久刪除訂單 ${code}\n\n此動作無法復原。請打字 DELETE 確認：`,
+                      );
+                      if (confirm1 !== "DELETE") {
+                        if (confirm1 !== null) alert("取消刪除（未正確輸入 DELETE）");
+                        return;
+                      }
+                      const reason = window.prompt("請填寫刪除原因（會寫入審計紀錄）：", "測試訂單");
+                      if (reason === null) return;
+                      try {
+                        const r = await adminFetch<{ ok: boolean; deleted?: { paymentProofs: number; reminderLogs: number; refundRequests: number } }>(
+                          `/api/admin/bookings/${editing.id}/hard-delete`,
+                          {
+                            method: "DELETE",
+                            body: JSON.stringify({ confirm: "DELETE", reason }),
+                          },
+                        );
+                        alert(
+                          `✓ 已永久刪除 ${code}\n\n連動刪除：\n• 付款證明 ${r.deleted?.paymentProofs ?? 0} 筆\n• 提醒紀錄 ${r.deleted?.reminderLogs ?? 0} 筆\n• 退款申請 ${r.deleted?.refundRequests ?? 0} 筆\n\n已寫入審計紀錄。`,
+                        );
+                        setEditing(null);
+                        setBookings((prev) => prev.filter((b) => b.id !== editing.id));
+                      } catch (e) {
+                        alert("永久刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+                      }
+                    }}
+                  >
+                    🗑 永久刪除此訂單（不可復原）
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
