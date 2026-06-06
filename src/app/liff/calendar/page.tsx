@@ -50,7 +50,7 @@ export default function CalendarPage() {
   const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
-  // v371：改單週檢視（1 列省 Y 軸）+ ‹ › 翻頁。pageOffset=0 為本週，不可往過去（< 0）
+  // v375：改兩週檢視（2 列）+ ‹ › 翻頁。pageOffset=0 為本兩週，不可往過去（< 0）
   const [pageOffset, setPageOffset] = useState(0);
 
   const todayMidnight = useMemo(() => {
@@ -58,13 +58,13 @@ export default function CalendarPage() {
   }, [today]);
   const thisWeekStart = useMemo(() => startOfWeek(today), [today]);
   const winStart = useMemo(
-    () => addDays(thisWeekStart, pageOffset * 7),
+    () => addDays(thisWeekStart, pageOffset * 14),
     [thisWeekStart, pageOffset],
   );
-  const winEnd = useMemo(() => addDays(winStart, 6), [winStart]);
-  // 單週 7 格（週日~週六），剛好對齊星期欄、佔一列
+  const winEnd = useMemo(() => addDays(winStart, 13), [winStart]);
+  // 兩週 14 格（週日~週六 ×2），對齊星期欄、佔兩列
   const cells = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => ({ date: addDays(winStart, i) })),
+    () => Array.from({ length: 14 }, (_, i) => ({ date: addDays(winStart, i) })),
     [winStart],
   );
 
@@ -119,13 +119,13 @@ export default function CalendarPage() {
             size="icon"
             disabled={pageOffset === 0}
             onClick={() => setPageOffset((o) => Math.max(0, o - 1))}
-            aria-label="上一週"
+            aria-label="上兩週"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="flex flex-col items-center leading-tight">
             <span className="text-base font-bold text-[var(--color-ocean-deep)]">
-              {pageOffset === 0 ? "本週場次" : "場次"}
+              {pageOffset === 0 ? "本兩週場次" : "場次"}
             </span>
             <span className="text-xs text-[var(--muted-foreground)] tabular">{rangeLabel}</span>
           </div>
@@ -215,13 +215,13 @@ export default function CalendarPage() {
 
       <section className="mt-4 px-4">
         <h2 className="text-sm font-semibold text-[var(--muted-foreground)]">
-          {pageOffset === 0 ? "本週可預約場次" : "本週場次"}
+          {pageOffset === 0 ? "兩週內可預約場次" : "本頁可預約場次"}
         </h2>
         <div className="mt-2 space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
           {!loading && openTrips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
-              {pageOffset === 0 ? "本週暫無可預約場次" : "此週暫無可預約場次"}
+              {pageOffset === 0 ? "兩週內暫無可預約場次" : "此區間暫無可預約場次"}
             </div>
           )}
           {/* v371：只列可預約（過期完全不顯示）；依日期排序 */}
