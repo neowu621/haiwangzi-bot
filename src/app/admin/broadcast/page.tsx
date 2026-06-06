@@ -207,14 +207,22 @@ export default function BroadcastPage() {
   useEffect(() => {
     if (audience === "trip" && trips.length === 0) {
       Promise.all([
-        adminFetch<{ trips: { id: string; date: string; startTime: string; status: string }[] }>("/api/admin/trips"),
+        adminFetch<{ trips: { id: string; date: string; startTime: string; status: string; diveSiteIds?: string[] }[] }>("/api/admin/trips"),
         adminFetch<{ tours: { id: string; title: string; dateStart: string; status: string }[] }>("/api/admin/tours"),
+        adminFetch<Array<{ id: string; name: string }>>("/api/admin/sites").catch(() => [] as Array<{ id: string; name: string }>),
       ])
-        .then(([t, tour]) => {
+        .then(([t, tour, sites]) => {
+          // v361：日潛場次 label 帶入潛點（diveSiteIds 可能是 UUID 或直接中文名，解析失敗就用原值）
+          const siteMap = new Map((sites ?? []).map((s) => [s.id, s.name]));
+          const siteLabel = (ids?: string[]) =>
+            (ids ?? []).map((id) => siteMap.get(id) ?? id).filter(Boolean).join("・");
           const today = new Date(); today.setHours(0, 0, 0, 0);
           const dailyOpts = (t.trips ?? [])
             .filter((x) => x.status === "open" && new Date(x.date) >= today)
-            .map((x) => ({ type: "daily" as const, id: x.id, label: `日潛 ${x.date.slice(0, 10)} ${x.startTime}` }));
+            .map((x) => {
+              const site = siteLabel(x.diveSiteIds);
+              return { type: "daily" as const, id: x.id, label: `日潛 ${x.date.slice(0, 10)} ${x.startTime}${site ? ` · ${site}` : ""}` };
+            });
           const tourOpts = (tour.tours ?? [])
             .filter((x) => x.status === "open" && new Date(x.dateStart) >= today)
             .map((x) => ({ type: "tour" as const, id: x.id, label: `潛水團 ${x.title}` }));
