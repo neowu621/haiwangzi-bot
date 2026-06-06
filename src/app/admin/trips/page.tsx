@@ -868,7 +868,8 @@ export default function AdminTripsPage() {
     const start = new Date(`${dumpStartDate}T00:00:00+08:00`);
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
-    const fmtMD = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // v383：日期改斜線 MM/DD
+    const fmtMD = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
     const weekdayMap = ["日", "一", "二", "三", "四", "五", "六"];
     // 過濾出落在 [start, end] 區間、且非取消的場次
     const inRange = trips.filter((t) => {
@@ -882,10 +883,17 @@ export default function AdminTripsPage() {
       return a.startTime.localeCompare(b.startTime);
     });
     const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? id;
+    const baseUrl =
+      typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
+    // v383：小編 LINE 群組連結（如需更換改這裡）
+    const supportLine = "https://line.me/ti/g2/rYq0kI8NlIqI0H50Lz_7w-T74-LidDby8YjT7w";
     const lines: string[] = [];
-    const startLabel = `${fmtMD(start).replace("-", "/")}(週${weekdayMap[start.getDay()]})`;
-    const endLabel = `${fmtMD(end).replace("-", "/")}(週${weekdayMap[end.getDay()]})`;
+    const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
+    const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
     lines.push(`🌊 ${startLabel} ~ ${endLabel} 日潛場次`);
+    lines.push("");
+    lines.push("🔗 請使用手機至以下連結報名預約潛水");
+    lines.push(`${baseUrl}/d`);
     lines.push("");
     if (inRange.length === 0) {
       lines.push("（此週尚無場次）");
@@ -895,16 +903,13 @@ export default function AdminTripsPage() {
         const dateStr = fmtMD(d);
         const wd = weekdayMap[d.getDay()];
         const sitesStr = t.diveSiteIds.map(siteName).join("·") || "未設潛點";
-        const moonIcon = t.isNightDive ? " 🌙" : "";
-        lines.push(`${dateStr}(週${wd})${moonIcon} ${t.startTime} ${sitesStr} ${t.tankCount} 支`);
+        const moon = t.isNightDive ? "🌙" : ""; // v383：夜潛圖示放潛點前
+        lines.push(`${dateStr}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount} 支`);
       }
     }
     lines.push("");
-    // v377：改用超短連結 /d（302 轉到 LIFF 主頁登入→自動進日潛頁）。
-    //   訊息只貼 haiwangzi.zeabur.app/d，乾淨好看；最終落點仍是正規 LIFF 流程。
-    const baseUrl =
-      typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
-    lines.push(`🔗 報名：${baseUrl}/d`);
+    lines.push("🔗 如果有潛水任何問題請與小編聯繫");
+    lines.push(supportLine);
     return lines.join("\n");
   }
   async function copyDumpText() {
