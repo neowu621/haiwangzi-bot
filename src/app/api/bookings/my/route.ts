@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
           rejectedAt: true,         // v297
           rejectReason: true,       // v297
           imageKey: true,
+          thumbBase64: true,        // v379：縮圖（DB）
         },
       },
     },
@@ -134,6 +135,7 @@ export async function GET(req: NextRequest) {
               rejectedAt: p.rejectedAt,       // v297
               rejectReason: p.rejectReason,   // v297
               url,
+              thumb: p.thumbBase64 ?? null,   // v379：縮圖（DB，即時顯示）
             };
           }),
         ),

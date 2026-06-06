@@ -260,6 +260,7 @@ export default function AdminBookingsPage() {
     type: "deposit" | "final" | "refund";
     amount: number;
     previewUrl: string | null;
+    thumb?: string | null; // v379：縮圖（DB）
     uploadedAt: string;
     verifiedAt: string | null;
   }
@@ -1646,9 +1647,10 @@ export default function AdminBookingsPage() {
                             {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
                           </span>
                         </div>
-                        {p.previewUrl ? (
-                          <a href={p.previewUrl} target="_blank" rel="noopener noreferrer" className="block">
-                            <img src={p.previewUrl} alt="付款憑證"
+                        {(p.previewUrl ?? p.thumb) ? (
+                          // v379：大圖優先 R2 presigned，沒有就退 DB 縮圖（至少看得到）
+                          <a href={p.previewUrl ?? p.thumb ?? "#"} target="_blank" rel="noopener noreferrer" className="block">
+                            <img src={p.previewUrl ?? p.thumb ?? ""} alt="付款憑證"
                               className="w-full h-32 object-cover rounded border" style={{ borderColor: "var(--border)" }} />
                           </a>
                         ) : (

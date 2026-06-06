@@ -71,6 +71,7 @@ export default function PaymentUploadPage({
   const [paymentNote, setPaymentNote] = useState("");  // v238：匯款說明 optional
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [thumb, setThumb] = useState<string | null>(null); // v379：~160px 縮圖 base64（存 DB）
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +187,36 @@ export default function PaymentUploadPage({
     }
   }
 
+  // v379：產一張 ~160px 縮圖 base64（存 DB，永遠看得到）。失敗回 null（不擋上傳）。
+  async function makeThumb(f: File): Promise<string | null> {
+    if (!f.type.startsWith("image/")) return null;
+    const MAX = 160;
+    const url = URL.createObjectURL(f);
+    try {
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = url;
+      });
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+        else { width = Math.round((width * MAX) / height); height = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0, width, height);
+      return canvas.toDataURL("image/jpeg", 0.6); // 通常 5–15KB
+    } catch {
+      return null;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.files?.[0];
     if (!raw) return;
@@ -199,6 +230,7 @@ export default function PaymentUploadPage({
       const reader = new FileReader();
       reader.onload = () => setPreview(String(reader.result));
       reader.readAsDataURL(f);
+      setThumb(await makeThumb(f)); // v379：同時產縮圖
     } finally {
       setCompressing(false);
     }
@@ -286,6 +318,7 @@ export default function PaymentUploadPage({
             paymentMethod,  // v289：必填
             r2Key,
             imageDataUrl: r2Key || !file ? undefined : preview,
+            thumbBase64: thumb ?? undefined, // v379：縮圖永遠存 DB
             last5: paymentMethod === "bank" ? last5 : undefined,
             note: paymentNote || undefined,
           }),

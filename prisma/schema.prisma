@@ -409,6 +409,9 @@ model PaymentProof {
   amount     Int
   // v238：照片變 optional（後5碼 + 說明就夠核對）；imageKey 改 nullable
   imageKey   String?          @map("image_key")
+  // v379：縮圖 base64（~160px）永遠存 DB → 清單即時顯示、不靠 R2 presign，修「無預覽」+ 加速。
+  //   大圖仍走 imageKey（R2 key 優先，R2 不行才退 base64）。
+  thumbBase64 String?         @map("thumb_base64") @db.Text
   last5      String?          @map("last5") @db.VarChar(8) // 匯款帳號後 5 碼
   note       String? // 匯款說明（選填）
   uploadedAt DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz

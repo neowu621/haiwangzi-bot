@@ -21,6 +21,7 @@ const BodySchema = z.object({
   paymentMethod: z.enum(["bank", "linepay", "other"]),
   r2Key: z.string().min(1).optional(),
   imageDataUrl: z.string().min(20).optional(),
+  thumbBase64: z.string().max(60000).optional(), // v379：~160px 縮圖 base64（存 DB）
   last5: z.string().regex(/^\d{5}$/).optional(),
   note: z.string().max(500).optional(),
 }).superRefine((d, ctx) => {
@@ -119,6 +120,7 @@ export async function POST(
           type: data.type,
           amount: data.amount,
           imageKey,
+          thumbBase64: data.thumbBase64 ?? null, // v379：縮圖存 DB
           last5: data.last5 ?? null,
           note: data.note ?? null,
         },

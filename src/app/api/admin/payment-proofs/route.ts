@@ -55,7 +55,10 @@ export async function GET(req: NextRequest) {
       proofs.map(async (p) => {
         let previewUrl: string | null = null;
         // v238：imageKey 可為 null（沒附圖只填後 5 碼）
-        if (p.imageKey) {
+        // v379：legacy base64 imageKey 直接回，不要拿去 presign（會失敗 → 無預覽）
+        if (p.imageKey?.startsWith("data:")) {
+          previewUrl = p.imageKey;
+        } else if (p.imageKey) {
           try {
             previewUrl = await presignGetUrl("payments", p.imageKey, 600);
           } catch (e) {
@@ -69,6 +72,7 @@ export async function GET(req: NextRequest) {
           amount: p.amount,
           imageKey: p.imageKey,
           previewUrl,
+          thumb: p.thumbBase64 ?? null,   // v379：縮圖（DB，即時顯示）
           uploadedAt: p.uploadedAt,
           verifiedAt: p.verifiedAt,
           verifiedBy: p.verifiedBy,

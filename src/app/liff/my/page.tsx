@@ -83,6 +83,7 @@ interface MyBooking {
     amount: number;
     verifiedAt: string | null;
     url: string | null;
+    thumb?: string | null; // v379：縮圖（DB，即時顯示）
     uploadedAt: string;
   }>;
   // v289：同意聲明
@@ -772,19 +773,21 @@ function BookingCard({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() =>
-                    p.url &&
-                    setProofLightbox({
-                      url: p.url,
+                  onClick={() => {
+                    // v379：點開優先看大圖(R2)，沒有就退縮圖
+                    const big = p.url ?? p.thumb;
+                    if (big) setProofLightbox({
+                      url: big,
                       caption: `${p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"} NT$ ${p.amount.toLocaleString()}${p.verifiedAt ? " ✓已核可" : " ⏳待核可"}`,
-                    })
-                  }
+                    });
+                  }}
                   className="relative h-14 w-14 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--muted)]"
                 >
-                  {p.url ? (
+                  {(p.thumb ?? p.url) ? (
+                    // v379：小圖一律用縮圖(DB)即時顯示，沒縮圖才用大圖 URL
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={p.url}
+                      src={p.thumb ?? p.url ?? ""}
                       alt={p.type}
                       className="h-full w-full object-cover hover:scale-105 transition-transform"
                     />
