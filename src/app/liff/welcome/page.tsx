@@ -74,6 +74,20 @@ export default function WelcomePage() {
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
   const [emailMissing, setEmailMissing] = useState(false);
 
+  // v376：報名連結走「主頁先登入 → 自動轉址」流程。
+  //   連結帶 ?next=/liff/calendar；登入完成（含加好友 gate 由 LiffShell 處理）後自動轉過去。
+  //   只允許站內 /liff/ 路徑、且非 welcome 本身（防開放轉址 + 防迴圈）。
+  //   用 window.location.search 而非 useSearchParams（避免 welcome 預渲染需 Suspense 包裹）。
+  useEffect(() => {
+    if (!liff.ready || !liff.loggedIn) return;
+    if (typeof window === "undefined") return;
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next && next.startsWith("/liff/") && !next.startsWith("/liff/welcome")) {
+      router.replace(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liff.ready, liff.loggedIn]);
+
   useEffect(() => {
     fetch("/api/site-config")
       .then((r) => r.json())

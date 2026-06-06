@@ -98,7 +98,7 @@ export default function CalendarPage() {
   const rangeLabel = `${winStart.getMonth() + 1}/${winStart.getDate()} – ${winEnd.getMonth() + 1}/${winEnd.getDate()}`;
 
   return (
-    <LiffShell title="一日潛水" backHref="/liff/welcome" bottomNav={<BottomNav />} skipFriendGate>
+    <LiffShell title="一日潛水" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <section className="px-4 pt-3">
         {/* v330：找不到日期 → 引導至願望單 */}
         <Link href="/liff/wishes/new" className="mb-3 block">

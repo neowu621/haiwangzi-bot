@@ -52,7 +52,6 @@ export default function DiveDateListPage({
     <LiffShell
       title={`${date} 場次`}
       backHref="/liff/calendar"
-      skipFriendGate
     >
       <section className="space-y-3 px-4 pt-4">
         {loading && <LiffLoading variant="skeleton" count={2} label="正在查詢這天的場次..." />}
