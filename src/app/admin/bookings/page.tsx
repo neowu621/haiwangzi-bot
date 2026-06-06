@@ -95,6 +95,40 @@ function isPastDate(dateStr?: string) {
   return new Date(dateStr.slice(0, 10)) < new Date(new Date().toDateString());
 }
 
+// v366：付款明細
+interface PaymentEntryRow {
+  id: string;
+  amount: number;
+  kind: string;
+  isCash: boolean;
+  note: string | null;
+  createdByName: string | null;
+  createdAt: string;
+}
+const PAYMENT_KIND_META: Record<string, { label: string; cat: "cash" | "credit" | "discount" }> = {
+  transfer: { label: "轉帳", cat: "cash" },
+  cash: { label: "現金", cat: "cash" },
+  linepay: { label: "LINE Pay", cat: "cash" },
+  credit: { label: "抵用金", cat: "credit" },
+  boss_discount: { label: "老闆折抵", cat: "discount" },
+  assistant: { label: "助教減免", cat: "discount" },
+  other: { label: "其他", cat: "discount" },
+  reversal: { label: "沖銷", cat: "discount" },
+};
+const PAYMENT_BADGE_STYLE: Record<string, { background: string; color: string }> = {
+  cash: { background: "#dcfce7", color: "#15803d" },
+  credit: { background: "#e0f2fe", color: "#0369a1" },
+  discount: { background: "#fef3c7", color: "#b45309" },
+};
+function fmtEntryDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleString("zh-TW", {
+      timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+  } catch { return iso.slice(5, 16); }
+}
+
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pending: "待付款",
   deposit_paid: "已付訂金",
@@ -202,11 +236,14 @@ export default function AdminBookingsPage() {
   const [refundNote, setRefundNote] = useState("");
   const [refundBusy, setRefundBusy] = useState(false);
   const [refundCreditPct, setRefundCreditPct] = useState<number>(100); // 轉抵用金 % (例：110 = 退款金額的 110% 轉抵用金)
-  // v199：新增一筆付款
-  const [addPaymentAmount, setAddPaymentAmount] = useState<string>("");
-  const [addPaymentNote, setAddPaymentNote] = useState<string>("");
-  const [assistantDiscount, setAssistantDiscount] = useState<string>(""); // v362：助教減免
-  const [addingPayment, setAddingPayment] = useState(false);
+  // v366：金額調整（付款／折抵明細）— 取代舊「新增付款」+「助教減免」
+  const [entries, setEntries] = useState<PaymentEntryRow[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(false);
+  const [adjKind, setAdjKind] = useState<string>("transfer");
+  const [adjAmount, setAdjAmount] = useState<string>("");
+  const [adjNote, setAdjNote] = useState<string>("");
+  const [addingEntry, setAddingEntry] = useState(false);
+  const [editTotal, setEditTotal] = useState(false); // 是否展開「修改總金額」
 
   // 未到場 dialog
   const [noShowTarget, setNoShowTarget] = useState<AdminBooking | null>(null);
@@ -304,10 +341,17 @@ export default function AdminBookingsPage() {
     if (!editing) {
       setProofs([]);
       setProofsLoading(false);
+      setEntries([]);
+      setEntriesLoading(false);
+      setEditTotal(false);
+      setAdjAmount("");
+      setAdjNote("");
+      setAdjKind("transfer");
       return;
     }
     const ctrl = new AbortController();
     loadProofs(editing.id, ctrl.signal);
+    loadEntries(editing.id, ctrl.signal);
     return () => ctrl.abort();
   }, [editing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -595,44 +639,77 @@ export default function AdminBookingsPage() {
 
   // v183 移除 openEditFromByTrip — 依場次視圖已被砍掉
 
-  // v199：新增一筆付款（增量加到 paidAmount，避免直接 overwrite 造成多筆訂金混亂）
-  async function confirmAddPayment() {
+  // v366：載入訂單付款明細
+  async function loadEntries(bookingId: string, signal?: AbortSignal) {
+    setEntriesLoading(true);
+    setEntries([]);
+    try {
+      const r = await adminFetch<{ entries: PaymentEntryRow[] }>(
+        `/api/admin/bookings/${bookingId}/payment-entry`,
+        signal ? { signal } : undefined,
+      );
+      if (signal?.aborted) return;
+      setEntries(r.entries ?? []);
+    } catch (e) {
+      if (signal?.aborted) return;
+      console.error("[load entries]", e);
+    } finally {
+      if (!signal?.aborted) setEntriesLoading(false);
+    }
+  }
+
+  // v366：新增一筆金額調整（付款／折抵）→ 後端寫 PaymentEntry + 更新 paidAmount/paymentStatus
+  async function confirmAddEntry() {
     if (!editing) return;
-    const n = parseInt(addPaymentAmount, 10);
+    // 防呆：總金額有未存的變更時，先請存
+    if (editingOriginal && editing.totalAmount !== editingOriginal.totalAmount) {
+      alert("你改了「總金額」但尚未儲存。\n請先按下方「儲存」套用總金額，再新增付款紀錄。");
+      return;
+    }
+    const n = parseInt(adjAmount, 10);
     if (!n || n <= 0) { alert("請輸入正確金額"); return; }
     const owed = editing.totalAmount - editing.paidAmount;
-    if (n > owed) {
-      if (!confirm(`輸入金額 NT$${n} 大於剩餘應付 NT$${owed}。\n確定要新增此筆付款？（超收的會記入 paidAmount）`)) return;
-    }
-    const newPaid = editing.paidAmount + n;
-    // 自動推算付款狀態
-    let nextPayStatus = editing.paymentStatus;
-    if (newPaid >= editing.totalAmount) nextPayStatus = "fully_paid";
-    else if (newPaid > 0) nextPayStatus = "deposit_paid";
-    setAddingPayment(true);
+    if (n > owed) { alert(`金額不可超過剩餘款 NT$${owed.toLocaleString()}`); return; }
+    if (adjKind === "other" && !adjNote.trim()) { alert("「其他」項目必須填寫說明"); return; }
+    setAddingEntry(true);
     try {
-      const noteSuffix = addPaymentNote ? `（${addPaymentNote}）` : "";
-      const stamp = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }).slice(5, 16);
-      const updatedAdminNote =
-        (editing.adminNotes ? editing.adminNotes + "\n" : "") +
-        `[${stamp}] 收款 +NT$${n.toLocaleString()}${noteSuffix}`;
-      const body = {
-        paidAmount: newPaid,
-        paymentStatus: nextPayStatus,
-        adminNotes: updatedAdminNote,
-      };
-      const r = await adminFetch<{ ok: boolean; booking: AdminBooking }>(
-        `/api/admin/bookings/${editing.id}`,
-        { method: "PATCH", body: JSON.stringify(body) },
+      const r = await adminFetch<{ ok: boolean; entry: PaymentEntryRow; booking: { paidAmount: number; paymentStatus: string } }>(
+        `/api/admin/bookings/${editing.id}/payment-entry`,
+        { method: "POST", body: JSON.stringify({ kind: adjKind, amount: n, note: adjNote.trim() || undefined }) },
       );
-      setBookings((arr) => arr.map((x) => (x.id === editing.id ? { ...x, ...r.booking } : x)));
-      setEditing({ ...editing, paidAmount: newPaid, paymentStatus: nextPayStatus, adminNotes: updatedAdminNote });
-      setAddPaymentAmount("");
-      setAddPaymentNote("");
+      setEntries((arr) => [r.entry, ...arr]);
+      setEditing({ ...editing, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus });
+      setEditingOriginal((o) => (o ? { ...o, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus } : o));
+      setBookings((arr) => arr.map((x) => (x.id === editing.id
+        ? { ...x, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"] }
+        : x)));
+      setAdjAmount("");
+      setAdjNote("");
     } catch (e) {
       alert("新增付款失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
-      setAddingPayment(false);
+      setAddingEntry(false);
+    }
+  }
+
+  // v366：移除一筆付款明細（倒扣 paidAmount，audit 保留軌跡）
+  async function deleteEntry(entry: PaymentEntryRow) {
+    if (!editing) return;
+    const m = PAYMENT_KIND_META[entry.kind];
+    if (!confirm(`移除此筆「${m?.label ?? entry.kind}」NT$${entry.amount.toLocaleString()}？\n已付款會倒扣，動作會寫入審計紀錄。`)) return;
+    try {
+      const r = await adminFetch<{ ok: boolean; booking: { paidAmount: number; paymentStatus: string } }>(
+        `/api/admin/bookings/${editing.id}/payment-entry?entryId=${entry.id}`,
+        { method: "DELETE" },
+      );
+      setEntries((arr) => arr.filter((x) => x.id !== entry.id));
+      setEditing({ ...editing, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus });
+      setEditingOriginal((o) => (o ? { ...o, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus } : o));
+      setBookings((arr) => arr.map((x) => (x.id === editing.id
+        ? { ...x, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"] }
+        : x)));
+    } catch (e) {
+      alert("移除失敗：" + (e instanceof Error ? e.message : String(e)));
     }
   }
 
@@ -852,8 +929,10 @@ export default function AdminBookingsPage() {
                           setRefundOpen(false);
                           setRefundAmount(String(b.paidAmount));
                           setRefundCreditPct(100);
-                          setAddPaymentAmount("");
-                          setAddPaymentNote("");
+                          setAdjAmount("");
+                          setAdjNote("");
+                          setAdjKind("transfer");
+                          setEditTotal(false);
                         }}
                       >
                         {/* v320：訂單編號縮到最小 */}
@@ -1128,124 +1207,133 @@ export default function AdminBookingsPage() {
                         disabled={locked}
                         onChange={(n) => setEditing({ ...editing, participants: Math.max(1, n) })} />
                     </div>
-                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                      <Label className="text-xs">總金額</Label>
-                      <NumberInput min={0} value={editing.totalAmount}
-                        disabled={locked}
-                        onChange={(n) => setEditing({ ...editing, totalAmount: n })} />
-                    </div>
-                    {/* v362：助教減免（A 全免 + B 自訂減免金額）*/}
-                    {!locked && (
-                      <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                        <Label className="text-xs pt-1.5">🤿 助教減免</Label>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <NumberInput min={0} value={Number(assistantDiscount) || 0}
-                              onChange={(n) => setAssistantDiscount(String(n))} className="w-24" />
-                            <Button size="sm" variant="outline" className="h-8 text-xs"
-                              onClick={() => {
-                                const d = Math.max(0, Number(assistantDiscount) || 0);
-                                if (d <= 0) return;
-                                setEditing({
-                                  ...editing,
-                                  totalAmount: Math.max(0, editing.totalAmount - d),
-                                  adminNotes: (editing.adminNotes ? editing.adminNotes + "\n" : "") + `助教工作協助減免 NT$${d.toLocaleString()}`,
-                                });
-                                setAssistantDiscount("");
-                              }}>套用減免</Button>
-                            <Button size="sm" variant="outline" className="h-8 text-xs"
-                              onClick={() => {
-                                setEditing({
-                                  ...editing,
-                                  totalAmount: 0,
-                                  adminNotes: (editing.adminNotes ? editing.adminNotes + "\n" : "") + "助教工作協助（全免）",
-                                });
-                                setAssistantDiscount("");
-                              }}>全免（歸0）</Button>
+                    {/* v366：💰 金額（總/已付/剩餘 三欄）+ 可展開修改總金額 */}
+                    <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                      <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>💰 金額</div>
+                      <div className="p-3">
+                        <div className="grid grid-cols-3 text-center">
+                          <div className="px-1 border-r border-[var(--border)]">
+                            <div className="text-[11px] text-[var(--muted-foreground)]">總金額</div>
+                            <div className="text-lg font-extrabold tabular-nums" style={{ color: "#0A2342" }}>{editing.totalAmount.toLocaleString()}</div>
                           </div>
-                          <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">套用後會調整總金額並寫入管理備註，請按下方「儲存」生效。</div>
+                          <div className="px-1 border-r border-[var(--border)]">
+                            <div className="text-[11px] text-[var(--muted-foreground)]">已付款</div>
+                            <div className="text-lg font-extrabold tabular-nums"
+                              style={{ color: editing.paidAmount >= editing.totalAmount && editing.totalAmount > 0 ? "#16a34a" : editing.paidAmount > 0 ? "#0A2342" : "#94a3b8" }}>
+                              {editing.paidAmount.toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="px-1">
+                            <div className="text-[11px] text-[var(--muted-foreground)]">剩餘款</div>
+                            <div className="text-lg font-extrabold tabular-nums" style={{ color: owed > 0 ? "var(--color-coral)" : "#16a34a" }}>{owed.toLocaleString()}</div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                      <Label className="text-xs pt-1.5">已付金額</Label>
-                      <div>
-                        {/* v199：read-only 顯示，避免直接修改累計金額 */}
-                        <div className="flex h-9 items-center rounded-md border border-[var(--border)] bg-slate-50 px-3 text-sm tabular-nums font-bold"
-                          style={{ color: editing.paidAmount === editing.totalAmount && editing.totalAmount > 0 ? "#16a34a" : editing.paidAmount > 0 ? "#0a2342" : "#64748b" }}>
-                          {editing.paidAmount.toLocaleString()}
-                        </div>
-                        {!locked && owed > 0 && editing.paidAmount > 0 && (
-                          <div className="mt-1 text-[11px] font-medium text-amber-700">
-                            ⚠ 已付 {editing.paidAmount.toLocaleString()} ／ 總額 {editing.totalAmount.toLocaleString()}
-                            <span className="ml-1">→ 還差 <b>{owed.toLocaleString()}</b></span>
+                        {!locked && (editTotal ? (
+                          <div className="mt-2 flex items-center gap-2">
+                            <NumberInput min={0} value={editing.totalAmount} className="flex-1"
+                              onChange={(n) => setEditing({ ...editing, totalAmount: n })} />
+                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditTotal(false)}>完成</Button>
                           </div>
-                        )}
-                        {!locked && editing.paidAmount === editing.totalAmount && editing.totalAmount > 0 && (
-                          <div className="mt-1 text-[11px] font-medium text-emerald-700">
-                            ✓ 已付清
-                          </div>
-                        )}
+                        ) : (
+                          <button type="button" onClick={() => setEditTotal(true)}
+                            className="mt-2 block ml-auto text-[11px] font-semibold" style={{ color: "#0e9f93" }}>✎ 修改總金額</button>
+                        ))}
                       </div>
                     </div>
 
-                    {/* v199：新增付款 inline 區塊（僅在還有剩餘應付 + 未鎖時顯示） */}
+                    {/* v366：🧾 付款紀錄 */}
+                    <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                      <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>🧾 付款紀錄</div>
+                      <div className="px-3 py-1">
+                        {(() => {
+                          const entriesSum = entries.reduce((s, e) => s + e.amount, 0);
+                          const priorPaid = editing.paidAmount - entriesSum;
+                          const hasRows = entries.length > 0 || priorPaid > 0;
+                          return (
+                            <>
+                              {entriesLoading && entries.length === 0 && (
+                                <div className="py-3 text-center text-[11px] text-[var(--muted-foreground)]">載入中…</div>
+                              )}
+                              {!entriesLoading && !hasRows && (
+                                <div className="py-3 text-center text-[11px] text-[var(--muted-foreground)]">尚無付款紀錄</div>
+                              )}
+                              {priorPaid > 0 && (
+                                <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
+                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px]">先前已付</span>
+                                  <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{priorPaid.toLocaleString()}</span>
+                                  <span className="text-[10px] text-[var(--muted-foreground)]">（未明細化）</span>
+                                </div>
+                              )}
+                              {entries.map((e) => {
+                                const m = PAYMENT_KIND_META[e.kind] ?? { label: e.kind, cat: "discount" as const };
+                                const bs = PAYMENT_BADGE_STYLE[m.cat];
+                                return (
+                                  <div key={e.id} className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] last:border-0 text-[13px]">
+                                    <span className="text-[11px] text-[var(--muted-foreground)] w-[92px] tabular-nums">{fmtEntryDate(e.createdAt)}</span>
+                                    <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: e.amount >= 0 ? "#047857" : "var(--color-coral)" }}>
+                                      {e.amount >= 0 ? "+" : ""}{e.amount.toLocaleString()}
+                                    </span>
+                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={bs}>
+                                      {m.label}{e.note ? `・${e.note}` : ""}
+                                    </span>
+                                    {!locked && (
+                                      <button type="button" onClick={() => deleteEntry(e)}
+                                        className="ml-auto text-slate-300 hover:text-[var(--color-coral)] text-xs">✕</button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* v366：➕ 金額調整（新增一筆付款/折抵，取代舊「新增付款」+「助教減免」）*/}
                     {!locked && owed > 0 && (
-                      <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                        <Label className="text-xs pt-1.5" style={{ color: "#0891b2" }}>
-                          ＋新增付款
-                          <span className="block font-normal text-[10px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
-                            可分次累加
-                          </span>
-                        </Label>
-                        <div className="space-y-1.5">
-                          <div className="flex gap-2">
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={addPaymentAmount}
-                              onChange={(e) => {
-                                const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
-                                setAddPaymentAmount(clean);
-                              }}
-                              placeholder={`金額（剩 ${owed.toLocaleString()}）`}
-                              className="flex-1"
-                              disabled={addingPayment}
-                            />
-                            <Input
-                              value={addPaymentNote}
-                              onChange={(e) => setAddPaymentNote(e.target.value)}
-                              placeholder="備註（如：訂金/尾款/現金）"
-                              className="flex-1"
-                              disabled={addingPayment}
-                            />
-                            <Button
-                              size="sm"
-                              onClick={confirmAddPayment}
-                              disabled={addingPayment || !addPaymentAmount || parseInt(addPaymentAmount, 10) <= 0}
-                              style={{ background: "#0891b2", color: "#fff" }}
-                            >
-                              {addingPayment ? "..." : "✓ 確認"}
-                            </Button>
+                      <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                        <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>➕ 金額調整（新增一筆付款紀錄）</div>
+                        <div className="p-3 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <select value={adjKind} onChange={(e) => setAdjKind(e.target.value)}
+                              className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm">
+                              <option value="transfer">🏦 轉帳（實收）</option>
+                              <option value="cash">💵 現金（實收）</option>
+                              <option value="linepay">💚 LINE Pay（實收）</option>
+                              <option value="credit">⭐ 抵用金折抵</option>
+                              <option value="boss_discount">🎁 老闆折抵</option>
+                              <option value="assistant">🤿 助教減免</option>
+                              <option value="other">✏️ 其他（需說明）</option>
+                            </select>
+                            <Input type="text" inputMode="numeric" value={adjAmount}
+                              onChange={(e) => setAdjAmount(e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1"))}
+                              placeholder={`≤ 剩餘 ${owed.toLocaleString()}`} disabled={addingEntry} />
                           </div>
-                          {/* 快選：訂金一半 / 全額 / 補齊剩餘 */}
+                          {adjKind === "other" && (
+                            <Input value={adjNote} onChange={(e) => setAdjNote(e.target.value)}
+                              placeholder="說明（其他項目必填）例：員工眷屬優惠" disabled={addingEntry} />
+                          )}
                           <div className="flex gap-1.5 flex-wrap">
-                            <button type="button"
-                              onClick={() => setAddPaymentAmount(String(Math.round(editing.totalAmount * 0.3)))}
+                            <button type="button" onClick={() => setAdjAmount(String(Math.round(editing.totalAmount * 0.3)))}
                               className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-cyan-400 hover:text-cyan-600">
                               訂金 30% ({Math.round(editing.totalAmount * 0.3).toLocaleString()})
                             </button>
-                            <button type="button"
-                              onClick={() => setAddPaymentAmount(String(Math.round(editing.totalAmount * 0.5)))}
+                            <button type="button" onClick={() => setAdjAmount(String(Math.round(editing.totalAmount * 0.5)))}
                               className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:border-cyan-400 hover:text-cyan-600">
                               訂金 50% ({Math.round(editing.totalAmount * 0.5).toLocaleString()})
                             </button>
-                            <button type="button"
-                              onClick={() => setAddPaymentAmount(String(owed))}
+                            <button type="button" onClick={() => setAdjAmount(String(owed))}
                               className="rounded-md border border-cyan-300 bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 hover:bg-cyan-100">
                               補齊剩餘 {owed.toLocaleString()}
                             </button>
                           </div>
+                          <div className="text-[11px] text-[var(--muted-foreground)]">
+                            ⚠️ 金額不可超過剩餘款 <b style={{ color: "var(--color-coral)" }}>{owed.toLocaleString()}</b>，確認後立即寫入付款紀錄並更新已付款。
+                          </div>
+                          <Button className="w-full" disabled={addingEntry || !adjAmount || parseInt(adjAmount, 10) <= 0}
+                            onClick={confirmAddEntry} style={{ background: "#0e9f93", color: "#fff" }}>
+                            {addingEntry ? "處理中…" : "✓ 確認，新增此筆"}
+                          </Button>
                         </div>
                       </div>
                     )}

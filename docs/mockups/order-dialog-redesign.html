@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>訂單編輯 — 簡化版 v2 mockup</title>
+<style>
+  :root{--ink:#1A2330;--soft:#64748b;--line:#e5e7eb;--bg:#eef2f7;--navy:#0A2342;--teal:#0e9f93;--coral:#FF7B5A;--amber:#b45309}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;color:var(--ink);padding:28px 16px}
+  h1.page{font-size:15px;color:var(--soft);font-weight:600;max-width:560px;margin:0 auto 14px}
+  .dialog{max-width:560px;margin:0 auto;background:#fff;border-radius:16px;border:1px solid #e3e9f0;box-shadow:0 10px 34px rgba(10,35,66,.12);overflow:hidden}
+  .dlg-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .dlg-head b{font-size:16px;color:var(--navy)}
+  .dlg-head .x{color:#9aa6b2;font-size:18px}
+  .dlg-body{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+
+  .summary{background:#f6f8fb;border:1px solid #eef2f7;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .summary .nm{font-size:15px;font-weight:800;color:var(--navy)}
+  .summary .meta{font-size:12px;color:var(--soft);margin-top:3px}
+  .summary .code{font-size:12px;font-weight:700;color:var(--teal);white-space:nowrap}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:#dbeafe;color:#1d4ed8;margin-top:6px}
+
+  .sec{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .sec-h{font-size:12px;font-weight:800;color:var(--navy);background:#f8fafc;padding:8px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+  .sec-b{padding:13px}
+
+  /* 金額三欄 */
+  .money3{display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center}
+  .money3 .cell{padding:6px 4px;border-right:1px solid var(--line)}
+  .money3 .cell:last-child{border-right:none}
+  .money3 .lab{font-size:11px;color:var(--soft)}
+  .money3 .val{font-size:21px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .money3 .val.rest{color:var(--coral)}
+  .editlink{display:block;text-align:right;font-size:11px;color:var(--teal);font-weight:700;margin-top:8px;cursor:pointer}
+
+  /* 付款紀錄 timeline */
+  .rec{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed #eef2f5;font-size:13px}
+  .rec:last-child{border-bottom:none}
+  .rec .dt{font-size:11px;color:var(--soft);width:108px;font-variant-numeric:tabular-nums}
+  .rec .amt{font-weight:800;color:#047857;width:78px;text-align:right;font-variant-numeric:tabular-nums}
+  .rec .ty{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .ty.cash{background:#dcfce7;color:#15803d}      /* 實收 */
+  .ty.credit{background:#e0f2fe;color:#0369a1}    /* 抵用金 */
+  .ty.discount{background:#fef3c7;color:#b45309}  /* 折抵/減免 */
+  .rec .del{margin-left:auto;color:#cbd5e1;font-size:12px;cursor:pointer}
+  .rec-empty{font-size:12px;color:var(--soft);text-align:center;padding:14px}
+
+  /* 金額調整 */
+  .adj{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .adj .full{grid-column:1 / -1}
+  label.fl{font-size:11px;color:var(--soft);display:block;margin-bottom:3px}
+  .inp{width:100%;height:38px;border:1px solid var(--line);border-radius:9px;padding:0 11px;font-size:14px;background:#fff}
+  select.inp{appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b'><path d='M2 4l4 4 4-4'/></svg>") no-repeat right 11px center}
+  .cap{font-size:11px;color:var(--soft);margin-top:6px}
+  .cap b{color:var(--coral)}
+  .btn-ok{width:100%;height:40px;margin-top:10px;background:linear-gradient(120deg,#06b6a4,#0e9f93);color:#fff;border:none;border-radius:9px;font-weight:800;cursor:pointer}
+
+  select.inp{height:38px}
+  .row2{display:grid;grid-template-columns:84px 1fr;align-items:center;gap:10px}
+
+  .refund{border:1px solid #ffd9d3;background:#fff6f4;border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--coral);font-weight:700;display:flex;justify-content:space-between;cursor:pointer}
+  .foot{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line)}
+  .foot .ghost{flex:1;height:40px;border:1px solid var(--line);background:#fff;border-radius:10px;font-weight:700;cursor:pointer}
+  .foot .save{flex:1;height:40px;border:none;background:var(--navy);color:#fff;border-radius:10px;font-weight:800;cursor:pointer}
+
+  .note{max-width:560px;margin:18px auto 0;font-size:12.5px;color:#374151;line-height:1.75;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .note b{color:var(--navy)}
+  .note h3{margin:0 0 8px;font-size:13px;color:var(--navy)}
+  .hideOther{display:none}
+</style>
+</head>
+<body>
+  <h1 class="page">📐 訂單編輯 — 簡化版 v2 預覽（mockup，非實際系統）</h1>
+
+  <div class="dialog">
+    <div class="dlg-head"><b>訂單詳情 / 編輯</b><span class="x">✕</span></div>
+    <div class="dlg-body">
+
+      <!-- 摘要 -->
+      <div class="summary">
+        <div>
+          <div class="nm">Neo Wu</div>
+          <div class="meta">潛水團 · 綠島三天兩夜水推團 · 參加 2 人</div>
+          <span class="badge">🔵 已確認付款（訂金）</span>
+        </div>
+        <div class="code">O20260602-SP</div>
+      </div>
+
+      <!-- # 金額 -->
+      <div class="sec">
+        <div class="sec-h">💰 金額</div>
+        <div class="sec-b">
+          <div class="money3">
+            <div class="cell"><div class="lab">總金額</div><div class="val">29,000</div></div>
+            <div class="cell"><div class="lab">已付款</div><div class="val">14,000</div></div>
+            <div class="cell"><div class="lab">剩餘款</div><div class="val rest">15,000</div></div>
+          </div>
+          <span class="editlink">✎ 修改總金額</span>
+        </div>
+      </div>
+
+      <!-- # 付款紀錄 -->
+      <div class="sec">
+        <div class="sec-h">🧾 付款紀錄</div>
+        <div class="sec-b" style="padding:6px 13px">
+          <div class="rec"><span class="dt">06/02 14:30</span><span class="amt">+500</span><span class="ty credit">抵用金</span><span class="del">✕</span></div>
+          <div class="rec"><span class="dt">06/02 15:10</span><span class="amt">+11,500</span><span class="ty cash">轉帳</span><span class="del">✕</span></div>
+          <div class="rec"><span class="dt">06/03 09:00</span><span class="amt">+2,000</span><span class="ty discount">老闆折抵</span><span class="del">✕</span></div>
+        </div>
+      </div>
+
+      <!-- # 訂單狀態 -->
+      <div class="sec">
+        <div class="sec-h">⚙️ 訂單狀態</div>
+        <div class="sec-b">
+          <div class="row2"><label class="fl" style="margin:0">狀態</label><select class="inp"><option>已確認付款（訂金）</option><option>已完成</option><option>取消</option></select></div>
+        </div>
+      </div>
+
+      <!-- # 金額調整 -->
+      <div class="sec">
+        <div class="sec-h">➕ 金額調整（新增一筆付款紀錄）</div>
+        <div class="sec-b">
+          <div class="adj">
+            <div>
+              <label class="fl">調整項目</label>
+              <select class="inp" id="adjType" onchange="document.getElementById('otherWrap').className=this.value==='other'?'full':'full hideOther'">
+                <option value="transfer">🏦 轉帳 / 匯款（實收）</option>
+                <option value="cash">💵 現金（實收）</option>
+                <option value="linepay">💚 LINE Pay（實收）</option>
+                <option value="credit">⭐ 抵用金折抵</option>
+                <option value="boss">🎁 老闆折抵</option>
+                <option value="assistant">🤿 助教減免</option>
+                <option value="other">✏️ 其他（需說明）</option>
+              </select>
+            </div>
+            <div>
+              <label class="fl">金額</label>
+              <input class="inp" placeholder="≤ 剩餘 15,000">
+            </div>
+            <div class="full hideOther" id="otherWrap">
+              <label class="fl">說明（其他項目必填）</label>
+              <input class="inp" placeholder="例：員工眷屬優惠 / 活動回饋…">
+            </div>
+          </div>
+          <div class="cap">⚠️ 金額不可超過剩餘款 <b>15,000</b>。按確認後立即寫入「付款紀錄」並更新已付款/剩餘款。</div>
+          <button class="btn-ok">✓ 確認，新增此筆</button>
+        </div>
+      </div>
+
+      <!-- 退款（折疊）-->
+      <div class="refund"><span>💰 退款處理（已付 14,000 / 總額 29,000）</span><span>▾</span></div>
+
+    </div>
+    <div class="foot"><button class="ghost">關閉</button><button class="save">儲存</button></div>
+  </div>
+
+  <div class="note">
+    <h3>這版的結構（依你的需求）</h3>
+    <b>① #金額</b>：總金額 / 已付款 / 剩餘款 三欄一目了然（剩餘款紅字）。<br>
+    <b>② #付款紀錄</b>：每一筆時間 + 金額 + 類型 badge（綠＝實收、藍＝抵用金、黃＝折抵/減免），可逐筆刪。<br>
+    <b>③ #訂單狀態</b>：單一下拉。<br>
+    <b>④ #金額調整</b>：選「調整項目」（轉帳/現金/LINE Pay/抵用金/老闆折抵/助教減免/其他）→ 選「其他」才出現說明欄 → 填金額（≤剩餘）→ 確認 → 自動寫入付款紀錄。<br><br>
+    <h3>👉 其他建議</h3>
+    <b>A. 統一模型最大好處</b>：原本「新增付款」和「助教減免」是兩套，現在合併成「金額調整＝一筆有類型的紀錄」，邏輯一致、畫面少一半。<br>
+    <b>B. 區分「實收 vs 折抵」</b>：badge 用顏色分（綠=真的收到錢、黃=折抵沒收現金）。這對<b>報表/結帳</b>很重要——老闆要知道實際現金多少、折抵多少。建議報表分開算。<br>
+    <b>C. 每筆紀錄記「誰操作 + 時間」</b>：折抵/減免是敏感動作，自動寫進 audit。<br>
+    <b>D. 資料面要新增「付款明細表」</b>：目前系統只有單一 paidAmount 數字＋付款憑證圖，<u>沒有結構化的逐筆紀錄</u>。要做這個「付款紀錄」清單，需新增一張 <b>PaymentEntry</b> 資料表（每筆：金額/類型/說明/操作者/時間）。這是這版唯一較大的工程。<br>
+    <b>E. 刪除某筆紀錄</b>：應寫一筆反向紀錄（紅字 -金額）而非真刪，保留軌跡。<br>
+    <b>F. 上限驗證</b>：金額 > 0 且 ≤ 剩餘款；折抵類也一樣（避免折到負數）。
+  </div>
+</body>
+</html>

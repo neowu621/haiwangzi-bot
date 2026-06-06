@@ -391,6 +391,7 @@ model Booking {
   paymentProofs   PaymentProof[]
   reminderLogs    ReminderLog[]
   refundRequests  RefundRequest[] // v274
+  paymentEntries  PaymentEntry[]  // v366：付款/折抵逐筆明細帳
 
   // v355：效能索引（原本完全沒有，所有 admin/coach/cron 查詢都是 seq scan）
   @@index([refId, type, status]) // by-trip / coach-today / reminders
@@ -422,6 +423,27 @@ model PaymentProof {
 
   @@index([bookingId, uploadedAt(sort: Desc)]) // v356：訂單付款憑證查詢
   @@map("payment_proofs")
+}
+
+// v366：付款／折抵逐筆明細帳。
+//   每一筆「金額調整」（實收 or 折抵減免）寫一列；Booking.paidAmount 仍為權威加總。
+//   amount 正＝增加已付（收款/折抵）；負＝反向沖銷（刪除某筆時補一列）。
+//   isCash：true=真的收到現金（轉帳/現金/LINE Pay/抵用金）；false=折抵減免（老闆折抵/助教減免/其他優惠）→ 報表分開算。
+model PaymentEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  bookingId     String   @map("booking_id") @db.Uuid
+  amount        Int                                  // 正=加付款；負=沖銷
+  kind          String   @db.VarChar(24)             // transfer/cash/linepay/credit/boss_discount/assistant/other/reversal
+  isCash        Boolean  @default(true) @map("is_cash")
+  note          String?  @db.Text
+  createdById   String?  @map("created_by_id") @db.VarChar(64)
+  createdByName String?  @map("created_by_name") @db.VarChar(64)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt(sort: Desc)])
+  @@map("payment_entries")
 }
 
 model ReminderLog {
