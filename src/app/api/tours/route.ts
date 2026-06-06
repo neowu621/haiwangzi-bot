@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PUBLIC_LIST_CACHE_HEADERS } from "@/lib/http-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,5 +45,5 @@ export async function GET() {
       tanksCount: t.tanksCount,
       extraNote: t.extraNote,
     })),
-  });
+  }, { headers: PUBLIC_LIST_CACHE_HEADERS });
 }

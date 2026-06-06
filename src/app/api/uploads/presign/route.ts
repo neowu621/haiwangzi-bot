@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { authFromRequest } from "@/lib/auth";
+import { authFromRequest, requireRole } from "@/lib/auth";
 import {
   makeKey,
   presignPutUrl,
@@ -13,6 +13,15 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// v356：採 Codex 建議 —— 收緊上傳白名單
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
 
 const BodySchema = z.object({
   prefix: z.enum([
@@ -48,12 +57,26 @@ export async function POST(req: NextRequest) {
 
   const data = BodySchema.parse(await req.json());
 
-  // 簡單的 contentType 白名單
-  if (!/^(image|application\/pdf)/.test(data.contentType)) {
+  // v356：嚴格 contentType 白名單（jpeg/png/webp/pdf）—— 擋掉 SVG 等可帶 script 的格式
+  if (!ALLOWED_CONTENT_TYPES.has(data.contentType)) {
     return NextResponse.json(
-      { error: "unsupported contentType (僅允許 image/* 或 PDF)" },
+      { error: "unsupported contentType (僅允許 jpeg / png / webp / pdf)" },
       { status: 400 },
     );
+  }
+
+  // v356：大小上限 8MB
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: "request too large" }, { status: 413 });
+  }
+
+  // v356：只有 payments / avatars 開給一般登入會員上傳；其餘 prefix 需 coach/admin
+  if (!["payments", "avatars"].includes(data.prefix)) {
+    const role = requireRole(auth.user, ["coach", "admin"]);
+    if (!role.ok) {
+      return NextResponse.json({ error: role.message }, { status: role.status });
+    }
   }
 
   // payments prefix 強制 scope = userId，避免互相覆蓋

@@ -52,6 +52,7 @@ export default function AdminLoginPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [password, setPassword] = useState("");
+  const [oldPwd, setOldPwd] = useState(""); // v356：變更密碼需現密碼
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,11 @@ export default function AdminLoginPage() {
     if (!secret.trim()) { setErr("請輸入管理密碼"); return; }
     setLoading(true); setErr(null);
     try {
-      const res = await fetch(`/api/admin-web/auth?secret=${encodeURIComponent(secret)}`);
+      const res = await fetch("/api/admin-web/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setUsers(data.users);
@@ -116,12 +121,13 @@ export default function AdminLoginPage() {
     }
   }
 
-  /* Step 3b：首次設定個人密碼（或忘記密碼重設） */
+  /* Step 3b：首次設定個人密碼，或變更密碼（需現密碼） */
   async function setPassword_() {
     if (!newPwd || !confirmPwd) { setErr("請填寫新密碼與確認密碼"); return; }
-    if (newPwd.length < 8) { setErr("密碼至少 8 個字元"); return; }
+    if (newPwd.length < 12) { setErr("密碼至少 12 個字元"); return; } // v356
     if (newPwd !== confirmPwd) { setErr("兩次輸入不一致"); return; }
     if (!selectedUser) return;
+    if (selectedUser.hasPassword && !oldPwd) { setErr("請輸入目前密碼"); return; } // v356
     setLoading(true); setErr(null);
     try {
       const res = await fetch("/api/admin-web/set-password", {
@@ -131,6 +137,7 @@ export default function AdminLoginPage() {
           secret,
           lineUserId: selectedUser.lineUserId,
           newPassword: newPwd,
+          oldPassword: selectedUser.hasPassword ? oldPwd : undefined, // v356
         }),
       });
       const data = await res.json();
@@ -330,9 +337,9 @@ export default function AdminLoginPage() {
               {loading ? "登入中..." : "登入"}
             </Button>
             <button type="button"
-              onClick={() => { setStep("set-password"); setPassword(""); setErr(null); }}
+              onClick={() => { setStep("set-password"); setPassword(""); setOldPwd(""); setNewPwd(""); setConfirmPwd(""); setErr(null); }}
               className="w-full text-center text-sm" style={subStyle}>
-              忘記密碼？用管理密碼重設
+              變更個人密碼（需輸入目前密碼）
             </button>
             <button type="button" onClick={() => { setStep("pick"); setErr(null); }}
               className="w-full text-center text-sm" style={subStyle}>
@@ -358,9 +365,24 @@ export default function AdminLoginPage() {
                 </div>
               </div>
             </div>
+            {selectedUser.hasPassword && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium" style={labelStyle}>
+                  目前密碼
+                </label>
+                <Input
+                  type="password"
+                  placeholder="輸入目前的密碼"
+                  value={oldPwd}
+                  onChange={(e) => setOldPwd(e.target.value)}
+                  className={inputCls}
+                  autoFocus
+                />
+              </div>
+            )}
             <div>
               <label className="mb-1.5 block text-sm font-medium" style={labelStyle}>
-                新密碼（至少 8 字元）
+                新密碼（至少 12 字元）
               </label>
               <Input
                 type="password"
@@ -368,7 +390,7 @@ export default function AdminLoginPage() {
                 value={newPwd}
                 onChange={(e) => setNewPwd(e.target.value)}
                 className={inputCls}
-                autoFocus
+                autoFocus={!selectedUser.hasPassword}
               />
             </div>
             <div>

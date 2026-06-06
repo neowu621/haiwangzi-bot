@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { publicUrl } from "@/lib/r2";
+import { PUBLIC_LIST_CACHE_HEADERS } from "@/lib/http-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,5 +56,5 @@ export async function GET(req: NextRequest) {
       };
     }),
     nextCursor: hasMore ? list[list.length - 1].id : null,
-  });
+  }, { headers: PUBLIC_LIST_CACHE_HEADERS });
 }

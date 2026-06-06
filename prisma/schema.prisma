@@ -294,6 +294,7 @@ model DivingTrip {
   weatherNote       String?       @map("weather_note")
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
+  @@index([status, date, startTime]) // v356：行事曆/場次列查詢
   @@map("diving_trips")
 }
 
@@ -336,6 +337,7 @@ model TourPackage {
   guideReminderDays   Int        @default(2) @map("guide_reminder_days") // 出發前 N 天推手冊
   createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
+  @@index([status, dateStart]) // v356：潛旅列表查詢
   @@map("tour_packages")
 }
 
@@ -418,6 +420,7 @@ model PaymentProof {
   booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   verifier User?   @relation(fields: [verifiedBy], references: [lineUserId], onDelete: SetNull)
 
+  @@index([bookingId, uploadedAt(sort: Desc)]) // v356：訂單付款憑證查詢
   @@map("payment_proofs")
 }
 
@@ -510,6 +513,7 @@ model TripMedia {
   createdBy    String?       @map("created_by") @db.VarChar(64) // 教練 lineUserId
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
+  @@index([date(sort: Desc), createdAt(sort: Desc)]) // v356：媒體列表查詢
   @@map("trip_media")
 }
 

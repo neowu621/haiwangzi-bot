@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   secret: z.string(),          // 共用管理密碼（ADMIN_WEB_SECRET）
   lineUserId: z.string(),      // 要設密碼的帳號
-  newPassword: z.string().min(8, "密碼至少 8 個字元"),
-  // 若已設過舊密碼，必須提供；首次設定可省略
+  newPassword: z.string().min(12, "密碼至少 12 個字元"), // v356：8→12
+  // v356：已設過密碼者「必須」提供舊密碼才能改（堵住單一 secret 重設任意人密碼）
   oldPassword: z.string().optional(),
 });
 
@@ -59,17 +59,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. 若已有舊密碼且使用者「主動提供」oldPassword → 驗舊密碼
-  if (user.webPasswordHash && oldPassword) {
+  // 4. v356：已有密碼者「必須」提供且驗證舊密碼才能改
+  //   （移除「只憑 ADMIN_WEB_SECRET 即可重設任意人密碼」的弱點。
+  //    代價：忘記密碼者需由另一位 admin 協助重設。）
+  if (user.webPasswordHash) {
+    if (!oldPassword) {
+      return NextResponse.json(
+        { error: "需要提供目前密碼", code: "OLD_PASSWORD_REQUIRED" },
+        { status: 401 },
+      );
+    }
     const match = await verifyWebPassword(oldPassword, user.webPasswordHash);
     if (!match) {
       return NextResponse.json(
-        { error: "舊密碼錯誤", code: "WRONG_OLD_PASSWORD" },
+        { error: "目前密碼錯誤", code: "WRONG_OLD_PASSWORD" },
         { status: 401 },
       );
     }
   }
-  // 若已有密碼但沒提供 oldPassword → ADMIN_WEB_SECRET 已驗過，允許直接重設（忘記密碼）
 
   // 5. 雜湊新密碼並存入 DB
   const hash = await hashWebPassword(newPassword);

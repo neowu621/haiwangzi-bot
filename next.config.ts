@@ -29,6 +29,36 @@ const nextConfig: NextConfig = {
     },
   },
 
+  // v356：全站安全標頭（採 Codex 建議；X-Frame-Options 用 SAMEORIGIN 而非 DENY）
+  async headers() {
+    // 寬鬆但有防護的 CSP：放行 self / LINE SDK / R2 圖片 / inline（Next + LIFF 需要），
+    //   但鎖死 object-src、base-uri（防 base 注入），frame-ancestors 限 self + LINE
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://*.line-scdn.net https://*.line.me",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https:",
+      "frame-src 'self' https://*.line.me",
+      "frame-ancestors 'self' https://*.line.me",
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join("; ");
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+          { key: "Content-Security-Policy", value: csp },
+        ],
+      },
+    ];
+  },
+
   // LIFF deep-link path-append 修補
   //
   // LINE LIFF 的 endpoint URL 設成 https://haiwangzi.zeabur.app/liff/welcome；
