@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
-import { Trash2, Ban, X, Copy, ChevronDown, ChevronRight } from "lucide-react";
+import { Trash2, Ban, X, Copy, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { weekdayTW } from "@/lib/utils";
 import ExcelJS from "exceljs";
 
@@ -391,6 +391,40 @@ export default function ToursPage() {
     }
   }
 
+  // v378：每個潛旅團都能「Dump for LINE 筆記本」— 一鍵複製團資訊 + 報名短連結
+  function computeTourDump(t: Tour): string {
+    const fmt = (s: string) => s.split("T")[0];
+    const lines: string[] = [];
+    lines.push(`🌊 ${t.title}${t.subtitle ? `（${t.subtitle}）` : ""}`);
+    lines.push("");
+    lines.push(`📍 目的地：${DEST_LABELS[t.destination] ?? t.destination}`);
+    lines.push(`📅 ${fmt(t.dateStart)} → ${fmt(t.dateEnd)}${t.durationLabel ? `（${t.durationLabel}）` : ""}`);
+    if (t.roomLabel) lines.push(`🛏 ${t.roomLabel}`);
+    if (t.tanksCount) lines.push(`🤿 ${t.tanksCount} 支氣瓶`);
+    if (t.siteList) lines.push(`🐠 潛點：${t.siteList}`);
+    lines.push(`💰 團費 NT$${t.basePrice.toLocaleString()}・訂金 NT$${t.deposit.toLocaleString()}`);
+    const dd = t.depositDeadline ? fmt(t.depositDeadline) : null;
+    const fd = t.finalDeadline ? fmt(t.finalDeadline) : null;
+    if (dd || fd) {
+      lines.push(`⏰ ${dd ? `訂金截止 ${dd}` : ""}${dd && fd ? "・" : ""}${fd ? `尾款截止 ${fd}` : ""}`);
+    }
+    if (t.extraNote) { lines.push(""); lines.push(t.extraNote); }
+    lines.push("");
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
+    lines.push(`🔗 報名：${baseUrl}/d?to=/liff/tour/${t.id}`);
+    return lines.join("\n");
+  }
+
+  async function dumpTour(t: Tour) {
+    const text = computeTourDump(t);
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("已複製團資訊，可貼到 LINE 筆記本");
+    } catch {
+      window.prompt("複製以下內容貼到 LINE 筆記本：", text);
+    }
+  }
+
   // ─── Excel ───────────────────────────────────────────
   async function downloadTemplate() {
     const wb = new ExcelJS.Workbook();
@@ -747,6 +781,7 @@ export default function ToursPage() {
                             {/* actions */}
                             <td className="px-2 py-2 align-top" onClick={(e) => e.stopPropagation()}>
                               <div style={{ display: "flex", gap: 5 }}>
+                                <Mini onClick={() => dumpTour(t)} title="複製到 LINE 筆記本" color="#0e9f93"><FileText size={12} /></Mini>
                                 <Mini onClick={() => dupTour(t)} title="複製"><Copy size={12} /></Mini>
                                 {t.status === "open" && (
                                   <Mini onClick={() => cancelTour(t)} title="取消" color="#D88E1E"><Ban size={12} /></Mini>

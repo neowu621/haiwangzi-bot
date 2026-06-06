@@ -57,8 +57,9 @@ export default function CalendarPage() {
     const s = new Date(today); s.setHours(0, 0, 0, 0); return s;
   }, [today]);
   const thisWeekStart = useMemo(() => startOfWeek(today), [today]);
+  // v378：顯示兩週（14 天），但 ‹ › 每按一下移動「一週」(7 天) → 滑動視窗
   const winStart = useMemo(
-    () => addDays(thisWeekStart, pageOffset * 14),
+    () => addDays(thisWeekStart, pageOffset * 7),
     [thisWeekStart, pageOffset],
   );
   const winEnd = useMemo(() => addDays(winStart, 13), [winStart]);
@@ -119,7 +120,7 @@ export default function CalendarPage() {
             size="icon"
             disabled={pageOffset === 0}
             onClick={() => setPageOffset((o) => Math.max(0, o - 1))}
-            aria-label="上兩週"
+            aria-label="上一週"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
