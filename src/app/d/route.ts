@@ -16,6 +16,11 @@ export const dynamic = "force-dynamic";
 //     /liff/calendar → liff.line.me/{id}/calendar
 //     /liff/tour/123 → liff.line.me/{id}/tour/123
 export function GET(req: NextRequest) {
+  // v386：非 LINE 環境（桌機/手機瀏覽器）→ 導到乾淨入口頁 /line，
+  //   避免直接丟進 liff.line.me → access.line.me 網頁登入亂繞。LINE 內 → 開 LIFF。
+  const isLine = /Line\//i.test(req.headers.get("user-agent") ?? "");
+  if (!isLine) return NextResponse.redirect(new URL("/line", req.url), 302);
+
   const to = req.nextUrl.searchParams.get("to");
   const next = to && /^\/liff\/[A-Za-z0-9/_-]+$/.test(to) ? to : "/liff/calendar";
   const liffPath = next.replace(/^\/liff/, "") || "/"; // /liff/calendar → /calendar

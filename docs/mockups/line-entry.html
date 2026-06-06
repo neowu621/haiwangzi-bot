@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>/line 手機入口 — 預覽</title>
+<style>
+  :root{--ocean:#0A2342;--ocean2:#0F1B2D;--mid:#1B3A5C;--phos:#19c2a6;--coral:#FF7B5A;--gold:#FFB800;--line:#06C755;--soft:#9fb3c8}
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a0f1a;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;padding:20px;display:flex;gap:24px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .label{position:absolute;top:6px;left:50%;transform:translateX(-50%);font-size:12px;color:#9fb3c8}
+  /* phone frame */
+  .phone{width:390px;border-radius:30px;overflow:hidden;box-shadow:0 14px 50px rgba(0,0,0,.5);background:
+     radial-gradient(120% 80% at 50% -10%, #14365e 0%, #0A2342 45%, #070f1c 100%);
+     color:#fff;position:relative}
+  .bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:12px;color:#cfe;opacity:.7}
+  .pad{padding:8px 18px 26px}
+
+  /* brand */
+  .brand{display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 0 14px}
+  .trident{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+     background:radial-gradient(circle at 35% 30%, #1f4d75, #0A2342);box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 6px 18px rgba(0,0,0,.4);font-size:26px;margin-bottom:10px}
+  .brand h1{margin:0;font-size:23px;letter-spacing:1px;background:linear-gradient(90deg,#7fe9df,#19c2a6);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
+  .brand .en{font-size:10px;letter-spacing:3px;color:#7fa6c4;margin-top:4px}
+  .brand .slogan{font-size:12.5px;color:#bcd2e6;margin-top:8px}
+
+  /* sea condition strip */
+  .sea{display:flex;align-items:center;gap:10px;margin:6px 0 16px;padding:10px 12px;border-radius:14px;
+     background:linear-gradient(120deg, rgba(25,194,166,.14), rgba(10,35,66,.2));border:1px solid rgba(25,194,166,.25)}
+  .sea .dot{width:8px;height:8px;border-radius:50%;background:var(--phos);box-shadow:0 0 8px var(--phos)}
+  .sea b{font-size:13px;color:#dff7f3}
+  .sea span{font-size:11px;color:#9fc7be}
+
+  /* primary CTAs */
+  .cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:14px;
+     padding:15px;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:11px}
+  .cta.line{background:var(--line);color:#063b1a}
+  .cta.book{background:linear-gradient(120deg,#06b6a4,#0e9f93);color:#fff}
+  .cta .sub{display:block;font-size:10px;font-weight:500;opacity:.85;margin-top:2px}
+  .friendnote{text-align:center;font-size:10.5px;color:#7fa6c4;margin:-4px 0 16px}
+  .friendnote b{color:#bcd2e6}
+
+  /* quick grid */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+  .card{border-radius:16px;padding:14px;background:linear-gradient(135deg,#0F2238 0%,#16314e 70%);border:1px solid rgba(255,255,255,.06);position:relative;overflow:hidden}
+  .card .ic{font-size:22px}
+  .card .t{font-size:14px;font-weight:800;margin-top:8px}
+  .card .d{font-size:10.5px;color:#9fb3c8;margin-top:2px}
+  .card.wide{grid-column:1/-1;display:flex;align-items:center;gap:12px}
+  .card.wide .t{margin-top:0}
+  .card .glow{position:absolute;right:-20px;top:-20px;width:70px;height:70px;border-radius:50%;filter:blur(20px);opacity:.5}
+  .g-phos{background:#19c2a6}.g-coral{background:#FF7B5A}.g-gold{background:#FFB800}
+
+  .foot{text-align:center;margin-top:20px;font-size:10px;letter-spacing:2px;color:#5b7a93}
+  .foot .oa{display:block;margin-top:6px;font-size:11px;color:#7fa6c4}
+
+  .note{max-width:520px;font-size:12.5px;color:#cdd9e6;line-height:1.7;background:#111a28;border:1px solid #1e2c3c;border-radius:12px;padding:14px 16px}
+  .note b{color:#7fe9df}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="bar"><span>9:41</span><span>haiwangzi.zeabur.app/line</span></div>
+    <div class="pad">
+      <div class="brand">
+        <div class="trident">🔱</div>
+        <h1>東北角海王子潛水團</h1>
+        <div class="en">NORTHEAST CAPE · SEA PRINCE</div>
+        <div class="slogan">安全 · 專業 · 陪你看見海</div>
+      </div>
+
+      <div class="sea">
+        <span class="dot"></span>
+        <div><b>明日海況沉穩 · 適合下水</b><br><span>北馬 3 級 · 浪高 0.8m · 水溫 24°C · 能見度 8–12m</span></div>
+      </div>
+
+      <button class="cta line">➕ 加入 LINE 好友<span class="sub">加好友才能預約 · 收行前/付款通知</span></button>
+      <button class="cta book">📱 開啟 LINE 預約<span class="sub">用手機 LINE 開啟最順</span></button>
+      <div class="friendnote">或在 LINE 搜尋官方帳號　<b>@894bpmew</b></div>
+
+      <div class="grid">
+        <div class="card"><div class="glow g-phos"></div><div class="ic">🌊</div><div class="t">日潛預約</div><div class="d">東北角全潛點</div></div>
+        <div class="card"><div class="glow g-coral"></div><div class="ic">✈️</div><div class="t">旅遊潛水</div><div class="d">蘭嶼／綠島／墾丁</div></div>
+        <div class="card"><div class="glow g-gold"></div><div class="ic">📅</div><div class="t">場次行事曆</div><div class="d">即時查空位</div></div>
+        <div class="card"><div class="glow g-phos"></div><div class="ic">📋</div><div class="t">我的預約</div><div class="d">訂單／付款</div></div>
+        <div class="card wide"><div class="ic">📸</div><div><div class="t">最新動態</div><div class="d">每日潛水實況 · 影像日誌</div></div></div>
+      </div>
+
+      <div class="foot">BREATHE THE OCEAN<span class="oa">© 東北角海王子潛水團</span></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>/line 手機入口設計重點</b><br>
+    1. <b>手機優先</b>：單欄、深海漸層、大按鈕，一手可操作。<br>
+    2. <b>兩顆主 CTA</b>：🟢加入 LINE 好友（綠，LINE 規範色）＋ 📱開啟 LINE 預約（→ /d，進 LIFF）。<br>
+    3. 海況條、品牌（已用正確「SEA PRINCE」非舊字）、@894bpmew。<br>
+    4. 快捷格：日潛／旅潛／行事曆／我的預約／最新動態。<br><br>
+    <b>與兩頁的關係</b>：<br>
+    • <b>/line</b>（這張）= 手機客戶的前門。<br>
+    • <b>/</b>（root）= 未來潛水團官網（行銷／SEO，桌機為主）。<br>
+    • 點「開啟 LINE 預約」→ 走 /d → 在 LINE 內直接開 LIFF。<br><br>
+    這是靜態示意；實作會接真實海況、設定檔品牌字、實際連結。確認方向後我做成真的 /line 頁。
+  </div>
+</body>
+</html>

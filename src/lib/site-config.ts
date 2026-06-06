@@ -164,7 +164,7 @@ export const DEFAULT_CARDS: SiteCard[] = [
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   heroTitle: "東 北 角 海 王 子",
-  heroSubtitle: "NEIL OCEAN PRINCE",
+  heroSubtitle: "Northeast Cape Sea Prince",
   heroGreeting: "嗨",
   cards: DEFAULT_CARDS,
   seaEnabled: true,

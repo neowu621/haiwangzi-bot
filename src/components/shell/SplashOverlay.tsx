@@ -29,7 +29,7 @@ export function SplashOverlay() {
     splashDurationMs: 3000,
     splashCooldownMs: 3600000,
     heroTitle: "東 北 角 海 王 子",
-    heroSubtitle: "NEIL OCEAN PRINCE",
+    heroSubtitle: "Northeast Cape Sea Prince",
     footerSloganZh: "探索海洋 · 安全潛水 · 專業教學",
   });
 
