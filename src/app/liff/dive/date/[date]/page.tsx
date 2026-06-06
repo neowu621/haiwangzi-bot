@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
-import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn, isBookingClosed } from "@/lib/utils";
 
 interface Trip {
@@ -29,20 +28,18 @@ export default function DiveDateListPage({
   params: Promise<{ date: string }>;
 }) {
   const { date } = use(params);
-  const liff = useLiff();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    liff
-      .fetchWithAuth<{ trips: Trip[] }>(`/api/trips?from=${date}&to=${date}`)
-      .then((d) => setTrips(d.trips))
+    // v374：/api/trips 公開，改原生 fetch（不需登入即可瀏覽，配合 skipFriendGate 防呆）
+    fetch(`/api/trips?from=${date}&to=${date}`)
+      .then((r) => r.json())
+      .then((d: { trips?: Trip[] }) => setTrips(d.trips ?? []))
       .catch(() => setTrips([]))
       .finally(() => setLoading(false));
-    // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, liff.ready]);
+  }, [date]);
 
   // v358：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去日期）整筆隱藏。
   //   老闆/管理者看過期場次到「後台 → 日潛場次」。
@@ -55,6 +52,7 @@ export default function DiveDateListPage({
     <LiffShell
       title={`${date} 場次`}
       backHref="/liff/calendar"
+      skipFriendGate
     >
       <section className="space-y-3 px-4 pt-4">
         {loading && <LiffLoading variant="skeleton" count={2} label="正在查詢這天的場次..." />}
