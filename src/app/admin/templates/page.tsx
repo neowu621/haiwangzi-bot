@@ -95,6 +95,7 @@ const EXTRA_FOOTER: Record<string, string> = {
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
+  const [loading, setLoading] = useState(true); // v364：載入中動畫
   const [curIdx, setCurIdx] = useState(0);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -108,11 +109,14 @@ export default function AdminTemplatesPage() {
   }, []);
 
   const reload = useCallback(async () => {
+    setLoading(true);
     try {
       const d = await adminFetch<{ templates: TemplateInfo[] }>("/api/admin/templates");
       setTemplates(d.templates);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -243,8 +247,17 @@ export default function AdminTemplatesPage() {
           </div>
         )}
 
+        {/* v364：載入中動畫（冷啟動/慢網路時不再是一片空白）*/}
+        {loading && templates.length === 0 && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#516268" }}>
+            <div style={{ width: 34, height: 34, border: "3px solid #d6e6e4", borderTopColor: "#0e4c5a", borderRadius: "50%", animation: "tplspin .8s linear infinite" }} />
+            <div style={{ fontSize: 13, fontWeight: 600 }}>載入訊息模板中…</div>
+            <style>{`@keyframes tplspin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        )}
+
         {/* 3-column panes */}
-        <div style={{ display: "grid", gridTemplateColumns: "256px 1fr 400px", gap: 14, flex: 1, minHeight: 0 }}>
+        <div style={{ display: loading && templates.length === 0 ? "none" : "grid", gridTemplateColumns: "256px 1fr 400px", gap: 14, flex: 1, minHeight: 0 }}>
           {/* === Pane 1: 流程清單 === */}
           <div style={paneStyle}>
             <div style={paneHeadStyle}>
