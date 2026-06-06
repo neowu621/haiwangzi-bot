@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
@@ -55,12 +56,18 @@ export default function CalendarPage() {
   const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  // v369b：往後翻頁（每段 WINDOW_DAYS 天）。pageOffset=0 為「今天起」，不可往過去（< 0）
+  const [pageOffset, setPageOffset] = useState(0);
 
-  const cells = useMemo(() => buildWindowCells(today, WINDOW_DAYS), [today]);
-  const winStart = useMemo(() => {
+  const todayMidnight = useMemo(() => {
     const s = new Date(today); s.setHours(0, 0, 0, 0); return s;
   }, [today]);
+  const winStart = useMemo(
+    () => addDays(todayMidnight, pageOffset * WINDOW_DAYS),
+    [todayMidnight, pageOffset],
+  );
   const winEnd = useMemo(() => addDays(winStart, WINDOW_DAYS - 1), [winStart]);
+  const cells = useMemo(() => buildWindowCells(winStart, WINDOW_DAYS), [winStart]);
 
   useEffect(() => {
     setLoading(true);
@@ -106,10 +113,31 @@ export default function CalendarPage() {
           </div>
         </Link>
 
-        {/* v369：固定「今天起未來 10 天」標題 */}
-        <div className="flex items-center justify-center gap-2 py-1">
-          <span className="text-base font-bold text-[var(--color-ocean-deep)]">未來 10 天場次</span>
-          <span className="text-xs text-[var(--muted-foreground)] tabular">{rangeLabel}</span>
+        {/* v369b：‹ › 翻頁（每段 10 天）；「‹」最多回到今天，不給看過去 */}
+        <div className="flex items-center justify-between py-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={pageOffset === 0}
+            onClick={() => setPageOffset((o) => Math.max(0, o - 1))}
+            aria-label="上一段"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex flex-col items-center leading-tight">
+            <span className="text-base font-bold text-[var(--color-ocean-deep)]">
+              {pageOffset === 0 ? "未來 10 天場次" : "之後場次"}
+            </span>
+            <span className="text-xs text-[var(--muted-foreground)] tabular">{rangeLabel}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setPageOffset((o) => o + 1)}
+            aria-label="下一段"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* 星期表頭 */}
@@ -187,13 +215,13 @@ export default function CalendarPage() {
 
       <section className="mt-4 px-4">
         <h2 className="text-sm font-semibold text-[var(--muted-foreground)]">
-          未來 10 天可預約場次
+          {pageOffset === 0 ? "未來 10 天可預約場次" : "本頁可預約場次"}
         </h2>
         <div className="mt-2 space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
           {!loading && openTrips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
-              未來 10 天暫無可預約場次
+              {pageOffset === 0 ? "未來 10 天暫無可預約場次" : "此區間暫無可預約場次"}
             </div>
           )}
           {/* v369：只列可預約（過期完全不顯示）；依日期排序 */}

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日潛頁 — 今天起未來10天（預覽）</title>
+<style>
+  :root{--ink:#1A2330;--soft:#7c8794;--line:#e7edf3;--bg:#eef2f7;--ocean:#0A2342;--gold:#FFB800;--phos:#19c2a6;--coral:#FF7B5A;--muted:#f1f5f9}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;color:var(--ink);padding:22px 14px}
+  .h{max-width:760px;margin:0 auto 14px;font-size:14px;color:var(--soft);font-weight:700}
+  .wrap{display:flex;gap:24px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:900px;margin:0 auto}
+  .phone{width:390px;background:#fff;border:1px solid #e3e9f0;border-radius:22px;box-shadow:0 10px 30px rgba(10,35,66,.12);overflow:hidden}
+  .bar{background:var(--ocean);color:#fff;font-weight:800;font-size:15px;padding:12px 16px;display:flex;align-items:center;gap:8px}
+  .bar .b{opacity:.7;font-weight:400}
+  .pad{padding:14px 16px 18px}
+
+  .wish{display:flex;align-items:center;gap:8px;border:2px dashed rgba(25,194,166,.45);background:rgba(25,194,166,.06);border-radius:14px;padding:11px;margin-bottom:12px}
+  .wish .t{font-size:13px;font-weight:700;color:var(--ocean)}
+  .wish .s{font-size:11px;color:var(--soft)}
+  .wish .arr{margin-left:auto;color:var(--phos)}
+
+  .title{display:flex;align-items:center;justify-content:center;gap:8px;padding:4px 0 6px}
+  .title b{font-size:16px;color:var(--ocean)}
+  .title span{font-size:12px;color:var(--soft)}
+
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;font-weight:700;color:var(--soft);margin-top:2px}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+  .cell{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .cell.blank{border:none;background:transparent}
+  .cell.empty{color:#c2ccd6;opacity:.55}
+  .cell.has{cursor:pointer}
+  .cell.has:hover{background:var(--muted)}
+  .cell.today{border-color:var(--phos);background:rgba(25,194,166,.10);font-weight:800}
+  .dots{position:absolute;bottom:5px;display:flex;gap:3px}
+  .dot{width:6px;height:4px;border-radius:3px}
+  .dot.am{background:var(--gold)}.dot.pm{background:var(--phos)}.dot.ni{width:4px;height:4px;border-radius:50%;background:var(--ocean)}
+  .avail{position:absolute;top:2px;right:4px;font-size:9px;font-weight:800;color:var(--coral)}
+
+  .legend{display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--soft)}
+  .legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  .lg{background:var(--gold)}.lp{background:var(--phos)}.ln{background:var(--ocean)}
+
+  .sec-h{font-size:13px;font-weight:700;color:var(--soft);margin:18px 0 8px}
+  .card{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:11px;margin-bottom:8px}
+  .date{width:50px;text-align:center;line-height:1.15}
+  .date .d{font-size:18px;font-weight:800}
+  .date .wd{font-size:11px;font-weight:700;color:var(--ocean)}
+  .date .mo{font-size:10px;color:var(--soft)}
+  .mid{flex:1;min-width:0}
+  .mid .nm{font-size:13.5px;font-weight:800;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .mid .sub{font-size:11.5px;color:var(--soft);margin-top:2px}
+  .tg{font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px;background:#eef2f7;color:#475569}
+  .tg.night{background:#6366f1;color:#fff}.tg.gold{background:var(--gold);color:#5a4500}
+  .pill{font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;white-space:nowrap}
+  .pill.ok{background:#eef2f7;color:#475569}.pill.hot{background:rgba(255,123,90,.14);color:var(--coral)}.pill.full{background:#eef2f7;color:#94a3b8}
+
+  .note{max-width:760px;margin:16px auto 0;font-size:12.5px;color:#374151;line-height:1.75;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .note b{color:var(--ocean)}.del{color:#b91c1c;text-decoration:line-through}
+</style>
+</head>
+<body>
+  <div class="h">📐 客戶端「一日潛水」新版預覽（mockup）— 今天=6/6(六)、視窗 6/6–6/16、過期不顯示</div>
+  <div class="wrap">
+
+    <div class="phone">
+      <div class="bar">‹ 一日潛水</div>
+      <div class="pad">
+        <div class="wish">
+          <span style="font-size:18px">📝</span>
+          <div><div class="t">找不到日期？</div><div class="s">可提預約潛水日期（老闆會回覆討論）</div></div>
+          <span class="arr">›</span>
+        </div>
+
+        <div class="title" style="justify-content:space-between;padding:2px 2px 6px">
+          <span style="font-size:22px;color:#c2ccd6;font-weight:400">‹</span>
+          <div style="display:flex;flex-direction:column;align-items:center;line-height:1.15">
+            <b>未來 10 天場次</b><span>6/6 – 6/16</span>
+          </div>
+          <span style="font-size:22px;color:var(--ocean);font-weight:700">›</span>
+        </div>
+
+        <div class="dow"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+        <div class="grid">
+          <!-- 第一列：6 個空白(今天之前) + 今天6/6 -->
+          <div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div>
+          <div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div>
+          <div class="cell today empty">6</div>
+          <!-- 第二列 6/7~6/13 -->
+          <div class="cell has">7<div class="dots"><span class="dot am"></span></div></div>
+          <div class="cell empty">8</div>
+          <div class="cell has">9<div class="dots"><span class="dot pm"></span></div></div>
+          <div class="cell empty">10</div>
+          <div class="cell has">11<span class="avail">2</span><div class="dots"><span class="dot am"></span><span class="dot ni"></span></div></div>
+          <div class="cell empty">12</div>
+          <div class="cell has">13<div class="dots"><span class="dot am"></span><span class="dot pm"></span></div></div>
+          <!-- 第三列 6/14~6/16 + 空白 -->
+          <div class="cell has">14<div class="dots"><span class="dot am"></span></div></div>
+          <div class="cell empty">15</div>
+          <div class="cell empty">16</div>
+          <div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div>
+        </div>
+
+        <div class="legend">
+          <span><i class="lg"></i>上午</span><span><i class="lp"></i>下午</span><span><i class="ln"></i>夜潛</span>
+        </div>
+
+        <div class="sec-h">未來 10 天可預約場次</div>
+
+        <div class="card">
+          <div class="date"><div class="d">07</div><div class="wd">週日</div><div class="mo">06 月</div></div>
+          <div class="mid"><div class="nm">龍洞 <span class="tg">2 潛</span></div><div class="sub">09:00 · 剩 6/8</div></div>
+          <div class="pill ok">可預約</div>
+        </div>
+        <div class="card">
+          <div class="date"><div class="d">09</div><div class="wd">週二</div><div class="mo">06 月</div></div>
+          <div class="mid"><div class="nm">鼻頭角 <span class="tg">2 潛</span></div><div class="sub">14:00 · 剩 4/8</div></div>
+          <div class="pill ok">可預約</div>
+        </div>
+        <div class="card">
+          <div class="date"><div class="d">11</div><div class="wd">週四</div><div class="mo">06 月</div></div>
+          <div class="mid"><div class="nm">水晶宮 · 花牆 <span class="tg">3 潛</span><span class="tg night">🌙 夜潛</span></div><div class="sub">08:00 · 剩 2/8</div></div>
+          <div class="pill hot">即將額滿</div>
+        </div>
+        <div class="card">
+          <div class="date"><div class="d">13</div><div class="wd">週六</div><div class="mo">06 月</div></div>
+          <div class="mid"><div class="nm">象鼻岩 <span class="tg">2 潛</span><span class="tg gold">水推</span></div><div class="sub">08:30 · 已報 5 人</div></div>
+          <div class="pill ok">可預約</div>
+        </div>
+        <div class="card">
+          <div class="date"><div class="d">14</div><div class="wd">週日</div><div class="mo">06 月</div></div>
+          <div class="mid"><div class="nm">龍洞灣 <span class="tg">2 潛</span></div><div class="sub">09:00 · 剩 8/8</div></div>
+          <div class="pill ok">可預約</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>新版重點：</b><br>
+      ① <b>固定「今天 → 今天+10天」</b>（6/6–6/16）。今天(6/6)在正確星期欄，前面自動補空白格。<br>
+      ② <b>過期完全不顯示</b>：例如 6/6 早上若已過開始前2小時，就<span class="del">不出現</span>在清單、日曆也無圓點不可點 — 不再像舊版用灰色「無法預約」殘留。<br>
+      ③ <b>‹ › 翻頁</b>：「›」往後每次 +10 天（可一直往後查更晚場次）；「‹」最多回到今天 — <b>過去鎖住、灰色不可點</b>（如圖左箭頭）。<br>
+      ④ 「已滿」仍會顯示（那是額滿，不是過期）；想要其他日期 → 點上方「願望單」。<br>
+      <br>
+      （此為靜態示意；實際數字、潛點、額滿狀態由系統即時帶入）
+    </div>
+
+  </div>
+</body>
+</html>
