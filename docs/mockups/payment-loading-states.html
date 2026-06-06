@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>付款流程載入狀態 — 預覽</title>
+<style>
+  :root{--ink:#1A2330;--soft:#64748b;--line:#e8edf3;--bg:#eef2f7;--navy:#0A2342;--coral:#FF7B5A;--gold:#FFB800;--ocean:#0A2342;--teal:#0e9f93}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;color:var(--ink);padding:24px 14px}
+  h1{font-size:15px;color:var(--soft);font-weight:700;max-width:1200px;margin:0 auto 16px}
+  .wrap{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:flex-start;max-width:1240px;margin:0 auto}
+  .card{width:300px;background:#fff;border:1px solid #e3e9f0;border-radius:18px;box-shadow:0 8px 26px rgba(10,35,66,.10);overflow:hidden}
+  .cap{font-size:12px;font-weight:800;padding:7px 12px;color:#fff}
+  .cap.gold{background:#caa000}.cap.load{background:#0e9f93}.cap.ok{background:#16a34a}.cap.err{background:#e8643f}.cap.to{background:#b45309}
+  .body{padding:16px;min-height:300px;display:flex;flex-direction:column}
+  .tag{font-size:11px;color:var(--soft);margin:-4px 0 10px}
+
+  /* 列表頁訂單卡片片段 */
+  .mini{border:1px solid var(--line);border-radius:12px;padding:12px}
+  .mini .row1{font-size:13px;font-weight:800;color:var(--navy)}
+  .mini .row2{font-size:11px;color:var(--soft);margin-top:3px}
+  .mini .foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .btn-gold{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:var(--ocean);font-weight:800;font-size:12px;border:none;border-radius:999px;padding:9px 14px;cursor:pointer}
+  .btn-gold.busy{opacity:.85}
+  .amt{font-size:15px;font-weight:800;color:var(--coral)}
+  .amt .lab{display:block;font-size:9px;color:var(--soft);font-weight:500}
+
+  /* spinner */
+  .spin{width:14px;height:14px;border:2px solid rgba(10,35,66,.3);border-top-color:var(--ocean);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .slow{font-size:10px;color:var(--soft);margin-top:8px}
+
+  /* 付款頁狀態：置中 */
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px}
+  .bubbles{display:flex;gap:7px}
+  .bubbles i{width:13px;height:13px;border-radius:50%;background:var(--teal);display:inline-block;animation:bub 1s ease-in-out infinite}
+  .bubbles i:nth-child(2){animation-delay:.15s}.bubbles i:nth-child(3){animation-delay:.3s}
+  @keyframes bub{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-8px);opacity:1}}
+  .loadlbl{font-size:13px;color:var(--teal);font-weight:700}
+  .emoji{font-size:34px}
+  .errmsg{font-size:13px;font-weight:700;color:var(--coral)}
+  .retry{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:var(--ocean);font-weight:800;font-size:13px;border:none;border-radius:999px;padding:9px 18px;cursor:pointer}
+
+  /* 頂部 bar 模擬 */
+  .topbar{display:flex;align-items:center;gap:8px;background:#f7f9fc;border-bottom:1px solid var(--line);padding:9px 12px;font-size:12px;font-weight:700;color:var(--navy)}
+  .topbar .back{color:var(--soft)}
+  .note{max-width:1200px;margin:16px auto 0;font-size:12.5px;color:#374151;line-height:1.7;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .note b{color:var(--navy)}
+</style>
+</head>
+<body>
+  <h1>📐 付款流程載入狀態預覽（mockup，非實際系統）— 對應 v367 按鈕回饋 + v368 付款頁三結局</h1>
+  <div class="wrap">
+
+    <!-- 1. 列表按鈕：一般 -->
+    <div class="card">
+      <div class="cap gold">① 我的預約 — 按鈕（一般）</div>
+      <div class="body">
+        <div class="tag">尚未付款的訂單，CTA 可點</div>
+        <div class="mini">
+          <div class="row1">📅 日潛 ×1人 ×3支</div>
+          <div class="row2">⊙ 水晶宮・花牆　2026-06-11 08:00</div>
+          <div class="foot">
+            <button class="btn-gold">⬆️ 付款方式選擇</button>
+            <div class="amt"><span class="lab">應付金額</span>NT$ 1,950</div>
+          </div>
+          <div class="slow" style="color:#9a7a00">⏰ 6月9日 前付清（剩 3 天）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 列表按鈕：開啟中 -->
+    <div class="card">
+      <div class="cap gold">② 點下去（v367）— 開啟中</div>
+      <div class="body">
+        <div class="tag">點擊瞬間：轉圈 + 「開啟中…」，防呆禁止連點</div>
+        <div class="mini">
+          <div class="row1">📅 日潛 ×1人 ×3支</div>
+          <div class="row2">⊙ 水晶宮・花牆　2026-06-11 08:00</div>
+          <div class="foot">
+            <button class="btn-gold busy"><span class="spin"></span> 開啟中…</button>
+            <div class="amt"><span class="lab">應付金額</span>NT$ 1,950</div>
+          </div>
+          <div class="slow">載入較久…可能網路較慢。若遲遲沒反應，請關掉重開或稍後再試。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 付款頁：載入中 -->
+    <div class="card">
+      <div class="cap load">③ 付款頁 — 載入中（動畫）</div>
+      <div class="topbar"><span class="back">‹</span> 付款方式選擇</div>
+      <div class="body">
+        <div class="center">
+          <div class="bubbles"><i></i><i></i><i></i></div>
+          <div class="loadlbl">正在載入訂單…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 付款頁：失敗 + 重試 -->
+    <div class="card">
+      <div class="cap err">④ 付款頁 — 失敗（v368 新增）</div>
+      <div class="topbar"><span class="back">‹</span> 付款方式選擇</div>
+      <div class="body">
+        <div class="center">
+          <div class="emoji">😥</div>
+          <div class="errmsg">載入失敗，請檢查網路或重新登入</div>
+          <button class="retry">🔄 重試</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 付款頁：逾時 + 重試 -->
+    <div class="card">
+      <div class="cap to">⑤ 付款頁 — 逾時 8 秒（v368 新增）</div>
+      <div class="topbar"><span class="back">‹</span> 付款方式選擇</div>
+      <div class="body">
+        <div class="center">
+          <div class="emoji">😥</div>
+          <div class="errmsg" style="color:#b45309">載入過久，可能網路較慢</div>
+          <button class="retry">🔄 重試</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>動畫「三結局」設計：</b>點按鈕 → ②開啟中 → ③付款頁載入動畫 →
+    然後<b>必定</b>走向其一：✅成功(顯示付款內容) / ④失敗 / ⑤逾時(8秒)。
+    失敗與逾時都會<b>停止轉圈</b>並給 🔄 重試（idToken 過期會自動重新登入）——
+    修正先前「轉不完、不知是壞了還是載入」的問題。
+    <br><br>
+    <b>另：</b>①的截止日「6月9日 前付清（剩3天）」即 v367 修正後 — 出發(6/11 08:00)前48h，
+    不再是先前錯誤的 6/16（晚於活動）。
+  </div>
+</body>
+</html>

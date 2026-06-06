@@ -1,10 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
@@ -25,20 +24,13 @@ interface Trip {
   sites: Array<{ id: string; name: string } | null>;
 }
 
-type View = "1week" | "2weeks";
+// v369：客戶端固定顯示「今天 → 今天+10 天」滾動視窗（共 11 天）
+const WINDOW_DAYS = 11;
 
 function fmtISODate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate(),
   ).padStart(2, "0")}`;
-}
-
-/** 該日所在週的週日 00:00 */
-function startOfWeek(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - x.getDay()); // 0=Sun
-  return x;
 }
 
 function addDays(d: Date, n: number) {
@@ -47,71 +39,57 @@ function addDays(d: Date, n: number) {
   return x;
 }
 
-function buildCells(view: View, cursor: Date): Array<{ date: Date | null }> {
-  const sun = startOfWeek(cursor);
-  const days = view === "1week" ? 7 : 14;
-  return Array.from({ length: days }, (_, i) => ({ date: addDays(sun, i) }));
-}
-
-function rangeFromCells(cells: Array<{ date: Date | null }>) {
-  const dates = cells.map((c) => c.date).filter((d): d is Date => d !== null);
-  if (dates.length === 0) return null;
-  const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime());
-  return { from: sorted[0], to: sorted[sorted.length - 1] };
-}
-
-function headerLabel(_view: View, _cursor: Date, cells: Array<{ date: Date | null }>) {
-  const r = rangeFromCells(cells);
-  if (!r) return "";
-  const a = `${r.from.getMonth() + 1}/${r.from.getDate()}`;
-  const b = `${r.to.getMonth() + 1}/${r.to.getDate()}`;
-  return `${a} – ${b}`;
+// v369：今天起 N 天的格子；前面補空白格讓「今天」落在正確的星期欄
+function buildWindowCells(today: Date, days: number): Array<{ date: Date | null }> {
+  const start = new Date(today);
+  start.setHours(0, 0, 0, 0);
+  const lead = start.getDay(); // 0=Sun → 今天之前同週的空格數
+  const cells: Array<{ date: Date | null }> = [];
+  for (let i = 0; i < lead; i++) cells.push({ date: null });
+  for (let i = 0; i < days; i++) cells.push({ date: addDays(start, i) });
+  return cells;
 }
 
 export default function CalendarPage() {
-  const liff = useLiff();
-  const today = new Date();
-  const [view, setView] = useState<View>("1week"); // v330：預設本週
-  const [cursor, setCursor] = useState<Date>(today);
+  useLiff(); // 確保 LIFF 初始化（資料走公開 API，不需 token）
+  const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const cells = useMemo(() => buildCells(view, cursor), [view, cursor]);
-  const range = useMemo(() => rangeFromCells(cells), [cells]);
+  const cells = useMemo(() => buildWindowCells(today, WINDOW_DAYS), [today]);
+  const winStart = useMemo(() => {
+    const s = new Date(today); s.setHours(0, 0, 0, 0); return s;
+  }, [today]);
+  const winEnd = useMemo(() => addDays(winStart, WINDOW_DAYS - 1), [winStart]);
 
   useEffect(() => {
-    if (!range) return;
     setLoading(true);
-    // v267：/api/trips 是公開 endpoint，不需要 LIFF auth → 用原生 fetch 立即發送，
-    //   不必等 LIFF init 完成（省 1-1.5 秒）。原本走 liff.fetchWithAuth 會等 token，
-    //   但 token 對這支 API 來說根本沒用。
-    fetch(`/api/trips?from=${fmtISODate(range.from)}&to=${fmtISODate(range.to)}`)
+    // v267：/api/trips 公開 endpoint，原生 fetch 立即發送，不必等 LIFF token
+    fetch(`/api/trips?from=${fmtISODate(winStart)}&to=${fmtISODate(winEnd)}`)
       .then((r) => r.json())
       .then((d: { trips?: Trip[] }) => setTrips(d.trips ?? []))
       .catch(() => setTrips([]))
       .finally(() => setLoading(false));
-  }, [range?.from?.getTime(), range?.to?.getTime()]);
+  }, [winStart, winEnd]);
+
+  // v358/v369：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去）整筆隱藏
+  const openTrips = useMemo(
+    () => trips.filter((t) => !isBookingClosed(t.date, t.startTime)),
+    [trips],
+  );
 
   const tripsByDate = useMemo(() => {
     const m = new Map<string, Trip[]>();
-    for (const t of trips) {
-      // v358：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去日期）整筆隱藏。
-      //   老闆/管理者看過期場次到「後台 → 日潛場次」。
-      if (isBookingClosed(t.date, t.startTime)) continue;
+    for (const t of openTrips) {
       const arr = m.get(t.date) ?? [];
       arr.push(t);
       m.set(t.date, arr);
     }
     return m;
-  }, [trips]);
-
-  function shiftCursor(direction: 1 | -1) {
-    // v330: 1week 一次推 7 天、2weeks 一次推 14 天
-    const days = view === "1week" ? 7 : 14;
-    setCursor(addDays(cursor, days * direction));
-  }
+  }, [openTrips]);
 
   const todayIso = fmtISODate(today);
+  const rangeLabel = `${winStart.getMonth() + 1}/${winStart.getDate()} – ${winEnd.getMonth() + 1}/${winEnd.getDate()}`;
 
   return (
     <LiffShell title="一日潛水" backHref="/liff/welcome" bottomNav={<BottomNav />}>
@@ -128,43 +106,10 @@ export default function CalendarPage() {
           </div>
         </Link>
 
-        {/* 視圖切換 */}
-        <div className="mb-2 inline-flex w-full rounded-full bg-[var(--muted)] p-1 text-xs">
-          {(
-            [
-              ["1week", "本週"],
-              ["2weeks", "近兩週"],
-            ] as const
-          ).map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => {
-                setView(v);
-                setCursor(today);
-              }}
-              className={cn(
-                "flex-1 rounded-full py-1.5 font-semibold transition-colors",
-                view === v
-                  ? "bg-white text-[var(--color-ocean-deep)] shadow"
-                  : "text-[var(--muted-foreground)]",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* 月份/週次切換 */}
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={() => shiftCursor(-1)}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="text-base font-bold tabular">
-            {headerLabel(view, cursor, cells)}
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => shiftCursor(1)}>
-            <ChevronRight className="h-5 w-5" />
-          </Button>
+        {/* v369：固定「今天起未來 10 天」標題 */}
+        <div className="flex items-center justify-center gap-2 py-1">
+          <span className="text-base font-bold text-[var(--color-ocean-deep)]">未來 10 天場次</span>
+          <span className="text-xs text-[var(--muted-foreground)] tabular">{rangeLabel}</span>
         </div>
 
         {/* 星期表頭 */}
@@ -181,7 +126,6 @@ export default function CalendarPage() {
             const iso = fmtISODate(c.date);
             const dayTrips = tripsByDate.get(iso) ?? [];
             const isToday = iso === todayIso;
-            const isPast = c.date < new Date(new Date().setHours(0, 0, 0, 0));
             const hasAM = dayTrips.some(
               (t) => !t.isNightDive && t.startTime < "14:00",
             );
@@ -189,7 +133,6 @@ export default function CalendarPage() {
               (t) => !t.isNightDive && t.startTime >= "14:00",
             );
             const hasNight = dayTrips.some((t) => t.isNightDive);
-            // available 為 null（無上限）視為 ∞，這裡用 0 累加避免 NaN
             const totalAvail = dayTrips.reduce((s, t) => s + (t.available ?? 0), 0);
 
             return (
@@ -202,10 +145,9 @@ export default function CalendarPage() {
                   isToday
                     ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 font-bold"
                     : "border-[var(--border)]",
-                  isPast && "text-[var(--muted-foreground)] opacity-50",
                   dayTrips.length
                     ? "hover:bg-[var(--muted)] active:scale-95"
-                    : "pointer-events-none",
+                    : "pointer-events-none text-[var(--muted-foreground)] opacity-50",
                 )}
               >
                 <span className="tabular">{c.date.getDate()}</span>
@@ -245,23 +187,22 @@ export default function CalendarPage() {
 
       <section className="mt-4 px-4">
         <h2 className="text-sm font-semibold text-[var(--muted-foreground)]">
-          {view === "1week" ? "本週場次預覽" : "近兩週場次預覽"}
+          未來 10 天可預約場次
         </h2>
         <div className="mt-2 space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
-          {!loading && trips.length === 0 && (
+          {!loading && openTrips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
-              此期暫無場次
+              未來 10 天暫無可預約場次
             </div>
           )}
-          {trips.slice(0, view === "2weeks" ? 10 : 7).map((t) => {
+          {/* v369：只列可預約（過期完全不顯示）；依日期排序 */}
+          {openTrips.map((t) => {
             const wd = ["日", "一", "二", "三", "四", "五", "六"][
               new Date(t.date).getDay()
             ];
-            // v341：場次開始前 2 小時截止 → 灰底、不可點、顯示「無法預約」
-            const closed = isBookingClosed(t.date, t.startTime);
             const card = (
-              <Card className={cn("flex items-center gap-3 p-3", closed && "opacity-50 grayscale")}>
+              <Card className="flex items-center gap-3 p-3">
                 <div className="flex w-14 flex-col items-center leading-tight">
                   <div className="text-lg font-bold tabular">
                     {t.date.slice(8)}
@@ -305,12 +246,10 @@ export default function CalendarPage() {
                   </div>
                 </div>
                 <Badge
-                  variant={closed ? "muted" : t.available != null && t.available <= 2 ? "coral" : "muted"}
+                  variant={t.available != null && t.available <= 2 ? "coral" : "muted"}
                   className="tabular whitespace-nowrap"
                 >
-                  {closed
-                    ? "無法預約"
-                    : t.available === 0
+                  {t.available === 0
                     ? "已滿"
                     : t.available != null && t.available <= 2
                     ? "即將額滿"
@@ -318,9 +257,7 @@ export default function CalendarPage() {
                 </Badge>
               </Card>
             );
-            return closed ? (
-              <div key={t.id} className="cursor-not-allowed">{card}</div>
-            ) : (
+            return (
               <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>{card}</Link>
             );
           })}
