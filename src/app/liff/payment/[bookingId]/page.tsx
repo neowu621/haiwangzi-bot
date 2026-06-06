@@ -74,15 +74,30 @@ export default function PaymentUploadPage({
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // v368：訂單載入失敗狀態 + 重試 key（避免 fetch 失敗時無限轉圈）
+  const [loadError, setLoadError] = useState<"notfound" | "timeout" | "fail" | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   // v240：壓縮中提示
   const [compressing, setCompressing] = useState(false);
   const [origSize, setOrigSize] = useState<number | null>(null);
   const [finalSize, setFinalSize] = useState<number | null>(null);
 
+  // v368：加 .catch + 逾時 + 可重試。修正先前 fetch 失敗（如 idToken 過期 / 網路）
+  //        會讓畫面永遠停在「正在載入訂單…」轉圈、看似當機的問題。
   useEffect(() => {
-    liff
-      .fetchWithAuth<{ bookings: MyBookingMini[] }>("/api/bookings/my")
-      .then((d) => {
+    let cancelled = false;
+    setLoadError(null);
+    const withTimeout = <T,>(p: Promise<T>) =>
+      Promise.race([
+        p,
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("TIMEOUT")), 8000)),
+      ]);
+    (async () => {
+      try {
+        const d = await withTimeout(
+          liff.fetchWithAuth<{ bookings: MyBookingMini[] }>("/api/bookings/my"),
+        );
+        if (cancelled) return;
         const b = d.bookings.find((x) => x.id === bookingId);
         if (b) {
           setBooking(b);
@@ -93,17 +108,24 @@ export default function PaymentUploadPage({
             setPaymentMethod(b.paymentMethod);
           }
         } else {
-          setError("找不到此訂單");
+          setLoadError("notfound");
         }
-      });
+      } catch (e) {
+        if (cancelled) return;
+        // idToken 過期時 LiffProvider 會自動觸發重新登入（v351）；其餘失敗顯示重試
+        setLoadError(e instanceof Error && e.message === "TIMEOUT" ? "timeout" : "fail");
+      }
+    })();
     fetch("/api/config")
       .then((r) => r.json())
-      .then((c: Config) => { setBank(c.bank); setLinepay(c.linepay); })
+      .then((c: Config) => { if (!cancelled) { setBank(c.bank); setLinepay(c.linepay); } })
       .catch(() => { /* 失敗就 fallback，bank/linepay 保持 null */ })
-      .finally(() => setConfigLoaded(true));
+      .finally(() => { if (!cancelled) setConfigLoaded(true); });
+    return () => { cancelled = true; };
     // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
+    // v368：reloadKey 讓「重試」按鈕能重抓
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId, liff.ready]);
+  }, [bookingId, liff.ready, reloadKey]);
 
   // v240：迭代壓縮 — 目標 < 500KB
   //   Step 1: 1280px / quality 0.75
@@ -288,9 +310,23 @@ export default function PaymentUploadPage({
   if (!booking || !configLoaded) {
     return (
       <LiffShell title="付款方式選擇" backHref="/liff/my">
-        {error ? (
-          <div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">
-            {error}
+        {loadError ? (
+          <div className="px-4 py-12 text-center space-y-3">
+            <p className="text-sm font-medium text-[var(--color-coral)]">
+              {loadError === "notfound"
+                ? "找不到此訂單"
+                : loadError === "timeout"
+                  ? "😥 載入過久，可能網路較慢"
+                  : "😥 載入失敗，請檢查網路或重新登入"}
+            </p>
+            {loadError !== "notfound" && (
+              <button
+                onClick={() => { setLoadError(null); setConfigLoaded(false); setReloadKey((k) => k + 1); }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-bold text-[var(--color-ocean-deep)] shadow-sm"
+              >
+                🔄 重試
+              </button>
+            )}
           </div>
         ) : (
           <LiffLoading variant="bubbles" label="正在載入訂單..." />
