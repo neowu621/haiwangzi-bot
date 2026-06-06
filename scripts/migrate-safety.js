@@ -345,6 +345,24 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS vip_upgrade_credit_expiry_days INTEGER NOT NULL DEFAULT 360`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS admin_grant_credit_expiry_days INTEGER NOT NULL DEFAULT 360`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS refund_credit_expiry_days INTEGER NOT NULL DEFAULT 0`,
+
+  // v366: 付款/折抵逐筆明細帳（prisma db push 因既有 drift 失敗，靠這裡保證建表）
+  `CREATE TABLE IF NOT EXISTS payment_entries (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     booking_id UUID NOT NULL,
+     amount INT NOT NULL,
+     kind VARCHAR(24) NOT NULL,
+     is_cash BOOLEAN NOT NULL DEFAULT TRUE,
+     note TEXT,
+     created_by_id VARCHAR(64),
+     created_by_name VARCHAR(64),
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     CONSTRAINT payment_entries_booking_fk FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+   )`,
+  `CREATE INDEX IF NOT EXISTS payment_entries_booking_created_idx ON payment_entries(booking_id, created_at DESC)`,
+
+  // v379: 付款證明縮圖 base64（存 DB，永遠看得到、加速）
+  `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS thumb_base64 TEXT`,
 ];
 
 async function main() {
