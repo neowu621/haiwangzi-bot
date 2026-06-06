@@ -16,24 +16,28 @@ const BRAND_DEEP = "#0A2342";
 const BRAND_MID = "#1B3A5C";
 
 function shell(title: string, bodyHtml: string): string {
+  // v363：header 改純色（不用漸層，Outlook 也清楚顯示 logo）+ 加 color-scheme meta（深色模式不跑版）
   return `<!doctype html>
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
 <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f6fa;font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#0A2342;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fa;padding:20px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(10,35,66,0.08);">
-        <tr><td style="background:linear-gradient(135deg,${BRAND_DEEP} 0%,${BRAND_MID} 100%);padding:24px 28px;color:#fff;">
-          <div style="font-size:11px;letter-spacing:0.3em;color:${BRAND_PHOSPHOR};">NEIL OCEAN PRINCE</div>
-          <div style="font-size:20px;font-weight:bold;letter-spacing:0.1em;margin-top:4px;">東北角海王子潛水團</div>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#1A2330;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#eef2f7" style="background-color:#eef2f7;">
+    <tr><td align="center" style="padding:20px 12px;">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background-color:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e9f0;">
+        <tr><td bgcolor="${BRAND_DEEP}" style="background-color:${BRAND_DEEP};padding:20px 28px;">
+          <div style="font-size:18px;font-weight:800;color:#ffffff;line-height:1.3;">🌊 東北角海王子潛水團</div>
+          <div style="font-size:11px;letter-spacing:0.25em;color:${BRAND_PHOSPHOR};margin-top:3px;">SEA PRINCE DIVING</div>
         </td></tr>
-        <tr><td style="padding:28px;">
+        <tr><td style="padding:26px 28px;color:#1A2330;font-size:14px;line-height:1.7;">
           ${bodyHtml}
         </td></tr>
-        <tr><td style="background:#f8f9fb;padding:16px 28px;font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;">
+        <tr><td bgcolor="#f5f7fa" style="background-color:#f5f7fa;padding:16px 28px;font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;">
           <p style="margin:0 0 4px 0;">這封信由系統自動發送，請勿直接回覆。</p>
           <p style="margin:0;">若有問題請在 LINE 官方帳號留言聯絡我們 🤿</p>
         </td></tr>

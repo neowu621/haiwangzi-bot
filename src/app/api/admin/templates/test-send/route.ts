@@ -224,37 +224,47 @@ export async function POST(req: NextRequest) {
     </div>
   ` : "";
 
-  // 整體 Email：與 LINE Flex 視覺一致
-  const html = `<!DOCTYPE html><html><body style="font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#f5f8f8;padding:24px;margin:0">
-    <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 14px rgba(10,35,66,.08)">
-      <!-- 品牌 banner -->
-      <div style="background:linear-gradient(120deg,#06262e,#0e4c5a);padding:18px 24px;color:#eafffb">
-        <div style="font-size:18px;font-weight:800">東北角海王子潛水</div>
-        <div style="font-size:11px;opacity:.7;letter-spacing:2px">SEA PRINCE DIVING</div>
-      </div>
-      <!-- HERO：oceanDeep + 大 emoji + 標題 + 副標 -->
-      <div style="background:#0A2342;padding:30px 20px 26px;text-align:center">
-        <div style="font-size:48px;line-height:1;margin-bottom:12px">${heroEmoji}</div>
-        <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.3">${title}</div>
-        ${subtitle ? `<div style="font-size:14px;color:#00D9CB;font-weight:500;line-height:1.4">${subtitle}</div>` : ""}
-      </div>
-      <!-- BODY -->
-      <div style="padding:22px 26px;color:#1A2330">
-        ${bodyText ? `<p style="font-size:13.5px;color:#516268;line-height:1.75;margin:0 0 6px;white-space:pre-wrap">${bodyText}</p>` : ""}
-        ${listHtml}
-        ${dataHtml}
-        ${footerLineHtml}
-        <div style="text-align:center;margin-top:18px">
-          <a href="${buttonUrl}" style="display:inline-block;background:#00D9CB;color:#0A2342;padding:12px 32px;border-radius:10px;font-weight:800;text-decoration:none;font-size:14px">${buttonLabel} →</a>
-        </div>
-      </div>
-      <!-- 底部 -->
-      <div style="padding:14px 24px;border-top:1px solid #eef2f2;font-size:11px;color:#9aabae;text-align:center">
-        系統自動通知信 · 此為試送，正式寄送時動態欄位會自動帶入<br>
-        東北角海王子潛水 · 安全．專業，陪你看見海
-      </div>
-    </div>
-  </body></html>`;
+  // v363：email 重新設計 —— 純色背景（不用漸層，Outlook/深色模式都正常）、
+  //   移除 48px emoji 大帶、加 color-scheme meta、table 版型高對比
+  const html = `<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;color:#1A2330;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#eef2f7" style="background-color:#eef2f7;">
+    <tr><td align="center" style="padding:20px 12px;">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background-color:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e9f0;">
+        <tr><td bgcolor="#0A2342" style="background-color:#0A2342;padding:20px 26px;">
+          <div style="font-size:18px;font-weight:800;color:#ffffff;line-height:1.3;">🌊 東北角海王子潛水團</div>
+          <div style="font-size:11px;letter-spacing:3px;color:#00D9CB;margin-top:3px;">SEA PRINCE DIVING</div>
+        </td></tr>
+        <tr><td style="background-color:#eef9f8;padding:18px 26px;border-bottom:1px solid #e3e9f0;">
+          <div style="font-size:20px;font-weight:800;color:#0A2342;line-height:1.35;">${heroEmoji} ${title}</div>
+          ${subtitle ? `<div style="font-size:13.5px;color:#0a8f86;font-weight:600;margin-top:4px;">${subtitle}</div>` : ""}
+        </td></tr>
+        <tr><td style="padding:22px 26px;color:#1A2330;font-size:14px;line-height:1.75;">
+          ${bodyText ? `<p style="margin:0 0 8px;color:#374151;white-space:pre-wrap;">${bodyText}</p>` : ""}
+          ${listHtml}
+          ${dataHtml}
+          ${footerLineHtml}
+          <div style="text-align:center;margin-top:20px;">
+            <a href="${buttonUrl}" style="display:inline-block;background-color:#00D9CB;color:#0A2342;padding:13px 34px;border-radius:10px;font-weight:800;text-decoration:none;font-size:14px;">${buttonLabel} →</a>
+          </div>
+        </td></tr>
+        <tr><td bgcolor="#f5f7fa" style="background-color:#f5f7fa;padding:14px 26px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;text-align:center;">
+          系統自動通知信 · 此為試送，正式寄送時動態欄位會自動帶入<br>
+          東北角海王子潛水 · 安全．專業，陪你看見海
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
   try {
     await sendEmail({
