@@ -11,7 +11,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const isLine = /Line\//i.test(req.headers.get("user-agent") ?? "");
-  if (!isLine) return NextResponse.redirect(new URL("/line", req.url), 302);
+  if (!isLine) return new NextResponse(null, { status: 302, headers: { Location: "/line" } });
   // 只允許安全字元的 id（防注入到 URL）
   const safe = /^[A-Za-z0-9_-]+$/.test(id) ? id : "";
   const liffBase =

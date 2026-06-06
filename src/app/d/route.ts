@@ -19,7 +19,8 @@ export function GET(req: NextRequest) {
   // v386：非 LINE 環境（桌機/手機瀏覽器）→ 導到乾淨入口頁 /line，
   //   避免直接丟進 liff.line.me → access.line.me 網頁登入亂繞。LINE 內 → 開 LIFF。
   const isLine = /Line\//i.test(req.headers.get("user-agent") ?? "");
-  if (!isLine) return NextResponse.redirect(new URL("/line", req.url), 302);
+  // v387：用相對 Location 轉址（避免 new URL(req.url) 取到容器內部 host 導致瀏覽器連不到）
+  if (!isLine) return new NextResponse(null, { status: 302, headers: { Location: "/line" } });
 
   const to = req.nextUrl.searchParams.get("to");
   const next = to && /^\/liff\/[A-Za-z0-9/_-]+$/.test(to) ? to : "/liff/calendar";

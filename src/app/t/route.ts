@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export function GET(req: NextRequest) {
   const isLine = /Line\//i.test(req.headers.get("user-agent") ?? "");
-  if (!isLine) return NextResponse.redirect(new URL("/line", req.url), 302);
+  if (!isLine) return new NextResponse(null, { status: 302, headers: { Location: "/line" } });
   const liffBase =
     process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
   return NextResponse.redirect(`${liffBase}/tour`, 302);
