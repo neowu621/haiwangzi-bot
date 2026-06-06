@@ -886,7 +886,7 @@ export default function AdminTripsPage() {
     const baseUrl =
       typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
     // v383：小編 LINE 群組連結（如需更換改這裡）
-    const supportLine = "https://line.me/ti/g2/rYq0kI8NlIqI0H50Lz_7w-T74-LidDby8YjT7w";
+    const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];
     const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
     const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
