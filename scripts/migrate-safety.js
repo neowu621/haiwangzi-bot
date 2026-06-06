@@ -363,6 +363,18 @@ const PATCHES = [
 
   // v379: 付款證明縮圖 base64（存 DB，永遠看得到、加速）
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS thumb_base64 TEXT`,
+
+  // v381: 補上 schema 早已宣告、但 prod 當初用 migrate-safety 加欄時漏掉的 UNIQUE 索引。
+  //   這是 prisma db push 一直噴 data-loss 而失敗的根因（它想加唯一約束但不敢動）。
+  //   用 Prisma 慣例命名（{table}_{column}_key）讓 db push 比對後視為一致 → 之後乾淨通過。
+  //   都是可空欄位（NULL 不衝突）；若真有重複值，建索引會失敗 → 上面 try/catch 只 WARN 不中止。
+  `CREATE UNIQUE INDEX IF NOT EXISTS users_code_key ON users(code)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS credit_txs_code_key ON credit_txs(code)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS diving_trips_code_key ON diving_trips(code)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS tour_packages_code_key ON tour_packages(code)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS dive_wishes_code_key ON dive_wishes(code)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS bookings_code_key ON bookings(code)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS bookings_pay_link_token_key ON bookings(pay_link_token)`,
 ];
 
 async function main() {
