@@ -15,6 +15,17 @@
 
 ---
 
+## 0b. 實測診斷（2026-06-07，對 prod 跑 `migrate diff` 唯讀）
+⚠️ **drift 比原本以為的大**：不只 4 個唯一約束，`prisma migrate diff (prod → schema)` 還包含：
+- `DROP CONSTRAINT` 數個 FK（`payment_entries_booking_fk`、`refund_requests_booking_fk`、
+  `fk_dive_wishes_user`、`email_verify_tokens_user_fk`）→ Prisma 期望的 FK 名稱不同（cosmetic，drop+recreate 同一條 FK）。
+- 多個 `ALTER COLUMN id DROP DEFAULT`（migrate-safety 建表用了 `gen_random_uuid()`，Prisma 是 app 端產 id → 無 DB 預設）。**無害**（app 一直自帶 id）。
+- 多個 `SET NOT NULL`（dive_wishes.* / site_config.daily_briefing_enabled 等）。
+  - **已驗：這些欄位實際 NULL 筆數 = 0** → SET NOT NULL 不會失敗。
+
+結論：**雖然項目變多，但每一項都安全**（cosmetic FK 改名 + 無害 DROP DEFAULT + NOT NULL on 已無 NULL 的欄位）。
+仍維持「備份 → 複本演練 → 低流量時段 → 你在場」的流程；執行時用第 2 步產的 `reconcile.sql` 逐項確認**沒有 `DROP TABLE`/`DROP COLUMN`/型別縮小**即可。
+
 ## 1. 前置（必做，不可跳過）
 1. **完整備份 prod DB**（除了每日排程，手動再來一次）：
    - 從 Zeabur DB 服務匯出，或 `pg_dump`：
