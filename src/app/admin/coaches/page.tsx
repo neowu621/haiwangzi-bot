@@ -62,15 +62,20 @@ export default function CoachesPage() {
   const [form, setForm] = useState<Omit<Coach, "id">>(BLANK);
   const [specialtyInput, setSpecialtyInput] = useState("");
   const [saving, setSaving] = useState(false);
+  // v360：連結會員帳號的搜尋 picker
+  const [members, setMembers] = useState<Array<{ lineUserId: string; realName: string | null; displayName: string; role: string }>>([]);
+  const [memberQuery, setMemberQuery] = useState("");
 
   async function load() {
     try {
       setLoading(true);
-      const [coachData, cfgData] = await Promise.all([
+      const [coachData, cfgData, userData] = await Promise.all([
         adminFetch<{ coaches: Coach[] }>("/api/admin/coaches?includeInactive=1"),
         adminFetch<{ config: { defaultCoachFee?: number } }>("/api/admin/site-config").catch(() => ({ config: {} as { defaultCoachFee?: number } })),
+        adminFetch<{ users: Array<{ lineUserId: string; realName: string | null; displayName: string; role: string }> }>("/api/admin/users").catch(() => ({ users: [] })),
       ]);
       setCoaches(coachData.coaches);
+      setMembers(userData.users ?? []);
       setDefaultFee(cfgData.config.defaultCoachFee ?? 1500);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "載入失敗");
@@ -84,6 +89,7 @@ export default function CoachesPage() {
   function openCreate() {
     setForm({ ...BLANK, feePerDive: defaultFee });
     setSpecialtyInput("");
+    setMemberQuery("");
     setEditingId(null);
     setDialogMode("create");
   }
@@ -91,6 +97,7 @@ export default function CoachesPage() {
   function openEdit(c: Coach) {
     setForm({ realName: c.realName, cert: c.cert, specialty: c.specialty, feePerDive: c.feePerDive, note: c.note ?? "", lineUserId: c.lineUserId ?? "", active: c.active });
     setSpecialtyInput(c.specialty.join(", "));
+    setMemberQuery("");
     setEditingId(c.id);
     setDialogMode("edit");
   }
@@ -268,9 +275,46 @@ export default function CoachesPage() {
                 <Label style={labelStyle}>費用/潛 (NT$)</Label>
                 <NumberInput min={0} className={inputCls} value={form.feePerDive} onChange={(n) => setForm(f => ({ ...f, feePerDive: n }))} />
               </div>
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
-                <Label style={labelStyle}>LINE User ID</Label>
-                <Input className={inputCls} value={form.lineUserId ?? ""} onChange={e => setForm(f => ({ ...f, lineUserId: e.target.value }))} placeholder="選填" />
+              <div className="grid grid-cols-[7rem_1fr] items-start gap-3">
+                <Label style={labelStyle}>連結會員</Label>
+                <div>
+                  {form.lineUserId ? (
+                    <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm" style={{ background: "rgba(99,235,164,0.12)", borderColor: "rgba(99,235,164,0.4)", color: "#e6f0ff" }}>
+                      <span className="flex-1">
+                        ✅ {members.find((m) => m.lineUserId === form.lineUserId)?.realName
+                          ?? members.find((m) => m.lineUserId === form.lineUserId)?.displayName
+                          ?? form.lineUserId.slice(0, 14) + "…"}
+                      </span>
+                      <button type="button" className="text-xs underline" style={{ color: "var(--color-coral)" }}
+                        onClick={() => { setForm((f) => ({ ...f, lineUserId: "" })); setMemberQuery(""); }}>
+                        解除連結
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Input className={inputCls} value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} placeholder="🔍 搜尋會員姓名 / 顯示名稱" />
+                      {memberQuery.trim() && (
+                        <div className="mt-1 max-h-44 overflow-y-auto rounded-lg border" style={{ borderColor: "rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.35)" }}>
+                          {(() => {
+                            const q = memberQuery.trim().toLowerCase();
+                            const hits = members.filter((m) => (m.realName ?? "").toLowerCase().includes(q) || m.displayName.toLowerCase().includes(q)).slice(0, 20);
+                            if (hits.length === 0) return <div className="px-3 py-2 text-xs opacity-50">無符合會員</div>;
+                            return hits.map((m) => (
+                              <button key={m.lineUserId} type="button"
+                                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs hover:bg-white/10"
+                                style={{ color: "#e6f0ff" }}
+                                onClick={() => { setForm((f) => ({ ...f, lineUserId: m.lineUserId, realName: f.realName || (m.realName ?? m.displayName) })); setMemberQuery(""); }}>
+                                <span>{m.realName ?? m.displayName}</span>
+                                <span className="opacity-50">{m.role}</span>
+                              </button>
+                            ));
+                          })()}
+                        </div>
+                      )}
+                      <div className="mt-1 text-[10px]" style={{ color: "rgba(230,240,255,0.4)" }}>連結會員帳號後，此教練的潛次／排班會對應到該帳號</div>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
                 <Label style={labelStyle}>備註</Label>
