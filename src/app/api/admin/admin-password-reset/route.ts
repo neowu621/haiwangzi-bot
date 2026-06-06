@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { getLineClient } from "@/lib/line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,8 +67,32 @@ export async function POST(req: NextRequest) {
     metadata: { hadPassword: !!target.webPasswordHash },
   });
 
+  // v365：LINE 通知被重設的 admin/boss 本人（安全慣例：密碼被動就該知道）。best-effort，失敗不影響重設。
+  let notified = false;
+  try {
+    const operator = auth.user.realName ?? auth.user.displayName ?? "管理員";
+    const loginUrl = process.env.NEXT_PUBLIC_BASE_URL
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/admin/login`
+      : "後台登入頁";
+    const text =
+      `🔑 後台登入密碼已被重設\n\n` +
+      `你的「海王子後台」登入密碼已由 ${operator} 重設。\n` +
+      `下次登入時，請在登入頁重新設定一組新密碼。\n\n` +
+      `登入：${loginUrl}\n\n` +
+      `⚠️ 若這不是你預期的操作，請立即聯絡其他管理員。`;
+    const client = getLineClient();
+    await client.pushMessage({
+      to: targetLineUserId,
+      messages: [{ type: "text", text }],
+    });
+    notified = true;
+  } catch (e) {
+    console.error("[admin-password-reset] LINE notify failed:", e);
+  }
+
   return NextResponse.json({
     ok: true,
-    message: `已清空 ${target.realName ?? target.displayName ?? targetLineUserId} 的登入密碼，對方下次登入需重新設定`,
+    notified,
+    message: `已清空 ${target.realName ?? target.displayName ?? targetLineUserId} 的登入密碼，對方下次登入需重新設定${notified ? "（已 LINE 通知本人）" : "（LINE 通知未送達）"}`,
   });
 }
