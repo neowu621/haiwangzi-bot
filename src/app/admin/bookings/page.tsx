@@ -564,7 +564,9 @@ export default function AdminBookingsPage() {
       }
     }
     if (diffs.length === 0) {
-      alert("沒有變更");
+      // v382：沒有變更時，按「儲存」直接關閉視窗（本來就沒東西要存）。
+      //   先前彈 alert「沒有變更」後視窗不關、只能按 X，與直覺不符。
+      setEditing(null);
       return;
     }
     setPendingDiff(diffs);
