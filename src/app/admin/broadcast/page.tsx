@@ -716,7 +716,7 @@ function BroadcastStyles() {
         .bcn-stack { max-width: none; }
         .bcn-cols {
           display: grid;
-          grid-template-columns: 300px 1fr 400px;
+          grid-template-columns: 300px 1fr 440px;
           gap: 14px;
           align-items: start;
         }
@@ -893,7 +893,7 @@ function BroadcastStyles() {
       .bcn-mb-body { font-size: 13px; line-height: 1.7; color: #3f5358; white-space: pre-wrap; }
 
       .bcn-sendbar {
-        display: flex; align-items: center; gap: 14px;
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
         padding: 15px 17px; border-top: 1px solid var(--bcn-line);
         background: linear-gradient(180deg, #fbfdfd, #f4f9f8);
       }
@@ -905,9 +905,10 @@ function BroadcastStyles() {
       .bcn-est-t b { color: var(--bcn-teal); font-weight: 700; }
       .bcn-send-actions { margin-left: auto; display: flex; gap: 10px; }
       .bcn-btn {
-        border: none; border-radius: 11px; padding: 12px 22px;
+        border: none; border-radius: 11px; padding: 12px 16px;
         font-size: 13.5px; font-weight: 700; cursor: pointer; transition: .15s;
-        display: flex; align-items: center; justify-content: center; gap: 7px;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        white-space: nowrap; /* v359：按鈕文字不換行（修「試送給自己」斷兩行）*/
       }
       .bcn-btn-ghost { background: #fff; border: 1.5px solid var(--bcn-line); color: var(--bcn-ink-soft); }
       .bcn-btn-ghost:hover { border-color: var(--bcn-teal); color: var(--bcn-sea); }
