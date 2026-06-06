@@ -95,6 +95,9 @@ export default function CalendarPage() {
   const tripsByDate = useMemo(() => {
     const m = new Map<string, Trip[]>();
     for (const t of trips) {
+      // v358：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去日期）整筆隱藏。
+      //   老闆/管理者看過期場次到「後台 → 日潛場次」。
+      if (isBookingClosed(t.date, t.startTime)) continue;
       const arr = m.get(t.date) ?? [];
       arr.push(t);
       m.set(t.date, arr);

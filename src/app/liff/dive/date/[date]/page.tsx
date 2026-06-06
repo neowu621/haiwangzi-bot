@@ -44,6 +44,10 @@ export default function DiveDateListPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, liff.ready]);
 
+  // v358：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去日期）整筆隱藏。
+  //   老闆/管理者看過期場次到「後台 → 日潛場次」。
+  const visibleTrips = trips.filter((t) => !isBookingClosed(t.date, t.startTime));
+
   // 注意：不對整個 shell 套 midnight，
   //  否則白色卡片上的灰色字會被全域 text-white 覆寫導致對比不足。
   //  夜潛 trip 的卡片本身已套深色主題（line 73）。
@@ -54,12 +58,12 @@ export default function DiveDateListPage({
     >
       <section className="space-y-3 px-4 pt-4">
         {loading && <LiffLoading variant="skeleton" count={2} label="正在查詢這天的場次..." />}
-        {!loading && trips.length === 0 && (
+        {!loading && visibleTrips.length === 0 && (
           <Card className="p-8 text-center text-sm text-[var(--muted-foreground)]">
-            這天暫無開放場次
+            這天暫無可預約場次
           </Card>
         )}
-        {trips.map((t) => {
+        {visibleTrips.map((t) => {
           // v48：每人預估費（1 人 × 滿支數），baseTrip 是整單共享所以這只是 lower-bound
           // 公式：baseTrip + extraTank × tanks (此處 1 人) + 夜潛/水推
           // v155：夜潛加價已移除（夜潛與白天統一價）；水上摩托車欄位前已停用
