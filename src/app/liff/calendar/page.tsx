@@ -25,9 +25,6 @@ interface Trip {
   sites: Array<{ id: string; name: string } | null>;
 }
 
-// v369：客戶端固定顯示「今天 → 今天+10 天」滾動視窗（共 11 天）
-const WINDOW_DAYS = 11;
-
 function fmtISODate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate(),
@@ -40,15 +37,12 @@ function addDays(d: Date, n: number) {
   return x;
 }
 
-// v369：今天起 N 天的格子；前面補空白格讓「今天」落在正確的星期欄
-function buildWindowCells(today: Date, days: number): Array<{ date: Date | null }> {
-  const start = new Date(today);
-  start.setHours(0, 0, 0, 0);
-  const lead = start.getDay(); // 0=Sun → 今天之前同週的空格數
-  const cells: Array<{ date: Date | null }> = [];
-  for (let i = 0; i < lead; i++) cells.push({ date: null });
-  for (let i = 0; i < days; i++) cells.push({ date: addDays(start, i) });
-  return cells;
+/** 該日所在週的週日 00:00（台北裝置本地時間） */
+function startOfWeek(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - x.getDay()); // 0=Sun
+  return x;
 }
 
 export default function CalendarPage() {
@@ -56,18 +50,23 @@ export default function CalendarPage() {
   const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
-  // v369b：往後翻頁（每段 WINDOW_DAYS 天）。pageOffset=0 為「今天起」，不可往過去（< 0）
+  // v371：改單週檢視（1 列省 Y 軸）+ ‹ › 翻頁。pageOffset=0 為本週，不可往過去（< 0）
   const [pageOffset, setPageOffset] = useState(0);
 
   const todayMidnight = useMemo(() => {
     const s = new Date(today); s.setHours(0, 0, 0, 0); return s;
   }, [today]);
+  const thisWeekStart = useMemo(() => startOfWeek(today), [today]);
   const winStart = useMemo(
-    () => addDays(todayMidnight, pageOffset * WINDOW_DAYS),
-    [todayMidnight, pageOffset],
+    () => addDays(thisWeekStart, pageOffset * 7),
+    [thisWeekStart, pageOffset],
   );
-  const winEnd = useMemo(() => addDays(winStart, WINDOW_DAYS - 1), [winStart]);
-  const cells = useMemo(() => buildWindowCells(winStart, WINDOW_DAYS), [winStart]);
+  const winEnd = useMemo(() => addDays(winStart, 6), [winStart]);
+  // 單週 7 格（週日~週六），剛好對齊星期欄、佔一列
+  const cells = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => ({ date: addDays(winStart, i) })),
+    [winStart],
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -79,7 +78,7 @@ export default function CalendarPage() {
       .finally(() => setLoading(false));
   }, [winStart, winEnd]);
 
-  // v358/v369：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去）整筆隱藏
+  // v358/v371：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去）整筆隱藏
   const openTrips = useMemo(
     () => trips.filter((t) => !isBookingClosed(t.date, t.startTime)),
     [trips],
@@ -113,20 +112,20 @@ export default function CalendarPage() {
           </div>
         </Link>
 
-        {/* v369b：‹ › 翻頁（每段 10 天）；「‹」最多回到今天，不給看過去 */}
-        <div className="flex items-center justify-between py-1">
+        {/* v371：單週 ‹ › 翻頁；「‹」最多回到本週，不給看過去 */}
+        <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             size="icon"
             disabled={pageOffset === 0}
             onClick={() => setPageOffset((o) => Math.max(0, o - 1))}
-            aria-label="上一段"
+            aria-label="上一週"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="flex flex-col items-center leading-tight">
             <span className="text-base font-bold text-[var(--color-ocean-deep)]">
-              {pageOffset === 0 ? "未來 10 天場次" : "之後場次"}
+              {pageOffset === 0 ? "本週場次" : "場次"}
             </span>
             <span className="text-xs text-[var(--muted-foreground)] tabular">{rangeLabel}</span>
           </div>
@@ -134,7 +133,7 @@ export default function CalendarPage() {
             variant="ghost"
             size="icon"
             onClick={() => setPageOffset((o) => o + 1)}
-            aria-label="下一段"
+            aria-label="下一週"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
@@ -147,13 +146,13 @@ export default function CalendarPage() {
           ))}
         </div>
 
-        {/* 日期格 */}
+        {/* 日期格（單週 7 格，佔一列）*/}
         <div className="mt-1 grid grid-cols-7 gap-1">
           {cells.map((c, i) => {
-            if (!c.date) return <div key={i} className="aspect-square" />;
             const iso = fmtISODate(c.date);
             const dayTrips = tripsByDate.get(iso) ?? [];
             const isToday = iso === todayIso;
+            const isPast = c.date < todayMidnight;
             const hasAM = dayTrips.some(
               (t) => !t.isNightDive && t.startTime < "14:00",
             );
@@ -173,6 +172,7 @@ export default function CalendarPage() {
                   isToday
                     ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 font-bold"
                     : "border-[var(--border)]",
+                  isPast && "text-[var(--muted-foreground)] opacity-40",
                   dayTrips.length
                     ? "hover:bg-[var(--muted)] active:scale-95"
                     : "pointer-events-none text-[var(--muted-foreground)] opacity-50",
@@ -215,16 +215,16 @@ export default function CalendarPage() {
 
       <section className="mt-4 px-4">
         <h2 className="text-sm font-semibold text-[var(--muted-foreground)]">
-          {pageOffset === 0 ? "未來 10 天可預約場次" : "本頁可預約場次"}
+          {pageOffset === 0 ? "本週可預約場次" : "本週場次"}
         </h2>
         <div className="mt-2 space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
           {!loading && openTrips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
-              {pageOffset === 0 ? "未來 10 天暫無可預約場次" : "此區間暫無可預約場次"}
+              {pageOffset === 0 ? "本週暫無可預約場次" : "此週暫無可預約場次"}
             </div>
           )}
-          {/* v369：只列可預約（過期完全不顯示）；依日期排序 */}
+          {/* v371：只列可預約（過期完全不顯示）；依日期排序 */}
           {openTrips.map((t) => {
             const wd = ["日", "一", "二", "三", "四", "五", "六"][
               new Date(t.date).getDay()
