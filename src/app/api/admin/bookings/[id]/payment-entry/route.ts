@@ -11,8 +11,8 @@ import { logAudit } from "@/lib/audit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// 調整項目定義：label 顯示用、isCash 區分「真實金流 vs 折抵」（報表分開算）、cat 給前台 badge 上色
-export const PAYMENT_KINDS: Record<
+// 調整項目定義：label 顯示用、isCash 區分「真實金流 vs 折抵」（報表分開算）
+const PAYMENT_KINDS: Record<
   string,
   { label: string; isCash: boolean }
 > = {

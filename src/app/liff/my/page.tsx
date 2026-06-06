@@ -9,6 +9,7 @@ import {
   Check,
   Edit3,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { deriveBookingDisplay } from "@/lib/booking-status"; // v319
+import { computePaymentDeadline, activityStartFromTaipei } from "@/lib/payment-deadline"; // v367
 
 type GearItemType =
   | "BCD"
@@ -526,13 +528,17 @@ function BookingCard({
     b.paymentStatus !== "fully_paid" &&
     b.paymentStatus !== "refunded" &&
     b.totalAmount > 0;
-  // v273：付款截止日 = createdAt + 10 天（D+10 自動取消）
+  // v367：付款截止日 = min(下訂+10天, 活動出發前48小時)。修正先前截止日可能晚於活動日的 bug。
   const paymentDeadline = (() => {
     if (!needsPayment) return null;
     if (b.paymentStatus !== "pending") return null;
-    const d = new Date(b.createdAt);
-    d.setDate(d.getDate() + 10);
-    return d;
+    const activityStart =
+      ref && "date" in ref
+        ? activityStartFromTaipei(ref.date, ref.startTime)
+        : ref && "dateStart" in ref
+          ? activityStartFromTaipei(ref.dateStart, null)
+          : null;
+    return computePaymentDeadline(b.createdAt, activityStart);
   })();
   const daysLeft = paymentDeadline
     ? Math.ceil((paymentDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -547,6 +553,14 @@ function BookingCard({
     caption?: string;
   } | null>(null);
   const [showPhotos, setShowPhotos] = useState(false);
+  // v367：付款方式選擇按鈕點擊回饋（避免「沒反應」誤以為壞掉）
+  const [paying, setPaying] = useState(false);
+  const [paySlow, setPaySlow] = useState(false);
+  useEffect(() => {
+    if (!paying) return;
+    const t = setTimeout(() => setPaySlow(true), 6000);
+    return () => clearTimeout(t);
+  }, [paying]);
   // 日潛已結束（completed 或日期過了）→ 顯示「今日照片」入口
   const showPhotoEntry =
     isDaily &&
@@ -690,10 +704,18 @@ function BookingCard({
           <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
             {needsPayment ? (
               <>
-                <Link href={`/liff/payment/${b.id}`}>
-                  <button className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-3 py-2 text-xs font-bold text-[var(--color-ocean-deep)] shadow-sm whitespace-nowrap">
-                    <Upload className="h-3.5 w-3.5" />
-                    付款方式選擇
+                <Link
+                  href={`/liff/payment/${b.id}`}
+                  onClick={() => setPaying(true)}
+                  aria-disabled={paying}
+                  className={paying ? "pointer-events-none" : ""}
+                >
+                  <button
+                    disabled={paying}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-3 py-2 text-xs font-bold text-[var(--color-ocean-deep)] shadow-sm whitespace-nowrap disabled:opacity-80"
+                  >
+                    {paying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {paying ? "開啟中…" : "付款方式選擇"}
                   </button>
                 </Link>
                 {paymentDeadline && daysLeft !== null && (
@@ -707,6 +729,11 @@ function BookingCard({
                   >
                     ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
                     {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期）"}
+                  </div>
+                )}
+                {paying && paySlow && (
+                  <div className="w-full text-[10px] text-[var(--muted-foreground)]">
+                    載入較久…可能網路較慢。若遲遲沒反應，請關掉重開或稍後再試。
                   </div>
                 )}
               </>
