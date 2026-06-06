@@ -900,12 +900,11 @@ export default function AdminTripsPage() {
       }
     }
     lines.push("");
-    // v376：報名連結改走「主頁先登入 → 自動轉日潛頁」流程，避免未登入者點底部捷徑時卡登入。
-    //   連結 = liff.line.me/{ID}/welcome?next=/liff/calendar
-    //   （直接深連結到 /calendar 會讓未登入者在子頁觸發登入迴圈；先過 welcome 登入最穩）
-    const liffBase =
-      process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
-    lines.push(`🔗 報名：${liffBase}/welcome?next=/liff/calendar`);
+    // v377：改用超短連結 /d（302 轉到 LIFF 主頁登入→自動進日潛頁）。
+    //   訊息只貼 haiwangzi.zeabur.app/d，乾淨好看；最終落點仍是正規 LIFF 流程。
+    const baseUrl =
+      typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
+    lines.push(`🔗 報名：${baseUrl}/d`);
     return lines.join("\n");
   }
   async function copyDumpText() {

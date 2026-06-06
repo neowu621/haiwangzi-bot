@@ -123,12 +123,8 @@ export default function CalendarPage() {
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <div className="flex flex-col items-center leading-tight">
-            <span className="text-base font-bold text-[var(--color-ocean-deep)]">
-              {pageOffset === 0 ? "本兩週場次" : "場次"}
-            </span>
-            <span className="text-xs text-[var(--muted-foreground)] tabular">{rangeLabel}</span>
-          </div>
+          {/* v377：精簡 — 只留日期範圍（拿掉「本兩週場次」標題列省 Y 軸）*/}
+          <span className="text-sm font-bold tabular text-[var(--color-ocean-deep)]">{rangeLabel}</span>
           <Button
             variant="ghost"
             size="icon"
@@ -213,11 +209,9 @@ export default function CalendarPage() {
         </div>
       </section>
 
-      <section className="mt-4 px-4">
-        <h2 className="text-sm font-semibold text-[var(--muted-foreground)]">
-          {pageOffset === 0 ? "兩週內可預約場次" : "本頁可預約場次"}
-        </h2>
-        <div className="mt-2 space-y-2">
+      {/* v377：拿掉「兩週內可預約場次」標題省 Y 軸，直接接清單 */}
+      <section className="mt-3 px-4">
+        <div className="space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
           {!loading && openTrips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
