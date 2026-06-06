@@ -205,6 +205,7 @@ export default function AdminBookingsPage() {
   // v199：新增一筆付款
   const [addPaymentAmount, setAddPaymentAmount] = useState<string>("");
   const [addPaymentNote, setAddPaymentNote] = useState<string>("");
+  const [assistantDiscount, setAssistantDiscount] = useState<string>(""); // v362：助教減免
   const [addingPayment, setAddingPayment] = useState(false);
 
   // 未到場 dialog
@@ -1133,6 +1134,39 @@ export default function AdminBookingsPage() {
                         disabled={locked}
                         onChange={(n) => setEditing({ ...editing, totalAmount: n })} />
                     </div>
+                    {/* v362：助教減免（A 全免 + B 自訂減免金額）*/}
+                    {!locked && (
+                      <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
+                        <Label className="text-xs pt-1.5">🤿 助教減免</Label>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <NumberInput min={0} value={Number(assistantDiscount) || 0}
+                              onChange={(n) => setAssistantDiscount(String(n))} className="w-24" />
+                            <Button size="sm" variant="outline" className="h-8 text-xs"
+                              onClick={() => {
+                                const d = Math.max(0, Number(assistantDiscount) || 0);
+                                if (d <= 0) return;
+                                setEditing({
+                                  ...editing,
+                                  totalAmount: Math.max(0, editing.totalAmount - d),
+                                  adminNotes: (editing.adminNotes ? editing.adminNotes + "\n" : "") + `助教工作協助減免 NT$${d.toLocaleString()}`,
+                                });
+                                setAssistantDiscount("");
+                              }}>套用減免</Button>
+                            <Button size="sm" variant="outline" className="h-8 text-xs"
+                              onClick={() => {
+                                setEditing({
+                                  ...editing,
+                                  totalAmount: 0,
+                                  adminNotes: (editing.adminNotes ? editing.adminNotes + "\n" : "") + "助教工作協助（全免）",
+                                });
+                                setAssistantDiscount("");
+                              }}>全免（歸0）</Button>
+                          </div>
+                          <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">套用後會調整總金額並寫入管理備註，請按下方「儲存」生效。</div>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
                       <Label className="text-xs pt-1.5">已付金額</Label>
                       <div>

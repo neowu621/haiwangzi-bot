@@ -143,6 +143,7 @@ export default function BroadcastPage() {
   const [copied, setCopied] = useState(false);
   // v196: confirm modal + toast + last-focused textarea (for var insertion)
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false); // v362：大量發送二次勾選
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   type FocusTarget = "textMsg" | "emailSubject" | "emailBody";
@@ -600,6 +601,7 @@ export default function BroadcastPage() {
                   if (!altText && template !== "text") { setErr("請填寫 altText"); return; }
                   if (template === "text" && !textMsg) { setErr("請填寫訊息內容"); return; }
                   setErr(null);
+                  setConfirmChecked(false);
                   setConfirmOpen(true);
                 }}
                 disabled={sending || recipientCount === 0}
@@ -668,10 +670,16 @@ export default function BroadcastPage() {
             <div className="bcn-modal-row"><span>預估人數</span><b>{recipientCount.toLocaleString()} 人</b></div>
             <div className="bcn-modal-row"><span>使用模板</span><b>{templateLabel}</b></div>
             <div className="bcn-modal-warn">⚠️ 將立即對上述真實用戶發送，確定要送出嗎？</div>
+            {recipientCount > 1 && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12, fontSize: 13, color: "var(--bcn-ink)", cursor: "pointer", fontWeight: 600 }}>
+                <input type="checkbox" checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16 }} />
+                <span>我已確認要對 <b style={{ color: "var(--bcn-coral)" }}>{recipientCount.toLocaleString()}</b> 人發送（此為大量發送，請再次確認）</span>
+              </label>
+            )}
           </div>
           <div className="bcn-modal-f">
             <button type="button" className="bcn-btn bcn-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmOpen(false)}>取消</button>
-            <button type="button" className="bcn-btn bcn-btn-send" style={{ flex: 1 }} onClick={send} disabled={sending}>
+            <button type="button" className="bcn-btn bcn-btn-send" style={{ flex: 1 }} onClick={send} disabled={sending || (recipientCount > 1 && !confirmChecked)}>
               {sending ? "發送中..." : "確認送出"}
             </button>
           </div>
