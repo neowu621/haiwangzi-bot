@@ -75,6 +75,17 @@ export async function POST(
         ? "confirmed"
         : proof.booking.status;
 
+    // v373：核可付款證明時，同步寫一筆「付款紀錄」明細（PaymentEntry），
+    //   修正先前「核可後已付款增加、但付款紀錄空白」的不一致。實收金流，isCash=true。
+    const entryKind =
+      proof.booking.paymentMethod === "linepay" ? "linepay" : "transfer";
+    const typeLabel =
+      proof.type === "deposit" ? "訂金" : proof.type === "final" ? "尾款" : "";
+    const entryNote =
+      `客戶證明核可${typeLabel ? `（${typeLabel}）` : ""}` +
+      (proof.last5 ? `・末5碼 ${proof.last5}` : "");
+    const operatorName = auth.user.realName ?? auth.user.displayName ?? "管理員";
+
     await prisma.$transaction([
       prisma.paymentProof.update({
         where: { id },
@@ -88,6 +99,17 @@ export async function POST(
           status: newBookingStatus,
           // v296：fully_paid 時失效公開付款連結（客戶開連結會看到「已確認」）
           ...(newPayStatus === "fully_paid" ? { payLinkVerifiedAt: new Date() } : {}),
+        },
+      }),
+      prisma.paymentEntry.create({
+        data: {
+          bookingId: proof.bookingId,
+          amount: proof.amount,
+          kind: entryKind,
+          isCash: true,
+          note: entryNote,
+          createdById: auth.user.lineUserId,
+          createdByName: operatorName,
         },
       }),
     ]);
