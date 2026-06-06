@@ -1360,6 +1360,34 @@ export default function AdminUsersPage() {
                 )}
               </div>
 
+              {/* v357：後台登入密碼重設（只對 admin/boss 顯示，給「忘記密碼」救援用）*/}
+              {(editing.effectiveRoles ?? [editing.role]).some((r) => r === "admin" || r === "boss") && (
+                <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                  <div className="text-sm font-medium text-[var(--foreground)]">🔑 後台登入密碼</div>
+                  <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+                    清空此管理員的登入密碼，對方<b>下次登入會重新設定一組新密碼</b>（用於「忘記密碼」救援）。需自己另用「變更密碼」改自己的。
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-2 h-8 text-xs"
+                    onClick={async () => {
+                      if (!confirm(`確定清空「${editing.realName ?? editing.displayName}」的後台登入密碼？\n對方下次登入需重新設定。`)) return;
+                      try {
+                        const r = await adminFetch<{ ok: boolean; message: string }>(
+                          "/api/admin/admin-password-reset",
+                          { method: "POST", body: JSON.stringify({ targetLineUserId: editing.lineUserId }) },
+                        );
+                        alert(r.message ?? "已重設");
+                      } catch (e) {
+                        alert("重設失敗：" + (e instanceof Error ? e.message : String(e)));
+                      }
+                    }}
+                  >
+                    🔑 重設登入密碼
+                  </Button>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)}>
                   取消
