@@ -900,8 +900,12 @@ export default function AdminTripsPage() {
       }
     }
     lines.push("");
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
-    lines.push(`🔗 報名：${baseUrl}/liff/calendar`);
+    // v372：必須用 LIFF 連結，不能用原始網址。
+    //   原始網址 (haiwangzi.zeabur.app/liff/calendar) 在 LINE 內開沒有 LIFF 環境 → 一直「登入中」閃爍。
+    //   LIFF endpoint 設在 /liff，故深連結為 liff.line.me/{ID}/calendar（不含 /liff）。
+    const liffBase =
+      process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+    lines.push(`🔗 報名：${liffBase}/calendar`);
     return lines.join("\n");
   }
   async function copyDumpText() {
