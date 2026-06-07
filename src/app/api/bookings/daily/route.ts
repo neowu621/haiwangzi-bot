@@ -12,6 +12,7 @@ import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 import { normalizeVipTiers, getGearDiscountPct } from "@/lib/vip-tier"; // v388
+import { getActiveTankPromo } from "@/lib/tank-promo"; // v392
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -173,8 +174,29 @@ export async function POST(req: NextRequest) {
   //   pricing.extraTank  = 每一次潛水（含空氣瓶）單價，× 支數 × 人數
   //   pricing.nightDive  = 夜潛附加費（整單平收）
   //   pricing.scooterRental = 水推附加費（整單平收）
-  const divesAmount =
-    pricing.extraTank * effectiveTanks * data.participants;
+  // v392 + v388：下單前抓一次 SiteConfig（氣瓶折扣 + VIP 裝備折扣共用）
+  const cfg = await prisma.siteConfig
+    .findUnique({
+      where: { id: "default" },
+      select: {
+        vipTiers: true,
+        tankPromoEnabled: true,
+        tankPromoDiscount: true,
+        tankPromoReason: true,
+        tankPromoStart: true,
+        tankPromoEnd: true,
+      },
+    })
+    .catch(() => null);
+
+  // v392：氣瓶限時折扣 — 潛水費 = (每瓶費 − 折扣) × 瓶數 × 人數（折扣不可使每瓶費變負）
+  const tankPromo = getActiveTankPromo(cfg);
+  const tankDiscountPerTank = tankPromo.active
+    ? Math.min(tankPromo.discount, pricing.extraTank)
+    : 0;
+  const effectiveTankFee = Math.max(0, pricing.extraTank - tankDiscountPerTank);
+  const divesAmount = effectiveTankFee * effectiveTanks * data.participants;
+
   let extraAmount = pricing.baseTrip;
   if (trip.isNightDive) extraAmount += pricing.nightDive;
   if (trip.isScooter) extraAmount += pricing.scooterRental;
@@ -185,9 +207,6 @@ export async function POST(req: NextRequest) {
   let gearAmount = gearAmountRaw;
   let gearDiscountPct = 100;
   if (gearAmountRaw > 0) {
-    const cfg = await prisma.siteConfig
-      .findUnique({ where: { id: "default" }, select: { vipTiers: true } })
-      .catch(() => null);
     const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined;
     gearDiscountPct = getGearDiscountPct(auth.user.vipLevel ?? 0, tiers);
     if (gearDiscountPct < 100) {

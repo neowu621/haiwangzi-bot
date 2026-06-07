@@ -148,6 +148,8 @@ export default function TripBookingPage({
   const [vipLevel, setVipLevel] = useState(1); // v289：暫保留 setVipLevel 給後續可能的等級顯示
   // v388：裝備租借折扣 %（100=不折，80=打 8 折）— 依會員 VIP 等級，由 /api/me 回傳
   const [gearDiscountPct, setGearDiscountPct] = useState(100);
+  // v392：氣瓶限時折扣（每支折抵 NT$ + 理由），由 /api/me 回傳
+  const [tankPromo, setTankPromo] = useState<{ active: boolean; discount: number; reason: string }>({ active: false, discount: 0, reason: "" });
   const [creditUsed, setCreditUsed] = useState(0);
 
   // 同伴
@@ -238,6 +240,7 @@ export default function TripBookingPage({
         creditBalance: number;
         vipLevel: number;
         gearDiscountPct?: number;
+        tankPromo?: { active: boolean; discount: number; reason: string };
         emergencyContact: {
           name: string;
           phone: string;
@@ -263,6 +266,8 @@ export default function TripBookingPage({
         setGearDiscountPct(
           typeof me.gearDiscountPct === "number" ? me.gearDiscountPct : 100,
         );
+        // v392：氣瓶限時折扣
+        if (me.tankPromo) setTankPromo(me.tankPromo);
         // v289：付款方式移到下單後選，這裡不再預設
       })
       .catch(() => {})
@@ -332,10 +337,20 @@ export default function TripBookingPage({
   //   總額 = baseTrip (整單平收) + extraTank × 支數 × 人數 + 夜潛/水推 + 裝備
   //   baseTrip 是「整單共享」基本費（船費分攤），不 ×人數
   //   extraTank 是「每一次潛水（含空氣瓶）」單價，× 支數 × 人數
-  const divesAmount = useMemo(
-    () => (trip ? trip.pricing.extraTank * tankCount * participants : 0),
-    [trip, tankCount, participants],
+  // v392：氣瓶限時折扣 — 每支氣瓶折抵（不可折成負數）
+  const tankDiscountPerTank = useMemo(
+    () => (trip && tankPromo.active ? Math.min(tankPromo.discount, trip.pricing.extraTank) : 0),
+    [trip, tankPromo],
   );
+  const effectiveTankFee = useMemo(
+    () => (trip ? Math.max(0, trip.pricing.extraTank - tankDiscountPerTank) : 0),
+    [trip, tankDiscountPerTank],
+  );
+  const divesAmount = useMemo(
+    () => effectiveTankFee * tankCount * participants,
+    [effectiveTankFee, tankCount, participants],
+  );
+  const tankSaved = tankDiscountPerTank * tankCount * participants;
   const extraAmount = useMemo(() => {
     if (!trip) return 0;
     // v155：夜潛加價、水上摩托車加價皆已移除（統一價）
@@ -1023,6 +1038,11 @@ export default function TripBookingPage({
         {/* 費用明細 + 送出 */}
         <Card className="sticky bottom-20 z-10 border-2 border-[var(--color-phosphor)]/30">
           <CardContent className="p-4">
+            {tankPromo.active && tankPromo.reason && (
+              <div className="mb-2 rounded-md bg-orange-50 px-2 py-1.5 text-[11px] font-semibold text-orange-700">
+                🔥 {tankPromo.reason}
+              </div>
+            )}
             <div className="space-y-1 text-xs tabular text-[var(--muted-foreground)]">
               {trip.pricing.baseTrip > 0 && (
                 <div className="flex justify-between">
@@ -1032,11 +1052,27 @@ export default function TripBookingPage({
               )}
               <div className="flex justify-between">
                 <span>
-                  潛水 {trip.pricing.extraTank.toLocaleString()} × {tankCount}{" "}
-                  支 × {participants} 人
+                  潛水{" "}
+                  {tankSaved > 0 ? (
+                    <>
+                      <span className="mr-1 text-[var(--muted-foreground)] line-through">
+                        {trip.pricing.extraTank.toLocaleString()}
+                      </span>
+                      {effectiveTankFee.toLocaleString()}
+                    </>
+                  ) : (
+                    trip.pricing.extraTank.toLocaleString()
+                  )}{" "}
+                  × {tankCount} 支 × {participants} 人
                 </span>
                 <span>NT$ {divesAmount.toLocaleString()}</span>
               </div>
+              {tankSaved > 0 && (
+                <div className="flex justify-between text-[var(--color-phosphor)]">
+                  <span>🔥 氣瓶折扣（每支 −${tankDiscountPerTank.toLocaleString()}）</span>
+                  <span>− NT$ {tankSaved.toLocaleString()}</span>
+                </div>
+              )}
               {/* v155：夜潛附加 / 水推附加列已移除（統一價） */}
               {gearTotal > 0 && (
                 <div className="flex justify-between">

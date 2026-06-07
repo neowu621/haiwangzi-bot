@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 import { normalizeVipTiers, getGearDiscountPct } from "@/lib/vip-tier"; // v388
+import { getActiveTankPromo } from "@/lib/tank-promo"; // v392
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +25,22 @@ export async function GET(req: NextRequest) {
   const u = auth.user;
   // v388：算出此會員的「裝備租借折扣 %」（100=不折）給下單頁顯示折後價用
   const cfg = await prisma.siteConfig
-    .findUnique({ where: { id: "default" }, select: { vipTiers: true } })
+    .findUnique({
+      where: { id: "default" },
+      select: {
+        vipTiers: true,
+        tankPromoEnabled: true,
+        tankPromoDiscount: true,
+        tankPromoReason: true,
+        tankPromoStart: true,
+        tankPromoEnd: true,
+      },
+    })
     .catch(() => null);
   const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined;
   const gearDiscountPct = getGearDiscountPct(u.vipLevel ?? 1, tiers);
+  // v392：氣瓶限時折扣（給下單頁顯示折後價 + 理由）
+  const tankPromo = getActiveTankPromo(cfg);
   void logCustomerActivity({
     req,
     user: auth.user,
@@ -52,6 +65,7 @@ export async function GET(req: NextRequest) {
     roles: u.roles && u.roles.length > 0 ? u.roles : [u.role],
     vipLevel: u.vipLevel ?? 1,
     gearDiscountPct, // v388：裝備租借折扣 %（100=不折，80=打 8 折）
+    tankPromo, // v392：氣瓶限時折扣 { active, discount, reason }
     totalSpend: u.totalSpend ?? 0,
     birthday: u.birthday,
     creditBalance: u.creditBalance ?? 0,

@@ -103,6 +103,12 @@ interface Config {
   // v391：場次 Dump 自動優惠開頭
   dumpPromoEnabled?: boolean;
   dumpPromoText?: string;
+  // v392：氣瓶限時折扣
+  tankPromoEnabled?: boolean;
+  tankPromoDiscount?: number;
+  tankPromoReason?: string;
+  tankPromoStart?: string | null;
+  tankPromoEnd?: string | null;
 }
 
 // v391：Dump 優惠開頭預設文案（老闆可在系統設定編輯）
@@ -774,6 +780,58 @@ export default function SettingsPage() {
                 disabled={saving === "Dump 優惠開頭"}>
                 <Save className="mr-1.5 h-4 w-4" />
                 {saving === "Dump 優惠開頭" ? "儲存中..." : "儲存優惠開頭"}
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* v392：氣瓶限時折扣 */}
+        <div className="mt-4">
+          <SectionCard title="🔥 氣瓶限時折扣（自動套用）">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              開啟後，日潛下單時每支氣瓶自動折抵設定金額（潛水費 = (每瓶費 − 折抵) × 瓶數 × 人數），只折氣瓶、不折附加/裝備。可設理由與起訖日，過期自動失效。
+            </p>
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4"
+                checked={cfg.tankPromoEnabled ?? false}
+                onChange={(e) => setCfg(c => c ? { ...c, tankPromoEnabled: e.target.checked } : c)} />
+              啟用氣瓶折扣
+            </label>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+              <CompactNum label="每支折抵（NT$）" labelW="w-32" value={cfg.tankPromoDiscount ?? 0}
+                onChange={(n) => setCfg(c => c ? { ...c, tankPromoDiscount: n } : c)} />
+            </div>
+            <div className="mt-2">
+              <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">折扣理由（會顯示給客戶）</Label>
+              <Input value={cfg.tankPromoReason ?? ""} placeholder="例：海王子線上預約開航慶 加碼！6月底前每支氣瓶現折 $25"
+                onChange={(e) => setCfg(c => c ? { ...c, tankPromoReason: e.target.value } : c)} />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">開始日（留空＝即刻）</Label>
+                <Input type="date"
+                  value={cfg.tankPromoStart ? new Date(cfg.tankPromoStart).toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" }) : ""}
+                  onChange={(e) => setCfg(c => c ? { ...c, tankPromoStart: e.target.value ? new Date(e.target.value + "T00:00:00+08:00").toISOString() : null } : c)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">結束日（留空＝不限）</Label>
+                <Input type="date"
+                  value={cfg.tankPromoEnd ? new Date(cfg.tankPromoEnd).toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" }) : ""}
+                  onChange={(e) => setCfg(c => c ? { ...c, tankPromoEnd: e.target.value ? new Date(e.target.value + "T23:59:59+08:00").toISOString() : null } : c)} />
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("氣瓶折扣", {
+                  tankPromoEnabled: cfg.tankPromoEnabled ?? false,
+                  tankPromoDiscount: cfg.tankPromoDiscount ?? 0,
+                  tankPromoReason: cfg.tankPromoReason ?? "",
+                  tankPromoStart: cfg.tankPromoStart ?? null,
+                  tankPromoEnd: cfg.tankPromoEnd ?? null,
+                })}
+                disabled={saving === "氣瓶折扣"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "氣瓶折扣" ? "儲存中..." : "儲存氣瓶折扣"}
               </Button>
             </div>
           </SectionCard>

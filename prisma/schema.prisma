@@ -691,6 +691,13 @@ model SiteConfig {
   dumpPromoEnabled Boolean @default(false) @map("dump_promo_enabled")
   dumpPromoText    String  @default("")    @map("dump_promo_text")
 
+  // v392：氣瓶限時折扣（自動套用；每支氣瓶折抵 NT$，可設理由 + 起訖日）
+  tankPromoEnabled  Boolean   @default(false) @map("tank_promo_enabled")
+  tankPromoDiscount Int       @default(0)     @map("tank_promo_discount")
+  tankPromoReason   String    @default("")    @map("tank_promo_reason")
+  tankPromoStart    DateTime? @map("tank_promo_start") @db.Timestamptz
+  tankPromoEnd      DateTime? @map("tank_promo_end")   @db.Timestamptz
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

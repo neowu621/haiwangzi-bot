@@ -113,6 +113,12 @@ const PatchSchema = z.object({
   // v391：場次 Dump 自動優惠開頭
   dumpPromoEnabled: z.boolean().optional(),
   dumpPromoText: z.string().max(2000).optional(),
+  // v392：氣瓶限時折扣
+  tankPromoEnabled: z.boolean().optional(),
+  tankPromoDiscount: z.number().int().min(0).max(100000).optional(),
+  tankPromoReason: z.string().max(500).optional(),
+  tankPromoStart: z.string().datetime().nullable().optional(),
+  tankPromoEnd: z.string().datetime().nullable().optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -197,6 +203,12 @@ export async function GET(req: NextRequest) {
       // v391 場次 Dump 優惠開頭
       dumpPromoEnabled: (row as unknown as { dumpPromoEnabled?: boolean }).dumpPromoEnabled ?? false,
       dumpPromoText: (row as unknown as { dumpPromoText?: string }).dumpPromoText ?? "",
+      // v392 氣瓶限時折扣
+      tankPromoEnabled: (row as unknown as { tankPromoEnabled?: boolean }).tankPromoEnabled ?? false,
+      tankPromoDiscount: (row as unknown as { tankPromoDiscount?: number }).tankPromoDiscount ?? 0,
+      tankPromoReason: (row as unknown as { tankPromoReason?: string }).tankPromoReason ?? "",
+      tankPromoStart: (row as unknown as { tankPromoStart?: Date | null }).tankPromoStart ?? null,
+      tankPromoEnd: (row as unknown as { tankPromoEnd?: Date | null }).tankPromoEnd ?? null,
     },
     isDefault: false,
     updatedAt: row.updatedAt,
