@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2, ImageOff } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
 import { deriveBookingDisplay, BOOKING_STATUS_FILTER_KEYS, BOOKING_STATUS_FILTER_GROUPS, BOOKING_STATUS_EDITABLE_KEYS, reverseDerivedStatus, type BookingStatusKey } from "@/lib/booking-status"; // v319 / v324 / v327
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
@@ -261,6 +261,7 @@ export default function AdminBookingsPage() {
     amount: number;
     previewUrl: string | null;
     thumb?: string | null; // v379：縮圖（DB）
+    imageKey?: string | null; // v393：區分「沒上傳圖」與「已清理」
     uploadedAt: string;
     verifiedAt: string | null;
   }
@@ -1655,9 +1656,15 @@ export default function AdminBookingsPage() {
                             <img src={p.previewUrl ?? p.thumb ?? ""} alt="付款憑證"
                               className="w-full h-32 object-cover rounded border" style={{ borderColor: "var(--border)" }} />
                           </a>
+                        ) : !p.imageKey ? (
+                          // v393：客戶只填後 5 碼、沒上傳截圖
+                          <div className="h-32 flex flex-col items-center justify-center gap-1 text-xs text-[var(--muted-foreground)] bg-[var(--muted)] rounded border border-dashed" style={{ borderColor: "var(--border)" }}>
+                            <ImageOff className="h-6 w-6 opacity-50" />
+                            無圖片（僅填後 5 碼）
+                          </div>
                         ) : (
                           <div className="h-32 flex items-center justify-center text-xs text-[var(--muted-foreground)] bg-[var(--muted)] rounded">
-                            （已清理 / 30 天前）
+                            （已清理 / 載入失敗）
                           </div>
                         )}
                         {/* v308：日期顏色由淡灰改深灰，已核可由螢光綠改深綠，提升白底可讀性 */}
