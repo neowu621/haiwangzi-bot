@@ -211,8 +211,9 @@ curl -fsS -X POST \
   ```
 - 不需要 CRON_SECRET（healthz 是公開端點）
 
-> ⚠️ 是否需要此 job，取決於 Zeabur 該服務是否真的會閒置休眠。
-> 若實測發現「閒置 15 分鐘後第一次請求仍 < 2 秒」就不需要設（省資源）。
+> ✅ **已實測（2026-06）確認需要**：DB/後端/R2 都很快（查詢 5ms、healthz 0.06s），
+> 但容器閒置會休眠 → 老闆隔一陣子開後台第一次特別慢（重新登入也只是順便喚醒容器）。
+> 故建議**啟用此 keepalive job**。實測指令參考：`curl -w "連線 %{time_connect}s 總 %{time_total}s\n" .../api/healthz`。
 
 ---
 
