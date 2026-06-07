@@ -9,10 +9,13 @@ export const dynamic = "force-dynamic";
 // /api/cron/birthday-credits
 // ─────────────────────────────────────────────────────────────
 //
-// 每日跑一次（建議台灣時間早上 8 點）。
-// 找出今天生日的人，發放 SiteConfig.birthdayCreditAmount 的抵用金。
-// 透過 user.birthdayCreditYear 紀錄當年是否已發，避免重發。
+// v388：改為「每月 1 日 00:00（台灣時間）跑一次」。
+//   找出「生日落在當月」的人，發放 SiteConfig.birthdayCreditAmount 的抵用金。
+//   透過 user.birthdayCreditYear 確保「一年只發一次」（即使中途重跑也不重發）。
+//   ※ 註冊當月生日者，於 Email 驗證通過時即時補發（見 src/lib/signup-reward.ts）；
+//     兩條路徑共用 birthdayCreditYear 去重，不會重複發放。
 //
+// Cronicle 排程：0 0 1 * *（每月 1 號 00:00，台灣時區）
 // 認證：Authorization: Bearer <CRON_SECRET>
 // ─────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -46,15 +49,16 @@ export async function GET(req: NextRequest) {
   const day = tw.getUTCDate();
   const year = tw.getUTCFullYear();
 
-  // Postgres 抓 birthday 月/日 match 的 user，且今年還沒發過
+  // v388：抓「生日月份 = 當月」且今年還沒發過的 user（不再比對 day）。
+  //   一年一次的保證來自 birthday_credit_year；於月初 1 號統一發放。
   const users = await prisma.$queryRaw<
     Array<{ line_user_id: string; birthday: Date | null }>
   >`
     SELECT line_user_id, birthday
     FROM users
     WHERE birthday IS NOT NULL
+      AND deleted_at IS NULL
       AND EXTRACT(MONTH FROM birthday) = ${month}
-      AND EXTRACT(DAY FROM birthday) = ${day}
       AND (birthday_credit_year IS NULL OR birthday_credit_year < ${year})
   `;
 

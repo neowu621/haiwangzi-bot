@@ -23,6 +23,7 @@ interface VipTier {
   minSpend: number;
   benefits: string[];
   upgradeCredit: number;
+  gearDiscountPct?: number; // v388：裝備折扣%（100/未設=不折，90=9折）
 }
 
 const primaryBtn: React.CSSProperties = { background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" };
@@ -252,6 +253,17 @@ export function VipTiersEditor() {
               <p className="text-[10px] text-[var(--muted-foreground)]">
                 ※ 升等僅依「海王子累積潛水次數」。會員首次達到此 LV 時自動發放抵用金，每個 LV 僅一次。
               </p>
+              {/* v388：裝備租借折扣（下單裝備區自動套用）*/}
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">裝備租借折扣 %（100=原價、90=9折；下單自動套用）</Label>
+                <Input type="text" inputMode="numeric" value={String(editDraft.gearDiscountPct ?? 100)}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
+                    let v = clean === "" ? 100 : parseInt(clean, 10);
+                    if (v > 100) v = 100;
+                    updateDraft({ gearDiscountPct: v });
+                  }} />
+              </div>
               <div>
                 <div className="mb-2 flex items-center gap-2">
                   <Label className="text-xs text-[var(--muted-foreground)]">會員福利</Label>

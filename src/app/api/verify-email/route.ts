@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { grantSignupAndBirthdayOnVerify } from "@/lib/signup-reward"; // v388
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,11 @@ export async function GET(req: NextRequest) {
     action: "customer.email.verify",
     metadata: { email: user.email ?? null },
   });
+
+  // v388：Email 驗證通過 → 發註冊禮金（+當月生日補發），best-effort 不擋導頁
+  void grantSignupAndBirthdayOnVerify(user.lineUserId).catch((e) =>
+    console.error("[verify-email reward]", e),
+  );
 
   return resultRedirect("ok", { email: user.email ?? "" });
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { normalizeVipTiers, getGearDiscountPct } from "@/lib/vip-tier"; // v388
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,12 @@ export async function GET(req: NextRequest) {
   });
 
   const u = auth.user;
+  // v388：算出此會員的「裝備租借折扣 %」（100=不折）給下單頁顯示折後價用
+  const cfg = await prisma.siteConfig
+    .findUnique({ where: { id: "default" }, select: { vipTiers: true } })
+    .catch(() => null);
+  const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined;
+  const gearDiscountPct = getGearDiscountPct(u.vipLevel ?? 1, tiers);
   void logCustomerActivity({
     req,
     user: auth.user,
@@ -44,6 +51,7 @@ export async function GET(req: NextRequest) {
     // 新版多重身分；空陣列 fallback 為 [role]
     roles: u.roles && u.roles.length > 0 ? u.roles : [u.role],
     vipLevel: u.vipLevel ?? 1,
+    gearDiscountPct, // v388：裝備租借折扣 %（100=不折，80=打 8 折）
     totalSpend: u.totalSpend ?? 0,
     birthday: u.birthday,
     creditBalance: u.creditBalance ?? 0,
@@ -125,6 +133,27 @@ export async function PATCH(req: NextRequest) {
       }
     }
   }
+  // v388：生日鎖定 — 客戶只能「填一次」；已填過就不能自己改（僅 admin/boss 可改後台改）。
+  //   已設定且嘗試改成不同日期 → 擋；改成相同日期 → 視為無動作放行。
+  if (body.birthday !== undefined && auth.user.birthday) {
+    const existing = auth.user.birthday.toISOString().slice(0, 10);
+    const incoming =
+      data.birthday instanceof Date
+        ? data.birthday.toISOString().slice(0, 10)
+        : null;
+    if (incoming !== existing) {
+      return NextResponse.json(
+        {
+          error: "birthday_locked",
+          message: "生日已設定，無法自行修改。如需更正請聯絡客服／管理員。",
+        },
+        { status: 403 },
+      );
+    }
+    // 相同 → 不重複寫
+    delete data.birthday;
+  }
+
   // v311：偵測 email 變更 → 自動清 emailVerifiedAt（強制重新驗證）
   if (body.email !== undefined && body.email !== "" && body.email !== null) {
     const current = await prisma.user.findUnique({

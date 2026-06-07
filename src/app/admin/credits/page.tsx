@@ -53,6 +53,9 @@ const REASON_LABEL: Record<string, string> = {
   admin_adjust: "🛠 管理員調整",
   refund: "💰 退款",
   used: "🛒 使用",
+  first_order_reward: "🎉 首單獎勵",
+  signup_reward: "🎁 註冊禮金",
+  vip_overflow: "🏆 VIP 滿級回饋",
 };
 
 const ADJUST_NOTE_QUICK = [

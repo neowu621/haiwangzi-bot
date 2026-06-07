@@ -102,6 +102,53 @@
 
 ---
 
+## Endpoint：`/api/cron/birthday-credits`（生日抵用金）
+
+| 項目 | 內容 |
+|---|---|
+| Method | `POST` / `GET`（皆需 Bearer） |
+| Auth | `Authorization: Bearer <CRON_SECRET>` |
+| 排程建議（v388 起） | **每月 1 號** 台灣 08:00 — Cronicle 用 UTC：`0 0 1 * *` |
+| 邏輯 | 發給「生日落在當月」且今年尚未領過的會員，金額 = `SiteConfig.birthdayCreditAmount`（0=停用）、效期 = `birthdayCreditExpiryDays`（0=不過期） |
+| Dedup | `users.birthday_credit_year` 確保**一年只發一次**（即使中途重跑也不重發） |
+| 補發 | 註冊當月生日者，於 Email 驗證通過時即時補發（共用同一去重欄位，不會重複） |
+
+> ⚠️ **v388 變更**：原本是「每天跑、發當天生日者」（`0 0 * * *`），
+> 現改為「每月 1 號跑、發當月生日者」。請把 Cronicle event 的 cron 由每日改為 **`0 0 1 * *`**。
+> `0 0 1 * *`（UTC）= 台灣時間每月 1 號 08:00；落在當月 1 號內，符合「月初發放」需求。
+
+### Cronicle job 設定
+
+| 欄位 | 值 |
+|---|---|
+| Event Name | `haiwangzi-birthday-credits` |
+| Timing | cron expression `0 0 1 * *`（每月 1 號 UTC 00:00 = 台灣 08:00） |
+| Plugin | Shell Script |
+
+```bash
+#!/bin/sh
+set -e
+curl -fsS -X POST \
+  -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" \
+  "$HAIWANGZI_BASE_URL/api/cron/birthday-credits"
+```
+
+### 回傳範例
+
+```json
+{
+  "ok": true,
+  "date": "6/1/2026",
+  "amount": 100,
+  "grantedCount": 3,
+  "failedCount": 0,
+  "granted": ["U..."],
+  "failed": []
+}
+```
+
+---
+
 ## Endpoint：`/api/healthz`（保溫 / keep-warm）
 
 | 項目 | 內容 |

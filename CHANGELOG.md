@@ -2,6 +2,29 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260607_388 — 2026-06-07 (會員優惠 ABCD：註冊禮金 / 生日 / VIP 折扣 / 生日鎖定)
+
+### A. 系統設定可調欄位
+- **系統設定 → 金額**：新增「註冊禮金金額」「註冊禮金有效天數」
+- **系統設定 → VIP**：新增「VIP 滿級回饋（每 N 潛回饋 M 元）」；每個 VIP 等級可設「裝備租借折扣 %」
+- SiteConfig 新增欄位：`signup_reward_amount`、`signup_reward_expiry_days`、`vip_overflow_dives`、`vip_overflow_credit`（均已加入 `migrate-safety.js`）；裝備折扣 % 存於 `vip_tiers` JSON 的 `gearDiscountPct`
+
+### B. 發放邏輯
+- **註冊禮金**：改為「Email 驗證通過後才發」（`src/lib/signup-reward.ts` + verify-email route），去重靠 `CreditTx.reason=signup_reward`
+- **一次性補發**：新增 `/api/admin/backfill-signup-reward`（GET 試算 / POST 執行）+ 系統設定按鈕，補發給「已驗證但未領過」的現有會員
+- **生日禮金**：cron 改為「每月 1 日發當月生日者」（month-match + `birthday_credit_year` 確保一年一次）；註冊當月生日者於 Email 驗證時即時補發
+- **VIP 滿級回饋**：到場累計潛數時，VIP 滿級後每超過 N 潛回饋 M 元（`attendance` route，里程碑去重）
+
+### C. 結帳裝備折扣
+- 日潛下單時，裝備租借依會員 VIP 等級自動折扣（只折裝備、不折潛水費）；server 端 `bookings/daily` 權威計算，LIFF 下單頁即時顯示折後價與折扣標示
+- `/api/me` 回傳 `gearDiscountPct` 供前端顯示
+
+### D. 生日鎖定
+- 客戶填一次生日後不可自行修改（`/api/me` PATCH 擋變更 + LIFF profile 欄位鎖定）；僅 admin/boss 可於後台修改
+
+### 排程
+- `docs/CRON_SETUP.md`：新增 `/api/cron/birthday-credits` 區段，cron 由每日改為 **每月 1 號** `0 0 1 * *`
+
 ## 20260528_95 — 2026-05-28 (場次載入修復 + migrate-safety 補全)
 
 ### Bug Fix

@@ -116,6 +116,48 @@ export async function POST(
             );
           }
         }
+
+        // v388：VIP 滿級（最高階）後，每超過 N 潛回饋 M 元抵用金。
+        //   N=SiteConfig.vipOverflowDives、M=SiteConfig.vipOverflowCredit（後台可調）。
+        //   去重：以已發的 vip_overflow CreditTx 筆數對應已達里程碑數，補齊差額。
+        try {
+          const maxLevel = Math.max(...tiers.map((t) => t.level));
+          const overflowDives =
+            (cfg as unknown as { vipOverflowDives?: number } | null)
+              ?.vipOverflowDives ?? 50;
+          const overflowCredit =
+            (cfg as unknown as { vipOverflowCredit?: number } | null)
+              ?.vipOverflowCredit ?? 1000;
+          const baseLogs =
+            tiers.find((t) => t.level === maxLevel)?.minLogs ?? 0;
+          const logs = user.haiwangziLogCount ?? 0;
+          if (
+            newLevel >= maxLevel &&
+            overflowDives > 0 &&
+            overflowCredit > 0 &&
+            logs >= baseLogs
+          ) {
+            const milestones = Math.floor((logs - baseLogs) / overflowDives);
+            if (milestones > 0) {
+              const alreadyGranted = await prisma.creditTx.count({
+                where: { userId: booking.userId, reason: "vip_overflow" },
+              });
+              for (let m = alreadyGranted + 1; m <= milestones; m++) {
+                const { grantCredit } = await import("@/lib/credit");
+                await grantCredit({
+                  userId: booking.userId,
+                  amount: overflowCredit,
+                  reason: "vip_overflow",
+                  refType: "vip_overflow",
+                  refId: String(m),
+                  note: `VIP 滿級回饋（累計 ${baseLogs + m * overflowDives} 潛）`,
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.error("[vip_overflow reward]", e);
+        }
       }
       // v270：推 LINE 「已記錄到場」 + 嘗試首單獎勵
       const updatedUser = await prisma.user.findUnique({

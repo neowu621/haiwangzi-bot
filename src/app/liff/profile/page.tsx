@@ -122,6 +122,7 @@ export default function ProfilePage() {
   const [certNumber, setCertNumber] = useState("");
   const [logCount, setLogCount] = useState("");
   const [birthday, setBirthday] = useState(""); // YYYY-MM-DD
+  const [birthdayLocked, setBirthdayLocked] = useState(false); // v388：填過就鎖定，僅 admin 可改
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
@@ -236,6 +237,7 @@ export default function ProfilePage() {
         setLogCount(String(u.logCount ?? 0));
         // birthday 從 ISO 切 YYYY-MM-DD（HTML date input 格式）
         setBirthday(u.birthday ? String(u.birthday).slice(0, 10) : "");
+        setBirthdayLocked(!!u.birthday); // v388：已填過 → 鎖定不可自行修改
         setEmergencyName(u.emergencyContact?.name ?? "");
         setEmergencyPhone(formatPhoneTW(u.emergencyContact?.phone ?? ""));
         setEmergencyRel(u.emergencyContact?.relationship ?? "");
@@ -741,13 +743,18 @@ export default function ProfilePage() {
               <Label>
                 生日
                 <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                  （生日當天自動發放抵用金 🎂）
+                  {birthdayLocked
+                    ? "（已設定，如需更正請聯絡客服）"
+                    : "（生日當月發放抵用金 🎂・填寫後不可自行修改）"}
                 </span>
               </Label>
               <Input
                 type="date"
                 value={birthday}
                 onChange={(e) => setBirthday(e.target.value)}
+                readOnly={birthdayLocked}
+                disabled={birthdayLocked}
+                className={birthdayLocked ? "opacity-60 cursor-not-allowed" : undefined}
               />
             </div>
             <div>
@@ -1196,6 +1203,9 @@ const REASON_LABELS: Record<string, { label: string; emoji: string; desc: string
   refund: { label: "退費補償", emoji: "🔄", desc: "訂單退款轉抵用金" },
   used: { label: "訂單折抵", emoji: "💸", desc: "預約時抵扣金額" },
   admin_adjust: { label: "管理員調整", emoji: "🛠", desc: "由海王子管理員調整" },
+  first_order_reward: { label: "首單獎勵", emoji: "🎉", desc: "首次完成潛水的獎勵" },
+  signup_reward: { label: "註冊禮金", emoji: "🎁", desc: "完成 Email 驗證的見面禮" },
+  vip_overflow: { label: "VIP 滿級回饋", emoji: "🏆", desc: "滿級後持續潛水的回饋" },
 };
 
 function CreditCard({

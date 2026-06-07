@@ -11,6 +11,7 @@ import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { normalizeVipTiers, getGearDiscountPct } from "@/lib/vip-tier"; // v388
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -178,7 +179,21 @@ export async function POST(req: NextRequest) {
   if (trip.isNightDive) extraAmount += pricing.nightDive;
   if (trip.isScooter) extraAmount += pricing.scooterRental;
   // 裝備：各自獨立數量
-  const gearAmount = data.rentalGear.reduce((s, g) => s + g.price * g.qty, 0);
+  const gearAmountRaw = data.rentalGear.reduce((s, g) => s + g.price * g.qty, 0);
+  // v388：依會員 VIP 等級自動折扣「裝備租借」（不折潛水費/附加費）。
+  //   gearDiscountPct 是「應付 %」（100=不折，80=打 8 折）。折扣%在 VIP 設定可調。
+  let gearAmount = gearAmountRaw;
+  let gearDiscountPct = 100;
+  if (gearAmountRaw > 0) {
+    const cfg = await prisma.siteConfig
+      .findUnique({ where: { id: "default" }, select: { vipTiers: true } })
+      .catch(() => null);
+    const tiers = cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined;
+    gearDiscountPct = getGearDiscountPct(auth.user.vipLevel ?? 0, tiers);
+    if (gearDiscountPct < 100) {
+      gearAmount = Math.round((gearAmountRaw * gearDiscountPct) / 100);
+    }
+  }
   const totalAmount = divesAmount + extraAmount + gearAmount;
   // 二次保護：理論上 schema 已擋負數，但 baseAmount 也可能因 admin 設負 pricing 出狀況
   if (totalAmount < 0) {

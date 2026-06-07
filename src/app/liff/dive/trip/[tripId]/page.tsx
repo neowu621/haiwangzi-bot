@@ -146,6 +146,8 @@ export default function TripBookingPage({
   const [creditBalance, setCreditBalance] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [vipLevel, setVipLevel] = useState(1); // v289：暫保留 setVipLevel 給後續可能的等級顯示
+  // v388：裝備租借折扣 %（100=不折，80=打 8 折）— 依會員 VIP 等級，由 /api/me 回傳
+  const [gearDiscountPct, setGearDiscountPct] = useState(100);
   const [creditUsed, setCreditUsed] = useState(0);
 
   // 同伴
@@ -235,6 +237,7 @@ export default function TripBookingPage({
         logCount: number;
         creditBalance: number;
         vipLevel: number;
+        gearDiscountPct?: number;
         emergencyContact: {
           name: string;
           phone: string;
@@ -257,6 +260,9 @@ export default function TripBookingPage({
         setSavedCompanions(me.companions ?? []);
         setCreditBalance(me.creditBalance ?? 0);
         setVipLevel(me.vipLevel ?? 1);
+        setGearDiscountPct(
+          typeof me.gearDiscountPct === "number" ? me.gearDiscountPct : 100,
+        );
         // v289：付款方式移到下單後選，這裡不再預設
       })
       .catch(() => {})
@@ -312,6 +318,15 @@ export default function TripBookingPage({
     () => selectedGearList.reduce((s, g) => s + g.price * g.qty, 0),
     [selectedGearList],
   );
+  // v388：裝備折扣（只折裝備，不折潛水費）。gearDiscountPct 為「應付 %」
+  const gearDiscounted = useMemo(
+    () =>
+      gearDiscountPct < 100
+        ? Math.round((gearTotal * gearDiscountPct) / 100)
+        : gearTotal,
+    [gearTotal, gearDiscountPct],
+  );
+  const gearSaved = gearTotal - gearDiscounted;
 
   // v48 計價（與 server 一致）：
   //   總額 = baseTrip (整單平收) + extraTank × 支數 × 人數 + 夜潛/水推 + 裝備
@@ -326,7 +341,7 @@ export default function TripBookingPage({
     // v155：夜潛加價、水上摩托車加價皆已移除（統一價）
     return trip.pricing.baseTrip;
   }, [trip]);
-  const total = divesAmount + extraAmount + gearTotal;
+  const total = divesAmount + extraAmount + gearDiscounted;
 
   const companionsValid = companionSlots.every(
     (c) => c.name.trim().length >= 2 && c.cert !== null,
@@ -1031,7 +1046,24 @@ export default function TripBookingPage({
                       .map((g) => `${g.label}${g.qty > 1 ? `×${g.qty}` : ""}`)
                       .join("、")}
                   </span>
-                  <span>+ NT$ {gearTotal.toLocaleString()}</span>
+                  {gearSaved > 0 ? (
+                    <span className="text-right">
+                      <span className="mr-1 text-[var(--muted-foreground)] line-through">
+                        NT$ {gearTotal.toLocaleString()}
+                      </span>
+                      + NT$ {gearDiscounted.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span>+ NT$ {gearTotal.toLocaleString()}</span>
+                  )}
+                </div>
+              )}
+              {gearSaved > 0 && (
+                <div className="flex justify-between text-[var(--color-phosphor)]">
+                  <span>
+                    VIP{vipLevel} 裝備折扣（{Math.round(100 - gearDiscountPct)}% off）
+                  </span>
+                  <span>− NT$ {gearSaved.toLocaleString()}</span>
                 </div>
               )}
             </div>
@@ -1087,6 +1119,12 @@ export default function TripBookingPage({
           <p className="-mt-2 text-[11px] text-[var(--muted-foreground)]">
             按 + 加數量，例如 2 人想各租 1 件 BCD → BCD 數量 2
           </p>
+          {gearDiscountPct < 100 && (
+            <div className="rounded-md bg-[var(--color-phosphor)]/10 px-3 py-2 text-[11px] font-medium text-[var(--color-phosphor)]">
+              🎖 VIP{vipLevel} 裝備租借享 {Math.round(100 - gearDiscountPct)}% off
+              （結帳自動折扣，只折裝備不折潛水費）
+            </div>
+          )}
           <div className="space-y-2">
             {gearOptions.map((g) => {
               const qty = gearQty[g.itemType] ?? 0;

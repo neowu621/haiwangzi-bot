@@ -211,6 +211,25 @@ export default function SettingsPage() {
     }
   }
 
+  // v388：一次性補發註冊禮金給「已驗證但未領過」的現有會員
+  async function backfillSignupReward() {
+    setErr(null); setOk(null);
+    try {
+      const dry = await adminFetch<{ ok: boolean; skipped?: boolean; reason?: string; amount?: number; eligibleCount?: number; totalCredit?: number }>(
+        "/api/admin/backfill-signup-reward",
+      );
+      if (dry.skipped) { alert(`無法補發：${dry.reason}`); return; }
+      if (!dry.eligibleCount) { alert("沒有需要補發的會員（皆已領過或無已驗證會員）。"); return; }
+      if (!window.confirm(`將補發註冊禮金給 ${dry.eligibleCount} 位已驗證會員，每位 NT$${dry.amount}，合計 NT$${dry.totalCredit}。\n\n確定執行？`)) return;
+      const r = await adminFetch<{ grantedCount: number; totalCredit: number; failedCount: number }>(
+        "/api/admin/backfill-signup-reward", { method: "POST" },
+      );
+      setOk(`✅ 補發完成：${r.grantedCount} 位、合計 NT$${r.totalCredit}${r.failedCount ? `（失敗 ${r.failedCount}）` : ""}`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "補發失敗");
+    }
+  }
+
   async function resetAllData() {
     const typed = window.prompt(
       "⚠️ 此操作將永久刪除所有訂單、日潛場次、潛水團，無法復原！\n\n請輸入「確認刪除」繼續："
@@ -581,6 +600,14 @@ export default function SettingsPage() {
                 onChange={(n) => setCfg(c => c ? { ...c, signupRewardAmount: n } : c)} />
               <CompactNum label="註冊禮金有效天數（0=不過期）" labelW="w-36" value={cfg.signupRewardExpiryDays ?? 0}
                 onChange={(n) => setCfg(c => c ? { ...c, signupRewardExpiryDays: n } : c)} />
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => void backfillSignupReward()}>
+                  一次性補發給現有已驗證會員
+                </Button>
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  （先存好金額再按；只發給未領過的人，可重複按）
+                </span>
+              </div>
               <CompactNum label="天氣取消風速門檻（m/s）" labelW="w-36" value={cfg.weatherWindThreshold}
                 onChange={(n) => setCfg(c => c ? { ...c, weatherWindThreshold: n || 10 } : c)} />
             </div>
@@ -671,6 +698,32 @@ export default function SettingsPage() {
               </Button>
             </div>
           </SectionCard>
+
+          {/* v388：VIP5 滿級回饋 */}
+          <div className="mt-4">
+            <SectionCard title="🦈 VIP5 滿級回饋">
+              <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+                會員升到最高級（LV5）後，每再累積 N 次潛水自動回饋抵用金（里程碑各發一次）。金額 0 = 停用。
+              </p>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                <CompactNum label="每 N 潛回饋" labelW="w-28" value={cfg.vipOverflowDives ?? 50}
+                  onChange={(n) => setCfg(c => c ? { ...c, vipOverflowDives: n } : c)} />
+                <CompactNum label="回饋金額（NT$，0=停用）" labelW="w-36" value={cfg.vipOverflowCredit ?? 1000}
+                  onChange={(n) => setCfg(c => c ? { ...c, vipOverflowCredit: n } : c)} />
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                  onClick={() => save("VIP5 滿級回饋", {
+                    vipOverflowDives: cfg.vipOverflowDives ?? 50,
+                    vipOverflowCredit: cfg.vipOverflowCredit ?? 1000,
+                  })}
+                  disabled={saving === "VIP5 滿級回饋"}>
+                  <Save className="mr-1.5 h-4 w-4" />
+                  {saving === "VIP5 滿級回饋" ? "儲存中..." : "儲存滿級回饋"}
+                </Button>
+              </div>
+            </SectionCard>
+          </div>
 
           <div className="mt-4">
             <SectionCard title="⭐ VIP 等級設定">

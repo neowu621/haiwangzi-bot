@@ -21,6 +21,8 @@ const DEFAULTS: Record<CreditReason, number> = {
   refund: 0,
   used: 0,
   first_order_reward: 360, // v261
+  signup_reward: 0, // v388：依 signupRewardExpiryDays（這裡只是 fallback；發放點自帶 expiresAt）
+  vip_overflow: 0, // v388：VIP 滿級回饋，預設不過期
 };
 
 let cached: { value: Record<CreditReason, number>; ts: number } | null = null;
@@ -38,6 +40,10 @@ async function readExpiryDaysFromDB(): Promise<Record<CreditReason, number>> {
     first_order_reward:
       (cfg as unknown as { firstOrderRewardExpiryDays?: number } | null)
         ?.firstOrderRewardExpiryDays ?? DEFAULTS.first_order_reward,
+    signup_reward:
+      (cfg as unknown as { signupRewardExpiryDays?: number } | null)
+        ?.signupRewardExpiryDays ?? DEFAULTS.signup_reward,
+    vip_overflow: DEFAULTS.vip_overflow,
   };
   cached = { value: map, ts: Date.now() };
   return map;
