@@ -382,7 +382,7 @@ export default function SettingsPage() {
             <TabsTrigger value="vip">⭐ VIP</TabsTrigger>
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
-            <TabsTrigger value="autosend">🌤 天氣</TabsTrigger>
+            <TabsTrigger value="autosend">📨 自動發送</TabsTrigger>
             <TabsTrigger value="danger">⚠️ 危險</TabsTrigger>
             <TabsTrigger value="tools">🔧 工具</TabsTrigger>
           </TabsList>
@@ -1243,6 +1243,38 @@ function AutoSendSection({
         這些通知由 Cronicle 排程觸發，可在此設定是否啟用、寄送對象。
       </p>
 
+      {/* v315：訂單日報設定（v393：移到最上面） */}
+      <div className="mb-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(96,165,250,0.06)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日（訂單，非天氣）</p>
+            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以 UTC 跑 → cron <span className="font-mono">0 13 * * *</span>）。<br/>
+              老闆/admin：完整版（明日場次+客戶+應收+待審匯款+今日待結算+月統計）LINE + Email。<br/>
+              教練：精簡版 LINE，只列明日場次與客戶清單+電話（不含金額）。
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <input
+              type="checkbox"
+              checked={cfg.dailyBriefingEnabled ?? true}
+              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingEnabled: e.target.checked } : c)}
+            />
+            <span className="text-[var(--foreground)]">啟用</span>
+          </label>
+        </div>
+        {cfg.dailyBriefingEnabled !== false && (
+          <label className="mt-3 flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={cfg.dailyBriefingIncludeCoaches ?? true}
+              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingIncludeCoaches: e.target.checked } : c)}
+            />
+            <span className="text-[var(--foreground)]">也發給教練（精簡版）</span>
+          </label>
+        )}
+      </div>
+
       <div className="rounded-lg border p-4 mb-3" style={{ borderColor: "var(--border)" }}>
         <p className="text-sm font-bold text-[var(--foreground)] mb-1">🌤️ 每日天氣回報</p>
 
@@ -1486,38 +1518,6 @@ function AutoSendSection({
             curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-weather-report&quot;
           </code>
         </div>
-      </div>
-
-      {/* v315：訂單日報設定 */}
-      <div className="mt-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(96,165,250,0.06)" }}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日（訂單，非天氣）</p>
-            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以 UTC 跑 → cron <span className="font-mono">0 13 * * *</span>）。<br/>
-              老闆/admin：完整版（明日場次+客戶+應收+待審匯款+今日待結算+月統計）LINE + Email。<br/>
-              教練：精簡版 LINE，只列明日場次與客戶清單+電話（不含金額）。
-            </p>
-          </div>
-          <label className="flex items-center gap-2 text-sm shrink-0">
-            <input
-              type="checkbox"
-              checked={cfg.dailyBriefingEnabled ?? true}
-              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingEnabled: e.target.checked } : c)}
-            />
-            <span className="text-[var(--foreground)]">啟用</span>
-          </label>
-        </div>
-        {cfg.dailyBriefingEnabled !== false && (
-          <label className="mt-3 flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={cfg.dailyBriefingIncludeCoaches ?? true}
-              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingIncludeCoaches: e.target.checked } : c)}
-            />
-            <span className="text-[var(--foreground)]">也發給教練（精簡版）</span>
-          </label>
-        )}
       </div>
 
       <div className="flex justify-end">
