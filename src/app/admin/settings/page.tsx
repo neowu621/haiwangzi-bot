@@ -237,19 +237,25 @@ export default function SettingsPage() {
   }
 
   // v388：一次性補發註冊禮金給「已驗證但未領過」的現有會員
-  async function backfillSignupReward() {
+  // v393：一鍵補發（註冊 / 生日）— 先 dry-run 列出名單再確認發送
+  async function runBackfill(kind: "signup" | "birthday") {
     setErr(null); setOk(null);
+    const ep = kind === "signup"
+      ? "/api/admin/backfill-signup-reward"
+      : "/api/admin/backfill-birthday-credits";
+    const label = kind === "signup" ? "註冊禮金" : "生日禮金";
     try {
-      const dry = await adminFetch<{ ok: boolean; skipped?: boolean; reason?: string; amount?: number; eligibleCount?: number; totalCredit?: number }>(
-        "/api/admin/backfill-signup-reward",
-      );
+      const dry = await adminFetch<{ skipped?: boolean; reason?: string; amount?: number; eligibleCount?: number; totalCredit?: number; members?: string[] }>(ep);
       if (dry.skipped) { alert(`無法補發：${dry.reason}`); return; }
-      if (!dry.eligibleCount) { alert("沒有需要補發的會員（皆已領過或無已驗證會員）。"); return; }
-      if (!window.confirm(`將補發註冊禮金給 ${dry.eligibleCount} 位已驗證會員，每位 NT$${dry.amount}，合計 NT$${dry.totalCredit}。\n\n確定執行？`)) return;
-      const r = await adminFetch<{ grantedCount: number; totalCredit: number; failedCount: number }>(
-        "/api/admin/backfill-signup-reward", { method: "POST" },
-      );
-      setOk(`✅ 補發完成：${r.grantedCount} 位、合計 NT$${r.totalCredit}${r.failedCount ? `（失敗 ${r.failedCount}）` : ""}`);
+      if (!dry.eligibleCount) { alert(`沒有需要補發${label}的會員。`); return; }
+      const names = dry.members ?? [];
+      const shown = names.slice(0, 40).map((n, i) => `${i + 1}. ${n}`).join("\n");
+      const more = names.length > 40 ? `\n…等共 ${names.length} 位` : "";
+      if (!window.confirm(
+        `【補發${label}】將發給以下 ${dry.eligibleCount} 位，每位 NT$${dry.amount}，合計 NT$${dry.totalCredit}：\n\n${shown}${more}\n\n確定執行？`,
+      )) return;
+      const r = await adminFetch<{ grantedCount: number; totalCredit: number; failedCount: number }>(ep, { method: "POST" });
+      setOk(`✅ ${label}補發完成：${r.grantedCount} 位、合計 NT$${r.totalCredit}${r.failedCount ? `（失敗 ${r.failedCount}）` : ""}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "補發失敗");
     }
@@ -655,7 +661,7 @@ export default function SettingsPage() {
                     <td className="px-2 py-2 whitespace-nowrap">Email 驗證後<br /><CreditBadge text="一生一次" cls="bg-amber-100 text-amber-800" /></td>
                     <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">
                       驗證 Email 即發。
-                      <Button size="sm" variant="outline" className="ml-1 h-6 px-2 text-[10px]" onClick={() => void backfillSignupReward()}>一鍵補發舊會員</Button>
+                      <Button size="sm" variant="outline" className="ml-1 h-6 px-2 text-[10px]" onClick={() => void runBackfill("signup")}>🎁 一鍵補發（列名單）</Button>
                     </td>
                   </tr>
                   {/* 生日禮金 */}
@@ -667,7 +673,8 @@ export default function SettingsPage() {
                       onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} /></div></td>
                     <td className="px-2 py-2 whitespace-nowrap">每月 1 號發壽星<br /><CreditBadge text="一年一次" cls="bg-blue-100 text-blue-800" /></td>
                     <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">
-                      生日填一次後客戶不可改；未填不發。補發請至「抵用金管理 → 🎁 一鍵補發」。
+                      生日填一次後客戶不可改；未填不發。
+                      <Button size="sm" variant="outline" className="ml-1 h-6 px-2 text-[10px]" onClick={() => void runBackfill("birthday")}>🎂 一鍵補發（列名單）</Button>
                     </td>
                   </tr>
                   {/* 首單獎勵 */}

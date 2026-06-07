@@ -42,8 +42,10 @@ async function run(req: NextRequest, dryRun: boolean) {
   const year = tw.getUTCFullYear();
 
   // 生日月 <= 當月、且今年還沒領過的會員（未來月份生日不在此補，交給月初 cron）
-  const users = await prisma.$queryRaw<Array<{ line_user_id: string }>>`
-    SELECT line_user_id
+  const users = await prisma.$queryRaw<
+    Array<{ line_user_id: string; name: string | null }>
+  >`
+    SELECT line_user_id, COALESCE(real_name, display_name) AS name
     FROM users
     WHERE birthday IS NOT NULL
       AND deleted_at IS NULL
@@ -59,6 +61,7 @@ async function run(req: NextRequest, dryRun: boolean) {
       year,
       eligibleCount: users.length,
       totalCredit: users.length * amount,
+      members: users.map((u) => u.name ?? "（未命名）"),
     });
   }
 

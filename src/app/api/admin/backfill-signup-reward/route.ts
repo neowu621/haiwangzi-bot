@@ -56,6 +56,7 @@ async function run(req: NextRequest, dryRun: boolean) {
       amount,
       eligibleCount: candidates.length,
       totalCredit: candidates.length * amount,
+      members: candidates.map((c) => c.realName ?? c.displayName ?? "（未命名）"),
     });
   }
 

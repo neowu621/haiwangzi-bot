@@ -93,6 +93,7 @@ export default function CreditsPage() {
     eligibleCount: number;
     amount: number;
     totalCredit: number;
+    members?: string[];
     skipped?: boolean;
     reason?: string;
   } | null;
@@ -579,7 +580,7 @@ function BackfillRow({
 }: {
   title: string;
   sub: string;
-  data: { eligibleCount: number; amount: number; totalCredit: number; skipped?: boolean; reason?: string } | null;
+  data: { eligibleCount: number; amount: number; totalCredit: number; members?: string[]; skipped?: boolean; reason?: string } | null;
 }) {
   return (
     <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
@@ -607,6 +608,15 @@ function BackfillRow({
       </div>
       {data?.skipped && (
         <div className="mt-1 text-[10px] text-amber-600">{data.reason}</div>
+      )}
+      {data && !data.skipped && (data.members?.length ?? 0) > 0 && (
+        <div className="mt-2 max-h-28 overflow-y-auto rounded bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
+          {data.members!.map((n, i) => (
+            <span key={i} className="mr-1 inline-block">
+              {i + 1}.{n}{i < data.members!.length - 1 ? "、" : ""}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );
