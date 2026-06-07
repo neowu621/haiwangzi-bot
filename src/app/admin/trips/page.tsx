@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 // v192：Dialog 已改為固定右側面板；v336 重新引入給 Dump 一週用
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight, FileText, Check } from "lucide-react";
+import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight, FileText, Check, Search, X } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
 import ExcelJS from "exceljs";
 
@@ -285,6 +285,7 @@ export default function AdminTripsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   // v277：預設「全部」+ 加「過期」「未到期」filter
   const [filterRange, setFilterRange] = useState<"week" | "month" | "all" | "past" | "upcoming">("all");
+  const [search, setSearch] = useState(""); // v397：搜尋 filter
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -806,7 +807,7 @@ export default function AdminTripsPage() {
 
   // ── 衍生列表：filter → sort → paginate ────────────────────────────
   // v277/v319：past=過期、upcoming=未到期（含今天起所有）、week=未來 7 天、month=未來 30 天
-  const filteredTrips = (() => {
+  const rangeFiltered = (() => {
     if (filterRange === "all") return trips;
     const today = taipeiToday();
     const todayDate = new Date(`${today}T00:00:00+08:00`);
@@ -829,6 +830,19 @@ export default function AdminTripsPage() {
     return trips.filter((t) => {
       const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
       return td >= todayDate && td <= future;
+    });
+  })();
+  // v397：搜尋 filter（編號 / 地點 / 教練 / 日期）
+  const filteredTrips = (() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rangeFiltered;
+    return rangeFiltered.filter((t) => {
+      const sites = t.diveSiteIds.map(siteName).join(" ");
+      const coaches = t.coachIds.map(coachName).join(" ");
+      return [t.code ?? "", t.date.slice(0, 10), sites, coaches]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
     });
   })();
 
@@ -967,6 +981,25 @@ export default function AdminTripsPage() {
         {/* 共用 topbar（v342：移除下載範本 / Excel 匯出 / Excel 匯入）*/}
         <div className="flex flex-wrap items-center justify-end gap-2"
           style={{ padding: "12px 24px", borderBottom: "1px solid #E4E8ED", background: "#fff", flexShrink: 0 }}>
+          {/* v397：搜尋 filter（編號 / 地點 / 教練 / 日期）*/}
+          <div className="relative mr-auto w-full max-w-md">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜尋 編號 / 地點 / 教練 / 日期…"
+              className="w-full rounded-md border py-1.5 pl-8 pr-8 text-sm"
+              style={{ borderColor: "var(--border)" }}
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:bg-slate-100"
+                title="清除">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           {/* v336：Dump 一週場次 — 給 LINE 筆記本貼 */}
           <Button size="sm" variant="outline" onClick={() => setDumpOpen(true)} title="dump 一週場次成可貼 LINE 的文字">
             <FileText className="mr-1.5 h-4 w-4" />
@@ -1120,14 +1153,16 @@ export default function AdminTripsPage() {
                             >
                               {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                             </button>
-                            <Badge variant={statusVariant(effStatus)} className="text-[10px]">
-                              {TRIP_STATUS_LABEL[effStatus] ?? effStatus}
-                            </Badge>
-                            {isAuto && (
-                              <span className="text-[9px] text-[var(--muted-foreground)]" title="日期已過，自動視為結束">
-                                自動
-                              </span>
-                            )}
+                            <div className="flex flex-col items-start gap-0.5">
+                              <Badge variant={statusVariant(effStatus)} className="text-[10px]">
+                                {TRIP_STATUS_LABEL[effStatus] ?? effStatus}
+                              </Badge>
+                              {isAuto && (
+                                <span className="text-[9px] text-[var(--muted-foreground)]" title="日期已過，自動視為結束">
+                                  自動
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         {/* 編號 */}
@@ -1190,9 +1225,9 @@ export default function AdminTripsPage() {
                         </td>
                         {/* 預估收費 */}
                         <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-                          {(trip.booked ?? 0) === 0
-                            ? "NT$0"
-                            : `NT$${(estimatedRevenue(trip) || 0).toLocaleString()}`}
+                          {(trip.booked ?? 0) === 0 || !estimatedRevenue(trip)
+                            ? <span className="text-[var(--muted-foreground)]">—</span>
+                            : (estimatedRevenue(trip)).toLocaleString()}
                         </td>
                         {/* 操作 — 縮小成 28px icon-only 按鈕 */}
                         <td className="px-3 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
