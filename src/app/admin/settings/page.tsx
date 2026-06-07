@@ -126,6 +126,13 @@ function SectionCard({ title, children }: { title: string; children: React.React
   );
 }
 
+// v391：抵用金表格用的小徽章
+function CreditBadge({ text, cls }: { text: string; cls: string }) {
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${cls}`}>{text}</span>
+  );
+}
+
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[10rem_1fr] items-center gap-3">
@@ -360,7 +367,7 @@ export default function SettingsPage() {
             <TabsTrigger value="vip">⭐ VIP</TabsTrigger>
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
-            <TabsTrigger value="autosend">📨 發送</TabsTrigger>
+            <TabsTrigger value="autosend">🌤 天氣</TabsTrigger>
             <TabsTrigger value="danger">⚠️ 危險</TabsTrigger>
             <TabsTrigger value="tools">🔧 工具</TabsTrigger>
           </TabsList>
@@ -575,81 +582,132 @@ export default function SettingsPage() {
         {/* ── B. 金額設定 ──────────────────── */}
         <SectionCard title="💰 金額設定">
 
-          {/* B1 裝備租借 — 精簡兩行 inline label */}
+          {/* B1 裝備租借 — v391：橫式表（項目一行、價格一行） */}
           <div className="mb-5">
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">裝備租借費率（NT$）</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
-              {(Object.keys(GEAR_LABELS) as Array<keyof GearPrices>).map(key => (
-                <CompactNum key={key} label={GEAR_LABELS[key]} labelW="w-24" value={gear[key]}
-                  onChange={(n) => setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: n } } : c)} />
-              ))}
-            </div>
-          </div>
-
-          {/* B2 場次預設定價 — v346: 移除（不需要初始設定）。defaultTripPricing 仍保留現值，由各場次自填 */}
-
-          {/* B3 其他費用 — 精簡兩行 inline label */}
-          <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">其他費用</p>
-            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-              <CompactNum label="教練預設費用/潛（NT$）" labelW="w-36" value={cfg.defaultCoachFee}
-                onChange={(n) => setCfg(c => c ? { ...c, defaultCoachFee: n } : c)} />
-              <CompactNum label="生日抵用金（NT$，0=停用）" labelW="w-36" value={cfg.birthdayCreditAmount}
-                onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} />
-              <CompactNum label="生日抵用金有效天數（0=不過期）" labelW="w-36" value={cfg.birthdayCreditExpiryDays ?? 360}
-                onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
-              {/* v388：註冊禮金（Email 驗證通過後發） */}
-              <CompactNum label="註冊禮金（NT$，0=停用，Email驗證後發）" labelW="w-36" value={cfg.signupRewardAmount ?? 50}
-                onChange={(n) => setCfg(c => c ? { ...c, signupRewardAmount: n } : c)} />
-              <CompactNum label="註冊禮金有效天數（0=不過期）" labelW="w-36" value={cfg.signupRewardExpiryDays ?? 0}
-                onChange={(n) => setCfg(c => c ? { ...c, signupRewardExpiryDays: n } : c)} />
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => void backfillSignupReward()}>
-                  一次性補發給現有已驗證會員
-                </Button>
-                <span className="text-[10px] text-[var(--muted-foreground)]">
-                  （先存好金額再按；只發給未領過的人，可重複按）
-                </span>
-              </div>
-              <CompactNum label="天氣取消風速門檻（m/s）" labelW="w-36" value={cfg.weatherWindThreshold}
-                onChange={(n) => setCfg(c => c ? { ...c, weatherWindThreshold: n || 10 } : c)} />
-            </div>
-          </div>
-
-          {/* B3.5 抵用金有效天數 — v185 */}
-          <div className="mb-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">
-              🎁 抵用金有效天數（從發放日起算，0 = 永不過期）
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">生日抵用金</Label>
-                <NumberInput min={0} max={3650} value={cfg.birthdayCreditExpiryDays ?? 360}
-                  onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">VIP 升等獎勵</Label>
-                <NumberInput min={0} max={3650} value={cfg.vipUpgradeCreditExpiryDays ?? 360}
-                  onChange={(n) => setCfg(c => c ? { ...c, vipUpgradeCreditExpiryDays: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">Admin 手動發放（預設）</Label>
-                <NumberInput min={0} max={3650} value={cfg.adminGrantCreditExpiryDays ?? 360}
-                  onChange={(n) => setCfg(c => c ? { ...c, adminGrantCreditExpiryDays: n } : c)} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">退款轉抵用金</Label>
-                <NumberInput min={0} max={3650} value={cfg.refundCreditExpiryDays ?? 0}
-                  onChange={(n) => setCfg(c => c ? { ...c, refundCreditExpiryDays: n } : c)} />
-              </div>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">🤿 裝備租借費率（NT$）</p>
+            <div className="overflow-x-auto">
+              <table className="border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="border bg-[var(--muted)] px-2 py-2 text-xs font-bold whitespace-nowrap text-[var(--muted-foreground)]" style={{ borderColor: "var(--border)" }}>裝備項目</th>
+                    {(Object.keys(GEAR_LABELS) as Array<keyof GearPrices>).map(key => (
+                      <th key={key} className="border bg-[var(--muted)] px-2 py-2 text-xs font-bold whitespace-nowrap text-center" style={{ borderColor: "var(--border)" }}>{GEAR_LABELS[key]}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border bg-[#f8fafc] px-2 py-1.5 text-xs font-bold whitespace-nowrap text-[var(--muted-foreground)]" style={{ borderColor: "var(--border)" }}>設定價格</td>
+                    {(Object.keys(GEAR_LABELS) as Array<keyof GearPrices>).map(key => (
+                      <td key={key} className="border px-1.5 py-1.5" style={{ borderColor: "var(--border)" }}>
+                        <div className="w-20">
+                          <NumberInput min={0} value={gear[key]}
+                            onChange={(n) => setCfg(c => c ? { ...c, gearRentalPrices: { ...gear, [key]: n } } : c)} />
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
             <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
-              ※ 設 0 = 永不過期。退款轉抵用金通常設 0（不限期）。Admin 手動發放可在發放時個別覆寫。
+              💡 VIP 會員租裝備時，依其等級的「裝備折扣%」自動打折（折扣% 在「⭐ VIP」分頁各級設定）。
             </p>
           </div>
 
-          {/* v345：VIP 升等獎金已移至「⭐ VIP」tab（每等級的「升級獎勵」才是真正生效的設定） */}
-          {/* v346：首單付款獎勵已移至「⭐ VIP」tab（= LV1 新客禮） */}
+          {/* B2 抵用金 / 優惠項目 — v391：統一表格（項目 / 抵用金 / 有效天數 / 觸發條件 / 說明） */}
+          <div className="mb-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">🎁 抵用金 / 優惠項目</p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr style={{ background: "var(--color-ocean-deep)" }}>
+                    <th className="px-2 py-2 text-left text-[11px] font-semibold text-white whitespace-nowrap">項目</th>
+                    <th className="px-2 py-2 text-left text-[11px] font-semibold text-white whitespace-nowrap">抵用金 (NT$)</th>
+                    <th className="px-2 py-2 text-left text-[11px] font-semibold text-white whitespace-nowrap">有效天數</th>
+                    <th className="px-2 py-2 text-left text-[11px] font-semibold text-white whitespace-nowrap">觸發條件</th>
+                    <th className="px-2 py-2 text-left text-[11px] font-semibold text-white">說明</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs">
+                  {/* 註冊禮金 */}
+                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">🎁 註冊禮金</td>
+                    <td className="px-2 py-2"><div className="w-24"><NumberInput min={0} value={cfg.signupRewardAmount ?? 50}
+                      onChange={(n) => setCfg(c => c ? { ...c, signupRewardAmount: n } : c)} /></div></td>
+                    <td className="px-2 py-2"><div className="w-20"><NumberInput min={0} max={3650} value={cfg.signupRewardExpiryDays ?? 0}
+                      onChange={(n) => setCfg(c => c ? { ...c, signupRewardExpiryDays: n } : c)} /></div></td>
+                    <td className="px-2 py-2 whitespace-nowrap">Email 驗證後<br /><CreditBadge text="一生一次" cls="bg-amber-100 text-amber-800" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">
+                      驗證 Email 即發。
+                      <Button size="sm" variant="outline" className="ml-1 h-6 px-2 text-[10px]" onClick={() => void backfillSignupReward()}>一鍵補發舊會員</Button>
+                    </td>
+                  </tr>
+                  {/* 生日禮金 */}
+                  <tr className="border-b bg-[#fafbfc]" style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">🎂 生日禮金</td>
+                    <td className="px-2 py-2"><div className="w-24"><NumberInput min={0} value={cfg.birthdayCreditAmount}
+                      onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} /></div></td>
+                    <td className="px-2 py-2"><div className="w-20"><NumberInput min={0} max={3650} value={cfg.birthdayCreditExpiryDays ?? 360}
+                      onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} /></div></td>
+                    <td className="px-2 py-2 whitespace-nowrap">每月 1 號發壽星<br /><CreditBadge text="一年一次" cls="bg-blue-100 text-blue-800" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">
+                      生日填一次後客戶不可改；未填不發。補發請至「抵用金管理 → 🎁 一鍵補發」。
+                    </td>
+                  </tr>
+                  {/* 首單獎勵 */}
+                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">🎉 首單獎勵</td>
+                    <td className="px-2 py-2 text-[11px] font-semibold text-violet-700 whitespace-nowrap">→ VIP 分頁</td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)]">同 VIP</td>
+                    <td className="px-2 py-2 whitespace-nowrap">首次出席後<br /><CreditBadge text="自動" cls="bg-emerald-100 text-emerald-800" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">金額在「⭐ VIP / LV1 新客禮」設定；第一次潛水完成發。</td>
+                  </tr>
+                  {/* VIP 升等獎勵 */}
+                  <tr className="border-b bg-[#fafbfc]" style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">⭐ VIP 升等獎勵</td>
+                    <td className="px-2 py-2 text-[11px] font-semibold text-violet-700 whitespace-nowrap">→ VIP 分頁</td>
+                    <td className="px-2 py-2"><div className="w-20"><NumberInput min={0} max={3650} value={cfg.vipUpgradeCreditExpiryDays ?? 360}
+                      onChange={(n) => setCfg(c => c ? { ...c, vipUpgradeCreditExpiryDays: n } : c)} /></div></td>
+                    <td className="px-2 py-2 whitespace-nowrap">升到新等級時<br /><CreditBadge text="升等" cls="bg-violet-100 text-violet-700" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">LV2~LV5 各級金額在「⭐ VIP」分頁設定。</td>
+                  </tr>
+                  {/* VIP 滿級回饋 */}
+                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">🏆 VIP 滿級回饋</td>
+                    <td className="px-2 py-2 text-[11px] font-semibold text-violet-700 whitespace-nowrap">→ VIP 分頁</td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)]">同 VIP</td>
+                    <td className="px-2 py-2 whitespace-nowrap">LV5 後每滿 N 潛<br /><CreditBadge text="滿級" cls="bg-violet-100 text-violet-700" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">「每 N 潛 / 回饋 M 元」在「⭐ VIP」分頁設定。</td>
+                  </tr>
+                  {/* Admin 手動發放 */}
+                  <tr className="border-b bg-[#fafbfc]" style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">🛠 Admin 手動發放</td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] italic whitespace-nowrap">發放時填</td>
+                    <td className="px-2 py-2"><div className="w-20"><NumberInput min={0} max={3650} value={cfg.adminGrantCreditExpiryDays ?? 360}
+                      onChange={(n) => setCfg(c => c ? { ...c, adminGrantCreditExpiryDays: n } : c)} /></div></td>
+                    <td className="px-2 py-2 whitespace-nowrap">老闆手動<br /><CreditBadge text="手動" cls="bg-slate-100 text-slate-600" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">此為預設效期；發放時可個別覆寫。</td>
+                  </tr>
+                  {/* 退款轉抵用金 */}
+                  <tr style={{ borderColor: "var(--border)" }}>
+                    <td className="px-2 py-2 font-bold whitespace-nowrap">💰 退款轉抵用金</td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] italic whitespace-nowrap">退款時填</td>
+                    <td className="px-2 py-2"><div className="w-20"><NumberInput min={0} max={3650} value={cfg.refundCreditExpiryDays ?? 0}
+                      onChange={(n) => setCfg(c => c ? { ...c, refundCreditExpiryDays: n } : c)} /></div></td>
+                    <td className="px-2 py-2 whitespace-nowrap">退款時決定<br /><CreditBadge text="手動" cls="bg-slate-100 text-slate-600" /></td>
+                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">金額/比例由老闆個案決定，非自動。通常效期設 0（不限期）。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
+              天數欄：0 = 永不過期；發放 N 天內未使用自動過期。<span className="text-violet-700 font-semibold">→ VIP 分頁</span> 的項目在「⭐ VIP」分頁設定金額。
+              ※ 教練預設費用、天氣取消風速門檻已移出本頁（風速門檻歸到「🌤 天氣」分頁，未來處理）。
+            </p>
+          </div>
+
+          {/* v345：VIP 升等獎金已移至「⭐ VIP」tab。v391：教練預設費用 / 天氣風速門檻 input 暫移除，值仍保留於存檔 */}
 
           <div className="flex justify-end">
             <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}

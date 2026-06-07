@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>金額設定改版 mockup</title>
+<style>
+  :root{
+    --border:#e2e8f0; --muted:#f1f5f9; --muted-fg:#64748b;
+    --navy:#0a2342; --teal:#14b8a6; --teal-d:#0d9488;
+    --amber:#d97706; --green:#16a34a; --rose:#dc2626;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#eef2f5;font-family:"Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;color:var(--navy);padding:24px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  /* tab bar */
+  .tabs{display:flex;gap:6px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab{display:flex;align-items:center;gap:5px;padding:8px 14px;border-radius:10px;font-size:14px;color:var(--muted-fg);cursor:pointer;}
+  .tab.active{border:2px solid var(--teal);color:var(--navy);font-weight:700;}
+  .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px;}
+  h2{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .sec-title{font-size:15px;font-weight:700;margin:22px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--muted);}
+  .sec-title:first-of-type{margin-top:8px;}
+  .hint{font-size:11px;color:var(--muted-fg);}
+  input[type=number],input[type=text]{width:100%;padding:7px 9px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;text-align:right;}
+  input.sm{padding:5px 7px;font-size:13px;}
+  /* 裝備：橫式表 */
+  table{border-collapse:collapse;width:100%;}
+  .gear-tbl td,.gear-tbl th{border:1px solid var(--border);padding:8px 6px;text-align:center;font-size:13px;}
+  .gear-tbl thead th{background:var(--muted);font-weight:700;white-space:nowrap;}
+  .gear-tbl .lbl{background:#f8fafc;font-weight:700;white-space:nowrap;color:var(--muted-fg);}
+  .gear-tbl input{text-align:center;max-width:90px;margin:0 auto;}
+  /* 抵用金表 */
+  .credit-tbl{font-size:13px;}
+  .credit-tbl th{background:var(--navy);color:#fff;padding:9px 10px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;}
+  .credit-tbl td{border-bottom:1px solid var(--border);padding:9px 10px;vertical-align:middle;}
+  .credit-tbl tr:nth-child(even) td{background:#fafbfc;}
+  .credit-tbl .item{font-weight:700;white-space:nowrap;}
+  .credit-tbl .amt input{max-width:90px;}
+  .credit-tbl .days input{max-width:70px;}
+  .trigger{font-size:12px;color:var(--navy);}
+  .desc{font-size:11px;color:var(--muted-fg);line-height:1.5;}
+  .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;}
+  .b-once{background:#fef3c7;color:#92400e;}
+  .b-year{background:#dbeafe;color:#1e40af;}
+  .b-auto{background:#dcfce7;color:#166534;}
+  .b-manual{background:#f1f5f9;color:#475569;}
+  .b-vip{background:#ede9fe;color:#6d28d9;}
+  .link-vip{font-size:11px;color:#7c3aed;font-weight:700;}
+  .fixed{color:var(--muted-fg);font-size:12px;font-style:italic;}
+  .backfill-btn{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid var(--teal);color:var(--teal-d);font-weight:700;font-size:11px;padding:4px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;}
+  /* 其他費用 grid */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;}
+  .field label{display:block;font-size:12px;color:var(--muted-fg);margin-bottom:4px;}
+  .field .u{font-size:11px;color:var(--muted-fg);margin-left:4px;}
+  .save{float:right;margin-top:18px;background:var(--teal);color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:7px;cursor:pointer;}
+  .note{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:8px 11px;font-size:11px;color:var(--muted-fg);margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- tab bar -->
+  <div class="tabs">
+    <div class="tab">🏠 首頁</div>
+    <div class="tab">🔗 連結</div>
+    <div class="tab">💳 付款</div>
+    <div class="tab active">💰 金額</div>
+    <div class="tab">⭐ VIP</div>
+    <div class="tab">🖼 上傳</div>
+    <div class="tab">📋 政策</div>
+    <div class="tab">🌤 天氣</div>
+    <div class="tab">⚠️ 危險</div>
+    <div class="tab">🔧 工具</div>
+  </div>
+
+  <div class="card">
+    <h2>💰 金額設定</h2>
+    <div class="hint">裝備租借、抵用金/優惠、其他費用一頁管理。VIP 各級獎勵/折扣請到「⭐ VIP」分頁。</div>
+
+    <!-- ① 裝備租借：橫式 -->
+    <div class="sec-title">🤿 裝備租借費率（NT$）</div>
+    <table class="gear-tbl">
+      <thead>
+        <tr>
+          <th class="lbl">裝備項目</th>
+          <th>BCD</th><th>調節器</th><th>防寒衣</th><th>蛙鞋</th><th>面鏡</th><th>潛水電腦錶</th><th>整套<br>(七折)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lbl">設定價格</td>
+          <td><input type="number" value="350"></td>
+          <td><input type="number" value="350"></td>
+          <td><input type="number" value="150"></td>
+          <td><input type="number" value="100"></td>
+          <td><input type="number" value="100"></td>
+          <td><input type="number" value="100"></td>
+          <td><input type="number" value="800"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">💡 VIP 會員租裝備時，依其等級的「裝備折扣%」自動打折（折扣% 在「⭐ VIP」分頁各級設定）。</div>
+
+    <!-- ② 抵用金 / 優惠：表格 -->
+    <div class="sec-title">🎁 抵用金 / 優惠項目</div>
+    <table class="credit-tbl">
+      <thead>
+        <tr>
+          <th style="width:130px;">項目</th>
+          <th style="width:110px;">抵用金 (NT$)</th>
+          <th style="width:90px;">有效天數</th>
+          <th style="width:190px;">觸發條件</th>
+          <th>說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item">🎁 註冊禮金</td>
+          <td class="amt"><input class="sm" type="number" value="50"></td>
+          <td class="days"><input class="sm" type="number" value="0"></td>
+          <td class="trigger">Email 驗證通過後<br><span class="badge b-once">一生一次</span></td>
+          <td class="desc">新會員驗證 Email 即發。<br><span class="backfill-btn">🎁 一鍵補發給舊會員</span></td>
+        </tr>
+        <tr>
+          <td class="item">🎂 生日禮金</td>
+          <td class="amt"><input class="sm" type="number" value="100"></td>
+          <td class="days"><input class="sm" type="number" value="365"></td>
+          <td class="trigger">每月 1 號發當月壽星<br><span class="badge b-year">一年一次</span></td>
+          <td class="desc">生日欄位填一次後客戶不可改（僅 admin/老闆可改）；未填生日不發。<br><span class="backfill-btn">🎂 一鍵補發本年壽星</span></td>
+        </tr>
+        <tr>
+          <td class="item">🎉 首單獎勵</td>
+          <td class="amt"><input class="sm" type="number" value="100"></td>
+          <td class="days"><input class="sm" type="number" value="360"></td>
+          <td class="trigger">首次完成出席後<br><span class="badge b-auto">自動</span></td>
+          <td class="desc">會員第一次潛水（教練確認出席）後自動發放。</td>
+        </tr>
+        <tr>
+          <td class="item">⭐ VIP 升等獎勵</td>
+          <td class="amt"><span class="link-vip">→ VIP 分頁</span></td>
+          <td class="days"><input class="sm" type="number" value="365"></td>
+          <td class="trigger">升到新 VIP 等級時<br><span class="badge b-vip">升等</span></td>
+          <td class="desc">LV2~LV5 各級金額在「⭐ VIP」分頁設定；升等即發。</td>
+        </tr>
+        <tr>
+          <td class="item">🏆 VIP 滿級回饋</td>
+          <td class="amt"><span class="link-vip">→ VIP 分頁</span></td>
+          <td class="days"><span class="fixed">同上</span></td>
+          <td class="trigger">達 LV5 後每滿 N 潛<br><span class="badge b-vip">滿級</span></td>
+          <td class="desc">在「⭐ VIP」分頁設定「每 N 潛 / 回饋 M 元」。</td>
+        </tr>
+        <tr>
+          <td class="item">🛠 Admin 手動發放</td>
+          <td class="amt"><span class="fixed">發放時填</span></td>
+          <td class="days"><input class="sm" type="number" value="365"></td>
+          <td class="trigger">老闆手動<br><span class="badge b-manual">手動</span></td>
+          <td class="desc">此為預設效期；發放時可個別覆寫。</td>
+        </tr>
+        <tr>
+          <td class="item">💰 退款轉抵用金</td>
+          <td class="amt"><span class="fixed">退款時填</span></td>
+          <td class="days"><input class="sm" type="number" value="0"></td>
+          <td class="trigger">退款時決定<br><span class="badge b-manual">手動</span></td>
+          <td class="desc">金額/比例由老闆個案決定，非自動發放。通常效期設 0。</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">天數欄：0 = 永不過期；發放 N 天內未使用自動過期。灰字項目於別處設定，此處不可編輯。<br>※ 教練預設費用、天氣取消風速門檻已移出本頁（風速門檻歸到「🌤 天氣」分頁，未來處理）。</div>
+
+    <button class="save">💾 儲存金額設定</button>
+    <div style="clear:both;"></div>
+  </div>
+
+</div>
+</body>
+</html>
