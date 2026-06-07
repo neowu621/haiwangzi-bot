@@ -110,6 +110,9 @@ const PatchSchema = z.object({
   // v315：訂單日報（每日 07:00 自動發給 admin/boss）
   dailyBriefingEnabled: z.boolean().optional(),
   dailyBriefingIncludeCoaches: z.boolean().optional(),
+  // v391：場次 Dump 自動優惠開頭
+  dumpPromoEnabled: z.boolean().optional(),
+  dumpPromoText: z.string().max(2000).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -191,6 +194,9 @@ export async function GET(req: NextRequest) {
       // v315 訂單日報
       dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
       dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,
+      // v391 場次 Dump 優惠開頭
+      dumpPromoEnabled: (row as unknown as { dumpPromoEnabled?: boolean }).dumpPromoEnabled ?? false,
+      dumpPromoText: (row as unknown as { dumpPromoText?: string }).dumpPromoText ?? "",
     },
     isDefault: false,
     updatedAt: row.updatedAt,

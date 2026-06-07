@@ -72,12 +72,12 @@ const GEAR_OPTIONS_DEFAULT: GearOption[] = [
   { itemType: "fins", label: "蛙鞋", price: 100 },
   { itemType: "mask", label: "面鏡", price: 100 },
   { itemType: "computer", label: "潛水電腦錶", price: 300 },
-  { itemType: "full_set", label: "整套 (七折)", price: 800 },
+  { itemType: "full_set", label: "整套優惠", price: 800 },
 ];
 
 const GEAR_LABELS: Record<GearItemType, string> = {
   BCD: "BCD", regulator: "調節器", wetsuit: "防寒衣",
-  fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套 (七折)",
+  fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套優惠",
 };
 
 // v211：UI picker 移除 Rescue（既有資料仍可顯示）

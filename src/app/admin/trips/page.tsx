@@ -232,6 +232,8 @@ export default function AdminTripsPage() {
     return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   });
   const [dumpCopied, setDumpCopied] = useState(false);
+  // v391：場次 Dump 自動優惠開頭（由系統設定控制）
+  const [dumpPromo, setDumpPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: "" });
 
   // v183：展開查看訂單
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -298,7 +300,7 @@ export default function AdminTripsPage() {
       adminFetch<{ trips: Trip[] }>("/api/admin/trips"),
       adminFetch<Site[]>("/api/admin/sites"),
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches"),
-      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing> } }>("/api/admin/site-config"),
+      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string } }>("/api/admin/site-config"),
     ]).then(([t, s, c, cfg]) => {
       if (t.status === "fulfilled") setTrips(t.value.trips ?? []);
       else setErr("場次載入失敗：" + (t.reason?.message ?? String(t.reason)));
@@ -310,6 +312,10 @@ export default function AdminTripsPage() {
         if (dp && Object.keys(dp).length > 0) {
           setDefaultPricing({ ...BLANK_PRICING_DEFAULT, ...dp });
         }
+        setDumpPromo({
+          enabled: !!cfg.value.config.dumpPromoEnabled,
+          text: cfg.value.config.dumpPromoText ?? "",
+        });
       }
     }).finally(() => setLoading(false));
   }, []);
@@ -888,6 +894,13 @@ export default function AdminTripsPage() {
     // v383：小編 LINE 群組連結（如需更換改這裡）
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];
+    // v391：開啟「Dump 優惠開頭」時，先帶出系統設定的優惠文案 + 分隔線
+    if (dumpPromo.enabled && dumpPromo.text.trim()) {
+      lines.push(dumpPromo.text.trim());
+      lines.push("");
+      lines.push("━━━━━━━━━━━━━━");
+      lines.push("");
+    }
     const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
     const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
     lines.push(`🌊 ${startLabel} ~ ${endLabel} 日潛場次`);

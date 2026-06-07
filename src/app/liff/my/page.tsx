@@ -139,7 +139,7 @@ const GEAR_OPTIONS_DEFAULT: GearOption[] = [
   { itemType: "fins", label: "蛙鞋", price: 100 },
   { itemType: "mask", label: "面鏡", price: 100 },
   { itemType: "computer", label: "潛水電腦錶", price: 300 },
-  { itemType: "full_set", label: "整套 (七折)", price: 800 },
+  { itemType: "full_set", label: "整套優惠", price: 800 },
 ];
 
 // 在頁面 mount 後從 /api/site-config 更新（若後台有設定）

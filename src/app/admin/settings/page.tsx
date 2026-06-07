@@ -100,7 +100,16 @@ interface Config {
   // v315：訂單日報
   dailyBriefingEnabled?: boolean;
   dailyBriefingIncludeCoaches?: boolean;
+  // v391：場次 Dump 自動優惠開頭
+  dumpPromoEnabled?: boolean;
+  dumpPromoText?: string;
 }
+
+// v391：Dump 優惠開頭預設文案（老闆可在系統設定編輯）
+const DEFAULT_DUMP_PROMO = `🔥🔥 海王子線上預約正式開航！ 🔥🔥
+別再等別人揪，自己動手最快！手機點一點，好康通通帶走 🐬
+💰 註冊就送 $50、生日紅包 $100（晚了也補、汪汪不食言🐶）、首潛完再爽領 $100
+⚡ 加碼！6 月底前 每支氣瓶現折 $25，潛越多省越多！`;
 
 const DEFAULT_GEAR: GearPrices = {
   BCD: 200, regulator: 200, wetsuit: 300, fins: 100,
@@ -108,7 +117,7 @@ const DEFAULT_GEAR: GearPrices = {
 };
 const GEAR_LABELS: Record<keyof GearPrices, string> = {
   BCD: "BCD", regulator: "調節器", wetsuit: "防寒衣",
-  fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套(七折)",
+  fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶", full_set: "整套優惠",
 };
 const DEFAULT_TRIP: TripPricing = {
   baseTrip: 1200, extraTank: 500, nightDive: 0, scooterRental: 0,
@@ -731,6 +740,44 @@ export default function SettingsPage() {
             </Button>
           </div>
         </SectionCard>
+
+        {/* v391：場次 Dump 自動優惠開頭 */}
+        <div className="mt-4">
+          <SectionCard title="📣 場次 Dump 優惠開頭">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              開啟後，場次管理「Dump 一週場次」貼到 LINE 的文字最上方會自動帶出這段優惠 + 分隔線（不用每次手貼）。
+            </p>
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4"
+                checked={cfg.dumpPromoEnabled ?? false}
+                onChange={(e) => setCfg(c => c ? { ...c, dumpPromoEnabled: e.target.checked } : c)} />
+              啟用 Dump 優惠開頭
+            </label>
+            <textarea
+              className="w-full rounded-md border p-2 text-sm font-mono leading-relaxed"
+              style={{ borderColor: "var(--border)" }}
+              rows={6}
+              placeholder="輸入優惠文案…"
+              value={cfg.dumpPromoText ?? ""}
+              onChange={(e) => setCfg(c => c ? { ...c, dumpPromoText: e.target.value } : c)} />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline"
+                onClick={() => setCfg(c => c ? { ...c, dumpPromoText: DEFAULT_DUMP_PROMO } : c)}>
+                套用預設文案
+              </Button>
+              <span className="text-[10px] text-[var(--muted-foreground)]">最多 2000 字；換行會保留。</span>
+              <Button size="sm" className="ml-auto" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("Dump 優惠開頭", {
+                  dumpPromoEnabled: cfg.dumpPromoEnabled ?? false,
+                  dumpPromoText: cfg.dumpPromoText ?? "",
+                })}
+                disabled={saving === "Dump 優惠開頭"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "Dump 優惠開頭" ? "儲存中..." : "儲存優惠開頭"}
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
 
         </TabsContent>
 
