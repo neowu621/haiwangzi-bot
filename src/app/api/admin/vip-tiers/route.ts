@@ -43,6 +43,7 @@ const TierSchema = z.object({
   minSpend: z.number().int().min(0),
   benefits: z.array(z.string()).default([]),
   upgradeCredit: z.number().int().min(0).default(0),
+  gearDiscountPct: z.number().int().min(0).max(100).optional(), // v388：裝備折扣%（100/未設=不折）
   color: z.string().default("#999"),
 });
 

@@ -364,6 +364,12 @@ const PATCHES = [
   // v379: 付款證明縮圖 base64（存 DB，永遠看得到、加速）
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS thumb_base64 TEXT`,
 
+  // v388: 註冊禮金 + VIP5 滿級回饋設定
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS signup_reward_amount INTEGER NOT NULL DEFAULT 50`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS signup_reward_expiry_days INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS vip_overflow_dives INTEGER NOT NULL DEFAULT 50`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS vip_overflow_credit INTEGER NOT NULL DEFAULT 1000`,
+
   // v381: 補上 schema 早已宣告、但 prod 當初用 migrate-safety 加欄時漏掉的 UNIQUE 索引。
   //   這是 prisma db push 一直噴 data-loss 而失敗的根因（它想加唯一約束但不敢動）。
   //   用 Prisma 慣例命名（{table}_{column}_key）讓 db push 比對後視為一致 → 之後乾淨通過。

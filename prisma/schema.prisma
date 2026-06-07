@@ -663,6 +663,13 @@ model SiteConfig {
   firstOrderRewardAmount     Int @default(100) @map("first_order_reward_amount")
   firstOrderRewardExpiryDays Int @default(360) @map("first_order_reward_expiry_days")
 
+  // v388：註冊禮金（Email 驗證通過後發；0 = 停用）
+  signupRewardAmount         Int @default(50)  @map("signup_reward_amount")
+  signupRewardExpiryDays     Int @default(0)   @map("signup_reward_expiry_days") // 0 = 永不過期
+  // v388：VIP5 滿級後每 N 潛回饋 M 元抵用金（0 = 停用）
+  vipOverflowDives           Int @default(50)   @map("vip_overflow_dives")
+  vipOverflowCredit          Int @default(1000) @map("vip_overflow_credit")
+
   // v264：自動發送設定
   //   每日天氣回報（Cronicle 觸發）
   dailyWeatherReportEnabled Boolean @default(false) @map("daily_weather_report_enabled")

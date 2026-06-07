@@ -85,6 +85,11 @@ interface Config {
   // v261：首單付款獎勵
   firstOrderRewardAmount?: number;
   firstOrderRewardExpiryDays?: number;
+  // v388：註冊禮金 + VIP5 滿級回饋
+  signupRewardAmount?: number;
+  signupRewardExpiryDays?: number;
+  vipOverflowDives?: number;
+  vipOverflowCredit?: number;
   // v264：自動發送（每日天氣回報）
   dailyWeatherReportEnabled?: boolean;
   dailyWeatherReportRecipients?: string[];
@@ -571,6 +576,11 @@ export default function SettingsPage() {
                 onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditAmount: n } : c)} />
               <CompactNum label="生日抵用金有效天數（0=不過期）" labelW="w-36" value={cfg.birthdayCreditExpiryDays ?? 360}
                 onChange={(n) => setCfg(c => c ? { ...c, birthdayCreditExpiryDays: n } : c)} />
+              {/* v388：註冊禮金（Email 驗證通過後發） */}
+              <CompactNum label="註冊禮金（NT$，0=停用，Email驗證後發）" labelW="w-36" value={cfg.signupRewardAmount ?? 50}
+                onChange={(n) => setCfg(c => c ? { ...c, signupRewardAmount: n } : c)} />
+              <CompactNum label="註冊禮金有效天數（0=不過期）" labelW="w-36" value={cfg.signupRewardExpiryDays ?? 0}
+                onChange={(n) => setCfg(c => c ? { ...c, signupRewardExpiryDays: n } : c)} />
               <CompactNum label="天氣取消風速門檻（m/s）" labelW="w-36" value={cfg.weatherWindThreshold}
                 onChange={(n) => setCfg(c => c ? { ...c, weatherWindThreshold: n || 10 } : c)} />
             </div>
@@ -619,6 +629,8 @@ export default function SettingsPage() {
                 defaultCoachFee: cfg.defaultCoachFee,
                 birthdayCreditAmount: cfg.birthdayCreditAmount,
                 birthdayCreditExpiryDays: cfg.birthdayCreditExpiryDays ?? 360,
+                signupRewardAmount: cfg.signupRewardAmount ?? 50,
+                signupRewardExpiryDays: cfg.signupRewardExpiryDays ?? 0,
                 vipUpgradeCreditExpiryDays: cfg.vipUpgradeCreditExpiryDays ?? 360,
                 adminGrantCreditExpiryDays: cfg.adminGrantCreditExpiryDays ?? 360,
                 refundCreditExpiryDays: cfg.refundCreditExpiryDays ?? 0,

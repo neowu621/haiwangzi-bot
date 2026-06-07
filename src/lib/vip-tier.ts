@@ -21,6 +21,8 @@ export interface VipTier {
   benefits: string[];
   /** 升級獎勵抵用金 (NT$)。會員首次達到此 LV 時自動發放，每個 LV 僅一次 */
   upgradeCredit: number;
+  /** v388：裝備租借折扣 %（此級會員下單裝備時自動套用）。100=原價、90=9折、0/未設=不折 */
+  gearDiscountPct?: number;
   /** UI 配色 */
   color: string;
 }
@@ -185,9 +187,18 @@ export function normalizeVipTiers(raw: unknown): VipTier[] {
       minSpend: Math.max(0, Number(t.minSpend)),
       benefits: Array.isArray(t.benefits) ? t.benefits : [],
       upgradeCredit: Math.max(0, Number(t.upgradeCredit ?? 0)),
+      // v388：裝備折扣 %（缺省 100 = 不折）；夾在 0~100
+      gearDiscountPct: Math.min(100, Math.max(0, Number(t.gearDiscountPct ?? 100))),
       color: t.color,
     }));
   } catch {
     return VIP_TIERS;
   }
+}
+
+/** v388：取某 VIP 等級的裝備折扣 %（100=不折）。用 normalize 後的 tiers */
+export function getGearDiscountPct(level: number, tiers: VipTier[] = VIP_TIERS): number {
+  const t = tiers.find((x) => x.level === level);
+  const p = t?.gearDiscountPct;
+  return typeof p === "number" && p > 0 && p <= 100 ? p : 100;
 }

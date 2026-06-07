@@ -86,6 +86,11 @@ const PatchSchema = z.object({
   // v261：首單付款獎勵
   firstOrderRewardAmount: z.number().int().min(0).optional(),
   firstOrderRewardExpiryDays: z.number().int().min(0).max(3650).optional(),
+  // v388：註冊禮金 + VIP5 滿級回饋
+  signupRewardAmount: z.number().int().min(0).optional(),
+  signupRewardExpiryDays: z.number().int().min(0).max(3650).optional(),
+  vipOverflowDives: z.number().int().min(0).max(9999).optional(),
+  vipOverflowCredit: z.number().int().min(0).optional(),
   // v264：自動發送（每日天氣回報）
   dailyWeatherReportEnabled: z.boolean().optional(),
   dailyWeatherReportRecipients: z.array(z.string()).optional(),
@@ -154,6 +159,11 @@ export async function GET(req: NextRequest) {
       safetyPolicy: row.safetyPolicy ?? "",
       firstOrderRewardAmount: (row as unknown as { firstOrderRewardAmount?: number }).firstOrderRewardAmount ?? 100,
       firstOrderRewardExpiryDays: (row as unknown as { firstOrderRewardExpiryDays?: number }).firstOrderRewardExpiryDays ?? 360,
+      // v388 註冊禮金 + VIP5 滿級回饋
+      signupRewardAmount: (row as unknown as { signupRewardAmount?: number }).signupRewardAmount ?? 50,
+      signupRewardExpiryDays: (row as unknown as { signupRewardExpiryDays?: number }).signupRewardExpiryDays ?? 0,
+      vipOverflowDives: (row as unknown as { vipOverflowDives?: number }).vipOverflowDives ?? 50,
+      vipOverflowCredit: (row as unknown as { vipOverflowCredit?: number }).vipOverflowCredit ?? 1000,
       // v264 自動發送
       dailyWeatherReportEnabled: (row as unknown as { dailyWeatherReportEnabled?: boolean }).dailyWeatherReportEnabled ?? false,
       dailyWeatherReportRecipients: ((row as unknown as { dailyWeatherReportRecipients?: unknown }).dailyWeatherReportRecipients as string[] | undefined) ?? [],
