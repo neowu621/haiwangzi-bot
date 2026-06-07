@@ -55,6 +55,49 @@
 
 ---
 
+## Endpoint：`/api/cron/daily-weather-report`（每日天氣回報）
+
+| 項目 | 內容 |
+|---|---|
+| Method | `POST` / `GET`（皆需 Bearer） |
+| Auth | `Authorization: Bearer <CRON_SECRET>` |
+| 排程建議（v389） | **一天兩次**(時段在後台「系統設定 → 自動發送 → 🌤️ 每日天氣回報」可調，台灣時間)：<br>🌙 台灣 22:00 → `UTC 0 14 * * *`(前一晚看明日)<br>🌅 台灣 05:00 → `UTC 0 21 * * *`(出發前看今日) |
+| 邏輯 | 抓 CWA 即時測站(基隆+宜蘭)風速/氣溫 + 今/明場次摘要 → 依後台勾選的收件人推 LINE/Email |
+| 內容開關 | 後台可勾選帶哪些(風速/氣溫/場次摘要/浪高)，存在 `SiteConfig.weatherReportContent` |
+| 時段設定 | 存在 `SiteConfig.weatherReportSlots`(台灣時間),後台會自動換算 UTC cron 顯示;**Cronicle 以 UTC 執行** |
+
+> ⚠️ **時區重點**：Cronicle 一律用 **UTC**。後台「發送時段」一律填**台灣時間**,系統自動 −8 小時換算成 UTC cron 給你貼,不要再自己換算(避免 21:00/05:00 搞混)。
+
+### Cronicle job 設定(兩個 event 共用同一指令)
+
+```bash
+#!/bin/sh
+set -e
+curl -fsS -X POST \
+  -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" \
+  "$HAIWANGZI_BASE_URL/api/cron/daily-weather-report"
+```
+
+- Event A：cron `0 14 * * *`(= 台灣 22:00)
+- Event B：cron `0 21 * * *`(= 台灣 05:00)
+
+---
+
+## Endpoint：`/api/cron/daily-briefing`（每晚明日訂單預報，非天氣）
+
+| 項目 | 內容 |
+|---|---|
+| Method | `POST` / `GET`（皆需 Bearer） |
+| Auth | `Authorization: Bearer <CRON_SECRET>` |
+| 排程建議 | 台灣 **21:00** → Cronicle UTC `0 13 * * *` |
+| 邏輯 | 老闆/admin 完整版(明日場次+客戶+應收+待審匯款+今日待結算+月統計);教練精簡版(只列場次+客戶+電話,不含金額) |
+
+```bash
+curl -fsS -X POST -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" "$HAIWANGZI_BASE_URL/api/cron/daily-briefing"
+```
+
+---
+
 ## Endpoint：`/api/cron/weather-check`
 
 | 項目 | 內容 |

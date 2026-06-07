@@ -94,6 +94,19 @@ const PatchSchema = z.object({
   // v264：自動發送（每日天氣回報）
   dailyWeatherReportEnabled: z.boolean().optional(),
   dailyWeatherReportRecipients: z.array(z.string()).optional(),
+  // v389：天氣回報時段（台灣時間）+ 內容開關
+  weatherReportSlots: z
+    .array(z.object({ h: z.number().int().min(0).max(23), m: z.number().int().min(0).max(59) }))
+    .max(12)
+    .optional(),
+  weatherReportContent: z
+    .object({
+      wind: z.boolean(),
+      temp: z.boolean(),
+      sessions: z.boolean(),
+      wave: z.boolean(),
+    })
+    .optional(),
   // v315：訂單日報（每日 07:00 自動發給 admin/boss）
   dailyBriefingEnabled: z.boolean().optional(),
   dailyBriefingIncludeCoaches: z.boolean().optional(),
@@ -168,6 +181,13 @@ export async function GET(req: NextRequest) {
       dailyWeatherReportEnabled: (row as unknown as { dailyWeatherReportEnabled?: boolean }).dailyWeatherReportEnabled ?? false,
       dailyWeatherReportRecipients: ((row as unknown as { dailyWeatherReportRecipients?: unknown }).dailyWeatherReportRecipients as string[] | undefined) ?? [],
       dailyWeatherReportLastSentAt: (row as unknown as { dailyWeatherReportLastSentAt?: Date | null }).dailyWeatherReportLastSentAt ?? null,
+      // v389 天氣回報時段 + 內容
+      weatherReportSlots:
+        ((row as unknown as { weatherReportSlots?: unknown }).weatherReportSlots as Array<{ h: number; m: number }> | undefined) ??
+        [{ h: 22, m: 0 }, { h: 5, m: 0 }],
+      weatherReportContent:
+        ((row as unknown as { weatherReportContent?: unknown }).weatherReportContent as Record<string, boolean> | undefined) ??
+        { wind: true, temp: true, sessions: true, wave: false },
       // v315 訂單日報
       dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
       dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,

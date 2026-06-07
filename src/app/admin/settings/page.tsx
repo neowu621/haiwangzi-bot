@@ -94,6 +94,9 @@ interface Config {
   dailyWeatherReportEnabled?: boolean;
   dailyWeatherReportRecipients?: string[];
   dailyWeatherReportLastSentAt?: string | null;
+  // v389：天氣回報時段（台灣時間）+ 內容開關
+  weatherReportSlots?: Array<{ h: number; m: number }>;
+  weatherReportContent?: { wind: boolean; temp: boolean; sessions: boolean; wave: boolean };
   // v315：訂單日報
   dailyBriefingEnabled?: boolean;
   dailyBriefingIncludeCoaches?: boolean;
@@ -1002,6 +1005,39 @@ function AutoSendSection({
     setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
   }
 
+  // v389：發送時段（台灣時間）+ 內容開關
+  const slots = cfg.weatherReportSlots ?? [{ h: 22, m: 0 }, { h: 5, m: 0 }];
+  const content = cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false };
+  // 台灣時間 → UTC cron（台灣 = UTC+8）
+  function twToUtcCron(h: number, m: number) {
+    const uh = (h - 8 + 24) % 24;
+    return `${m} ${uh} * * *`;
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  function setSlots(next: Array<{ h: number; m: number }>) {
+    setCfg((c) => (c ? { ...c, weatherReportSlots: next } : c));
+  }
+  function updateSlot(i: number, value: string) {
+    const [hh, mm] = value.split(":").map((x) => Number(x));
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+    setSlots(slots.map((s, idx) => (idx === i ? { h: hh, m: mm } : s)));
+  }
+  function addSlot() {
+    if (slots.length >= 12) return;
+    setSlots([...slots, { h: 12, m: 0 }]);
+  }
+  function removeSlot(i: number) {
+    setSlots(slots.filter((_, idx) => idx !== i));
+  }
+  function toggleContent(key: "wind" | "temp" | "sessions" | "wave") {
+    setCfg((c) => (c ? { ...c, weatherReportContent: { ...content, [key]: !content[key] } } : c));
+  }
+  function slotMeta(h: number) {
+    // 粗略標示用途：18:00–翌4:59 視為「前一晚預報」，其餘「出發前 / 當日」
+    if (h >= 18 || h < 5) return { emoji: "🌙", tag: "前一晚預報", desc: "看「明日」天氣 + 明日場次" };
+    return { emoji: "🌅", tag: "出發前 / 當日", desc: "看「今日」即時天氣 + 今日場次" };
+  }
+
   async function runTest(dryRun: boolean) {
     setTestBusy(dryRun ? "dry" : "real");
     setTestResult(null);
@@ -1045,12 +1081,16 @@ function AutoSendSection({
       </p>
 
       <div className="rounded-lg border p-4 mb-3" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-start justify-between gap-3 mb-3">
+        <p className="text-sm font-bold text-[var(--foreground)] mb-1">🌤️ 每日天氣回報</p>
+
+        {/* ── Step 1 是否啟用 ── */}
+        <div className="flex items-center justify-between gap-3 border-t pt-3 mt-2" style={{ borderColor: "var(--border)" }}>
           <div>
-            <p className="text-sm font-medium text-[var(--foreground)]">🌊 每日天氣回報</p>
-            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              抓中央氣象署 CWA 即時測站（466940 基隆 + 467080 宜蘭）的風速 / 氣溫 + 今日 / 明日場次摘要 → LINE / Email 推送。
+            <p className="text-[13px] font-semibold text-[var(--foreground)]">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-[11px] mr-1.5">1</span>
+              是否啟用
             </p>
+            <p className="mt-0.5 ml-7 text-[11px] text-[var(--muted-foreground)]">關閉後不會自動發送（仍可手動測試發送）。</p>
           </div>
           <label className="flex items-center gap-2 text-sm shrink-0">
             <input
@@ -1062,9 +1102,56 @@ function AutoSendSection({
           </label>
         </div>
 
-        {/* v268：收件人 picker — 從 admin/boss/coach 用戶挑 */}
-        <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
-          收件人（從管理員 / 教練清單勾選）
+        {/* ── Step 2 發送時段（台灣時間） ── */}
+        <div className="border-t pt-3 mt-3" style={{ borderColor: "var(--border)" }}>
+          <p className="text-[13px] font-semibold text-[var(--foreground)]">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-[11px] mr-1.5">2</span>
+            發送時段 <span className="ml-1 rounded bg-[#e0f7f3] px-1.5 py-0.5 text-[10px] font-bold text-[#0e9e8e]">台灣時間</span>
+          </p>
+          <p className="mt-0.5 ml-7 mb-2 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+            想一天發幾次都可以。右邊灰框是系統自動換算的 <b>UTC cron</b>，直接貼到 Cronicle（解決時區混淆）。
+          </p>
+          <div className="ml-7 space-y-2">
+            {slots.map((s, i) => {
+              const meta = slotMeta(s.h);
+              return (
+                <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2" style={{ borderColor: "var(--border)", background: "#fafcff" }}>
+                  <span className="text-lg">{meta.emoji}</span>
+                  <input
+                    type="time"
+                    value={`${pad(s.h)}:${pad(s.m)}`}
+                    onChange={(e) => updateSlot(i, e.target.value)}
+                    className="rounded border px-2 py-1 text-[13px] font-semibold"
+                    style={{ borderColor: "var(--border)" }}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-[#0e9e8e]">{meta.tag}</div>
+                    <div className="truncate text-[10px] text-[var(--muted-foreground)]">{meta.desc}</div>
+                  </div>
+                  <span className="ml-auto rounded bg-[var(--muted)]/50 px-2 py-1 font-mono text-[11px] text-[var(--muted-foreground)]">
+                    UTC {twToUtcCron(s.h, s.m)}
+                  </span>
+                  <button onClick={() => removeSlot(i)} className="px-1 text-[var(--muted-foreground)] hover:text-[var(--color-coral)]" title="刪除時段">✕</button>
+                </div>
+              );
+            })}
+            {slots.length < 12 && (
+              <button onClick={addSlot} className="w-full rounded-lg border border-dashed py-2 text-[13px] font-semibold text-[#0e9e8e]" style={{ borderColor: "var(--border)", background: "#fff" }}>
+                ＋ 新增時段
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Step 3 發送給誰 與 路徑 ── */}
+        <div className="border-t pt-3 mt-3" style={{ borderColor: "var(--border)" }}>
+          <p className="text-[13px] font-semibold text-[var(--foreground)] mb-0.5">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-[11px] mr-1.5">3</span>
+            發送給誰 與 路徑
+          </p>
+        </div>
+        <Label className="mb-1 block text-xs text-[var(--muted-foreground)] ml-7">
+          收件人（從管理員 / 教練清單勾選，各自可選 LINE / Email）
         </Label>
         {usersLoading ? (
           <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
@@ -1137,7 +1224,49 @@ function AutoSendSection({
           </div>
         )}
 
-        <div className="mt-2 rounded bg-[var(--muted)]/30 p-2 text-[10px] text-[var(--muted-foreground)]">
+        <div className="mt-2 ml-7 rounded bg-[var(--muted)]/40 p-2 text-[11px] text-[var(--muted-foreground)]">
+          發送路徑：LINE Flex / 純文字 + Email（依各人勾選）　·　API 端點 <code className="font-mono text-[var(--color-ocean-deep)]">/api/cron/daily-weather-report</code>
+        </div>
+
+        {/* ── Step 4 發送內容 ── */}
+        <div className="border-t pt-3 mt-3" style={{ borderColor: "var(--border)" }}>
+          <p className="text-[13px] font-semibold text-[var(--foreground)]">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-[11px] mr-1.5">4</span>
+            發送內容
+          </p>
+          <p className="mt-0.5 ml-7 mb-2 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+            資料來源：中央氣象署 CWA 即時測站（466940 基隆 + 467080 宜蘭）。勾選要帶進訊息的項目。
+          </p>
+          <div className="ml-7 grid grid-cols-2 gap-2">
+            {([
+              { k: "wind", label: "💨 風速（基隆/宜蘭）" },
+              { k: "temp", label: "🌡️ 氣溫" },
+              { k: "sessions", label: "📅 今日/明日場次摘要" },
+              { k: "wave", label: "🌊 浪高（暫無資料源）" },
+            ] as const).map((item) => (
+              <label key={item.k} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-[12.5px] cursor-pointer" style={{ borderColor: "var(--border)", background: "#fafcff" }}>
+                <input type="checkbox" checked={content[item.k]} onChange={() => toggleContent(item.k)} />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-1.5 ml-7 text-[10px] text-[var(--muted-foreground)]">
+            ※ 浪高目前無對應資料來源（即時測站無浪高），開啟僅顯示提示文字；未來接氣象署浮標資料後才有實際數值。
+          </p>
+        </div>
+
+        {/* ── Step 5 發送 API 測試 ── */}
+        <div className="border-t pt-3 mt-3" style={{ borderColor: "var(--border)" }}>
+          <p className="text-[13px] font-semibold text-[var(--foreground)]">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-[11px] mr-1.5">5</span>
+            發送 API 測試
+          </p>
+          <p className="mt-0.5 ml-7 text-[11px] text-[var(--muted-foreground)]">
+            先預覽（不寄）確認內容，或立即對勾選對象測試發送一次。
+          </p>
+        </div>
+
+        <div className="mt-2 ml-7 rounded bg-[var(--muted)]/30 p-2 text-[10px] text-[var(--muted-foreground)]">
           已選 {sendableCount} 個目標
           {orphanTags.length > 0 ? `（另有 ${orphanTags.length} 個無效，未計入）` : ""}。最後一次發送：
           {cfg.dailyWeatherReportLastSentAt
@@ -1146,7 +1275,7 @@ function AutoSendSection({
         </div>
 
         {/* v268：測試按鈕 */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 ml-7 flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -1176,19 +1305,33 @@ function AutoSendSection({
         </div>
 
         {testResult && (
-          <pre className="mt-2 max-h-72 overflow-y-auto rounded bg-white border p-3 text-[11px] whitespace-pre-wrap font-mono text-[var(--foreground)]" style={{ borderColor: "var(--border)" }}>
+          <pre className="mt-2 ml-7 max-h-72 overflow-y-auto rounded bg-white border p-3 text-[11px] whitespace-pre-wrap font-mono text-[var(--foreground)]" style={{ borderColor: "var(--border)" }}>
             {testResult}
           </pre>
         )}
+
+        {/* v389：Cronicle 指令 + 各時段 cron 一覽 */}
+        <div className="mt-3 ml-7 rounded-lg p-3 text-[10.5px] leading-relaxed" style={{ background: "var(--color-ocean-deep)", color: "#cbe7e2" }}>
+          <span className="text-[#7dd3c8]"># Cronicle 排程（{slots.length} 個時段，台灣時間 → UTC）</span><br />
+          {slots.map((s, i) => (
+            <span key={i}>
+              {slotMeta(s.h).emoji} 台灣 {pad(s.h)}:{pad(s.m)} → <code className="text-white">UTC {twToUtcCron(s.h, s.m)}</code><br />
+            </span>
+          ))}
+          <span className="text-[#7dd3c8]"># Command（所有時段共用）</span><br />
+          <code className="block mt-1 break-all">
+            curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-weather-report&quot;
+          </code>
+        </div>
       </div>
 
       {/* v315：訂單日報設定 */}
       <div className="mt-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(96,165,250,0.06)" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日</p>
+            <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日（訂單，非天氣）</p>
             <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              每天 21:00 自動發送「明日預報」（建議 Cronicle 排程 cron: <span className="font-mono">0 21 * * *</span>，timezone: Asia/Taipei）。<br/>
+              每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以 UTC 跑 → cron <span className="font-mono">0 13 * * *</span>）。<br/>
               老闆/admin：完整版（明日場次+客戶+應收+待審匯款+今日待結算+月統計）LINE + Email。<br/>
               教練：精簡版 LINE，只列明日場次與客戶清單+電話（不含金額）。
             </p>
@@ -1219,6 +1362,8 @@ function AutoSendSection({
           onClick={() => save("自動發送", {
             dailyWeatherReportEnabled: cfg.dailyWeatherReportEnabled ?? false,
             dailyWeatherReportRecipients: cfg.dailyWeatherReportRecipients ?? [],
+            weatherReportSlots: cfg.weatherReportSlots ?? [{ h: 22, m: 0 }, { h: 5, m: 0 }],
+            weatherReportContent: cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false },
             dailyBriefingEnabled: cfg.dailyBriefingEnabled ?? true,
             dailyBriefingIncludeCoaches: cfg.dailyBriefingIncludeCoaches ?? true,
           })}
@@ -1229,13 +1374,13 @@ function AutoSendSection({
       </div>
 
       <div className="mt-3 rounded bg-[var(--muted)]/40 p-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-        📋 <b>Cronicle 兩個排程</b>（一天兩次）：<br />
-        晚上 10:00 台灣時間 → UTC 14:00 → <code>0 14 * * *</code><br />
-        早上 05:00 台灣時間 → UTC 21:00 → <code>0 21 * * *</code><br />
-        Command（兩個 event 共用）：<br />
+        📋 <b>明日訂單預報的 Cronicle 排程</b>（Cronicle 以 UTC 執行）：<br />
+        台灣 21:00 → <code>UTC 0 13 * * *</code>（每天一次）<br />
+        Command：<br />
         <code className="block mt-1 break-all">
-          curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-weather-report&quot;
+          curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-briefing&quot;
         </code>
+        <span className="mt-1 block text-[10px]">※ 天氣回報的排程在上面「🌤️ 每日天氣回報 → 步驟 5」依你設定的時段自動列出。</span>
       </div>
     </SectionCard>
   );

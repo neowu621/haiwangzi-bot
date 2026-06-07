@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>天氣回報 — 實作結果</title>
+<style>
+  :root{--bg:#eef2f7;--card:#fff;--fg:#0f172a;--muted:#64748b;--border:#e2e8f0;--phos:#10b9a6;--phosd:#0e9e8e;--ocean:#0b2942;--coral:#ff6b5a;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif;color:var(--fg);padding:22px;}
+  .wrap{max-width:660px;margin:0 auto;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .sec-title{font-size:12px;font-weight:700;color:var(--muted);margin:0 0 6px;}
+  .h{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ocean);color:#fff;font-size:11px;font-weight:700;}
+  .twtag{background:#e0f7f3;color:var(--phosd);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;}
+  .desc{font-size:11px;color:var(--muted);margin:3px 0 8px 27px;line-height:1.6;}
+  .step{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
+  .ml{margin-left:27px;}
+  .slot{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin-bottom:7px;background:#fafcff;}
+  .slot input{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-weight:700;font-family:inherit;}
+  .slot .tg{font-size:10px;font-weight:700;color:var(--phosd);}
+  .slot .ds{font-size:10px;color:var(--muted);}
+  .slot .cron{margin-left:auto;background:#eef2f7;color:var(--muted);font-family:ui-monospace,monospace;font-size:11px;padding:3px 8px;border-radius:6px;}
+  .slot .x{color:var(--muted);cursor:pointer;padding:0 2px;}
+  .add{width:100%;border:1px dashed var(--border);border-radius:9px;padding:8px;color:var(--phosd);font-weight:700;font-size:13px;background:#fff;cursor:pointer;}
+  .rcpt{border:1px solid var(--border);border-radius:9px;padding:5px;}
+  .r{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:12.5px;border-radius:6px;}
+  .r:hover{background:#f8fafc;}
+  .role{font-size:10px;background:#eef2f7;color:var(--muted);padding:1px 6px;border-radius:5px;}
+  .ck{margin-left:auto;display:flex;gap:13px;}
+  .ck label{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+  .cb{width:15px;height:15px;border:1.5px solid var(--phos);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;background:var(--phos);color:#fff;font-size:10px;}
+  .cb.off{background:#fff;border-color:#cbd5e1;color:transparent;}
+  .cb.dis{background:#f1f5f9;border-color:#e2e8f0;}
+  .path{background:#eef2f7;border-radius:7px;padding:7px 10px;font-size:11px;color:var(--muted);margin-top:8px;}
+  .path code{font-family:ui-monospace,monospace;color:var(--ocean);}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .ci{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;background:#fafcff;}
+  .tiny{font-size:10px;color:var(--muted);margin-top:6px;}
+  .cnt{background:#eef2f7;border-radius:6px;padding:6px 9px;font-size:10px;color:var(--muted);margin-top:8px;}
+  .btns{display:flex;gap:9px;margin-top:8px;}
+  .btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .btn.p{background:var(--phos);border-color:var(--phos);color:#062b27;}
+  .curlbox{background:var(--ocean);color:#cbe7e2;border-radius:9px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.7;margin-top:9px;word-break:break-all;}
+  .curlbox .g{color:#7dd3c8;}
+  .curlbox code{color:#fff;}
+  .brief{margin-top:14px;border:2px solid var(--border);border-radius:12px;padding:14px;background:rgba(96,165,250,.06);}
+  .brief .t{font-size:13px;font-weight:700;}
+  .brief .d{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.6;}
+  .save{display:flex;justify-content:flex-end;margin-top:12px;}
+  .save .btn{background:var(--phos);border-color:var(--phos);color:#062b27;padding:9px 18px;}
+  .foot{background:#eef2f7;border-radius:7px;padding:9px 11px;font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;}
+  .foot code{font-family:ui-monospace,monospace;}
+  .sw{position:relative;width:38px;height:22px;background:var(--phos);border-radius:99px;}
+  .sw::after{content:"";position:absolute;top:2px;left:18px;width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+</style></head>
+<body><div class="wrap">
+  <div class="card">
+    <p class="sec-title">📨 自動發送設定</p>
+    <p style="font-size:14px;font-weight:800;margin:0 0 2px;">🌤️ 每日天氣回報</p>
+
+    <div class="step" style="border-top:none;padding-top:6px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="h"><span class="num">1</span>是否啟用</div>
+        <div class="desc">關閉後不會自動發送（仍可手動測試發送）。</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px;"><div class="sw"></div>啟用</div>
+    </div>
+
+    <div class="step">
+      <div class="h"><span class="num">2</span>發送時段 <span class="twtag">台灣時間</span></div>
+      <div class="desc">想一天發幾次都可以。右邊灰框是系統自動換算的 <b>UTC cron</b>，直接貼到 Cronicle（解決時區混淆）。</div>
+      <div class="ml">
+        <div class="slot"><span style="font-size:17px;">🌙</span><input type="time" value="22:00">
+          <div><div class="tg">前一晚預報</div><div class="ds">看「明日」天氣 + 明日場次</div></div>
+          <span class="cron">UTC 0 14 * * *</span><span class="x">✕</span></div>
+        <div class="slot"><span style="font-size:17px;">🌅</span><input type="time" value="05:00">
+          <div><div class="tg">出發前 / 當日</div><div class="ds">看「今日」即時天氣 + 今日場次</div></div>
+          <span class="cron">UTC 0 21 * * *</span><span class="x">✕</span></div>
+        <button class="add">＋ 新增時段</button>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="h"><span class="num">3</span>發送給誰 與 路徑</div>
+      <div class="ml" style="margin-top:6px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">收件人（從管理員 / 教練清單勾選，各自可選 LINE / Email）</div>
+        <div class="rcpt">
+          <div class="r"><b>Neo Wu</b><span class="role">admin</span>
+            <div class="ck"><label><span class="cb">✓</span>LINE</label><label><span class="cb off"></span>Email</label></div></div>
+          <div class="r"><b>汪承儒</b><span class="role">boss</span>
+            <div class="ck"><label><span class="cb">✓</span>LINE</label><label><span class="cb dis"></span>Email</label></div></div>
+        </div>
+        <div class="path">發送路徑：LINE Flex / 純文字 + Email（依各人勾選）　·　API 端點 <code>/api/cron/daily-weather-report</code></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="h"><span class="num">4</span>發送內容</div>
+      <div class="desc">資料來源：中央氣象署 CWA 即時測站（466940 基隆 + 467080 宜蘭）。勾選要帶進訊息的項目。</div>
+      <div class="ml grid">
+        <div class="ci"><span class="cb">✓</span>💨 風速（基隆/宜蘭）</div>
+        <div class="ci"><span class="cb">✓</span>🌡️ 氣溫</div>
+        <div class="ci"><span class="cb">✓</span>📅 今日/明日場次摘要</div>
+        <div class="ci"><span class="cb off"></span>🌊 浪高（暫無資料源）</div>
+      </div>
+      <div class="tiny ml">※ 浪高目前無對應資料來源（即時測站無浪高），開啟僅顯示提示文字；未來接氣象署浮標資料後才有實際數值。</div>
+    </div>
+
+    <div class="step">
+      <div class="h"><span class="num">5</span>發送 API 測試</div>
+      <div class="desc">先預覽（不寄）確認內容，或立即對勾選對象測試發送一次。</div>
+      <div class="ml">
+        <div class="cnt">已選 2 個目標。最後一次發送：（尚未發送）</div>
+        <div class="btns"><button class="btn">📤 預覽訊息（不寄）</button><button class="btn p">🧪 立即測試發送</button></div>
+        <div class="curlbox">
+          <span class="g"># Cronicle 排程（2 個時段，台灣時間 → UTC）</span><br>
+          🌙 台灣 22:00 → <code>UTC 0 14 * * *</code><br>
+          🌅 台灣 05:00 → <code>UTC 0 21 * * *</code><br>
+          <span class="g"># Command（所有時段共用）</span><br>
+          <code>curl -fsS -X POST -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" "$HAIWANGZI_BASE_URL/api/cron/daily-weather-report"</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="brief">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div>
+          <div class="t">📋 每晚 21:00 預報明日（訂單，非天氣）</div>
+          <div class="d">每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以 UTC 跑 → cron <code style="font-family:monospace;">0 13 * * *</code>）。<br>老闆/admin：完整版　·　教練：精簡版（不含金額）。</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:13px;"><div class="sw"></div>啟用</div>
+      </div>
+    </div>
+
+    <div class="save"><button class="btn">💾 儲存自動發送設定</button></div>
+
+    <div class="foot">📋 <b>明日訂單預報的 Cronicle 排程</b>（UTC）：台灣 21:00 → <code>UTC 0 13 * * *</code><br>※ 天氣回報的排程在上面「步驟 5」依你設定的時段自動列出。</div>
+  </div>
+</div></body></html>

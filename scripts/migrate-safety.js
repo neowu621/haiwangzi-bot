@@ -53,6 +53,9 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_last_sent_at TIMESTAMPTZ`,
+  // v389：天氣回報時段（台灣時間）+ 內容開關
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_report_slots JSONB NOT NULL DEFAULT '[{"h":22,"m":0},{"h":5,"m":0}]'::jsonb`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_report_content JSONB NOT NULL DEFAULT '{"wind":true,"temp":true,"sessions":true,"wave":false}'::jsonb`,
 
   // v275: 退款備註
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,

@@ -2,6 +2,21 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260607_389 — 2026-06-07 (天氣回報設定重新編排)
+
+### 系統設定 → 自動發送：天氣回報改成 5 步驟版面
+- **① 是否啟用**、**② 發送時段**、**③ 發送給誰與路徑**、**④ 發送內容**、**⑤ API 測試** 清楚分段
+- **時段全部用台灣時間設定**,系統自動換算 UTC cron 顯示(解決 21:00/05:00 時區矛盾);可新增/刪除時段(預設 2 個:🌙22:00 前一晚、🌅05:00 出發前)
+- **發送內容可勾選**:風速 / 氣溫 / 今明場次摘要 / 浪高(浪高暫無資料源,顯示提示)
+- **路徑明確標示** `/api/cron/daily-weather-report`;⑤ 自動列出各時段 cron + curl 指令
+- 「天氣回報」與「明日訂單預報」兩張卡視覺分開,不再混淆
+- 修正明日訂單預報文案:台灣 21:00 = Cronicle UTC `0 13 * * *`(原本誤寫 `0 21 * * *`)
+
+### 後端
+- `daily-weather-report` lib 依 `weatherReportContent` 開關決定訊息帶哪些欄位
+- SiteConfig 新增 `weather_report_slots`、`weather_report_content`(已加入 `migrate-safety.js`)
+- `docs/CRON_SETUP.md` 補上 daily-weather-report / daily-briefing 段落 + 時區說明
+
 ## 20260607_388 — 2026-06-07 (會員優惠 ABCD：註冊禮金 / 生日 / VIP 折扣 / 生日鎖定)
 
 ### A. 系統設定可調欄位

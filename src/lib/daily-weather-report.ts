@@ -62,6 +62,18 @@ export async function runDailyWeatherReport(opts?: {
   const startedAt = Date.now();
   const threshold = cfg.weatherWindThreshold ?? 10;
 
+  // v389：發送內容開關（缺省全開、wave 預設關）
+  const contentRaw = (cfg as unknown as { weatherReportContent?: unknown }).weatherReportContent;
+  const content = {
+    wind: true,
+    temp: true,
+    sessions: true,
+    wave: false,
+    ...(contentRaw && typeof contentRaw === "object" && !Array.isArray(contentRaw)
+      ? (contentRaw as Record<string, boolean>)
+      : {}),
+  };
+
   // ── 1. 抓 CWA 即時測站 ──────────────────────────────
   const stationIds = (process.env.WEATHER_STATIONS ?? "466940,467080")
     .split(",")
@@ -145,11 +157,14 @@ export async function runDailyWeatherReport(opts?: {
         ? `🔴 ${maxWind.toFixed(1)} m/s（超過 ${threshold} m/s 門檻，建議考慮取消）`
         : `🟢 ${maxWind.toFixed(1)} m/s（低於 ${threshold} m/s 門檻，可正常下水）`;
 
+  // v389：測站讀數依「風速 / 氣溫」開關決定顯示哪些欄位
   const stationLines = stationReadings
-    .map(
-      (s) =>
-        `  ${s.name}：風${s.wind != null ? `${s.wind.toFixed(1)} m/s` : "-"}  溫${s.temp != null ? `${s.temp.toFixed(1)}°C` : "-"}`,
-    )
+    .map((s) => {
+      const parts: string[] = [];
+      if (content.wind) parts.push(`風${s.wind != null ? `${s.wind.toFixed(1)} m/s` : "-"}`);
+      if (content.temp) parts.push(`溫${s.temp != null ? `${s.temp.toFixed(1)}°C` : "-"}`);
+      return `  ${s.name}：${parts.join("  ") || "-"}`;
+    })
     .join("\n");
 
   const todayLines = todayTrips.length
@@ -172,22 +187,28 @@ export async function runDailyWeatherReport(opts?: {
         .join("\n")
     : "  （無）";
 
-  const textReport = `🌊 海王子潛水 每日營運報告
-${dateStr}
+  // v389：依內容開關組裝各區塊
+  const blocks: string[] = [`🌊 海王子潛水 每日營運報告`, dateStr];
 
-【海況】
-今日風速：${windStatus}
-測站讀數：
-${stationLines || "  （無資料）"}
+  if (content.wind || content.temp) {
+    const seaLines: string[] = ["", "【海況】"];
+    if (content.wind) seaLines.push(`今日風速：${windStatus}`);
+    if (content.wave) seaLines.push(`今日浪高：（暫無資料來源，待接氣象署浮標資料）`);
+    if (content.wind || content.temp) {
+      seaLines.push("測站讀數：", stationLines || "  （無資料）");
+    }
+    blocks.push(seaLines.join("\n"));
+  } else if (content.wave) {
+    blocks.push(["", "【海況】", `今日浪高：（暫無資料來源，待接氣象署浮標資料）`].join("\n"));
+  }
 
-【今日場次】
-${todayLines}
+  if (content.sessions) {
+    blocks.push(["", "【今日場次】", todayLines, "", "【明日場次】", tomorrowLines].join("\n"));
+  }
 
-【明日場次】
-${tomorrowLines}
+  blocks.push("", "—", `此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`);
 
-—
-此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`;
+  const textReport = blocks.join("\n");
 
   const subject = `🌊 海王子日報 ${dateStr}（風速 ${maxWind?.toFixed(1) ?? "-"} m/s）`;
 

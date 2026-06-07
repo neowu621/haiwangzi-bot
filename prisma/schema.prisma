@@ -676,6 +676,10 @@ model SiteConfig {
   // recipients: ["line:Uxxx", "email:xxx@yy.com", ...]
   dailyWeatherReportRecipients Json @default("[]") @map("daily_weather_report_recipients")
   dailyWeatherReportLastSentAt DateTime? @map("daily_weather_report_last_sent_at") @db.Timestamptz
+  // v389：發送時段（台灣時間，僅供 UI 產生 Cronicle UTC cron + 顯示），格式 [{"h":22,"m":0},{"h":5,"m":0}]
+  weatherReportSlots Json @default("[{\"h\":22,\"m\":0},{\"h\":5,\"m\":0}]") @map("weather_report_slots")
+  // v389：發送內容開關，格式 {"wind":true,"temp":true,"sessions":true,"wave":false}
+  weatherReportContent Json @default("{\"wind\":true,\"temp\":true,\"sessions\":true,\"wave\":false}") @map("weather_report_content")
 
   // v315：每日訂單日報（早 07:00 由 Cronicle 觸發）
   dailyBriefingEnabled Boolean @default(true) @map("daily_briefing_enabled")

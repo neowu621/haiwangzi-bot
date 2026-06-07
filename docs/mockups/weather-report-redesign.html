@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天氣回報 — 重新編排 mockup</title>
+<style>
+  :root{
+    --bg:#f1f5f9; --card:#ffffff; --fg:#0f172a; --muted:#64748b; --muted2:#94a3b8;
+    --border:#e2e8f0; --phosphor:#10b9a6; --phosphor-d:#0e9e8e; --ocean:#0b2942;
+    --coral:#ff6b5a; --amber-bg:#fff7ed; --amber-br:#fed7aa; --amber-fg:#9a3412;
+    --blue-bg:#eff6ff; --blue-br:#bfdbfe; --chip:#eef2f7;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif;color:var(--fg);padding:24px;}
+  .wrap{max-width:680px;margin:0 auto;}
+  h1.title{font-size:19px;font-weight:800;display:flex;align-items:center;gap:8px;margin:0 0 4px;}
+  .sub{font-size:12px;color:var(--muted);margin:0 0 18px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:0;margin-bottom:18px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .step{padding:16px 18px;border-bottom:1px solid var(--border);}
+  .step:last-child{border-bottom:none;}
+  .step-h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;margin:0 0 10px;}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--ocean);color:#fff;font-size:12px;font-weight:700;flex:none;}
+  .step-desc{font-size:11.5px;color:var(--muted);margin:-4px 0 12px 30px;line-height:1.6;}
+  /* toggle */
+  .sw{position:relative;width:42px;height:24px;background:var(--phosphor);border-radius:99px;flex:none;cursor:pointer;}
+  .sw.off{background:#cbd5e1;}
+  .sw::after{content:"";position:absolute;top:2px;left:20px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .sw.off::after{left:2px;}
+  .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  /* time slots */
+  .slot{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fafcff;}
+  .slot .clock{font-size:18px;}
+  .slot .tw{font-weight:700;font-size:14px;}
+  .slot .tag{font-size:10.5px;color:var(--muted);}
+  .slot .utc{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);background:var(--chip);padding:3px 8px;border-radius:6px;}
+  .slot .x{color:var(--muted2);font-size:16px;cursor:pointer;padding:2px 4px;}
+  .slot.add{justify-content:center;color:var(--phosphor-d);font-weight:600;font-size:13px;border-style:dashed;cursor:pointer;background:#fff;}
+  .pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:#e0f7f3;color:var(--phosphor-d);}
+  .pill.dawn{background:#fef3c7;color:#92400e;}
+  /* recipients */
+  .rcpt{border:1px solid var(--border);border-radius:10px;padding:6px;}
+  .rcpt .r{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12.5px;}
+  .rcpt .r:hover{background:#f8fafc;}
+  .rcpt b{font-weight:700;}
+  .role{font-size:10px;background:var(--chip);color:var(--muted);padding:1px 7px;border-radius:5px;}
+  .chk{margin-left:auto;display:flex;gap:14px;}
+  .chk label{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);}
+  .cb{width:15px;height:15px;border:1.5px solid var(--phosphor);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;background:var(--phosphor);color:#fff;font-size:10px;}
+  .cb.off{background:#fff;border-color:#cbd5e1;color:transparent;}
+  .cb.dis{border-color:#e2e8f0;background:#f1f5f9;}
+  .path{margin-top:10px;font-size:11px;color:var(--muted);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+  .path code{font-family:ui-monospace,Menlo,monospace;color:var(--ocean);}
+  /* content */
+  .content-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .citem{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;padding:9px 11px;font-size:12.5px;background:#fafcff;}
+  .preview{margin-top:12px;border:1px dashed var(--border);border-radius:10px;background:#f8fafc;padding:12px;font-size:11.5px;line-height:1.7;color:#334155;}
+  .preview .ttl{font-weight:700;color:var(--ocean);margin-bottom:4px;}
+  /* test */
+  .btns{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn{border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--fg);display:inline-flex;align-items:center;gap:7px;}
+  .btn.primary{background:var(--phosphor);color:#062b27;border-color:var(--phosphor);}
+  .curl{margin-top:12px;background:#0b2942;color:#cbe7e2;border-radius:10px;padding:11px 13px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.6;word-break:break-all;}
+  .curl .c{color:#7dd3c8;}
+  .note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6;}
+  .save{display:flex;justify-content:flex-end;margin-top:4px;}
+  .save .btn{background:var(--phosphor);color:#062b27;border-color:var(--phosphor);padding:10px 22px;}
+  .fixbadge{font-size:10px;font-weight:700;color:#065f46;background:#d1fae5;padding:2px 8px;border-radius:99px;margin-left:6px;}
+  .warn{font-size:11px;color:var(--amber-fg);background:var(--amber-bg);border:1px solid var(--amber-br);border-radius:8px;padding:8px 10px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="title">🌤️ 天氣回報設定 <span class="fixbadge">重新編排 v2</span></h1>
+  <p class="sub">由 Cronicle 排程觸發。以下全部用「台灣時間」設定,系統自動換算成 UTC cron(不再有時區搞混的問題)。</p>
+
+  <div class="card">
+
+    <!-- 1 啟用 -->
+    <div class="step">
+      <div class="row-between">
+        <div>
+          <div class="step-h"><span class="num">1</span>是否啟用</div>
+          <div class="step-desc" style="margin-left:0;">關閉後完全不會自動發送(測試發送仍可手動按)。</div>
+        </div>
+        <div class="sw" title="啟用中"></div>
+      </div>
+    </div>
+
+    <!-- 2 時段 -->
+    <div class="step">
+      <div class="step-h"><span class="num">2</span>發送時段<span class="fixbadge">台灣時間</span></div>
+      <div class="step-desc">想一天發幾次都可以。常見:晚上看明天、清晨出發前再看一次。右邊灰框是系統幫你算好的 UTC cron(直接貼到 Cronicle)。</div>
+      <div class="slot">
+        <span class="clock">🌙</span>
+        <div><div class="tw">22:00 <span class="pill">前一晚預報</span></div><div class="tag">看「明日」天氣 + 明日場次摘要</div></div>
+        <span class="utc">UTC 0 14 * * *</span>
+        <span class="x">✕</span>
+      </div>
+      <div class="slot">
+        <span class="clock">🌅</span>
+        <div><div class="tw">05:00 <span class="pill dawn">出發前</span></div><div class="tag">看「今日」即時天氣 + 今日場次摘要</div></div>
+        <span class="utc">UTC 0 21 * * *</span>
+        <span class="x">✕</span>
+      </div>
+      <div class="slot add">＋ 新增時段</div>
+    </div>
+
+    <!-- 3 對象與路徑 -->
+    <div class="step">
+      <div class="step-h"><span class="num">3</span>發送給誰 與 路徑</div>
+      <div class="step-desc">從管理員 / 老闆 / 教練清單勾選,各自可選 LINE 或 Email。</div>
+      <div class="rcpt">
+        <div class="r"><b>Neo Wu</b><span class="role">admin</span>
+          <div class="chk"><label><span class="cb">✓</span>LINE</label><label><span class="cb off"></span>Email</label></div>
+        </div>
+        <div class="r"><b>汪承儒</b><span class="role">boss</span>
+          <div class="chk"><label><span class="cb">✓</span>LINE</label><label><span class="cb dis"></span>Email <span style="font-size:10px;">(未填)</span></label></div>
+        </div>
+      </div>
+      <div class="path">
+        發送路徑:LINE Flex 卡片 + Email(依各人勾選)　·　API 端點 <code>/api/cron/daily-weather-report</code>
+      </div>
+      <div class="warn">⚠️ 偵測到 1 個無效收件人 <b>neowu@msi.com</b>(對不到現役帳號)。<u>清除無效收件人</u> 後記得按下方儲存。</div>
+    </div>
+
+    <!-- 4 內容 -->
+    <div class="step">
+      <div class="step-h"><span class="num">4</span>發送內容</div>
+      <div class="step-desc">資料來源:中央氣象署 CWA 即時測站(466940 基隆 + 467080 宜蘭)。可勾選要不要帶進訊息。</div>
+      <div class="content-grid">
+        <div class="citem"><span class="cb">✓</span>💨 風速(基隆/宜蘭)</div>
+        <div class="citem"><span class="cb">✓</span>🌡️ 氣溫</div>
+        <div class="citem"><span class="cb">✓</span>📅 當日/明日場次摘要</div>
+        <div class="citem"><span class="cb off"></span>🌊 浪高(若有資料)</div>
+      </div>
+      <div class="preview">
+        <div class="ttl">📋 訊息預覽(晚間版・前一晚預報)</div>
+        🌤️ 海王子明日天氣<br>
+        基隆 風速 4 m/s ・ 氣溫 26°C<br>
+        宜蘭 風速 6 m/s ・ 氣溫 27°C<br>
+        ── 明日場次 ──<br>
+        06/08(日) 09:00 龍洞 ×3人、13:00 潮境 ×2人
+      </div>
+    </div>
+
+    <!-- 5 API 測試 -->
+    <div class="step">
+      <div class="step-h"><span class="num">5</span>發送 API 測試</div>
+      <div class="step-desc">先預覽(不寄)確認內容,或立即對勾選對象測試發送一次。下方是 Cronicle 要用的指令。</div>
+      <div class="btns">
+        <button class="btn">👁️ 預覽訊息(不寄)</button>
+        <button class="btn primary">📤 立即測試發送</button>
+      </div>
+      <div class="curl">
+        <span class="c"># Cronicle Command(所有時段共用)</span><br>
+        curl -fsS -X POST -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" \\<br>
+        &nbsp;&nbsp;"$HAIWANGZI_BASE_URL/api/cron/daily-weather-report"
+      </div>
+      <div class="note">📌 已選 2 個目標。最後一次發送:(尚未發送)</div>
+    </div>
+
+  </div>
+
+  <div class="save"><button class="btn">💾 儲存天氣回報設定</button></div>
+</div>
+</body>
+</html>
