@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>金額設定 — 重新編排</title>
+<style>
+  :root{--bg:#eef2f7;--card:#fff;--fg:#0f172a;--muted:#64748b;--border:#e2e8f0;--phos:#10b9a6;--phosd:#0e9e8e;--ocean:#0b2942;--head:#f1f6fb;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif;color:var(--fg);padding:22px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  h2{font-size:17px;font-weight:800;margin:0 0 16px;display:flex;align-items:center;gap:7px;}
+  h3{font-size:13.5px;font-weight:700;margin:0 0 10px;color:var(--fg);}
+  .blk{margin-bottom:24px;}
+  /* gear table */
+  table{width:100%;border-collapse:collapse;}
+  .gear td,.gear th{border:1px solid var(--border);text-align:center;padding:0;}
+  .gear .name{background:var(--head);font-size:11.5px;font-weight:700;color:var(--fg);padding:8px 4px;white-space:nowrap;}
+  .gear .price{padding:7px 5px;}
+  .gear input{width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 4px;text-align:center;font-size:14px;font-weight:700;font-family:inherit;color:var(--ocean);}
+  .rowlabel{font-size:10px;color:var(--muted);width:54px;background:#fafcff;font-weight:700;}
+  /* credit table */
+  .credit{width:100%;border-collapse:collapse;font-size:12px;}
+  .credit th{background:var(--ocean);color:#fff;font-size:11px;font-weight:700;padding:9px 10px;text-align:left;}
+  .credit th:first-child{border-top-left-radius:8px;}
+  .credit th:last-child{border-top-right-radius:8px;text-align:center;}
+  .credit td{border-bottom:1px solid var(--border);padding:10px;vertical-align:middle;}
+  .credit tr:nth-child(even) td{background:#fafcff;}
+  .credit .item{font-weight:700;white-space:nowrap;}
+  .credit .cond{color:var(--muted);font-size:11px;line-height:1.5;}
+  .credit .amt{white-space:nowrap;}
+  .credit .exp{white-space:nowrap;text-align:center;}
+  .num{width:64px;border:1px solid var(--border);border-radius:7px;padding:6px 6px;text-align:center;font-size:13px;font-weight:700;font-family:inherit;color:var(--ocean);}
+  .num.sm{width:52px;}
+  .unit{font-size:11px;color:var(--muted);margin-left:3px;}
+  .ref{display:inline-block;font-size:10px;background:#fff3d6;color:#92580a;padding:2px 7px;border-radius:5px;font-weight:700;}
+  .dash{color:var(--muted);}
+  .btnrow{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  .mini{border:1px solid var(--border);background:#fff;border-radius:7px;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;}
+  .hint{font-size:10.5px;color:var(--muted);}
+  .note{font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.6;}
+  .save{display:flex;justify-content:flex-end;margin-top:8px;}
+  .save .mini{background:var(--phos);border-color:var(--phos);color:#062b27;padding:9px 18px;font-size:13px;}
+  .tabbar{display:flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:5px;margin-bottom:14px;font-size:12px;overflow:auto;}
+  .tab{padding:7px 11px;border-radius:8px;color:var(--muted);white-space:nowrap;}
+  .tab.on{background:#fff7ed;color:#9a3412;font-weight:700;box-shadow:0 0 0 1px #fed7aa inset;}
+</style></head>
+<body><div class="wrap">
+  <div class="tabbar">
+    <span class="tab">🏠 首頁</span><span class="tab">🔗 連結</span><span class="tab">💳 付款</span>
+    <span class="tab on">💰 金額</span><span class="tab">⭐ VIP</span><span class="tab">📤 上傳</span>
+    <span class="tab">📋 政策</span><span class="tab">📨 發送</span><span class="tab">⚠️ 危險</span><span class="tab">🔧 工具</span>
+  </div>
+
+  <div class="card">
+    <h2>💰 金額設定</h2>
+
+    <!-- 1 裝備租借：第一行名稱、第二行價格 -->
+    <div class="blk">
+      <h3>🤿 裝備租借費率（NT$／件）</h3>
+      <table class="gear">
+        <tr>
+          <td class="rowlabel">裝備</td>
+          <td class="name">BCD</td><td class="name">調節器</td><td class="name">防寒衣</td>
+          <td class="name">蛙鞋</td><td class="name">面鏡</td><td class="name">潛水電腦錶</td><td class="name">整套(七折)</td>
+        </tr>
+        <tr>
+          <td class="rowlabel">價格</td>
+          <td class="price"><input value="350"></td><td class="price"><input value="350"></td><td class="price"><input value="150"></td>
+          <td class="price"><input value="100"></td><td class="price"><input value="100"></td><td class="price"><input value="100"></td><td class="price"><input value="800"></td>
+        </tr>
+      </table>
+      <p class="note">※ 裝備折扣依會員 VIP 等級自動套用（折扣 % 在「⭐ VIP」分頁設定，只折裝備、不折潛水費）。</p>
+    </div>
+
+    <!-- 2 抵用金發送：表格 -->
+    <div class="blk">
+      <h3>🎁 抵用金發送</h3>
+      <table class="credit">
+        <thead>
+          <tr><th style="width:130px;">項目</th><th>發送條件</th><th style="width:150px;">抵用金</th><th style="width:120px;">使用期限</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="item">🎁 註冊禮金</td>
+            <td class="cond">Email 驗證通過後發放（每人一次）</td>
+            <td class="amt"><input class="num" value="50"><span class="unit">元</span></td>
+            <td class="exp"><input class="num sm" value="0"><span class="unit">天</span></td>
+          </tr>
+          <tr>
+            <td class="item">🎂 生日抵用金</td>
+            <td class="cond">每月 1 日發「當月生日」會員（一年一次）</td>
+            <td class="amt"><input class="num" value="100"><span class="unit">元</span></td>
+            <td class="exp"><input class="num sm" value="365"><span class="unit">天</span></td>
+          </tr>
+          <tr>
+            <td class="item">🎉 首單新客禮</td>
+            <td class="cond">首次完成潛水到場後發（LV1 新客）</td>
+            <td class="amt"><input class="num" value="100"><span class="unit">元</span></td>
+            <td class="exp"><input class="num sm" value="365"><span class="unit">天</span></td>
+          </tr>
+          <tr>
+            <td class="item">⭐ VIP 升等獎勵</td>
+            <td class="cond">升等到該等級時發（每跨一階）</td>
+            <td class="amt"><span class="ref">各級不同 → VIP 分頁</span></td>
+            <td class="exp"><input class="num sm" value="365"><span class="unit">天</span></td>
+          </tr>
+          <tr>
+            <td class="item">🦈 VIP5 滿級回饋</td>
+            <td class="cond">滿級後每超過 N 潛回饋 M 元</td>
+            <td class="amt"><span class="ref">M／N → VIP 分頁</span></td>
+            <td class="exp"><span class="dash">不過期</span></td>
+          </tr>
+          <tr>
+            <td class="item">🛠 Admin 手動發放</td>
+            <td class="cond">後台手動發放（客訴補償、推薦獎勵…）</td>
+            <td class="amt"><span class="dash">發放時輸入</span></td>
+            <td class="exp"><input class="num sm" value="365"><span class="unit">天</span><div class="hint">預設</div></td>
+          </tr>
+          <tr>
+            <td class="item">🔄 退款轉抵用金</td>
+            <td class="cond">活動取消／天氣退款，老闆決定加成 %</td>
+            <td class="amt"><span class="dash">依退款金額</span></td>
+            <td class="exp"><input class="num sm" value="0"><span class="unit">天</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="btnrow" style="margin-top:10px;">
+        <button class="mini">🔁 一次性補發註冊禮金給現有已驗證會員</button>
+        <span class="hint">先存好金額再按；只發未領過的人，可重複按</span>
+      </div>
+      <p class="note">※ 使用期限：0 = 永不過期。金額／期限填好後按下方「儲存金額設定」。標 <span class="ref">VIP 分頁</span> 的金額在「⭐ VIP」設定。</p>
+    </div>
+
+    <!-- 其他費用（保留） -->
+    <div class="blk">
+      <h3>⚙️ 其他</h3>
+      <table class="credit"><tbody>
+        <tr><td class="item" style="width:130px;">🧑‍🏫 教練預設費用</td><td class="cond">建立教練時的預設每潛費用</td><td class="amt" style="width:150px;"><input class="num" value="0"><span class="unit">元/潛</span></td><td class="exp" style="width:120px;"><span class="dash">—</span></td></tr>
+        <tr><td class="item">🌬️ 天氣取消風速門檻</td><td class="cond">超過此風速建議取消（天氣回報判斷用）</td><td class="amt"><input class="num" value="10"><span class="unit">m/s</span></td><td class="exp"><span class="dash">—</span></td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="save"><button class="mini">💾 儲存金額設定</button></div>
+  </div>
+</div></body></html>

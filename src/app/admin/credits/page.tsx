@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2 } from "lucide-react";
+import { Plus, Edit3, Trash2, Gift } from "lucide-react";
 
 interface CreditTx {
   id: string;
@@ -87,6 +87,75 @@ export default function CreditsPage() {
   const [editNote, setEditNote] = useState("");
   const [editExpiresAt, setEditExpiresAt] = useState("");
   const [editBusy, setEditBusy] = useState(false);
+
+  // ── 一鍵補發 dialog（v390）─────────────────────────
+  type BackfillPreview = {
+    eligibleCount: number;
+    amount: number;
+    totalCredit: number;
+    skipped?: boolean;
+    reason?: string;
+  } | null;
+  const [bfOpen, setBfOpen] = useState(false);
+  const [bfLoading, setBfLoading] = useState(false);
+  const [bfSignup, setBfSignup] = useState<BackfillPreview>(null);
+  const [bfBirthday, setBfBirthday] = useState<BackfillPreview>(null);
+  const [bfBusy, setBfBusy] = useState(false);
+  const [bfResult, setBfResult] = useState<string | null>(null);
+
+  async function openBackfill() {
+    setBfOpen(true);
+    setBfLoading(true);
+    setBfSignup(null);
+    setBfBirthday(null);
+    setBfResult(null);
+    try {
+      const [s, b] = await Promise.all([
+        adminFetch<BackfillPreview>("/api/admin/backfill-signup-reward"),
+        adminFetch<BackfillPreview>("/api/admin/backfill-birthday-credits"),
+      ]);
+      setBfSignup(s);
+      setBfBirthday(b);
+    } catch (e) {
+      setBfResult("預覽失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBfLoading(false);
+    }
+  }
+
+  async function confirmBackfill() {
+    const sCnt = bfSignup?.skipped ? 0 : bfSignup?.eligibleCount ?? 0;
+    const bCnt = bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0;
+    if (sCnt + bCnt === 0) return;
+    if (!confirm(`確定發送？\n　註冊禮金 ${sCnt} 人\n　生日禮金 ${bCnt} 人\n發送後立即入帳，無法一鍵撤銷。`)) return;
+    setBfBusy(true);
+    setBfResult(null);
+    try {
+      const out: string[] = [];
+      if (sCnt > 0) {
+        const r = await adminFetch<{ grantedCount: number; totalCredit: number }>(
+          "/api/admin/backfill-signup-reward",
+          { method: "POST" },
+        );
+        out.push(`註冊禮金：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
+      }
+      if (bCnt > 0) {
+        const r = await adminFetch<{ grantedCount: number; totalCredit: number }>(
+          "/api/admin/backfill-birthday-credits",
+          { method: "POST" },
+        );
+        out.push(`生日禮金：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
+      }
+      setBfResult("✅ 已發送 — " + out.join("；"));
+      setBfSignup(null);
+      setBfBirthday(null);
+      await load();
+    } catch (e) {
+      setBfResult("❌ 發送失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBfBusy(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -243,7 +312,10 @@ export default function CreditsPage() {
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="inline-block ml-2 w-36" />
             </div>
             <span className="text-xs text-[var(--muted-foreground)]">共 {txs.length} 筆</span>
-            <Button size="sm" className="ml-auto" onClick={openAdd}>
+            <Button size="sm" variant="outline" className="ml-auto" onClick={openBackfill}>
+              <Gift className="mr-1 h-4 w-4" /> 一鍵補發
+            </Button>
+            <Button size="sm" onClick={openAdd}>
               <Plus className="mr-1 h-4 w-4" /> 新增抵用金
             </Button>
           </div>
@@ -406,6 +478,62 @@ export default function CreditsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* === 一鍵補發 dialog（v390）=== */}
+      <Dialog open={bfOpen} onOpenChange={(o) => !o && setBfOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>🎁 一鍵補發優惠</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              下方為「預計補發」人數與金額（尚未發送）。確認後才會實際入帳。
+            </p>
+
+            {bfLoading ? (
+              <div className="py-8 text-center text-sm text-slate-500">計算中…</div>
+            ) : (
+              <div className="space-y-2">
+                <BackfillRow
+                  title="🎁 註冊禮金"
+                  sub="已驗證 Email、從未領過（一生一次）"
+                  data={bfSignup}
+                />
+                <BackfillRow
+                  title="🎂 生日禮金"
+                  sub="生日月已到/當月、今年未領（一年一次；未來月份生日由月初自動發）"
+                  data={bfBirthday}
+                />
+              </div>
+            )}
+
+            {bfResult && (
+              <div className={`rounded-md p-2 text-xs ${bfResult.startsWith("✅") ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                {bfResult}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setBfOpen(false)}>
+                {bfResult?.startsWith("✅") ? "關閉" : "取消"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={confirmBackfill}
+                disabled={
+                  bfBusy ||
+                  bfLoading ||
+                  ((bfSignup?.skipped ? 0 : bfSignup?.eligibleCount ?? 0) +
+                    (bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0) ===
+                    0)
+                }
+              >
+                {bfBusy ? "發送中…" : "✓ 確認發送"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* === 編輯 dialog === */}
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-md">
@@ -441,6 +569,46 @@ export default function CreditsPage() {
         </DialogContent>
       </Dialog>
     </AdminShell>
+  );
+}
+
+function BackfillRow({
+  title,
+  sub,
+  data,
+}: {
+  title: string;
+  sub: string;
+  data: { eligibleCount: number; amount: number; totalCredit: number; skipped?: boolean; reason?: string } | null;
+}) {
+  return (
+    <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">{title}</div>
+          <div className="text-[10px] text-slate-500">{sub}</div>
+        </div>
+        <div className="text-right">
+          {!data ? (
+            <span className="text-xs text-slate-400">—</span>
+          ) : data.skipped ? (
+            <span className="text-[11px] text-amber-600">未設金額</span>
+          ) : (
+            <>
+              <div className="text-lg font-bold tabular-nums" style={{ color: data.eligibleCount > 0 ? "#16a34a" : "#94a3b8" }}>
+                {data.eligibleCount} 人
+              </div>
+              <div className="text-[11px] text-slate-500">
+                每人 NT${data.amount.toLocaleString()}・共 NT${data.totalCredit.toLocaleString()}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      {data?.skipped && (
+        <div className="mt-1 text-[10px] text-amber-600">{data.reason}</div>
+      )}
+    </div>
   );
 }
 
