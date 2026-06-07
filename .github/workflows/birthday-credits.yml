@@ -1,0 +1,24 @@
+name: Birthday Credits — 每月 1 號 08:00 Asia/Taipei
+
+# 每月 1 號台灣 08:00（= UTC 00:00）發放「當月生日」會員的生日抵用金。
+# 後端以 birthday_credit_year 去重，一年只發一次（重跑不重複）。
+# 也可從 GitHub Actions UI 手動觸發測試。
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch: {}
+
+jobs:
+  grant-birthday-credits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 發放當月生日抵用金
+        run: |
+          echo "→ POST /api/cron/birthday-credits"
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP %{http_code}\n" \
+            --fail-with-body \
+            https://haiwangzi.zeabur.app/api/cron/birthday-credits
