@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
-import { Check, X, RefreshCw, Sun, Moon, ImageIcon } from "lucide-react";
+import { Check, X, RefreshCw, Sun, Moon, ImageIcon, ImageOff } from "lucide-react";
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
 /**
@@ -26,6 +26,8 @@ interface ProofRow {
   type: "deposit" | "final" | "refund"; // v301
   amount: number;
   previewUrl: string | null;
+  thumb?: string | null;     // v396：DB 縮圖（即時顯示）
+  imageKey?: string | null;  // v396：區分「沒上傳圖」與「載入失敗」
   uploadedAt: string;
   last5: string | null;
   note: string | null;
@@ -75,6 +77,7 @@ export default function TonightPage() {
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [selectedBookings, setSelectedBookings] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
+  const [imgErrored, setImgErrored] = React.useState<Set<string>>(new Set()); // v396：圖載入失敗的 proof id
 
   const reload = React.useCallback(async () => {
     setLoading(true);
@@ -379,17 +382,27 @@ export default function TonightPage() {
                           }}
                           className="mt-1"
                         />
-                        {p.previewUrl ? (
+                        {(p.previewUrl || p.thumb) && !imgErrored.has(p.id) ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
-                            src={p.previewUrl}
+                            src={p.previewUrl || p.thumb || ""}
                             alt="proof"
+                            loading="lazy"
                             className="h-16 w-16 rounded border object-cover cursor-zoom-in"
-                            onClick={() => setLightbox(p.previewUrl)}
+                            onClick={() => setLightbox(p.previewUrl || p.thumb || null)}
+                            onError={() => setImgErrored((s) => new Set(s).add(p.id))}
                           />
+                        ) : !p.imageKey ? (
+                          // v396：沒上傳圖（現金交付 / 只填後 5 碼）
+                          <div className="h-16 w-16 rounded border border-dashed bg-[var(--muted)] flex flex-col items-center justify-center gap-0.5 text-[9px] text-[var(--muted-foreground)]">
+                            <ImageOff className="h-4 w-4 opacity-60" />
+                            無圖
+                          </div>
                         ) : (
-                          <div className="h-16 w-16 rounded border bg-[var(--muted)] flex items-center justify-center">
-                            <ImageIcon className="h-5 w-5 text-[var(--muted-foreground)]" />
+                          // 有 key 但載入失敗 / 已清理
+                          <div className="h-16 w-16 rounded border bg-[var(--muted)] flex flex-col items-center justify-center gap-0.5 text-[9px] text-[var(--muted-foreground)]">
+                            <ImageIcon className="h-4 w-4 opacity-60" />
+                            載入失敗
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
