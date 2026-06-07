@@ -1121,6 +1121,8 @@ function AutoSendSection({
   const [usersLoading, setUsersLoading] = React.useState(true);
   const [testBusy, setTestBusy] = React.useState<"dry" | "real" | null>(null);
   const [testResult, setTestResult] = React.useState<string | null>(null);
+  const [recipSaving, setRecipSaving] = React.useState(false); // v398：收件人即時存中
+  const [recipSaved, setRecipSaved] = React.useState(false);
 
   React.useEffect(() => {
     setUsersLoading(true);
@@ -1153,26 +1155,41 @@ function AutoSendSection({
   // 計數用「能比對到現役用戶」的數量（載入中先用原始長度避免閃 0）
   const sendableCount = usersLoading ? recipients.length : liveRecipients.length;
 
+  // v398：收件人勾選改「點了就即時存」— 不用再按下方儲存
+  async function persistRecipients(next: string[]) {
+    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+    setRecipSaving(true);
+    try {
+      await adminFetch("/api/admin/site-config", {
+        method: "POST",
+        body: JSON.stringify({ dailyWeatherReportRecipients: next }),
+      });
+      setRecipSaved(true);
+      window.setTimeout(() => setRecipSaved(false), 1500);
+    } catch (e) {
+      alert("儲存收件人失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRecipSaving(false);
+    }
+  }
+
   function clearOrphans() {
     if (orphanTags.length === 0) return;
     if (!confirm(`確定要清除 ${orphanTags.length} 個無效收件人嗎？\n\n${orphanTags.join("\n")}`)) return;
-    const next = recipients.filter((r) => validTags.has(r));
-    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+    void persistRecipients(recipients.filter((r) => validTags.has(r)));
   }
 
   function toggleLine(userId: string) {
     const tag = `line:${userId}`;
-    const next = recipientSet.has(tag)
-      ? recipients.filter((r) => r !== tag)
-      : [...recipients, tag];
-    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+    void persistRecipients(
+      recipientSet.has(tag) ? recipients.filter((r) => r !== tag) : [...recipients, tag],
+    );
   }
   function toggleEmail(email: string) {
     const tag = `email:${email}`;
-    const next = recipientSet.has(tag)
-      ? recipients.filter((r) => r !== tag)
-      : [...recipients, tag];
-    setCfg((c) => (c ? { ...c, dailyWeatherReportRecipients: next } : c));
+    void persistRecipients(
+      recipientSet.has(tag) ? recipients.filter((r) => r !== tag) : [...recipients, tag],
+    );
   }
 
   // v389：發送時段（台灣時間）+ 內容開關
@@ -1353,7 +1370,9 @@ function AutoSendSection({
           </p>
         </div>
         <Label className="mb-1 block text-xs text-[var(--muted-foreground)] ml-7">
-          收件人（從管理員 / 教練清單勾選，各自可選 LINE / Email）
+          收件人（勾選即<b className="text-[var(--color-ocean-deep)]">自動儲存</b>，不用按下方按鈕）
+          {recipSaving && <span className="ml-2 text-[10px] text-amber-600">儲存中…</span>}
+          {recipSaved && <span className="ml-2 text-[10px] text-emerald-600">✓ 已儲存</span>}
         </Label>
         {usersLoading ? (
           <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
