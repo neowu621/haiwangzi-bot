@@ -182,7 +182,7 @@ export default function HomePage() {
           </div>
           <div className="hero-coach">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/home/src-02.jpg" alt="東北角海王子潛水教練 汪汪" />
+            <img src="/home/src-hero.png" alt="東北角海王子潛水教練 汪汪" />
             <span className="tagpill">潛水教練 ｜ 海王子．汪汪</span>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function HomePage() {
       <section className="about" id="about">
         <div className="wrap about-grid">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <div className="about-photo reveal"><img src="/home/src-02.jpg" alt="東北角海王子潛水教練 汪汪" /><div className="badge">潛水教練 ｜ 海王子．汪汪 ｜ 信任．安全</div></div>
+          <div className="about-photo reveal"><img src="/home/src-about.png" alt="東北角海王子潛水教練 汪汪" /><div className="badge">潛水教練 ｜ 海王子．汪汪 ｜ 信任．安全</div></div>
           <div className="about-text reveal">
             <span className="eyebrow">About the Diver</span>
             <h2 className="section-title">嗨，我是汪汪</h2>
