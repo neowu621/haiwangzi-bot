@@ -72,16 +72,23 @@ const TRIPS = [
   { n: "國外 · PHILIPPINES", bg: "bg-coron", zh: "菲律賓 科隆島", en: "Coron · Palawan", d: "世界級二戰日軍沈船潛點，十餘艘船體保存完好、被珊瑚攀附，有些浮潛即可一睹歷史；北部保護區更有真正的「美人魚」儒艮，沈船探險與海洋神獸一次滿足。", tags: ["沈船 3–30m+", "新手～進階", "5 天 4 夜起"] },
 ];
 
-type Testimonial = { name: string; avatar: string; activity: string; text: string };
-// 內建保底（後台未設定時顯示）；後台 homeTestimonials 有資料時整組取代
+type Testimonial = { name: string; avatar: string; activity: string; title: string; text: string };
+// 內建保底（後台未設定時顯示）；後台 homeTestimonials 有資料時整組取代。第 1 則為「主打長文卡」。
 const BUILTIN_REVIEWS: Testimonial[] = [
-  { text: "本來超怕水，汪汪超有耐心一步一步帶，下水之後完全被海裡的世界圈粉，已經在計畫考證照了！", name: "Yuki", activity: "第一次體驗潛水", avatar: "" },
-  { text: "裝備很新很乾淨，安全講解很仔細。拍的水下照片也太美了吧，朋友看到都說要一起來。", name: "阿哲", activity: "龍洞一日潛水", avatar: "" },
-  { text: "跟海王子去了一趟潛旅，行程安排超順，潛點選得很棒，連不潛水的家人都玩得很開心。", name: "Linda", activity: "潛水團", avatar: "" },
-  { text: "第二次找汪汪，這次船潛看到好多魚群，下潛、上升都很穩，跟著他真的很放心，會一直回購。", name: "小宇", activity: "東北角船潛", avatar: "" },
-  { text: "完全沒經驗也能下水，教練超細心一直確認我的狀況，浮上來第一句話就是「還想再下去」！", name: "Mia", activity: "第一次體驗潛水", avatar: "" },
-  { text: "跟團去小琉球，整趟被照顧得很好，還拍到我跟海龜的合照，朋友都問是不是出國拍的。", name: "阿凱", activity: "小琉球潛旅", avatar: "" },
+  { name: "百潛菜雞學員", activity: "小琉球考證 → 東北角長期練功", title: "從菜雞到近百潛的蛻變 🐠", avatar: "/home/review-featured.webp",
+    text: "在小琉球拿到證照後，每次練習都要下南部或跑外島，時間成本太高，後來竟變成「一年才潛一次」😮‍💨。於是我決定在東北角找位能長期跟著練習的教練，跟過幾位之後，真心大推汪汪教練！他乍看是個「汪大膽」😂，但他的膽是長在判斷力和能 cover 你的真本事上 💪。第一次跟潛，我偷偷帶了位經驗不足的小菜雞 🐣，汪汪沒有為了賺錢硬讓大家下水，而是另外幫我們約一天、少接學員，把心力都放在照顧我們身上 🥹。從連下潛都有狀況的新手，到現在累積近百潛 🎉，加上對路線超熟、方向感一流 🧭，還會背專業大相機幫你側拍美照 📸，每次上岸都收穫滿滿 💕！" },
+  { name: "大翅鯨魚", activity: "", title: "平安上岸的安心感 🤝", avatar: "/home/review-whale.webp",
+    text: "跟著汪汪教練下潛，絕對沒有問題，他總是能平平安安把你帶上岸 🌅。這份穩穩的安心感，是我每次下水最大的底氣 💙" },
+  { name: "克服怕水的學員", activity: "", title: "克服恐懼的暖心陪伴 🥹", avatar: "/home/review-fear.webp",
+    text: "原本給其他教練帶，因為耳壓沒平衡好、防寒衣不合身、面鏡又進水，讓我對潛水有點陰影 😭。第一次給汪汪教練帶就很安心，每下潛一段就提醒我做耳壓平衡，現在完全克服恐懼啦 🎉！人帥又有耐心、認真負責 ✨，真心大推怕水的朋友找汪汪教練 👍！" },
+  { name: "珊瑚控學員", activity: "", title: "滿海的「花椰菜」驚喜 🥦🪸", avatar: "/home/review-coral.webp",
+    text: "謝謝汪教練帶我看到了滿滿一整片的花椰菜珊瑚 🌸，那畫面真的美到捨不得眨眼，是水下最浪漫的小驚喜 💕" },
+  { name: "潛水家庭", activity: "", title: "體能技術滿點，照顧長輩 👴👵", avatar: "/home/review-family.webp",
+    text: "體能、技術都超強的教練 💪，而且永遠都把老人家照顧得好好的 🤗。跟著他下水，全家大小都能玩得安心又開心 💙" },
+  { name: "海底攝影愛好者", activity: "", title: "內太空般的靜謐之美 🌌", avatar: "/home/review-photo.webp",
+    text: "跟著汪汪教練悠遊在這片海底世界，盡情欣賞成群豔麗的海扇、穿梭的魚群，還有優雅滑過的海龜 🐢。抬頭望去，陽光灑落在心醉的湛藍海水中，氣泡靜靜上升 🫧，四周一片寧靜，彷彿時間在此刻停格 ⏳。我想——這就是「內太空」最迷人的地方吧 ✨" },
 ];
+const DEFAULT_REVIEWS_NOTE = "想在東北角安心練功、突破自己、又能拍到美照與美好回憶，那就交給汪汪教練準沒錯！🐬🌊";
 
 type QA = { q: string; a: React.ReactNode };
 const FAQ: { zh: string; en: string; items: QA[] }[] = [
@@ -111,7 +118,7 @@ const FAQ: { zh: string; en: string; items: QA[] }[] = [
     { q: "需要帶證件或現金嗎？", a: "建議攜帶身分證件；費用與付款方式會在 LINE 預約時跟你說明清楚。" },
   ] },
   { zh: "預約 · 天氣 · 費用", en: "Booking · Weather · Fees", items: [
-    { q: "怎麼預約？需要先付訂金嗎？", a: "最方便的方式是加官方 LINE，告訴汪汪日期與人數即可。訂金與付款方式會在 LINE 上說明。" },
+    { q: "怎麼預約？需要先付訂金嗎？", a: "最方便的方式是加官方 LINE，直接在 LINE 上預約潛水。若目前沒有適合的時段，也可以先提供你想潛的地點、日期與人數，汪汪會主動跟你聯繫討論安排。訂金與付款方式都會在 LINE 上說明。" },
     { q: "天氣或海況不好怎麼辦？可以改期或退費嗎？", a: "潛水安全取決於海況。若遇到不適合下水的天氣，我們會主動聯繫你改期或依規定退費，絕不勉強下水。" },
     { q: "我會暈船，船潛該注意什麼？", a: "岸潛通常不太會暈船；如果是船潛，建議前一晚睡飽、出發前先服用暈船藥，並多看遠方的海平面。會暈船請先告訴教練，我們會幫你安排適合的座位與節奏。" },
     { q: "可以一個人報名嗎？", a: "可以，常有同學單獨報名，現場也很容易認識新潛伴，一起下水更有趣。" },
@@ -186,8 +193,9 @@ export default function HomePage() {
   // v403：最新動態影片清單從 /api/config 取，模式由 admin 後台控制
   const [videos, setVideos] = useState<YtVideo[]>(BUILTIN_FALLBACK_VIDS);
   const [videosLoading, setVideosLoading] = useState(true);
-  // v409：學員怎麼說（後台可編輯，未設定則用內建）
-  const [reviews, setReviews] = useState<Testimonial[]>(BUILTIN_REVIEWS);
+  // v414：學員怎麼說改為內建固定內容（後台編輯已取消）+ 總結語
+  const reviews = BUILTIN_REVIEWS;
+  const reviewsNote = DEFAULT_REVIEWS_NOTE;
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -195,18 +203,10 @@ export default function HomePage() {
         const cfg = await fetch("/api/config").then((r) => r.json()).catch(() => null) as
           | { homeVideosMode?: "curated" | "auto"; homeVideos?: YtVideo[];
               homeVideoFeaturedId?: string; homeVideoCount?: number;
-              homeVideoExcludeIds?: string[]; homeVideoFilter?: "all" | "long";
-              homeTestimonials?: Testimonial[] }
+              homeVideoExcludeIds?: string[]; homeVideoFilter?: "all" | "long" }
           | null;
         if (cancelled) return;
-        // 學員怎麼說：後台有資料就整組取代
-        const t = cfg?.homeTestimonials;
-        if (Array.isArray(t) && t.length > 0) {
-          setReviews(t.map((x) => ({
-            name: x?.name ?? "", avatar: x?.avatar ?? "",
-            activity: x?.activity ?? "", text: x?.text ?? "",
-          })).filter((x) => x.name || x.text));
-        }
+        // 學員怎麼說：v414 起改為內建固定內容（後台編輯已取消）
         const mode = cfg?.homeVideosMode ?? "curated";
         const curated = Array.isArray(cfg?.homeVideos) && cfg!.homeVideos!.length > 0
           ? cfg!.homeVideos!
@@ -415,26 +415,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="reviews">
-        <div className="wrap">
-          <div className="sec-head reveal"><span className="eyebrow">Student Voices</span><h2 className="section-title">學員怎麼說</h2></div>
-          <div className="rev-grid">
-            {reviews.map((r, i) => (
-              <div key={`${r.name}-${i}`} className="rev reveal">
-                <div className="stars">★★★★★</div>
-                <p>{r.text}</p>
-                <div className="who">
-                  <div className="av" style={r.avatar ? { backgroundImage: `url(${r.avatar})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
-                    {!r.avatar && r.name ? <span>{r.name.slice(0, 1)}</span> : null}
-                  </div>
-                  <div><b>{r.name}</b><small>{r.activity}</small></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* v413：潛水課程 */}
       <section className="courses" id="courses">
         <div className="wrap">
@@ -456,6 +436,45 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* v414：學員怎麼說（主打長文卡 + 精選網格 + 總結語）移到潛水課程後 */}
+      <section className="reviews" id="reviews">
+        <div className="wrap">
+          <div className="sec-head reveal"><span className="eyebrow">Student Voices</span><h2 className="section-title">學員怎麼說</h2></div>
+          {reviews.length > 0 && (() => {
+            const f = reviews[0];
+            return (
+              <div className="rev-featured reveal">
+                <div className="photo">
+                  <div className="fphoto" style={f.avatar ? { backgroundImage: `url(${f.avatar})` } : undefined}>
+                    {!f.avatar && f.name ? <span>{f.name.slice(0, 1)}</span> : null}
+                  </div>
+                </div>
+                <div className="body">
+                  <div className="stars">★★★★★</div>
+                  <div className="who"><b>{f.name}</b>{f.activity ? <small>{f.activity}</small> : null}</div>
+                  {f.title ? <h4>{f.title}</h4> : null}
+                  <p>{f.text}</p>
+                </div>
+              </div>
+            );
+          })()}
+          <div className="rev-grid">
+            {reviews.slice(1).map((r, i) => (
+              <div key={`${r.name}-${i}`} className="rev reveal">
+                <div className="stars">★★★★★</div>
+                <b className="rev-name">{r.name}</b>
+                <div className="av" style={r.avatar ? { backgroundImage: `url(${r.avatar})` } : undefined}>
+                  {!r.avatar && r.name ? <span>{r.name.slice(0, 1)}</span> : null}
+                </div>
+                {r.title ? <h4>{r.title}</h4> : null}
+                <p>{r.text}</p>
+              </div>
+            ))}
+          </div>
+          {reviewsNote ? <p className="rev-conclusion reveal"><b>學員，同一個結論：</b><br />{reviewsNote}</p> : null}
         </div>
       </section>
 

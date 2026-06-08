@@ -122,7 +122,8 @@ interface Config {
   homeVideoExcludeIds?: string[];
   homeVideoFilter?: "all" | "long";
   // v409：首頁「學員怎麼說」6 格
-  homeTestimonials?: Array<{ name: string; avatar: string; activity: string; text: string }>;
+  homeTestimonials?: Array<{ name: string; avatar: string; activity: string; title: string; text: string }>;
+  homeReviewsNote?: string;
 }
 
 // v403：把 YouTube URL/Shorts/11 碼 id → { id, isShort }；無法 parse 回 null
@@ -479,10 +480,7 @@ export default function SettingsPage() {
           <HomeVideosCard cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
         </div>
 
-        {/* v409：首頁「學員怎麼說」6 格 */}
-        <div className="mt-4">
-          <TestimonialsCard cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
-        </div>
+        {/* v414：學員怎麼說改為前台內建固定內容，後台編輯已移除 */}
         </TabsContent>
 
         <TabsContent value="links" className="mt-4">
@@ -2336,165 +2334,3 @@ function HomeVideosCard({
   );
 }
 
-/* ─── v409：首頁「學員怎麼說」6 格 ─────────────── */
-type Testimonial = { name: string; avatar: string; activity: string; text: string };
-const EMPTY_TESTI: Testimonial = { name: "", avatar: "", activity: "", text: "" };
-const TESTI_PLACEHOLDER: Testimonial[] = [
-  { name: "Yuki", activity: "第一次體驗潛水", avatar: "", text: "本來超怕水，汪汪超有耐心一步一步帶…" },
-  { name: "阿哲", activity: "龍洞一日潛水", avatar: "", text: "裝備很新很乾淨，安全講解很仔細…" },
-  { name: "Linda", activity: "潛水團", avatar: "", text: "行程安排超順，連不潛水的家人都玩得很開心。" },
-  { name: "小宇", activity: "東北角船潛", avatar: "", text: "下潛、上升都很穩，跟著他真的很放心。" },
-  { name: "Mia", activity: "第一次體驗潛水", avatar: "", text: "教練超細心一直確認我的狀況…" },
-  { name: "阿凱", activity: "小琉球潛旅", avatar: "", text: "整趟被照顧得很好，還拍到我跟海龜的合照。" },
-];
-
-// v413：上傳頭像 → client 端壓成 256px 方形 jpeg → data URL（~20-40KB）
-async function compressAvatar(file: File, side = 256, quality = 0.82): Promise<string> {
-  const dataUrl: string = await new Promise((res, rej) => {
-    const fr = new FileReader();
-    fr.onload = () => res(String(fr.result));
-    fr.onerror = () => rej(new Error("讀取檔案失敗"));
-    fr.readAsDataURL(file);
-  });
-  const img = await new Promise<HTMLImageElement>((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = () => rej(new Error("圖片解析失敗"));
-    im.src = dataUrl;
-  });
-  // 聚焦臉部：取較小的正方形（微放大）並靠上對齊，讓臉落在圓心
-  const minSide = Math.min(img.width, img.height);
-  const cropSide = Math.round(minSide * 0.74);
-  const sx = Math.round((img.width - cropSide) / 2);
-  const sy = Math.round((img.height - cropSide) * 0.06); // 偏上保留少量頭頂
-  const canvas = document.createElement("canvas");
-  canvas.width = side; canvas.height = side;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas 不支援");
-  ctx.drawImage(img, sx, sy, cropSide, cropSide, 0, 0, side, side);
-  return canvas.toDataURL("image/jpeg", quality);
-}
-
-function TestimonialsCard({
-  cfg, setCfg, save, saving,
-}: {
-  cfg: Config;
-  setCfg: React.Dispatch<React.SetStateAction<Config | null>>;
-  save: (section: string, patch: Partial<Config>) => Promise<void>;
-  saving: string | null;
-}) {
-  const items = cfg.homeTestimonials ?? [];
-  const rows: Testimonial[] = Array.from({ length: 6 }, (_, i) => items[i] ?? { ...EMPTY_TESTI });
-  const [upBusy, setUpBusy] = useState<number | null>(null);
-  const [upErr, setUpErr] = useState<string>("");
-
-  function upd(idx: number, key: keyof Testimonial, val: string) {
-    const next: Testimonial[] = Array.from({ length: 6 }, (_, j) => ({ ...(items[j] ?? EMPTY_TESTI) }));
-    next[idx] = { ...next[idx], [key]: val };
-    setCfg((c) => (c ? { ...c, homeTestimonials: next } : c));
-  }
-
-  async function handleAvatarFile(idx: number, file: File | null) {
-    if (!file) return;
-    setUpErr("");
-    if (!file.type.startsWith("image/")) { setUpErr("請選擇圖片檔"); return; }
-    if (file.size > 12 * 1024 * 1024) { setUpErr("圖片過大（>12MB）"); return; }
-    setUpBusy(idx);
-    try {
-      const dataUrl = await compressAvatar(file);
-      upd(idx, "avatar", dataUrl);
-    } catch (e) {
-      setUpErr(e instanceof Error ? e.message : "壓縮失敗");
-    } finally {
-      setUpBusy(null);
-    }
-  }
-
-  return (
-    <SectionCard title="💬 首頁「學員怎麼說」（6 格）">
-      <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-        管理首頁「學員怎麼說」6 張評價卡。<b>整組留空</b>時前台顯示內建範例；只要有填任一格，就以這裡的內容為準（留空的格子前台不顯示）。
-        圖像請填<b>圖片網址</b>（留空則顯示姓名首字色塊）。儲存後最多 5 分鐘內生效。
-      </p>
-
-      <div className="space-y-3">
-        {rows.map((r, i) => (
-          <div key={i} className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
-            <Label className="mb-2 block text-xs font-semibold text-[var(--foreground)]">學員 {i + 1}</Label>
-            {/* 左 個人資料 1 ： 右 學員評價 4 */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_4fr]">
-              {/* 左：個人資料 */}
-              <div className="space-y-2">
-                <div>
-                  <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">人名</Label>
-                  <Input value={r.name} placeholder={TESTI_PLACEHOLDER[i]?.name ?? "例：Yuki"}
-                    onChange={(e) => upd(i, "name", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">參與項目</Label>
-                  <Input value={r.activity} placeholder={TESTI_PLACEHOLDER[i]?.activity ?? "例：第一次體驗潛水"}
-                    onChange={(e) => upd(i, "activity", e.target.value)} />
-                </div>
-                <div>
-                  <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">圖像（上傳或填網址，可留空）</Label>
-                  <div className="flex items-center gap-2">
-                    {/* 預覽 */}
-                    {r.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={r.avatar} alt="" className="h-10 w-10 flex-none rounded-full object-cover border" style={{ borderColor: "var(--border)" }} />
-                    ) : (
-                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full border text-[10px] text-[var(--muted-foreground)]" style={{ borderColor: "var(--border)" }}>無</span>
-                    )}
-                    <label className="cursor-pointer rounded-md border px-2.5 py-1.5 text-[11px] hover:bg-[var(--muted)]/40" style={{ borderColor: "var(--border)" }}>
-                      {upBusy === i ? "壓縮中…" : "上傳圖片"}
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={(e) => { handleAvatarFile(i, e.target.files?.[0] ?? null); e.target.value = ""; }} />
-                    </label>
-                    {r.avatar && (
-                      <button type="button" className="text-[11px] text-rose-600 hover:underline"
-                        onClick={() => upd(i, "avatar", "")}>移除</button>
-                    )}
-                  </div>
-                  <Input className="mt-1.5" value={r.avatar.startsWith("data:") ? "" : r.avatar}
-                    placeholder={r.avatar.startsWith("data:") ? "（已上傳圖片）" : "或貼圖片網址 https://…"}
-                    disabled={r.avatar.startsWith("data:")}
-                    onChange={(e) => upd(i, "avatar", e.target.value.trim())} />
-                </div>
-              </div>
-              {/* 右：學員評價 */}
-              <div className="flex flex-col">
-                <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">學員評價</Label>
-                <textarea rows={6}
-                  className="w-full flex-1 rounded-md border p-2 text-xs leading-relaxed"
-                  style={{ borderColor: "var(--border)" }}
-                  value={r.text} placeholder={TESTI_PLACEHOLDER[i]?.text ?? "評價內容…"}
-                  onChange={(e) => upd(i, "text", e.target.value)} />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {upErr && <p className="mt-2 text-[11px] text-rose-600">{upErr}</p>}
-      <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">※ 上傳的圖片會自動壓成 256px 方形小圖（約 20–40KB），存進設定、首頁直接顯示。</p>
-
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <Button size="sm" variant="outline"
-          onClick={() => setCfg((c) => (c ? { ...c, homeTestimonials: TESTI_PLACEHOLDER.map((x) => ({ ...x })) } : c))}>
-          帶入內建範例
-        </Button>
-        <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
-          onClick={() => save("學員怎麼說", {
-            homeTestimonials: rows.map((r) => ({
-              name: r.name.trim(), avatar: r.avatar.trim(),
-              activity: r.activity.trim(), text: r.text.trim(),
-            })),
-          })}
-          disabled={saving === "學員怎麼說"}>
-          <Save className="mr-1.5 h-4 w-4" />
-          {saving === "學員怎麼說" ? "儲存中..." : "儲存學員評價"}
-        </Button>
-      </div>
-    </SectionCard>
-  );
-}

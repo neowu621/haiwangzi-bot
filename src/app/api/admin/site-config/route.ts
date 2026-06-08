@@ -157,8 +157,10 @@ const PatchSchema = z.object({
     // avatar 可為圖片 URL，或上傳壓縮後的 data URL（256px 方形，~20-40KB）
     avatar: z.string().max(300000).default(""),
     activity: z.string().max(60).default(""),
-    text: z.string().max(400).default(""),
+    title: z.string().max(60).default(""),
+    text: z.string().max(800).default(""),
   })).max(6).optional(),
+  homeReviewsNote: z.string().max(400).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -265,7 +267,8 @@ export async function GET(req: NextRequest) {
       homeVideoCount: (row as unknown as { homeVideoCount?: number }).homeVideoCount ?? 5,
       homeVideoExcludeIds: ((row as unknown as { homeVideoExcludeIds?: unknown }).homeVideoExcludeIds as string[] | undefined) ?? [],
       homeVideoFilter: (row as unknown as { homeVideoFilter?: string }).homeVideoFilter ?? "all",
-      homeTestimonials: ((row as unknown as { homeTestimonials?: unknown }).homeTestimonials as Array<{ name: string; avatar: string; activity: string; text: string }> | undefined) ?? [],
+      homeTestimonials: ((row as unknown as { homeTestimonials?: unknown }).homeTestimonials as Array<{ name: string; avatar: string; activity: string; title: string; text: string }> | undefined) ?? [],
+      homeReviewsNote: (row as unknown as { homeReviewsNote?: string }).homeReviewsNote ?? "",
     },
     isDefault: false,
     updatedAt: row.updatedAt,

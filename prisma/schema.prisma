@@ -708,9 +708,11 @@ model SiteConfig {
   homeVideoExcludeIds Json   @default("[]")  @map("home_video_exclude_ids")
   homeVideoFilter     String @default("all") @map("home_video_filter") @db.VarChar(8)
 
-  // v409：首頁「學員怎麼說」6 格（後台可編輯）
-  //   [{ name, avatar, activity, text }]  avatar 為圖片 URL（空字串則顯示首字色塊）
+  // v409/v414：首頁「學員怎麼說」（後台可編輯）。第 1 則為主打長文卡。
+  //   [{ name, avatar, activity, title, text }]  avatar 為圖片 URL/上傳 data URL（空字串則顯示首字色塊）
   homeTestimonials Json @default("[]") @map("home_testimonials")
+  // v414：學員怎麼說區塊底部「總結語」
+  homeReviewsNote  String @default("") @map("home_reviews_note")
 
   // v392：氣瓶限時折扣（自動套用；每支氣瓶折抵 NT$，可設理由 + 起訖日）
   tankPromoEnabled  Boolean   @default(false) @map("tank_promo_enabled")

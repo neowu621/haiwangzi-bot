@@ -67,6 +67,8 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_filter VARCHAR(8) NOT NULL DEFAULT 'all'`,
   // v409: 首頁「學員怎麼說」6 格
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_testimonials JSONB NOT NULL DEFAULT '[]'::jsonb`,
+  // v414: 學員怎麼說總結語
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_reviews_note TEXT NOT NULL DEFAULT ''`,
   // v411: 海象（浮標+潮位）整合進每日天氣回報
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_marine_enabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_marine_points JSONB NOT NULL DEFAULT '[{"label":"龍洞區","buoyId":"46694A","tideId":"C4A02"},{"label":"基隆區","buoyId":"C6B01","tideId":"C4B01"}]'::jsonb`,

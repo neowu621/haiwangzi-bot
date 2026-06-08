@@ -19,16 +19,16 @@
 .hw .btn-ghost{background:rgba(102,216,246,.08);color:var(--foam);border:1px solid rgba(102,216,246,.45);backdrop-filter:blur(6px)}
 .hw .btn-ghost:hover{background:rgba(102,216,246,.18);transform:translateY(-3px)}
 
-.hw .bg-reeffish{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-04.jpg) center/cover}
-.hw .bg-coraldiver{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-02.jpg) center/cover}
-.hw .bg-turtle{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-03.jpg) center/cover}
-.hw .bg-coral{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-05.jpg) center/cover}
-.hw .bg-boat{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-06.jpg) center/cover}
-.hw .bg-school{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-07.jpg) center/cover}
-.hw .bg-blue{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-08.jpg) center/cover}
-.hw .bg-macro{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-09.jpg) center/cover}
-.hw .bg-greenreef{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-10.jpg) center/cover}
-.hw .bg-coron{background:linear-gradient(160deg,rgba(2,21,42,.4),rgba(2,21,42,.88)),url(/home/src-01.jpg) center/cover}
+.hw .bg-reeffish{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-04.webp) center/cover}
+.hw .bg-coraldiver{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-02.webp) center/cover}
+.hw .bg-turtle{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-03.webp) center/cover}
+.hw .bg-coral{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-05.webp) center/cover}
+.hw .bg-boat{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-06.webp) center/cover}
+.hw .bg-school{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-07.webp) center/cover}
+.hw .bg-blue{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-08.webp) center/cover}
+.hw .bg-macro{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-09.webp) center/cover}
+.hw .bg-greenreef{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-10.webp) center/cover}
+.hw .bg-coron{background:linear-gradient(160deg,rgba(2,21,42,.4),rgba(2,21,42,.88)),url(/home/src-01.webp) center/cover}
 
 /* NAV */
 .hw header.nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 22px;transition:background .35s,padding .35s}
@@ -51,7 +51,7 @@
 
 /* HERO */
 .hw .hero{position:relative;min-height:100svh;display:flex;align-items:center;padding:90px 0 9vh;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
-.hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.jpg) center/cover}
+.hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.webp) center/cover}
 .hw .light-shaft{position:absolute;top:-25%;width:150px;height:165%;background:linear-gradient(180deg,rgba(165,232,251,.30),transparent 70%);filter:blur(24px);transform:skewX(-12deg);opacity:.5;z-index:1}
 .hw .light-shaft.s1{left:10%;animation:hw-shaft 9s ease-in-out infinite alternate}
 .hw .light-shaft.s2{left:42%;height:135%;animation:hw-shaft 11s ease-in-out infinite alternate-reverse}
@@ -174,16 +174,32 @@
 
 /* REVIEWS */
 .hw .reviews{padding:70px 0}
+/* v414：主打長文卡（照片左、文字右） */
+.hw .rev-featured{display:flex;flex-direction:column;gap:18px;background:linear-gradient(160deg,rgba(10,62,114,.3),rgba(2,21,42,.5));border:1px solid rgba(102,216,246,.25);border-radius:22px;padding:28px;margin-bottom:22px;position:relative;overflow:hidden}
+.hw .rev-featured::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sky,#3aa6e6),var(--glow))}
+.hw .rev-featured .fphoto{width:120px;height:120px;border-radius:18px;background:linear-gradient(135deg,var(--glow),var(--blue)) center/cover no-repeat;border:2px solid rgba(102,216,246,.4);box-shadow:0 0 18px rgba(102,216,246,.25);display:grid;place-items:center;overflow:hidden}
+.hw .rev-featured .fphoto span{color:#04263f;font-weight:800;font-size:2.4rem}
+.hw .rev-featured .stars{color:var(--gold);letter-spacing:3px;margin-bottom:8px}
+.hw .rev-featured .who{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.hw .rev-featured .who b{color:var(--glow-soft);font-size:.95rem}
+.hw .rev-featured .who small{color:var(--mist);font-size:.78rem}
+.hw .rev-featured h4{font-family:var(--serif);font-weight:900;font-size:1.25rem;margin-bottom:10px;color:var(--foam)}
+.hw .rev-featured p{color:var(--glow-soft);font-size:.94rem;line-height:1.9}
+@media(min-width:760px){.hw .rev-featured{flex-direction:row;align-items:flex-start;gap:30px;padding:34px}.hw .rev-featured .body{flex:1}.hw .rev-featured .fphoto{width:150px;height:150px;flex:0 0 150px}}
+/* v414：精選卡網格（grid-areas：左大頭像跨兩列 + 右上星等 + 右下暱稱 + 標題 + 內文） */
 .hw .rev-grid{display:grid;gap:18px;grid-template-columns:1fr}
-@media(min-width:760px){.hw .rev-grid{grid-template-columns:repeat(3,1fr)}}
-.hw .rev{background:rgba(102,216,246,.06);border:1px solid rgba(102,216,246,.18);border-radius:18px;padding:24px}
-.hw .rev .stars{color:var(--gold);letter-spacing:3px;margin-bottom:12px}
-.hw .rev p{color:var(--foam);font-size:.96rem;margin-bottom:16px}
-.hw .rev .who{display:flex;align-items:center;gap:11px}
-.hw .rev .who .av{width:52px;height:52px;flex:0 0 52px;border-radius:50%;background:linear-gradient(135deg,var(--glow),var(--blue));display:grid;place-items:center;overflow:hidden;border:2px solid rgba(102,216,246,.35)}
-.hw .rev .who .av span{color:#04263f;font-weight:700;font-size:1.25rem}
-.hw .rev .who b{font-size:.9rem}
-.hw .rev .who small{color:var(--mist);font-size:.76rem;display:block}
+@media(min-width:560px){.hw .rev-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.hw .rev-grid{grid-template-columns:repeat(3,1fr)}}
+.hw .rev{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av stars" "av name" "head head" "body body";column-gap:14px;row-gap:3px;align-content:start;background:rgba(102,216,246,.06);border:1px solid rgba(102,216,246,.18);border-radius:18px;padding:24px}
+.hw .rev .av{grid-area:av;width:56px;height:56px;border-radius:50%;align-self:center;background:linear-gradient(135deg,var(--glow),var(--blue)) center/cover no-repeat;display:grid;place-items:center;overflow:hidden;box-shadow:0 0 10px rgba(102,216,246,.25)}
+.hw .rev .av span{color:#04263f;font-weight:700;font-size:1.35rem}
+.hw .rev .stars{grid-area:stars;align-self:end;color:var(--gold);letter-spacing:3px;margin:0}
+.hw .rev .rev-name{grid-area:name;align-self:start;font-weight:700;font-size:.92rem;color:var(--foam)}
+.hw .rev h4{grid-area:head;font-family:var(--serif);font-weight:800;font-size:1.05rem;margin:10px 0 0;color:var(--foam);line-height:1.45}
+.hw .rev p{grid-area:body;color:var(--foam);font-size:.96rem;margin:6px 0 0}
+/* v414：總結語 */
+.hw .rev-conclusion{text-align:center;margin:28px auto 0;max-width:760px;color:var(--glow-soft);font-size:1rem;line-height:1.85}
+.hw .rev-conclusion b{color:var(--foam)}
 
 /* v413：潛水課程 */
 .hw .courses{padding:70px 0;background:linear-gradient(180deg,#031a32,#05284a)}

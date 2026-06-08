@@ -25,8 +25,9 @@ export async function GET() {
   let homeVideoCount = 5;
   let homeVideoExcludeIds: string[] = [];
   let homeVideoFilter: "all" | "long" = "all";
-  // v409：首頁學員怎麼說
-  let homeTestimonials: Array<{ name: string; avatar: string; activity: string; text: string }> = [];
+  // v409/v414：首頁學員怎麼說 + 總結語
+  let homeTestimonials: Array<{ name: string; avatar: string; activity: string; title: string; text: string }> = [];
+  let homeReviewsNote = "";
   try {
     const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
     if (cfg?.externalLinks) {
@@ -70,10 +71,13 @@ export async function GET() {
           name: typeof t.name === "string" ? t.name : "",
           avatar: typeof t.avatar === "string" ? t.avatar : "",
           activity: typeof t.activity === "string" ? t.activity : "",
+          title: typeof t.title === "string" ? t.title : "",
           text: typeof t.text === "string" ? t.text : "",
         }))
         .filter((t) => t.name || t.text);
     }
+    const rawNote = (cfg as unknown as { homeReviewsNote?: unknown } | null)?.homeReviewsNote;
+    if (typeof rawNote === "string") homeReviewsNote = rawNote;
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
   }
@@ -106,5 +110,6 @@ export async function GET() {
     homeVideoExcludeIds,
     homeVideoFilter,
     homeTestimonials,
+    homeReviewsNote,
   });
 }
