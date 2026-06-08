@@ -357,7 +357,7 @@ export default function HomePage() {
             <span className="lt">載入最新動態…</span>
           </div>
           <div className="sec-head reveal"><span className="eyebrow">News &amp; Updates</span><h2 className="section-title">最新動態</h2><p>最新潛水影片整合在這裡，一次看完。</p></div>
-          <div className="vid-grid reveal">
+          <div className="vid-grid shorts reveal">
             {videosLoading ? (
               <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
                 載入最新影片中…
@@ -367,11 +367,11 @@ export default function HomePage() {
                 目前沒有影片，<a href={YT_CHANNEL} target="_blank" rel="noopener" style={{ color: "#66d8f6", textDecoration: "underline" }}>到 YouTube 頻道看看 →</a>
               </div>
             ) : (
-              videos.map((v, idx) => (
+              // v417：4 格直式（9:16）Shorts 牆，點擊開 lightbox 播放（facade）
+              videos.slice(0, 4).map((v) => (
                 <div
                   key={v.id}
-                  // 第一支 feat（大格）；點擊開 lightbox 放大播放（v406B）
-                  className={`vid${idx === 0 ? " feat" : ""}`}
+                  className="vid short"
                   style={{ backgroundImage: `url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)` }}
                   onClick={() => setPlaying(v.id)}
                   title={v.title}
@@ -379,7 +379,7 @@ export default function HomePage() {
                   <div className="scrim" />
                   <div className="play" />
                   <div className="meta">
-                    <small>{v.isShort ? "SHORTS" : idx === 0 ? "YOUTUBE · 點擊播放" : "YOUTUBE"}</small>
+                    <small>{v.isShort ? "SHORTS" : "YOUTUBE"}</small>
                   </div>
                 </div>
               ))
@@ -538,21 +538,24 @@ export default function HomePage() {
       </div>
 
       {/* v407B：影片 Lightbox 放大播放（點背景或 ✕ 關閉） */}
-      {playing && (
-        <div className="hw-lightbox" onClick={() => setPlaying(null)} role="dialog" aria-modal="true">
-          <div className="hw-lightbox-inner" onClick={(e) => e.stopPropagation()}>
-            <button className="hw-lightbox-close" onClick={() => setPlaying(null)} aria-label="關閉影片">✕</button>
-            <div className="hw-lightbox-frame">
-              <iframe
-                src={`https://www.youtube.com/embed/${playing}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                title="YouTube"
-                allow="autoplay; encrypted-media; fullscreen"
-                allowFullScreen
-              />
+      {playing && (() => {
+        const vertical = videos.find((v) => v.id === playing)?.isShort ?? false;
+        return (
+          <div className="hw-lightbox" onClick={() => setPlaying(null)} role="dialog" aria-modal="true">
+            <div className={`hw-lightbox-inner${vertical ? " vertical" : ""}`} onClick={(e) => e.stopPropagation()}>
+              <button className="hw-lightbox-close" onClick={() => setPlaying(null)} aria-label="關閉影片">✕</button>
+              <div className={`hw-lightbox-frame${vertical ? " vertical" : ""}`}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${playing}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                  title="YouTube"
+                  allow="autoplay; encrypted-media; fullscreen"
+                  allowFullScreen
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
