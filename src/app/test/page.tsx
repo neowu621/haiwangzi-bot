@@ -3,6 +3,7 @@
 //   最新動態的 YouTube/Instagram 自動抓取於後續版本接上（MediaPost + Behold）。
 import { useEffect, useRef, useState } from "react";
 import "../home.css";
+import { APP_VERSION } from "@/lib/version";
 
 const LINE_BOOK_URL =
   process.env.NEXT_PUBLIC_LINE_ADD_FRIEND_URL ?? "https://line.me/R/ti/p/@894bpmew";
@@ -382,6 +383,9 @@ export default function HomePage() {
             <div className="foot-col"><h5>預約</h5><a href={LINE_BOOK_URL} target="_blank" rel="noopener">LINE 預約潛水</a></div>
           </div>
           <div className="foot-bottom">© {new Date().getFullYear()} 東北角海王子 Northeast Coast Ocean Prince · 探索海洋 · 安全潛水 · 專業教學</div>
+          <div className="foot-version" style={{ textAlign: "center", fontSize: 10, opacity: 0.45, padding: "6px 0 2px", letterSpacing: "0.05em" }}>
+            v{APP_VERSION}
+          </div>
         </div>
       </footer>
 
