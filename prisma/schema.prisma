@@ -231,6 +231,8 @@ model CreditTx {
   user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  // v420：到期提醒 cron 每日掃 expires_at，加索引避免全表掃描
+  @@index([expiresAt])
   @@map("credit_txs")
 }
 
