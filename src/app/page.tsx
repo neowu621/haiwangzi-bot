@@ -77,7 +77,7 @@ type Testimonial = { name: string; avatar: string; activity: string; title: stri
 // 內建保底（後台未設定時顯示）；後台 homeTestimonials 有資料時整組取代。第 1 則為「主打長文卡」。
 const BUILTIN_REVIEWS: Testimonial[] = [
   { name: "百潛菜雞學員", activity: "小琉球考證 → 東北角長期練功", title: "從菜雞到近百潛的蛻變 🐠", avatar: "/home/review-featured.webp",
-    text: "在小琉球拿到證照後，每次練習都要下南部或跑外島，時間成本太高，後來竟變成「一年才潛一次」😮‍💨。於是我決定在東北角找位能長期跟著練習的教練，跟過幾位之後，真心大推汪汪教練！他乍看是個「汪大膽」😂，但他的膽是長在判斷力和能 cover 你的真本事上 💪。第一次跟潛，我偷偷帶了位經驗不足的小菜雞 🐣，汪汪沒有為了賺錢硬讓大家下水，而是另外幫我們約一天、少接學員，把心力都放在照顧我們身上 🥹。從連下潛都有狀況的新手，到現在累積近百潛 🎉，加上對路線超熟、方向感一流 🧭，還會背專業大相機幫你側拍美照 📸，每次上岸都收穫滿滿 💕！" },
+    text: "在小琉球拿到證照後，每次練習都要下南部或跑外島，時間成本太高，後來竟變成「一年才潛一次」😮‍💨。於是我決定在東北角找位能長期跟著練習的教練，跟過幾位之後，真心大推汪汪教練！他乍看是個「汪大膽」😂，但他的膽是長在判斷力和能 cover 你的真本事上 💪。第一次跟潛，我偷偷帶了位經驗不足的小菜雞 🐣，汪汪沒有為了賺錢硬讓大家下水，而是另外幫我們約一天、少接學員，把心力都放在照顧我們身上 🥹。現在的我從連下潛都有狀況的新手，到現在累積近百潛 🎉，跟著教練潛水他對路線超熟、方向感一流 🧭，還會背專業大相機幫你側拍美照 📸，每次上岸都收穫滿滿 💕！" },
   { name: "大翅鯨魚", activity: "", title: "平安上岸的安心感 🤝", avatar: "/home/review-whale.webp",
     text: "跟著汪汪教練下潛，絕對沒有問題，他總是能平平安安把你帶上岸 🌅。這份穩穩的安心感，是我每次下水最大的底氣 💙" },
   { name: "克服怕水的學員", activity: "", title: "克服恐懼的暖心陪伴 🥹", avatar: "/home/review-fear.webp",
@@ -228,10 +228,22 @@ export default function HomePage() {
         const featuredId = (cfg?.homeVideoFeaturedId ?? "").trim();
         let list = base.filter((v) => !exclude.has(v.id));
         if (filter === "long") list = list.filter((v) => !v.isShort);
+        // v417b：策展模式從清單亂數抽取（每次進站隨機 4 支）；精選置頂仍固定在最前
+        const shuffle = (a: YtVideo[]) => {
+          const x = [...a];
+          for (let i = x.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [x[i], x[j]] = [x[j], x[i]];
+          }
+          return x;
+        };
         if (featuredId) {
           const found = list.find((v) => v.id === featuredId);
-          const rest = list.filter((v) => v.id !== featuredId);
+          let rest = list.filter((v) => v.id !== featuredId);
+          if (mode === "curated") rest = shuffle(rest);
           list = [found ?? { id: featuredId, title: "精選影片", isShort: false }, ...rest];
+        } else if (mode === "curated") {
+          list = shuffle(list);
         }
         list = list.slice(0, count);
         if (list.length === 0) list = BUILTIN_FALLBACK_VIDS.slice(0, count);
