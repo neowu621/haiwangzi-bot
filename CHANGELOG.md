@@ -4,9 +4,9 @@
 
 ## 20260608_399 — 2026-06-08 (後台前端效能：快取 + 去重 + SWR)
 
-## 20260608_402 — 2026-06-08 (公開行銷首頁 階段1：靜態主體)
+## 20260608_402 — 2026-06-08 (公開行銷首頁 階段1：靜態主體，先放 /test)
 
-- 取代根頁 `/`：移植原型「藍色實拍版」→ Next.js（Hero/潛點6/潛旅6/最新動態/關於汪汪/評價6/FAQ 7類23題/CTA/Footer）
+- **先放 `/test` 測試**（根頁 `/` 維持原 LINE landing）；移植原型「藍色實拍版」→ Next.js（Hero/潛點6/潛旅6/最新動態/關於汪汪/評價6/FAQ 7類23題/CTA/Footer）
 - 設計系統 `home.css`（深藍實拍風 + 青光、Noto Serif/Sans TC + Outfit）；base64 圖抽成 /home/src-XX 檔案（示意，待汪汪實拍替換）
 - 互動：上升氣泡、reveal-on-scroll、右側點點 scroll-spy、漢堡選單、FAQ 手風琴、YouTube facade 點擊就地播放、三叉戟 loader、底部 LINE 列
 - 最新動態先用初始影片；YouTube 自動抓(MediaPost)+IG(Behold)+後台動態訊息分頁 = 下一版
