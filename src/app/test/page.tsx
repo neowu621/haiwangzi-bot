@@ -17,6 +17,7 @@ const NAV = [
   { href: "#news", label: "最新動態" },
   { href: "#about", label: "關於汪汪" },
   { href: "#courses", label: "潛水課程" },
+  { href: "#reviews", label: "學員怎麼說" },
   { href: "#faq", label: "常見問題" },
 ];
 
@@ -114,8 +115,8 @@ const FAQ: { zh: string; en: string; items: QA[] }[] = [
     { q: "生理期可以潛水嗎？", a: "可以，依個人身體狀況評估即可，若有不適請告知教練。重點仍是當天身體狀態良好、能放鬆下水。" },
   ] },
   { zh: "裝備與準備", en: "Gear & Preparation", items: [
-    { q: "需要自己準備什麼？裝備有包含嗎？", a: "方案已包含全套潛水裝備與氣瓶配重。你只需要自備泳衣、毛巾與換洗衣物；戶外活動也建議帶防曬與保暖外套。" },
-    { q: "需要帶證件或現金嗎？", a: "建議攜帶身分證件；費用與付款方式會在 LINE 預約時跟你說明清楚。" },
+    { q: "需要自己準備什麼？裝備有包含嗎？", a: "需自備泳衣、毛巾與換洗衣物；潛水裝備可自備，若有租借需求，可在 LINE 預約時同步租用裝備。戶外活動也建議帶防曬與保暖外套。" },
+    { q: "需要帶證件或現金嗎？", a: "建議攜帶健保卡；若為船潛則需另帶身分證件。費用與付款方式會在 LINE 預約時跟你說明清楚。" },
   ] },
   { zh: "預約 · 天氣 · 費用", en: "Booking · Weather · Fees", items: [
     { q: "怎麼預約？需要先付訂金嗎？", a: "最方便的方式是加官方 LINE，直接在 LINE 上預約潛水。若目前沒有適合的時段，也可以先提供你想潛的地點、日期與人數，汪汪會主動跟你聯繫討論安排。訂金與付款方式都會在 LINE 上說明。" },
@@ -335,7 +336,6 @@ export default function HomePage() {
               <div key={s.n} className={`poi ${s.bg} reveal`}><span className="num">{s.n}</span><div className="poi-body"><h3>{s.zh}<span>{s.en}</span></h3><p>{s.d}</p><div className="poi-meta">{s.tags.map((t) => <span key={t}>{t}</span>)}</div></div></div>
             ))}
           </div>
-          <p className="poi-note reveal">＊ 以上圖片與簡介為示範內容，可換成汪汪實際拍攝的潛點照片與說明。</p>
         </div>
       </section>
 
@@ -347,7 +347,6 @@ export default function HomePage() {
               <div key={s.zh} className={`poi ${s.bg} reveal`}><span className="num">{s.n}</span><div className="poi-body"><h3>{s.zh}<span>{s.en}</span></h3><p>{s.d}</p><div className="poi-meta">{s.tags.map((t) => <span key={t}>{t}</span>)}</div></div></div>
             ))}
           </div>
-          <p className="poi-note reveal">＊ 以上圖片與簡介為示範內容，可換成各潛旅實際照片與梯次說明。</p>
         </div>
       </section>
 
@@ -498,7 +497,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <div className="faq-consent reveal">✅ 完成預約即視同同意以上安全須知與活動內容。<br />🌊 東北角海王子 感謝您的信任，期待與你一起安全探索海洋。</div>
+          <div className="faq-consent reveal">✅ 完成預約即視同同意以上安全須知與活動內容。<br />潛水安全第一，如果有任何不適，請不要勉強；海永遠都在，身體健康與安全最重要。<br />🌊 東北角海王子 感謝您的信任，期待與你一起安全探索海洋。</div>
         </div>
       </section>
 
