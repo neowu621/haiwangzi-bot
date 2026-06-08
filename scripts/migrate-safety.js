@@ -65,6 +65,8 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_count INTEGER NOT NULL DEFAULT 5`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_exclude_ids JSONB NOT NULL DEFAULT '[]'::jsonb`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_filter VARCHAR(8) NOT NULL DEFAULT 'all'`,
+  // v409: 首頁「學員怎麼說」6 格
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_testimonials JSONB NOT NULL DEFAULT '[]'::jsonb`,
 
   // v275: 退款備註
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,

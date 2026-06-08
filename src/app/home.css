@@ -44,12 +44,10 @@
 .hw .nav-links a:hover::after{width:100%}
 .hw .nav-cta{display:none}
 @media(min-width:980px){.hw .nav-links{display:flex}.hw .nav-cta{display:inline-flex}}
-/* v408：目前裝置示意 badge（LINE 旁邊） */
-.hw .dev-badge{display:inline-flex;align-items:center;gap:6px;margin-left:auto;margin-right:12px;padding:6px 11px;border-radius:999px;color:var(--glow);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.25);line-height:1}
+/* v408：目前裝置示意 badge（只顯示 icon，LINE 旁邊） */
+.hw .dev-badge{display:inline-flex;align-items:center;justify-content:center;margin-left:auto;margin-right:12px;padding:7px;border-radius:999px;color:var(--glow);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.25);line-height:1}
 .hw .dev-badge svg{display:block}
-.hw .dev-badge em{font-style:normal;font-size:.78rem;letter-spacing:.04em;color:var(--foam)}
 @media(min-width:980px){.hw .dev-badge{margin-left:0}}
-@media(max-width:430px){.hw .dev-badge em{display:none}.hw .dev-badge{padding:6px 8px}}
 
 /* HERO */
 .hw .hero{position:relative;min-height:100svh;display:flex;align-items:center;padding:90px 0 9vh;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
@@ -181,7 +179,8 @@
 .hw .rev .stars{color:var(--gold);letter-spacing:3px;margin-bottom:12px}
 .hw .rev p{color:var(--foam);font-size:.96rem;margin-bottom:16px}
 .hw .rev .who{display:flex;align-items:center;gap:11px}
-.hw .rev .who .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--glow),var(--blue))}
+.hw .rev .who .av{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:linear-gradient(135deg,var(--glow),var(--blue));display:grid;place-items:center;overflow:hidden}
+.hw .rev .who .av span{color:#04263f;font-weight:700;font-size:1rem}
 .hw .rev .who b{font-size:.9rem}
 .hw .rev .who small{color:var(--mist);font-size:.76rem;display:block}
 

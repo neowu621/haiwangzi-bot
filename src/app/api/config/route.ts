@@ -25,6 +25,8 @@ export async function GET() {
   let homeVideoCount = 5;
   let homeVideoExcludeIds: string[] = [];
   let homeVideoFilter: "all" | "long" = "all";
+  // v409：首頁學員怎麼說
+  let homeTestimonials: Array<{ name: string; avatar: string; activity: string; text: string }> = [];
   try {
     const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
     if (cfg?.externalLinks) {
@@ -60,6 +62,18 @@ export async function GET() {
     if (typeof c?.homeVideoCount === "number") homeVideoCount = c.homeVideoCount;
     if (Array.isArray(c?.homeVideoExcludeIds)) homeVideoExcludeIds = (c!.homeVideoExcludeIds as unknown[]).filter((x): x is string => typeof x === "string");
     if (c?.homeVideoFilter === "long" || c?.homeVideoFilter === "all") homeVideoFilter = c.homeVideoFilter;
+    const rawTesti = (cfg as unknown as { homeTestimonials?: unknown } | null)?.homeTestimonials;
+    if (Array.isArray(rawTesti)) {
+      homeTestimonials = rawTesti
+        .filter((t): t is Record<string, unknown> => !!t && typeof t === "object")
+        .map((t) => ({
+          name: typeof t.name === "string" ? t.name : "",
+          avatar: typeof t.avatar === "string" ? t.avatar : "",
+          activity: typeof t.activity === "string" ? t.activity : "",
+          text: typeof t.text === "string" ? t.text : "",
+        }))
+        .filter((t) => t.name || t.text);
+    }
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
   }
@@ -91,5 +105,6 @@ export async function GET() {
     homeVideoCount,
     homeVideoExcludeIds,
     homeVideoFilter,
+    homeTestimonials,
   });
 }

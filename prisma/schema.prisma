@@ -702,6 +702,10 @@ model SiteConfig {
   homeVideoExcludeIds Json   @default("[]")  @map("home_video_exclude_ids")
   homeVideoFilter     String @default("all") @map("home_video_filter") @db.VarChar(8)
 
+  // v409：首頁「學員怎麼說」6 格（後台可編輯）
+  //   [{ name, avatar, activity, text }]  avatar 為圖片 URL（空字串則顯示首字色塊）
+  homeTestimonials Json @default("[]") @map("home_testimonials")
+
   // v392：氣瓶限時折扣（自動套用；每支氣瓶折抵 NT$，可設理由 + 起訖日）
   tankPromoEnabled  Boolean   @default(false) @map("tank_promo_enabled")
   tankPromoDiscount Int       @default(0) @map("tank_promo_discount")

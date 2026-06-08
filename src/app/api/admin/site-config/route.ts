@@ -131,6 +131,13 @@ const PatchSchema = z.object({
   homeVideoCount: z.number().int().min(1).max(12).optional(),
   homeVideoExcludeIds: z.array(z.string().max(32)).max(50).optional(),
   homeVideoFilter: z.enum(["all", "long"]).optional(),
+  // v409：首頁學員怎麼說（最多 6 格）
+  homeTestimonials: z.array(z.object({
+    name: z.string().max(40).default(""),
+    avatar: z.string().max(500).default(""),
+    activity: z.string().max(60).default(""),
+    text: z.string().max(400).default(""),
+  })).max(6).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -229,6 +236,7 @@ export async function GET(req: NextRequest) {
       homeVideoCount: (row as unknown as { homeVideoCount?: number }).homeVideoCount ?? 5,
       homeVideoExcludeIds: ((row as unknown as { homeVideoExcludeIds?: unknown }).homeVideoExcludeIds as string[] | undefined) ?? [],
       homeVideoFilter: (row as unknown as { homeVideoFilter?: string }).homeVideoFilter ?? "all",
+      homeTestimonials: ((row as unknown as { homeTestimonials?: unknown }).homeTestimonials as Array<{ name: string; avatar: string; activity: string; text: string }> | undefined) ?? [],
     },
     isDefault: false,
     updatedAt: row.updatedAt,

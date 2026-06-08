@@ -37,13 +37,15 @@ const TRIPS = [
   { n: "國外 · PHILIPPINES", bg: "bg-coron", zh: "菲律賓 科隆島", en: "Coron · Palawan", d: "世界級二戰日軍沈船潛點，十餘艘船體保存完好、被珊瑚攀附，有些浮潛即可一睹歷史；北部保護區更有真正的「美人魚」儒艮，沈船探險與海洋神獸一次滿足。", tags: ["沈船 3–30m+", "新手～進階", "5 天 4 夜起"] },
 ];
 
-const REVIEWS = [
-  { p: "本來超怕水，汪汪超有耐心一步一步帶，下水之後完全被海裡的世界圈粉，已經在計畫考證照了！", name: "Yuki", from: "第一次體驗潛水" },
-  { p: "裝備很新很乾淨，安全講解很仔細。拍的水下照片也太美了吧，朋友看到都說要一起來。", name: "阿哲", from: "龍洞一日潛水" },
-  { p: "跟海王子去了一趟潛旅，行程安排超順，潛點選得很棒，連不潛水的家人都玩得很開心。", name: "Linda", from: "潛水團" },
-  { p: "第二次找汪汪，這次船潛看到好多魚群，下潛、上升都很穩，跟著他真的很放心，會一直回購。", name: "小宇", from: "東北角船潛" },
-  { p: "完全沒經驗也能下水，教練超細心一直確認我的狀況，浮上來第一句話就是「還想再下去」！", name: "Mia", from: "第一次體驗潛水" },
-  { p: "跟團去小琉球，整趟被照顧得很好，還拍到我跟海龜的合照，朋友都問是不是出國拍的。", name: "阿凱", from: "小琉球潛旅" },
+type Testimonial = { name: string; avatar: string; activity: string; text: string };
+// 內建保底（後台未設定時顯示）；後台 homeTestimonials 有資料時整組取代
+const BUILTIN_REVIEWS: Testimonial[] = [
+  { text: "本來超怕水，汪汪超有耐心一步一步帶，下水之後完全被海裡的世界圈粉，已經在計畫考證照了！", name: "Yuki", activity: "第一次體驗潛水", avatar: "" },
+  { text: "裝備很新很乾淨，安全講解很仔細。拍的水下照片也太美了吧，朋友看到都說要一起來。", name: "阿哲", activity: "龍洞一日潛水", avatar: "" },
+  { text: "跟海王子去了一趟潛旅，行程安排超順，潛點選得很棒，連不潛水的家人都玩得很開心。", name: "Linda", activity: "潛水團", avatar: "" },
+  { text: "第二次找汪汪，這次船潛看到好多魚群，下潛、上升都很穩，跟著他真的很放心，會一直回購。", name: "小宇", activity: "東北角船潛", avatar: "" },
+  { text: "完全沒經驗也能下水，教練超細心一直確認我的狀況，浮上來第一句話就是「還想再下去」！", name: "Mia", activity: "第一次體驗潛水", avatar: "" },
+  { text: "跟團去小琉球，整趟被照顧得很好，還拍到我跟海龜的合照，朋友都問是不是出國拍的。", name: "阿凱", activity: "小琉球潛旅", avatar: "" },
 ];
 
 type QA = { q: string; a: React.ReactNode };
@@ -149,6 +151,8 @@ export default function HomePage() {
   // v403：最新動態影片清單從 /api/config 取，模式由 admin 後台控制
   const [videos, setVideos] = useState<YtVideo[]>(BUILTIN_FALLBACK_VIDS);
   const [videosLoading, setVideosLoading] = useState(true);
+  // v409：學員怎麼說（後台可編輯，未設定則用內建）
+  const [reviews, setReviews] = useState<Testimonial[]>(BUILTIN_REVIEWS);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -156,9 +160,18 @@ export default function HomePage() {
         const cfg = await fetch("/api/config").then((r) => r.json()).catch(() => null) as
           | { homeVideosMode?: "curated" | "auto"; homeVideos?: YtVideo[];
               homeVideoFeaturedId?: string; homeVideoCount?: number;
-              homeVideoExcludeIds?: string[]; homeVideoFilter?: "all" | "long" }
+              homeVideoExcludeIds?: string[]; homeVideoFilter?: "all" | "long";
+              homeTestimonials?: Testimonial[] }
           | null;
         if (cancelled) return;
+        // 學員怎麼說：後台有資料就整組取代
+        const t = cfg?.homeTestimonials;
+        if (Array.isArray(t) && t.length > 0) {
+          setReviews(t.map((x) => ({
+            name: x?.name ?? "", avatar: x?.avatar ?? "",
+            activity: x?.activity ?? "", text: x?.text ?? "",
+          })).filter((x) => x.name || x.text));
+        }
         const mode = cfg?.homeVideosMode ?? "curated";
         const curated = Array.isArray(cfg?.homeVideos) && cfg!.homeVideos!.length > 0
           ? cfg!.homeVideos!
@@ -240,7 +253,6 @@ export default function HomePage() {
         <nav className="nav-links">{NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</nav>
         <span className="dev-badge" title={`目前裝置：${DEVICE_LABEL[device]}`} aria-label={`目前裝置：${DEVICE_LABEL[device]}`}>
           <DeviceIcon device={device} />
-          <em>{DEVICE_LABEL[device]}</em>
         </span>
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line nav-cta"><LineIcon />LINE 預約</a>
         <button className={`nav-toggle${menuOpen ? " open" : ""}`} aria-label="開啟選單" onClick={() => setMenuOpen((o) => !o)}><span /><span /><span /></button>
@@ -372,8 +384,17 @@ export default function HomePage() {
         <div className="wrap">
           <div className="sec-head reveal"><span className="eyebrow">Student Voices</span><h2 className="section-title">學員怎麼說</h2></div>
           <div className="rev-grid">
-            {REVIEWS.map((r) => (
-              <div key={r.name} className="rev reveal"><div className="stars">★★★★★</div><p>{r.p}</p><div className="who"><div className="av" /><div><b>{r.name}</b><small>{r.from}</small></div></div></div>
+            {reviews.map((r, i) => (
+              <div key={`${r.name}-${i}`} className="rev reveal">
+                <div className="stars">★★★★★</div>
+                <p>{r.text}</p>
+                <div className="who">
+                  <div className="av" style={r.avatar ? { backgroundImage: `url(${r.avatar})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+                    {!r.avatar && r.name ? <span>{r.name.slice(0, 1)}</span> : null}
+                  </div>
+                  <div><b>{r.name}</b><small>{r.activity}</small></div>
+                </div>
+              </div>
             ))}
           </div>
         </div>

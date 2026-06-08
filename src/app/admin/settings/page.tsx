@@ -117,6 +117,8 @@ interface Config {
   homeVideoCount?: number;
   homeVideoExcludeIds?: string[];
   homeVideoFilter?: "all" | "long";
+  // v409：首頁「學員怎麼說」6 格
+  homeTestimonials?: Array<{ name: string; avatar: string; activity: string; text: string }>;
 }
 
 // v403：把 YouTube URL/Shorts/11 碼 id → { id, isShort }；無法 parse 回 null
@@ -471,6 +473,11 @@ export default function SettingsPage() {
         {/* v403：首頁「最新動態」YouTube 影片清單 + 模式 */}
         <div className="mt-4">
           <HomeVideosCard cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
+        </div>
+
+        {/* v409：首頁「學員怎麼說」6 格 */}
+        <div className="mt-4">
+          <TestimonialsCard cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
         </div>
         </TabsContent>
 
@@ -2232,6 +2239,96 @@ function HomeVideosCard({
           disabled={saving === "首頁影片"}>
           <Save className="mr-1.5 h-4 w-4" />
           {saving === "首頁影片" ? "儲存中..." : "儲存首頁影片設定"}
+        </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* ─── v409：首頁「學員怎麼說」6 格 ─────────────── */
+type Testimonial = { name: string; avatar: string; activity: string; text: string };
+const EMPTY_TESTI: Testimonial = { name: "", avatar: "", activity: "", text: "" };
+const TESTI_PLACEHOLDER: Testimonial[] = [
+  { name: "Yuki", activity: "第一次體驗潛水", avatar: "", text: "本來超怕水，汪汪超有耐心一步一步帶…" },
+  { name: "阿哲", activity: "龍洞一日潛水", avatar: "", text: "裝備很新很乾淨，安全講解很仔細…" },
+  { name: "Linda", activity: "潛水團", avatar: "", text: "行程安排超順，連不潛水的家人都玩得很開心。" },
+  { name: "小宇", activity: "東北角船潛", avatar: "", text: "下潛、上升都很穩，跟著他真的很放心。" },
+  { name: "Mia", activity: "第一次體驗潛水", avatar: "", text: "教練超細心一直確認我的狀況…" },
+  { name: "阿凱", activity: "小琉球潛旅", avatar: "", text: "整趟被照顧得很好，還拍到我跟海龜的合照。" },
+];
+
+function TestimonialsCard({
+  cfg, setCfg, save, saving,
+}: {
+  cfg: Config;
+  setCfg: React.Dispatch<React.SetStateAction<Config | null>>;
+  save: (section: string, patch: Partial<Config>) => Promise<void>;
+  saving: string | null;
+}) {
+  const items = cfg.homeTestimonials ?? [];
+  const rows: Testimonial[] = Array.from({ length: 6 }, (_, i) => items[i] ?? { ...EMPTY_TESTI });
+
+  function upd(idx: number, key: keyof Testimonial, val: string) {
+    const next: Testimonial[] = Array.from({ length: 6 }, (_, j) => ({ ...(items[j] ?? EMPTY_TESTI) }));
+    next[idx] = { ...next[idx], [key]: val };
+    setCfg((c) => (c ? { ...c, homeTestimonials: next } : c));
+  }
+
+  return (
+    <SectionCard title="💬 首頁「學員怎麼說」（6 格）">
+      <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+        管理首頁「學員怎麼說」6 張評價卡。<b>整組留空</b>時前台顯示內建範例；只要有填任一格，就以這裡的內容為準（留空的格子前台不顯示）。
+        圖像請填<b>圖片網址</b>（留空則顯示姓名首字色塊）。儲存後最多 5 分鐘內生效。
+      </p>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {rows.map((r, i) => (
+          <div key={i} className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+            <Label className="mb-2 block text-xs font-semibold text-[var(--foreground)]">學員 {i + 1}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">人名</Label>
+                <Input value={r.name} placeholder={TESTI_PLACEHOLDER[i]?.name ?? "例：Yuki"}
+                  onChange={(e) => upd(i, "name", e.target.value)} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">參與項目</Label>
+                <Input value={r.activity} placeholder={TESTI_PLACEHOLDER[i]?.activity ?? "例：第一次體驗潛水"}
+                  onChange={(e) => upd(i, "activity", e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">圖像（圖片網址，可留空）</Label>
+              <Input value={r.avatar} placeholder="https://…/avatar.jpg"
+                onChange={(e) => upd(i, "avatar", e.target.value.trim())} />
+            </div>
+            <div className="mt-2">
+              <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">學員評價</Label>
+              <textarea rows={3}
+                className="w-full rounded-md border p-2 text-xs"
+                style={{ borderColor: "var(--border)" }}
+                value={r.text} placeholder={TESTI_PLACEHOLDER[i]?.text ?? "評價內容…"}
+                onChange={(e) => upd(i, "text", e.target.value)} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <Button size="sm" variant="outline"
+          onClick={() => setCfg((c) => (c ? { ...c, homeTestimonials: TESTI_PLACEHOLDER.map((x) => ({ ...x })) } : c))}>
+          帶入內建範例
+        </Button>
+        <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+          onClick={() => save("學員怎麼說", {
+            homeTestimonials: rows.map((r) => ({
+              name: r.name.trim(), avatar: r.avatar.trim(),
+              activity: r.activity.trim(), text: r.text.trim(),
+            })),
+          })}
+          disabled={saving === "學員怎麼說"}>
+          <Save className="mr-1.5 h-4 w-4" />
+          {saving === "學員怎麼說" ? "儲存中..." : "儲存學員評價"}
         </Button>
       </div>
     </SectionCard>
