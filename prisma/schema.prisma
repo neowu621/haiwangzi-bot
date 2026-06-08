@@ -680,6 +680,12 @@ model SiteConfig {
   weatherReportSlots           Json      @default("[{\"h\":22,\"m\":0},{\"h\":5,\"m\":0}]") @map("weather_report_slots")
   // v389：發送內容開關，格式 {"wind":true,"temp":true,"sessions":true,"wave":false}
   weatherReportContent         Json      @default("{\"wind\":true,\"temp\":true,\"sessions\":true,\"wave\":false}") @map("weather_report_content")
+  // v411：海象（CWA O-B0075-001 浮標+潮位）整合進每日天氣回報
+  weatherMarineEnabled         Boolean   @default(false) @map("weather_marine_enabled")
+  // 回報點：[{label,buoyId,tideId}]，預設 龍洞區 + 基隆區
+  weatherMarinePoints          Json      @default("[{\"label\":\"龍洞區\",\"buoyId\":\"46694A\",\"tideId\":\"C4A02\"},{\"label\":\"基隆區\",\"buoyId\":\"C6B01\",\"tideId\":\"C4B01\"}]") @map("weather_marine_points")
+  // 欄位開關 {waveHeight,waveDir,wavePeriod,seaTemp,current,tide}
+  weatherMarineFields          Json      @default("{\"waveHeight\":true,\"waveDir\":true,\"wavePeriod\":true,\"seaTemp\":true,\"current\":true,\"tide\":true}") @map("weather_marine_fields")
 
   // v315：每日訂單日報（早 07:00 由 Cronicle 觸發）
   dailyBriefingEnabled        Boolean   @default(true) @map("daily_briefing_enabled")

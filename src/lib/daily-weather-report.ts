@@ -6,6 +6,13 @@
 import { prisma } from "./prisma";
 import { getLineClient } from "./line";
 import { sendEmail } from "./email/send";
+import {
+  buildMarineSection,
+  DEFAULT_MARINE_POINTS,
+  DEFAULT_MARINE_FIELDS,
+  type MarinePoint,
+  type MarineFields,
+} from "./marine";
 
 interface CWAStation {
   StationId: string;
@@ -108,6 +115,23 @@ export async function runDailyWeatherReport(opts?: {
     }
   }
 
+  // ── 1b. 抓海象（CWA O-B0075-001 浮標+潮位）v411 ─────────
+  const marineEnabled = (cfg as unknown as { weatherMarineEnabled?: boolean }).weatherMarineEnabled ?? false;
+  let marineBlock: { text: string; light: "🟢" | "🟡" | "🔴" } | null = null;
+  if (marineEnabled) {
+    const rawPts = (cfg as unknown as { weatherMarinePoints?: unknown }).weatherMarinePoints;
+    const points: MarinePoint[] = Array.isArray(rawPts) && rawPts.length > 0
+      ? (rawPts as unknown[])
+          .filter((p): p is MarinePoint => !!p && typeof p === "object" && typeof (p as MarinePoint).buoyId === "string")
+          .map((p) => ({ label: String(p.label ?? ""), buoyId: String(p.buoyId ?? ""), tideId: String(p.tideId ?? "") }))
+      : DEFAULT_MARINE_POINTS;
+    const rawFields = (cfg as unknown as { weatherMarineFields?: unknown }).weatherMarineFields;
+    const fields: MarineFields = rawFields && typeof rawFields === "object" && !Array.isArray(rawFields)
+      ? { ...DEFAULT_MARINE_FIELDS, ...(rawFields as Partial<MarineFields>) }
+      : DEFAULT_MARINE_FIELDS;
+    marineBlock = await buildMarineSection(points, fields, process.env.CWA_API_KEY);
+  }
+
   // ── 2. 抓今日 / 明日場次 ────────────────────────────
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -193,13 +217,19 @@ export async function runDailyWeatherReport(opts?: {
   if (content.wind || content.temp) {
     const seaLines: string[] = ["", "【海況】"];
     if (content.wind) seaLines.push(`今日風速：${windStatus}`);
-    if (content.wave) seaLines.push(`今日浪高：（暫無資料來源，待接氣象署浮標資料）`);
     if (content.wind || content.temp) {
       seaLines.push("測站讀數：", stationLines || "  （無資料）");
     }
     blocks.push(seaLines.join("\n"));
-  } else if (content.wave) {
-    blocks.push(["", "【海況】", `今日浪高：（暫無資料來源，待接氣象署浮標資料）`].join("\n"));
+  }
+
+  // v411：海象區塊（龍洞區 / 基隆區，真實浪高/海溫/海流/潮位 + 自動判斷）
+  if (marineBlock) {
+    const overall =
+      marineBlock.light === "🔴" ? "⚠️ 部分海域不建議下水"
+        : marineBlock.light === "🟡" ? "尚可，部分海域請留意"
+          : "良好，適合下水 🤿";
+    blocks.push(["", marineBlock.text, "", `—— 綜合海況：${marineBlock.light} ${overall}`].join("\n"));
   }
 
   if (content.sessions) {

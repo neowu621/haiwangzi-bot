@@ -97,6 +97,10 @@ interface Config {
   // v389：天氣回報時段（台灣時間）+ 內容開關
   weatherReportSlots?: Array<{ h: number; m: number }>;
   weatherReportContent?: { wind: boolean; temp: boolean; sessions: boolean; wave: boolean };
+  // v411：海象（浮標+潮位）整合
+  weatherMarineEnabled?: boolean;
+  weatherMarinePoints?: Array<{ label: string; buoyId: string; tideId: string }>;
+  weatherMarineFields?: { waveHeight: boolean; waveDir: boolean; wavePeriod: boolean; seaTemp: boolean; current: boolean; tide: boolean };
   // v315：訂單日報
   dailyBriefingEnabled?: boolean;
   dailyBriefingIncludeCoaches?: boolean;
@@ -1256,6 +1260,42 @@ function AutoSendSection({
   function toggleContent(key: "wind" | "temp" | "sessions" | "wave") {
     setCfg((c) => (c ? { ...c, weatherReportContent: { ...content, [key]: !content[key] } } : c));
   }
+  // v411：海象設定
+  const marineEnabled = cfg.weatherMarineEnabled ?? false;
+  const marinePoints = cfg.weatherMarinePoints ?? [
+    { label: "龍洞區", buoyId: "46694A", tideId: "C4A02" },
+    { label: "基隆區", buoyId: "C6B01", tideId: "C4B01" },
+  ];
+  const marineFields = cfg.weatherMarineFields ?? { waveHeight: true, waveDir: true, wavePeriod: true, seaTemp: true, current: true, tide: true };
+  function updateMarinePoint(i: number, key: "label" | "buoyId" | "tideId", val: string) {
+    setCfg((c) => (c ? { ...c, weatherMarinePoints: marinePoints.map((p, idx) => (idx === i ? { ...p, [key]: val } : p)) } : c));
+  }
+  function toggleMarineField(key: keyof NonNullable<Config["weatherMarineFields"]>) {
+    setCfg((c) => (c ? { ...c, weatherMarineFields: { ...marineFields, [key]: !marineFields[key] } } : c));
+  }
+  // 東北角浮標/潮位站清單（CWA O-B0075-001；鼻頭角 OAC003 目前停測，不列入）
+  const BUOY_OPTS = [
+    { id: "46694A", name: "龍洞浮標（核心）" },
+    { id: "C6B01", name: "彭佳嶼浮標（基隆外海）" },
+    { id: "C6AH2", name: "富貴角浮標（北海岸）" },
+    { id: "46708A", name: "龜山島浮標（宜蘭）" },
+    { id: "46706A", name: "蘇澳浮標（宜蘭）" },
+  ];
+  const TIDE_OPTS = [
+    { id: "C4A02", name: "龍洞潮位" },
+    { id: "C4B01", name: "基隆潮位" },
+    { id: "C4A05", name: "福隆潮位" },
+    { id: "C4U02", name: "烏石潮位（頭城）" },
+    { id: "C4U01", name: "蘇澳潮位" },
+  ];
+  const MARINE_FIELD_OPTS = [
+    { k: "waveHeight", label: "🌊 浪高" },
+    { k: "waveDir", label: "🧭 波向" },
+    { k: "wavePeriod", label: "⏱ 波浪週期" },
+    { k: "seaTemp", label: "🌡 海溫（防寒衣建議）" },
+    { k: "current", label: "🌀 海流" },
+    { k: "tide", label: "📏 潮位" },
+  ] as const;
   function slotMeta(h: number) {
     // 粗略標示用途：18:00–翌4:59 視為「前一晚預報」，其餘「出發前 / 當日」
     if (h >= 18 || h < 5) return { emoji: "🌙", tag: "前一晚預報", desc: "看「明日」天氣 + 明日場次" };
@@ -1500,7 +1540,6 @@ function AutoSendSection({
               { k: "wind", label: "💨 風速（基隆/宜蘭）" },
               { k: "temp", label: "🌡️ 氣溫" },
               { k: "sessions", label: "📅 今日/明日場次摘要" },
-              { k: "wave", label: "🌊 浪高（暫無資料源）" },
             ] as const).map((item) => (
               <label key={item.k} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-[12.5px] cursor-pointer" style={{ borderColor: "var(--border)", background: "#fafcff" }}>
                 <input type="checkbox" checked={content[item.k]} onChange={() => toggleContent(item.k)} />
@@ -1509,8 +1548,57 @@ function AutoSendSection({
             ))}
           </div>
           <p className="mt-1.5 ml-7 text-[10px] text-[var(--muted-foreground)]">
-            ※ 浪高目前無對應資料來源（即時測站無浪高），開啟僅顯示提示文字；未來接氣象署浮標資料後才有實際數值。
+            ※ 浪高/海溫/海流/潮位請改用下方「🌊 海象」區（真實浮標資料）。
           </p>
+        </div>
+
+        {/* ── Step 4b 海象（CWA O-B0075-001 浮標+潮位）v411 ── */}
+        <div className="border-t pt-3 mt-3" style={{ borderColor: "var(--border)" }}>
+          <p className="text-[13px] font-semibold text-[var(--foreground)]">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-ocean-deep)] text-white text-[11px] mr-1.5">4b</span>
+            🌊 海象（龍洞區 / 基隆區）
+          </p>
+          <label className="mt-2 ml-7 flex items-center gap-2 text-[13px] cursor-pointer">
+            <input type="checkbox" checked={marineEnabled}
+              onChange={() => setCfg((c) => (c ? { ...c, weatherMarineEnabled: !marineEnabled } : c))} />
+            <span>在天氣回報帶入海象資料（真實浪高/海溫/海流/潮位 + 自動判斷）</span>
+          </label>
+          <p className="mt-1 ml-7 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+            資料源：中央氣象署 CWA 海象監測（O-B0075-001）。每個回報點 = 一個浮標站（浪高/海溫/海流）+ 一個潮位站。
+          </p>
+
+          <div className={`ml-7 mt-2 space-y-2 ${marineEnabled ? "" : "opacity-50 pointer-events-none"}`}>
+            {marinePoints.map((p, i) => (
+              <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)", background: "#fafcff" }}>
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <input className="rounded-md border px-2 py-1 text-[12px]" style={{ borderColor: "var(--border)" }}
+                    value={p.label} placeholder="區域名"
+                    onChange={(e) => updateMarinePoint(i, "label", e.target.value)} />
+                  <select className="rounded-md border px-2 py-1 text-[12px]" style={{ borderColor: "var(--border)" }}
+                    value={p.buoyId} onChange={(e) => updateMarinePoint(i, "buoyId", e.target.value)}>
+                    {BUOY_OPTS.map((o) => <option key={o.id} value={o.id}>浮標：{o.name}</option>)}
+                  </select>
+                  <select className="rounded-md border px-2 py-1 text-[12px]" style={{ borderColor: "var(--border)" }}
+                    value={p.tideId} onChange={(e) => updateMarinePoint(i, "tideId", e.target.value)}>
+                    {TIDE_OPTS.map((o) => <option key={o.id} value={o.id}>潮位：{o.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+              {MARINE_FIELD_OPTS.map((f) => (
+                <label key={f.k} className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] cursor-pointer" style={{ borderColor: "var(--border)", background: "#fff" }}>
+                  <input type="checkbox" checked={marineFields[f.k]} onChange={() => toggleMarineField(f.k)} />
+                  <span>{f.label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[10px] text-[var(--muted-foreground)] leading-relaxed">
+              判斷門檻：浪高 &lt;1m 適合／1–1.5m 留意／&gt;1.5m 不建議；海流 ≤1節 和緩／1–2節 留意／&gt;2節 強流；
+              海溫→防寒衣 ≥27°C 3mm｜25–27 5mm｜23–25 加頭套手套｜20–23 5mm加厚/半乾｜&lt;20 乾式。
+              抓不到該欄就略過。鼻頭角浮標目前停測，基隆區預設用彭佳嶼。
+            </p>
+          </div>
         </div>
 
         {/* ── Step 5 發送 API 測試 ── */}
@@ -1590,6 +1678,9 @@ function AutoSendSection({
             dailyWeatherReportRecipients: cfg.dailyWeatherReportRecipients ?? [],
             weatherReportSlots: cfg.weatherReportSlots ?? [{ h: 22, m: 0 }, { h: 5, m: 0 }],
             weatherReportContent: cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false },
+            weatherMarineEnabled: cfg.weatherMarineEnabled ?? false,
+            weatherMarinePoints: marinePoints,
+            weatherMarineFields: marineFields,
             dailyBriefingEnabled: cfg.dailyBriefingEnabled ?? true,
             dailyBriefingIncludeCoaches: cfg.dailyBriefingIncludeCoaches ?? true,
           })}

@@ -107,6 +107,26 @@ const PatchSchema = z.object({
       wave: z.boolean(),
     })
     .optional(),
+  // v411：海象（浮標+潮位）整合
+  weatherMarineEnabled: z.boolean().optional(),
+  weatherMarinePoints: z
+    .array(z.object({
+      label: z.string().max(20),
+      buoyId: z.string().max(16),
+      tideId: z.string().max(16),
+    }))
+    .max(4)
+    .optional(),
+  weatherMarineFields: z
+    .object({
+      waveHeight: z.boolean(),
+      waveDir: z.boolean(),
+      wavePeriod: z.boolean(),
+      seaTemp: z.boolean(),
+      current: z.boolean(),
+      tide: z.boolean(),
+    })
+    .optional(),
   // v315：訂單日報（每日 07:00 自動發給 admin/boss）
   dailyBriefingEnabled: z.boolean().optional(),
   dailyBriefingIncludeCoaches: z.boolean().optional(),
@@ -216,6 +236,14 @@ export async function GET(req: NextRequest) {
       weatherReportContent:
         ((row as unknown as { weatherReportContent?: unknown }).weatherReportContent as Record<string, boolean> | undefined) ??
         { wind: true, temp: true, sessions: true, wave: false },
+      // v411 海象整合
+      weatherMarineEnabled: (row as unknown as { weatherMarineEnabled?: boolean }).weatherMarineEnabled ?? false,
+      weatherMarinePoints:
+        ((row as unknown as { weatherMarinePoints?: unknown }).weatherMarinePoints as Array<{ label: string; buoyId: string; tideId: string }> | undefined) ??
+        [{ label: "龍洞區", buoyId: "46694A", tideId: "C4A02" }, { label: "基隆區", buoyId: "C6B01", tideId: "C4B01" }],
+      weatherMarineFields:
+        ((row as unknown as { weatherMarineFields?: unknown }).weatherMarineFields as Record<string, boolean> | undefined) ??
+        { waveHeight: true, waveDir: true, wavePeriod: true, seaTemp: true, current: true, tide: true },
       // v315 訂單日報
       dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
       dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,
