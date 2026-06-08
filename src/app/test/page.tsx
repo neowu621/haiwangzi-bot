@@ -91,6 +91,18 @@ const LineIcon = ({ s = 18 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.5 2 2 5.8 2 10.4c0 4.1 3.6 7.6 8.5 8.2.3.07.8.2.9.5.1.27.06.7.03.97l-.14.86c-.04.25-.2 1 .87.54s5.8-3.4 7.9-5.85C21.5 14 22 12.3 22 10.4 22 5.8 17.5 2 12 2z" /></svg>
 );
 
+// v408：目前裝置示意 icon（依視窗寬度判斷 手機 / 平板 / 桌面）
+type Device = "mobile" | "tablet" | "desktop";
+const DEVICE_LABEL: Record<Device, string> = { mobile: "手機", tablet: "平板", desktop: "桌面" };
+const DeviceIcon = ({ device }: { device: Device }) => {
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (device === "mobile")
+    return <svg {...common}><rect x="7" y="2" width="10" height="20" rx="2" /><line x1="11" y1="18" x2="13" y2="18" /></svg>;
+  if (device === "tablet")
+    return <svg {...common}><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="11" y1="18" x2="13" y2="18" /></svg>;
+  return <svg {...common}><rect x="2" y="4" width="20" height="13" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>;
+};
+
 // v403：最新動態影片清單 + 模式改由 admin 後台管理（/admin/settings 首頁 tab）
 //   - 前端先讀 /api/config → { homeVideosMode, homeVideos }
 //   - homeVideosMode === "auto" 時改打 /api/youtube/recent 抓最新；失敗 fallback 用 homeVideos
@@ -113,6 +125,17 @@ export default function HomePage() {
   const [openQA, setOpenQA] = useState<string | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loaderHide, setLoaderHide] = useState(false);
+  // v408：目前裝置（依視窗寬度即時判斷）
+  const [device, setDevice] = useState<Device>("desktop");
+  useEffect(() => {
+    const calc = () => {
+      const w = window.innerWidth;
+      setDevice(w < 768 ? "mobile" : w < 1024 ? "tablet" : "desktop");
+    };
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, []);
   // v407B：Lightbox 開啟時鎖背景捲動 + Esc 關閉
   useEffect(() => {
     if (!playing) return;
@@ -215,6 +238,10 @@ export default function HomePage() {
           <span className="name"><b>東北角海王子</b><span>Northeast Coast Ocean Prince</span></span>
         </a>
         <nav className="nav-links">{NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</nav>
+        <span className="dev-badge" title={`目前裝置：${DEVICE_LABEL[device]}`} aria-label={`目前裝置：${DEVICE_LABEL[device]}`}>
+          <DeviceIcon device={device} />
+          <em>{DEVICE_LABEL[device]}</em>
+        </span>
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line nav-cta"><LineIcon />LINE 預約</a>
         <button className={`nav-toggle${menuOpen ? " open" : ""}`} aria-label="開啟選單" onClick={() => setMenuOpen((o) => !o)}><span /><span /><span /></button>
       </header>
