@@ -31,6 +31,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // v409：dryRun 預覽模式 — 只統計「本月有幾位要補、預計發多少」，不實際發放。
+  //   用法：?dryRun=1（或 ?dry=1），仍需帶 Bearer。
+  const sp = req.nextUrl.searchParams;
+  const dryRun = sp.get("dryRun") === "1" || sp.get("dry") === "1";
+
   const cfg = await prisma.siteConfig
     .findUnique({ where: { id: "default" } })
     .catch(() => null);
@@ -52,15 +57,45 @@ export async function GET(req: NextRequest) {
   // v388：抓「生日月份 = 當月」且今年還沒發過的 user（不再比對 day）。
   //   一年一次的保證來自 birthday_credit_year；於月初 1 號統一發放。
   const users = await prisma.$queryRaw<
-    Array<{ line_user_id: string; birthday: Date | null }>
+    Array<{
+      line_user_id: string;
+      display_name: string | null;
+      birthday: Date | null;
+      birthday_credit_year: number | null;
+    }>
   >`
-    SELECT line_user_id, birthday
+    SELECT line_user_id, display_name, birthday, birthday_credit_year
     FROM users
     WHERE birthday IS NOT NULL
       AND deleted_at IS NULL
       AND EXTRACT(MONTH FROM birthday) = ${month}
       AND (birthday_credit_year IS NULL OR birthday_credit_year < ${year})
+    ORDER BY EXTRACT(DAY FROM birthday)
   `;
+
+  // v409：預覽模式 — 回傳明細但不發放
+  if (dryRun) {
+    return NextResponse.json({
+      ok: true,
+      dryRun: true,
+      date: `${month}/${day}/${year}`,
+      month,
+      amount,
+      expiryDays,
+      eligibleCount: users.length,
+      totalAmount: users.length * amount,
+      users: users.map((u) => {
+        const b = u.birthday ? new Date(u.birthday) : null;
+        const id = u.line_user_id || "";
+        return {
+          name: u.display_name || "(無名)",
+          birthday: b ? `${b.getUTCMonth() + 1}/${b.getUTCDate()}` : null,
+          lastGrantedYear: u.birthday_credit_year,
+          userId: id ? `${id.slice(0, 6)}…${id.slice(-4)}` : "",
+        };
+      }),
+    });
+  }
 
   const granted: string[] = [];
   const failed: Array<{ userId: string; error: string }> = [];
