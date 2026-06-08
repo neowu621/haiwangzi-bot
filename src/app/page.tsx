@@ -288,11 +288,7 @@ export default function HomePage() {
 
   return (
     <div className="hw">
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700;900&family=Noto+Serif+TC:wght@700;900&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
-
+      {/* v422：字體改用 layout 的 next/font 自架，移除 render-blocking 的 Google Fonts <link>（LINE webview 加速） */}
       <header className={`nav${scrolled ? " scrolled" : ""}`} id="nav">
         <a href="#top" className="brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
