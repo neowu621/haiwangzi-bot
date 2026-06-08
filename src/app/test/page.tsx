@@ -89,12 +89,11 @@ const LineIcon = ({ s = 18 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.5 2 2 5.8 2 10.4c0 4.1 3.6 7.6 8.5 8.2.3.07.8.2.9.5.1.27.06.7.03.97l-.14.86c-.04.25-.2 1 .87.54s5.8-3.4 7.9-5.85C21.5 14 22 12.3 22 10.4 22 5.8 17.5 2 12 2z" /></svg>
 );
 
-const INIT_VIDS = [
-  { id: "04q6aMx_4U4", tag: "YOUTUBE · 點擊播放", feat: true },
-  { id: "Rp1b04530Ag", tag: "YOUTUBE" },
-  { id: "0XE0lzv7jpY", tag: "SHORTS" },
-  { id: "8nDJqaDl_sM", tag: "SHORTS" },
-  { id: "F0dfISkBYnE", tag: "SHORTS" },
+// 最新動態自動抓取自 /api/youtube/recent（後端讀 YouTube RSS feed，1h 快取）
+type YtVideo = { id: string; title: string; isShort: boolean };
+// 後備清單：API 抓不到時用（避免完全空白）
+const FALLBACK_VIDS: YtVideo[] = [
+  { id: "8nDJqaDl_sM", title: "202606-萊萊鶯歌石剪輯", isShort: true },
 ];
 
 export default function HomePage() {
@@ -105,6 +104,26 @@ export default function HomePage() {
   const [playing, setPlaying] = useState<string | null>(null);
   const [loaderHide, setLoaderHide] = useState(false);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  // 自動抓 YouTube 最新影片
+  const [videos, setVideos] = useState<YtVideo[]>([]);
+  const [videosLoading, setVideosLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/youtube/recent")
+      .then((r) => r.json())
+      .then((data: { videos?: YtVideo[]; error?: string }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data.videos) && data.videos.length > 0 ? data.videos : FALLBACK_VIDS;
+        setVideos(list);
+        setVideosLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVideos(FALLBACK_VIDS);
+        setVideosLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const box = bubbleRef.current;
@@ -220,13 +239,38 @@ export default function HomePage() {
           </div>
           <div className="sec-head reveal"><span className="eyebrow">News &amp; Updates</span><h2 className="section-title">最新動態</h2><p>最新潛水影片整合在這裡，一次看完。</p></div>
           <div className="vid-grid reveal">
-            {INIT_VIDS.map((v) => (
-              <div key={v.id} className={`vid${v.feat ? " feat" : ""}${playing === v.id ? " playing" : ""}`} style={{ backgroundImage: `url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)` }} onClick={() => setPlaying(v.id)}>
-                {playing === v.id ? (
-                  <iframe src={`https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0`} title="YouTube" allow="autoplay; encrypted-media; fullscreen" allowFullScreen />
-                ) : (<><div className="scrim" /><div className="play" /><div className="meta"><small>{v.tag}</small></div></>)}
+            {videosLoading ? (
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
+                載入最新影片中…
               </div>
-            ))}
+            ) : videos.length === 0 ? (
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
+                目前沒有影片，<a href={YT_CHANNEL} target="_blank" rel="noopener" style={{ color: "#66d8f6", textDecoration: "underline" }}>到 YouTube 頻道看看 →</a>
+              </div>
+            ) : (
+              videos.map((v, idx) => (
+                <div
+                  key={v.id}
+                  // 第一支自動 feat（大格）。第一支若是 shorts 也照樣放大；其他為 normal。
+                  className={`vid${idx === 0 ? " feat" : ""}${playing === v.id ? " playing" : ""}`}
+                  style={{ backgroundImage: `url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)` }}
+                  onClick={() => setPlaying(v.id)}
+                  title={v.title}
+                >
+                  {playing === v.id ? (
+                    <iframe src={`https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0`} title={v.title || "YouTube"} allow="autoplay; encrypted-media; fullscreen" allowFullScreen />
+                  ) : (
+                    <>
+                      <div className="scrim" />
+                      <div className="play" />
+                      <div className="meta">
+                        <small>{v.isShort ? "SHORTS" : idx === 0 ? "YOUTUBE · 點擊播放" : "YOUTUBE"}</small>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
           </div>
           <div className="news-follow reveal">
             <span className="lbl">追蹤海王子，不錯過每一支新影片：</span>
