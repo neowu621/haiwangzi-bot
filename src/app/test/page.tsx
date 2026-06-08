@@ -113,6 +113,15 @@ export default function HomePage() {
   const [openQA, setOpenQA] = useState<string | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loaderHide, setLoaderHide] = useState(false);
+  // v407B：Lightbox 開啟時鎖背景捲動 + Esc 關閉
+  useEffect(() => {
+    if (!playing) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPlaying(null); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [playing]);
   const bubbleRef = useRef<HTMLDivElement>(null);
   // v403：最新動態影片清單從 /api/config 取，模式由 admin 後台控制
   const [videos, setVideos] = useState<YtVideo[]>(BUILTIN_FALLBACK_VIDS);
@@ -288,23 +297,17 @@ export default function HomePage() {
               videos.map((v, idx) => (
                 <div
                   key={v.id}
-                  // 第一支自動 feat（大格）。第一支若是 shorts 也照樣放大；其他為 normal。
-                  className={`vid${idx === 0 ? " feat" : ""}${playing === v.id ? " playing" : ""}`}
+                  // 第一支 feat（大格）；點擊開 lightbox 放大播放（v406B）
+                  className={`vid${idx === 0 ? " feat" : ""}`}
                   style={{ backgroundImage: `url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)` }}
                   onClick={() => setPlaying(v.id)}
                   title={v.title}
                 >
-                  {playing === v.id ? (
-                    <iframe src={`https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0`} title={v.title || "YouTube"} allow="autoplay; encrypted-media; fullscreen" allowFullScreen />
-                  ) : (
-                    <>
-                      <div className="scrim" />
-                      <div className="play" />
-                      <div className="meta">
-                        <small>{v.isShort ? "SHORTS" : idx === 0 ? "YOUTUBE · 點擊播放" : "YOUTUBE"}</small>
-                      </div>
-                    </>
-                  )}
+                  <div className="scrim" />
+                  <div className="play" />
+                  <div className="meta">
+                    <small>{v.isShort ? "SHORTS" : idx === 0 ? "YOUTUBE · 點擊播放" : "YOUTUBE"}</small>
+                  </div>
                 </div>
               ))
             )}
@@ -408,6 +411,23 @@ export default function HomePage() {
       <div className="mobile-book">
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
       </div>
+
+      {/* v407B：影片 Lightbox 放大播放（點背景或 ✕ 關閉） */}
+      {playing && (
+        <div className="hw-lightbox" onClick={() => setPlaying(null)} role="dialog" aria-modal="true">
+          <div className="hw-lightbox-inner" onClick={(e) => e.stopPropagation()}>
+            <button className="hw-lightbox-close" onClick={() => setPlaying(null)} aria-label="關閉影片">✕</button>
+            <div className="hw-lightbox-frame">
+              <iframe
+                src={`https://www.youtube.com/embed/${playing}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                title="YouTube"
+                allow="autoplay; encrypted-media; fullscreen"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
