@@ -83,16 +83,12 @@ export default function TonightPage() {
     setLoading(true);
     setMsg(null);
     try {
-      // 1. 待確認匯款（不限日期）
-      const proofData = await adminFetch<{ proofs: ProofRow[] }>(
-        `/api/admin/payment-proofs?status=pending`,
-      );
+      // v400：待確認匯款 + 完整 booking list 改「並行」拉（原本序列，少等一趟）
+      const [proofData, bookingData] = await Promise.all([
+        adminFetch<{ proofs: ProofRow[] }>(`/api/admin/payment-proofs?status=pending`),
+        adminFetch<{ bookings: BookingRow[] }>(`/api/admin/bookings`),
+      ]);
       setProofs(proofData.proofs ?? []);
-
-      // 拉一次完整 booking list（API 不支援 status filter，client side filter）
-      const bookingData = await adminFetch<{ bookings: BookingRow[] }>(
-        `/api/admin/bookings`,
-      );
       const allBookings = bookingData.bookings ?? [];
 
       // 2. 待確認到場（confirmed + 今/昨日）— v306 用台北時區

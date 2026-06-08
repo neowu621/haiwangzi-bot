@@ -62,20 +62,33 @@ const getInflight = new Map<string, Promise<unknown>>();
 
 async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAdminToken();
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    // 用 || 而非 ??：空字串也要 fallback 到 HTTP status，避免 "場次載入失敗：" 後面空白
-    throw new Error(err.error || err.detail || `HTTP ${res.status}`);
+  // v400：請求逾時 — 卡住的請求 25 秒自動中止，釋放連線、顯示錯誤而非無限轉圈
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 25_000);
+  try {
+    const res = await fetch(path, {
+      ...init,
+      signal: init?.signal ?? ac.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      // 用 || 而非 ??：空字串也要 fallback 到 HTTP status，避免 "場次載入失敗：" 後面空白
+      throw new Error(err.error || err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("連線逾時，請重試（網路較慢或伺服器較遠）");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 export function useAdminAuth() {
