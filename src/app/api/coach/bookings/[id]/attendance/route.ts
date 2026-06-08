@@ -114,6 +114,21 @@ export async function POST(
               newLevel,
               tiers,
             );
+            // v420：升等通知（vip_upgrade 模板）— 只在客戶實際潛水升等時發
+            const tier = tiers.find((t) => t.level === newLevel);
+            if (tier) {
+              const { notifyCustomer } = await import("@/lib/notify-template");
+              const { vipUpgradeEmail } = await import("@/lib/email/templates");
+              const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+              const benefits = (tier.benefits ?? []).join("\n");
+              notifyCustomer({
+                userId: booking.userId,
+                templateKey: "vip_upgrade",
+                params: { tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl },
+                altText: `恭喜升等 ${tier.name}`,
+                email: (name) => vipUpgradeEmail({ name, tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl }),
+              });
+            }
           }
         }
 

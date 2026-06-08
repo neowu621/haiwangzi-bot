@@ -124,6 +124,17 @@ export async function GET(req: NextRequest) {
         data: { birthdayCreditYear: year },
       });
       granted.push(u.line_user_id);
+      // v420：通知壽星「生日禮金到帳」（birthday_credit 模板）
+      const { notifyCustomer } = await import("@/lib/notify-template");
+      const { birthdayCreditEmail } = await import("@/lib/email/templates");
+      const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+      notifyCustomer({
+        userId: u.line_user_id,
+        templateKey: "birthday_credit",
+        params: { amount, expiryDays, liffUrl },
+        altText: "生日禮金到帳 🎂",
+        email: (name) => birthdayCreditEmail({ name, amount, expiryDays, liffUrl }),
+      });
     } catch (e) {
       failed.push({
         userId: u.line_user_id,

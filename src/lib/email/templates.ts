@@ -536,6 +536,215 @@ ${params.verifyUrl}
   return { subject, text, html };
 }
 
+// 付款證明駁回
+export function paymentRejectEmail(params: {
+  name: string;
+  bookingTitle: string;
+  reason?: string;
+  liffUrl: string;
+}): EmailContent {
+  const subject = `🚫 付款證明需重傳｜${params.bookingTitle}`;
+  const text =
+    `Hi ${params.name},\n\n您上傳的轉帳證明未能核對通過 🚫\n\n` +
+    `訂單：${params.bookingTitle}\n` +
+    (params.reason ? `原因：${params.reason}\n` : "") +
+    `\n請依正確金額重新上傳轉帳截圖：\n${params.liffUrl}\n\n如有疑問歡迎 LINE 聯繫我們。\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:#9a3412;font-weight:bold;">🚫 付款證明需要重傳</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;vertical-align:top;">訂單</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(params.bookingTitle)}</td></tr>
+      ${params.reason ? `<tr><td style="padding:8px 0;color:#6b7280;width:90px;vertical-align:top;">原因</td><td style="padding:8px 0;color:#9a3412;">${escapeHtml(params.reason)}</td></tr>` : ""}
+    </table>
+    <div style="margin:16px 0;padding:14px;background:#fff0eb;border-left:4px solid ${BRAND_PHOSPHOR};border-radius:4px;font-size:13px;color:${BRAND_DEEP};">
+      您上傳的轉帳證明未能核對通過，請依正確金額重新上傳轉帳截圖。如有疑問歡迎 LINE 聯繫我們。
+    </div>
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">重新上傳截圖 →</a>
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
+// 訂單取消通知
+export function bookingCancelEmail(params: {
+  name: string;
+  bookingTitle: string;
+  reason?: string;
+  liffUrl: string;
+}): EmailContent {
+  const subject = `❌ 預約已取消｜${params.bookingTitle}`;
+  const text =
+    `Hi ${params.name},\n\n您的這筆預約已取消 ❌\n\n` +
+    `訂單：${params.bookingTitle}\n` +
+    (params.reason ? `原因：${params.reason}\n` : "") +
+    `\n若有任何疑問，歡迎直接 LINE 與我們聯繫。\n查看我的預約：\n${params.liffUrl}\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:#9a3412;font-weight:bold;">❌ 您的預約已取消</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;vertical-align:top;">訂單</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(params.bookingTitle)}</td></tr>
+      ${params.reason ? `<tr><td style="padding:8px 0;color:#6b7280;width:90px;vertical-align:top;">原因</td><td style="padding:8px 0;color:#9a3412;">${escapeHtml(params.reason)}</td></tr>` : ""}
+    </table>
+    <div style="margin:16px 0;padding:14px;background:#f1f5f9;border-radius:8px;font-size:13px;color:${BRAND_DEEP};">
+      您的這筆預約已取消。若有任何疑問，歡迎直接 LINE 與我們聯繫。
+    </div>
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看我的預約 →</a>
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
+// 退款完成通知
+export function refundCompleteEmail(params: {
+  name: string;
+  bookingTitle: string;
+  amount: number;
+  method: "cash" | "credit";
+}): EmailContent {
+  const methodLabel = params.method === "credit" ? "🎁 抵用金" : "💵 現金退費";
+  const subject = `✅ 退款已完成 NT$ ${params.amount.toLocaleString()}｜${params.bookingTitle}`;
+  const text =
+    `Hi ${params.name},\n\n您的退款已處理完成 ✅\n\n` +
+    `訂單：${params.bookingTitle}\n` +
+    `退款方式：${methodLabel}\n` +
+    `退款金額：NT$ ${params.amount.toLocaleString()}\n\n感謝您的耐心。\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:${BRAND_PHOSPHOR};font-weight:bold;">✅ 您的退款已完成</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;vertical-align:top;">訂單</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(params.bookingTitle)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;">退款方式</td><td style="padding:8px 0;font-weight:600;">${methodLabel}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;">退款金額</td><td style="padding:8px 0;font-weight:600;font-size:16px;color:${BRAND_PHOSPHOR};">NT$ ${params.amount.toLocaleString()}</td></tr>
+    </table>
+    <div style="margin:20px 0 0 0;padding:14px;background:#e6fffd;border-left:4px solid ${BRAND_PHOSPHOR};border-radius:4px;font-size:13px;color:${BRAND_DEEP};">
+      您的退款已處理完成，感謝您的耐心。
+    </div>
+    `,
+  );
+  return { subject, text, html };
+}
+
+// VIP 升等通知
+export function vipUpgradeEmail(params: {
+  name: string;
+  tierName: string;
+  tierEmoji?: string;
+  benefits?: string;
+  liffUrl: string;
+}): EmailContent {
+  const emoji = params.tierEmoji ?? "🌟";
+  const subject = `🌟 恭喜升等 ${params.tierName}！｜海王子潛水團`;
+  const text =
+    `Hi ${params.name},\n\n恭喜升等 ${params.tierName}！🌟\n\n` +
+    `謝謝你一直跟著海王子潛水，已為你升級會員等級，享有更多專屬優惠。\n\n` +
+    `會員等級：${emoji} ${params.tierName}\n` +
+    (params.benefits ? `\n專屬權益：\n${params.benefits}\n` : "") +
+    `\n查看我的會員：\n${params.liffUrl}\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:15px;line-height:1.7;margin:0 0 16px 0;color:#b45309;font-weight:bold;">🌟 恭喜升等 ${escapeHtml(params.tierName)}！</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:#374151;">謝謝你一直跟著海王子潛水，已為你升級會員等級，享有更多專屬優惠。</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;">會員等級</td><td style="padding:8px 0;font-weight:600;color:#b45309;">${emoji} ${escapeHtml(params.tierName)}</td></tr>
+    </table>
+    ${
+      params.benefits
+        ? `<div style="margin:16px 0;padding:14px;background:#fff8e6;border-left:4px solid #FFB800;border-radius:4px;font-size:13px;color:${BRAND_DEEP};">
+            <b>專屬權益：</b><br>${escapeHtml(params.benefits).replace(/\n/g, "<br>")}
+          </div>`
+        : ""
+    }
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看我的會員 →</a>
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
+// 生日禮金發放
+export function birthdayCreditEmail(params: {
+  name: string;
+  amount: number;
+  expiryDays: number; // 0 = 永久
+  liffUrl: string;
+}): EmailContent {
+  const effectiveText = params.expiryDays > 0 ? `${params.expiryDays} 天內有效` : "永久有效";
+  const subject = `🎂 生日快樂！生日禮金 NT$ ${params.amount.toLocaleString()} 已到帳`;
+  const text =
+    `Hi ${params.name},\n\n生日快樂！🎂\n\n` +
+    `祝你生日快樂！我們準備了一份生日禮金給你，已存入你的帳戶。\n\n` +
+    `生日禮金：NT$ ${params.amount.toLocaleString()}\n` +
+    `使用期限：${effectiveText}\n\n` +
+    `立即使用禮金：\n${params.liffUrl}\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:15px;line-height:1.7;margin:0 0 16px 0;color:#b45309;font-weight:bold;">🎂 生日快樂！</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:#374151;">祝你生日快樂！我們準備了一份生日禮金給你，已存入你的帳戶。</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;">生日禮金</td><td style="padding:8px 0;font-weight:600;font-size:16px;color:#b45309;">NT$ ${params.amount.toLocaleString()}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;width:90px;">使用期限</td><td style="padding:8px 0;font-weight:600;">${effectiveText}</td></tr>
+    </table>
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">立即使用禮金 →</a>
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
+// 抵用金到期提醒
+export function creditExpiryEmail(params: {
+  name: string;
+  amount: number;
+  expireDate: string;
+  liffUrl: string;
+}): EmailContent {
+  const subject = `💳 抵用金即將到期（${params.expireDate}）｜海王子潛水團`;
+  const text =
+    `Hi ${params.name},\n\n抵用金即將到期 💳\n\n` +
+    `提醒你，帳戶內的抵用金即將到期，記得在期限前預約使用，別讓優惠過期囉！\n\n` +
+    `可用抵用金：NT$ ${params.amount.toLocaleString()}\n` +
+    `到期日：${params.expireDate}\n\n` +
+    `立即預約使用：\n${params.liffUrl}\n\n— 海王子潛水團`;
+
+  const html = shell(
+    subject,
+    `
+    <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:#9a3412;font-weight:bold;">💳 抵用金即將到期</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:#374151;">提醒你，帳戶內的抵用金即將到期，記得在期限前預約使用，別讓優惠過期囉！</p>
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#6b7280;width:100px;">可用抵用金</td><td style="padding:8px 0;font-weight:600;font-size:16px;color:${BRAND_PHOSPHOR};">NT$ ${params.amount.toLocaleString()}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;width:100px;">到期日</td><td style="padding:8px 0;font-weight:600;color:#FF7B5A;">${escapeHtml(params.expireDate)}</td></tr>
+    </table>
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">立即預約使用 →</a>
+    </p>
+    `,
+  );
+  return { subject, text, html };
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 
 function escapeHtml(s: string): string {

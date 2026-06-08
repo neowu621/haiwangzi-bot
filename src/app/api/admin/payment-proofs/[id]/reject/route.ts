@@ -81,21 +81,20 @@ export async function POST(
         reason: parsed.data.reason,
       },
     });
-    // v297：通知客戶（fire-and-forget LINE push）
-    void (async () => {
-      try {
-        const { getLineClient } = await import("@/lib/line");
-        const lc = getLineClient();
-        if (!lc) return;
-        const text = `❌ 您的付款證明審核未通過\n\n訂單：${proof.booking.code ?? proof.booking.id.slice(0, 8)}\n金額：NT$ ${proof.amount.toLocaleString()}\n\n老闆說明：\n${parsed.data.reason}\n\n請至「我的預約」查看詳情並重新上傳付款證明。`;
-        await lc.pushMessage({
-          to: proof.booking.userId,
-          messages: [{ type: "text", text }],
-        });
-      } catch (e) {
-        console.error("[reject notify customer]", e);
-      }
-    })();
+    // v420：通知客戶改用 payment_reject flex 模板（可後台編輯 + email）
+    {
+      const { notifyCustomer } = await import("@/lib/notify-template");
+      const { paymentRejectEmail } = await import("@/lib/email/templates");
+      const bookingTitle = proof.booking.code ?? proof.booking.id.slice(0, 8);
+      const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+      notifyCustomer({
+        userId: proof.booking.userId,
+        templateKey: "payment_reject",
+        params: { bookingTitle, reason: parsed.data.reason, liffUrl },
+        altText: "付款證明需重傳",
+        email: (name) => paymentRejectEmail({ name, bookingTitle, reason: parsed.data.reason, liffUrl }),
+      });
+    }
     return NextResponse.json({ ok: true, rejected: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -224,6 +224,8 @@ model CreditTx {
   createdBy    String?   @map("created_by") @db.VarChar(64) // admin lineUserId
   // 到期日（v184）。null = 永不過期。birthday / 升等獎勵等可設過期
   expiresAt    DateTime? @map("expires_at") @db.Timestamptz
+  // v420：到期前提醒已寄出時間（防重複提醒）
+  expiryRemindedAt DateTime? @map("expiry_reminded_at") @db.Timestamptz
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)

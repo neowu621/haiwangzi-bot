@@ -172,6 +172,31 @@ export async function DELETE(
         note: "admin 軟取消",
       }),
     );
+    // v420：通知客戶「預約已取消」（booking_cancel 模板）
+    void (async () => {
+      try {
+        let bookingTitle = booking.code ?? `預約 #${id.slice(0, 8)}`;
+        if (booking.type === "daily") {
+          const t = await prisma.divingTrip.findUnique({ where: { id: booking.refId } });
+          if (t) bookingTitle = `日潛 ${t.date.toISOString().slice(0, 10)} ${t.startTime}`;
+        } else {
+          const t = await prisma.tourPackage.findUnique({ where: { id: booking.refId } });
+          if (t) bookingTitle = t.title;
+        }
+        const { notifyCustomer } = await import("@/lib/notify-template");
+        const { bookingCancelEmail } = await import("@/lib/email/templates");
+        const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+        notifyCustomer({
+          userId: booking.userId,
+          templateKey: "booking_cancel",
+          params: { bookingTitle, reason: "", liffUrl },
+          altText: "預約已取消",
+          email: (name) => bookingCancelEmail({ name, bookingTitle, reason: "", liffUrl }),
+        });
+      } catch (e) {
+        console.error("[booking cancel notify]", e);
+      }
+    })();
     await logAudit({
       actorId: auth.user.lineUserId,
       action: "booking.cancel",

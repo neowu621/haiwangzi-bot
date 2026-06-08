@@ -14,6 +14,12 @@ import { welcome } from "./welcome";
 import { firstOrderRewardGrant } from "./first-order-reward-grant";
 import { attendanceConfirmed } from "./attendance-confirmed";
 import { refundRequest } from "./refund-request";
+import { paymentReject } from "./payment-reject";
+import { bookingCancel } from "./booking-cancel";
+import { refundComplete } from "./refund-complete";
+import { vipUpgrade } from "./vip-upgrade";
+import { birthdayCredit } from "./birthday-credit";
+import { creditExpiry } from "./credit-expiry";
 
 export type FlexMessage = messagingApi.FlexMessage;
 
@@ -51,6 +57,13 @@ export const FLEX_TEMPLATES: Record<string, FlexFactory> = {
   first_order_reward_grant: firstOrderRewardGrant,
   // v274：退款申請
   refund_request: refundRequest,
+  // 收款 / 異常 / 會員 — 新增模板
+  payment_reject: paymentReject,
+  booking_cancel: bookingCancel,
+  refund_complete: refundComplete,
+  vip_upgrade: vipUpgrade,
+  birthday_credit: birthdayCredit,
+  credit_expiry: creditExpiry,
 } as const;
 
 export type FlexTemplateKey = keyof typeof FLEX_TEMPLATES;
@@ -93,6 +106,12 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   attendance_confirmed: "到場確認",
   first_order_reward_grant: "首單獎勵發放",
   refund_request: "退款申請（待客戶確認）",
+  payment_reject: "付款證明駁回",
+  booking_cancel: "訂單取消通知",
+  refund_complete: "退款完成通知",
+  vip_upgrade: "VIP 升等通知",
+  birthday_credit: "生日禮金發放",
+  credit_expiry: "抵用金到期提醒",
 };
 
 // v196：每個 template 的分組 + icon + 預設管道開關
@@ -113,6 +132,12 @@ export const FLEX_TEMPLATE_META: Record<
   attendance_confirmed:    { group: "到場 / 完成", icon: "🐠", defaultLine: true,  defaultEmail: false },
   first_order_reward_grant:{ group: "到場 / 完成", icon: "🎁", defaultLine: true,  defaultEmail: true  },
   refund_request:          { group: "異常",        icon: "💸", defaultLine: true,  defaultEmail: true  },
+  payment_reject:          { group: "收款",        icon: "🚫", defaultLine: true,  defaultEmail: true  },
+  booking_cancel:          { group: "異常",        icon: "❌", defaultLine: true,  defaultEmail: true  },
+  refund_complete:         { group: "異常",        icon: "✅", defaultLine: true,  defaultEmail: true  },
+  vip_upgrade:             { group: "會員",        icon: "🌟", defaultLine: true,  defaultEmail: true  },
+  birthday_credit:         { group: "會員",        icon: "🎂", defaultLine: true,  defaultEmail: true  },
+  credit_expiry:           { group: "會員",        icon: "💳", defaultLine: true,  defaultEmail: true  },
 };
 
 /**
@@ -198,5 +223,40 @@ export const FLEX_EDITABLE_FIELDS: Record<
     { key: "bodyText", label: "說明文字", defaultValue: "請點下方按鈕確認接受，或選擇有疑問與店家聯絡。" },
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看詳情並確認" },
     { key: "altText", label: "通知列文字", defaultValue: "退款申請待確認" },
+  ],
+  payment_reject: [
+    { key: "title", label: "標題", defaultValue: "付款證明需要重傳" },
+    { key: "bodyText", label: "說明文字", defaultValue: "您上傳的轉帳證明未能核對通過，請依正確金額重新上傳轉帳截圖。如有疑問歡迎 LINE 聯繫我們。" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "重新上傳截圖" },
+    { key: "altText", label: "通知列文字", defaultValue: "付款證明需重傳" },
+  ],
+  booking_cancel: [
+    { key: "title", label: "標題", defaultValue: "您的預約已取消" },
+    { key: "bodyText", label: "說明文字", defaultValue: "您的這筆預約已取消。若有任何疑問，歡迎直接 LINE 與我們聯繫。" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的預約" },
+    { key: "altText", label: "通知列文字", defaultValue: "預約已取消" },
+  ],
+  refund_complete: [
+    { key: "title", label: "標題", defaultValue: "退款已完成" },
+    { key: "bodyText", label: "說明文字", defaultValue: "您的退款已處理完成，感謝您的耐心。" },
+    { key: "altText", label: "通知列文字", defaultValue: "退款已完成" },
+  ],
+  vip_upgrade: [
+    { key: "title", label: "標題", defaultValue: "恭喜升等" },
+    { key: "bodyText", label: "說明文字", defaultValue: "謝謝你一直跟著海王子潛水，已為你升級會員等級，享有更多專屬優惠。" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的會員" },
+    { key: "altText", label: "通知列文字", defaultValue: "會員升等通知" },
+  ],
+  birthday_credit: [
+    { key: "title", label: "標題", defaultValue: "生日快樂！🎂" },
+    { key: "bodyText", label: "說明文字", defaultValue: "祝你生日快樂！我們準備了一份生日禮金給你，已存入你的帳戶。" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "立即使用禮金" },
+    { key: "altText", label: "通知列文字", defaultValue: "生日禮金到帳" },
+  ],
+  credit_expiry: [
+    { key: "title", label: "標題", defaultValue: "抵用金即將到期" },
+    { key: "bodyText", label: "說明文字", defaultValue: "提醒你，帳戶內的抵用金即將到期，記得在期限前預約使用，別讓優惠過期囉！" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "立即預約使用" },
+    { key: "altText", label: "通知列文字", defaultValue: "抵用金即將到期" },
   ],
 };

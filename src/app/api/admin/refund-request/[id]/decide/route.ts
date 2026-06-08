@@ -153,18 +153,20 @@ export async function POST(
     },
   });
 
-  // 推 LINE 通知客戶
-  if ((rr.booking.user.notifyByLine ?? true) && lineClient) {
-    try {
-      const methodLabel = finalMethod === "credit"
-        ? `🎁 抵用金 NT$ ${finalAmount}${finalBonusPct > 0 ? `（額外 +${finalBonusPct}% 加成）` : ""}`
-        : `💵 現金退費 NT$ ${finalAmount}`;
-      const text = `Hi ${customerName}，您的退款申請已核准 ✓\n\n退款方式：${methodLabel}\n${finalMethod === "credit" ? "抵用金已立即入帳，下次預約可使用 ✨" : "店家會儘速處理現金退款，請耐心等候。"}`;
-      await lineClient.pushMessage({
-        to: rr.booking.userId,
-        messages: [{ type: "text", text }],
-      });
-    } catch (e) { console.error("[refund approve notify]", e); }
+  // v420：退款完成通知改用 refund_complete flex 模板（可後台編輯 + email）
+  {
+    const bookingTitle = rr.booking.code ?? `預約 #${rr.bookingId.slice(0, 8)}`;
+    const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+    const method: "cash" | "credit" = finalMethod === "credit" ? "credit" : "cash";
+    const { notifyCustomer } = await import("@/lib/notify-template");
+    const { refundCompleteEmail } = await import("@/lib/email/templates");
+    notifyCustomer({
+      userId: rr.booking.userId,
+      templateKey: "refund_complete",
+      params: { bookingTitle, amount: finalAmount, method, liffUrl },
+      altText: "退款已完成",
+      email: (name) => refundCompleteEmail({ name, bookingTitle, amount: finalAmount, method }),
+    });
   }
 
   return NextResponse.json({ ok: true, decision: "approved", executed: executedNow });
