@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
+import { ConnDiag } from "@/components/admin-web/ConnDiag";
 import { roleLabel } from "@/lib/labels";
 import {
   Menu,
@@ -191,6 +192,8 @@ export function AdminShell({
             </button>
           </div>
         )}
+        {/* v401：連線測速面板 */}
+        <ConnDiag variant="panel" />
       </div>
 
       <div className="mx-3 mb-2 border-t border-white/10" />
@@ -278,6 +281,9 @@ export function AdminShell({
               )?.label ??
               "管理後台"}
           </h1>
+
+          {/* v401：頂部連線延遲徽章（點一下重測）*/}
+          <ConnDiag variant="badge" />
 
           {/* Mobile logout */}
           <button
