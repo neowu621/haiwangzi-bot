@@ -81,11 +81,11 @@ enum PaymentMethod {
 
 enum BookingStatus {
   pending
-  awaiting_verify     // v276：客戶上傳匯款後，等老闆審核
+  awaiting_verify // v276：客戶上傳匯款後，等老闆審核
   confirmed
   cancelled_by_user
   cancelled_by_weather
-  cancelled_unpaid    // v276：未付款的取消（訂單不成立，不必退款）
+  cancelled_unpaid // v276：未付款的取消（訂單不成立，不必退款）
   completed
   no_show
 }
@@ -112,44 +112,44 @@ enum MediaPlatform {
 // ─── Tables ──────────────────────────────────────────────
 
 model User {
-  lineUserId         String     @id @map("line_user_id") @db.VarChar(64)
-  displayName        String     @map("display_name")
-  realName           String?    @map("real_name")
-  phone              String?    @db.VarChar(32)
+  lineUserId                String     @id @map("line_user_id") @db.VarChar(64)
+  displayName               String     @map("display_name")
+  realName                  String?    @map("real_name")
+  phone                     String?    @db.VarChar(32)
   // 註冊 email — 用於通知信、發票、e-card；比 SMS 便宜，首次登入強制要填
-  email              String?    @db.VarChar(254)
+  email                     String?    @db.VarChar(254)
   // v256：Email 驗證（點擊驗證信內連結後寫入時間）。null = 尚未驗證
-  emailVerifiedAt    DateTime?  @map("email_verified_at") @db.Timestamptz
+  emailVerifiedAt           DateTime?  @map("email_verified_at") @db.Timestamptz
   // v256：最近一次發送驗證信時間（rate limit 用，60 秒內不能重發）
-  emailVerifyTokenSentAt DateTime? @map("email_verify_token_sent_at") @db.Timestamptz
+  emailVerifyTokenSentAt    DateTime?  @map("email_verify_token_sent_at") @db.Timestamptz
   // v257：首單獎勵發放時間（null = 還沒發過）。發放條件：emailVerifiedAt 不為 null + 首筆 fully_paid 訂單
-  firstOrderRewardGrantedAt DateTime? @map("first_order_reward_granted_at") @db.Timestamptz
+  firstOrderRewardGrantedAt DateTime?  @map("first_order_reward_granted_at") @db.Timestamptz
   // v311：客戶完成首次 onboarding（必填 realName/phone/email）的時間。null = 還沒完成，所有 LIFF 頁面強制顯示 OnboardingModal
-  onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz
+  onboardingCompletedAt     DateTime?  @map("onboarding_completed_at") @db.Timestamptz
   // 通知偏好：客戶可在 /liff/profile 自己關掉。預設都開
-  notifyByLine       Boolean    @default(true) @map("notify_by_line")
-  notifyByEmail      Boolean    @default(true) @map("notify_by_email")
-  emergencyContact   Json?      @map("emergency_contact")
-  cert               CertLevel?
-  certNumber         String?    @map("cert_number") @db.VarChar(64)
+  notifyByLine              Boolean    @default(true) @map("notify_by_line")
+  notifyByEmail             Boolean    @default(true) @map("notify_by_email")
+  emergencyContact          Json?      @map("emergency_contact")
+  cert                      CertLevel?
+  certNumber                String?    @map("cert_number") @db.VarChar(64)
   // 「總經驗」潛水次數：使用者自填（含其他單位累積，不可驗證）
-  logCount           Int        @default(0) @map("log_count")
+  logCount                  Int        @default(0) @map("log_count")
   // 「海王子累積」潛水次數：在本系統有 booking 完成（到場勾選）才會 +1
   //   - 教練/老闆按「到場」時 += trip.tankCount × participants
   //   - VIP 等級升等用這個欄位（避免使用者自填灌水）
-  haiwangziLogCount  Int        @default(0) @map("haiwangzi_log_count")
+  haiwangziLogCount         Int        @default(0) @map("haiwangzi_log_count")
   // legacy 單一角色（保留以相容舊資料；新版改用 roles[] 陣列支援多重身分）
-  role               UserRole   @default(customer)
+  role                      UserRole   @default(customer)
   // 多重角色：一個 user 可同時是 customer + coach + admin
   // 若為空陣列代表還沒遷移，讀的時候會自動 backfill 成 [role]
-  roles              UserRole[] @default([])
-  notes              String?
+  roles                     UserRole[] @default([])
+  notes                     String?
   // 同伴清單：[{ id, name, phone, cert, certNumber, logCount, relationship }]
-  companions         Json       @default("[]")
+  companions                Json       @default("[]")
   // LTV / 黑名單
-  noShowCount        Int        @default(0) @map("no_show_count")
-  blacklisted        Boolean    @default(false)
-  blacklistReason    String?    @map("blacklist_reason")
+  noShowCount               Int        @default(0) @map("no_show_count")
+  blacklisted               Boolean    @default(false)
+  blacklistReason           String?    @map("blacklist_reason")
   // 海王子潛水會員等級 1-5：
   //   1 = 小蝦 Shrimp     (<20 潛 or <10,000)
   //   2 = 龍蝦 Lobster    (21-50 潛 or 10k-30k)
@@ -157,31 +157,31 @@ model User {
   //   4 = 鬼蝠魟 MantaRay (101-200 潛 or 80k-150k)
   //   5 = 鯨鯊 WhaleShark (>200 潛 or >150k)
   // 0 = 未指派（系統初始或新註冊）
-  vipLevel           Int        @default(1) @map("vip_level")
+  vipLevel                  Int        @default(1) @map("vip_level")
   // 累計消費 (NT$)：booking.paidAmount 已驗證的總和，會員升等用
-  totalSpend         Int        @default(0) @map("total_spend")
+  totalSpend                Int        @default(0) @map("total_spend")
   // 生日（年月日）— 用於發放生日禮金（每年自動）
-  birthday           DateTime?  @db.Date
+  birthday                  DateTime?  @db.Date
   // 補償金/禮金餘額 (NT$)。來源：生日、VIP 升等、refund 轉禮金、admin 手調
   // 變動皆記錄到 CreditTx 表（audit trail）
-  creditBalance      Int        @default(0) @map("credit_balance")
+  creditBalance             Int        @default(0) @map("credit_balance")
   // 最後一次發放生日禮金的年份，避免同一年發兩次
-  birthdayCreditYear Int?       @map("birthday_credit_year")
+  birthdayCreditYear        Int?       @map("birthday_credit_year")
   // 網頁管理後台個人密碼（scrypt hash，格式 "salt:hash"）
   // 首次登入時自行設定，之後每次需輸入
-  webPasswordHash    String?    @map("web_password_hash")
+  webPasswordHash           String?    @map("web_password_hash")
   // 會員編號 M{YYYYMMDD}-{XX}，XX 為 base-36 2位，首次加入時自動產生
-  code               String?    @unique @map("code") @db.VarChar(12)
-  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  lastActiveAt       DateTime   @default(now()) @map("last_active_at") @db.Timestamptz
+  code                      String?    @unique @map("code") @db.VarChar(12)
+  createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  lastActiveAt              DateTime   @default(now()) @map("last_active_at") @db.Timestamptz
   // 軟刪除：設值後使用者無法登入 LIFF，但訂單/付款紀錄保留以便查帳
   // null = 正常會員；DateTime = 已刪除的時間
-  deletedAt          DateTime?  @map("deleted_at") @db.Timestamptz
-  deletedBy          String?    @map("deleted_by") @db.VarChar(64)
-  deletedReason      String?    @map("deleted_reason")
+  deletedAt                 DateTime?  @map("deleted_at") @db.Timestamptz
+  deletedBy                 String?    @map("deleted_by") @db.VarChar(64)
+  deletedReason             String?    @map("deleted_reason")
 
   bookings          Booking[]
-  diveWishes        DiveWish[]  // v318：客製化潛水願望單
+  diveWishes        DiveWish[] // v318：客製化潛水願望單
   coachProfile      Coach?
   verifiedProofs    PaymentProof[]
   creditTxs         CreditTx[]
@@ -342,56 +342,56 @@ model TourPackage {
 }
 
 model Booking {
-  id                 String        @id @default(uuid()) @db.Uuid
-  code               String?       @unique @map("code") @db.VarChar(12)
-  userId             String        @map("user_id") @db.VarChar(64)
-  type               BookingType
-  refId              String        @map("ref_id") @db.Uuid
-  participants       Int           @default(1)
+  id                  String         @id @default(uuid()) @db.Uuid
+  code                String?        @unique @map("code") @db.VarChar(12)
+  userId              String         @map("user_id") @db.VarChar(64)
+  type                BookingType
+  refId               String         @map("ref_id") @db.Uuid
+  participants        Int            @default(1)
   // 本次參加者明細：[{ name, phone, cert, certNumber, logCount, relationship, isSelf }]
-  participantDetails Json          @default("[]") @map("participant_details")
-  selectedAddons     String[]      @default([]) @map("selected_addons")
-  rentalGear         Json          @default("[]") @map("rental_gear")
-  notes              String? // 客戶備註（客戶預約時填寫）
-  siteNotes          String?       @map("site_notes") // 網站備註（管理員填，客戶可見）
-  adminNotes         String?       @map("admin_notes") // 管理備註（僅 admin/boss 可見）
-  totalAmount        Int           @map("total_amount")
-  depositAmount      Int           @default(0) @map("deposit_amount")
-  paidAmount         Int           @default(0) @map("paid_amount")
-  paymentStatus      PaymentStatus @default(pending) @map("payment_status")
+  participantDetails  Json           @default("[]") @map("participant_details")
+  selectedAddons      String[]       @default([]) @map("selected_addons")
+  rentalGear          Json           @default("[]") @map("rental_gear")
+  notes               String? // 客戶備註（客戶預約時填寫）
+  siteNotes           String?        @map("site_notes") // 網站備註（管理員填，客戶可見）
+  adminNotes          String?        @map("admin_notes") // 管理備註（僅 admin/boss 可見）
+  totalAmount         Int            @map("total_amount")
+  depositAmount       Int            @default(0) @map("deposit_amount")
+  paidAmount          Int            @default(0) @map("paid_amount")
+  paymentStatus       PaymentStatus  @default(pending) @map("payment_status")
   // v289：客戶選擇的付款方式（轉帳 / LINE Pay / 其他）。建立訂單時為 null，等客戶到「付款方式選擇」頁才寫入
-  paymentMethod      PaymentMethod? @map("payment_method")
+  paymentMethod       PaymentMethod? @map("payment_method")
   // 「其他」付款方式時客戶填寫的說明（如：街口支付、微信、現金匯款等）
-  paymentNote        String?       @map("payment_note")
+  paymentNote         String?        @map("payment_note")
   // v296：公開付款連結 token（無需 LINE 登入），老闆審核付款後設 verifiedAt 即失效
-  payLinkToken       String?       @unique @map("pay_link_token") @db.VarChar(64)
-  payLinkVerifiedAt  DateTime?     @map("pay_link_verified_at") @db.Timestamptz
-  status             BookingStatus @default(pending)
-  cancellationReason String?       @map("cancellation_reason")
-  refundAmount       Int?          @map("refund_amount")
-  refundedAt         DateTime?     @map("refunded_at") @db.Timestamptz
+  payLinkToken        String?        @unique @map("pay_link_token") @db.VarChar(64)
+  payLinkVerifiedAt   DateTime?      @map("pay_link_verified_at") @db.Timestamptz
+  status              BookingStatus  @default(pending)
+  cancellationReason  String?        @map("cancellation_reason")
+  refundAmount        Int?           @map("refund_amount")
+  refundedAt          DateTime?      @map("refunded_at") @db.Timestamptz
   // 退款方式：cash = 退現金 / credit = 轉成禮金（user.creditBalance）
-  refundMethod       String?       @map("refund_method") @db.VarChar(16)
+  refundMethod        String?        @map("refund_method") @db.VarChar(16)
   // v275：退款備註（老闆寫實際退款管道，例：「LINE Pay 訂單 #12345」「匯款到 X 銀行 482324」）
-  refundNote         String?       @map("refund_note") @db.Text
+  refundNote          String?        @map("refund_note") @db.Text
   // 預約時使用的禮金（從 user.creditBalance 扣，CreditTx 有對應紀錄）
   // 取消時若 paidAmount>0 系統會自動把這部份退回 creditBalance
-  creditUsed         Int           @default(0) @map("credit_used")
-  agreedToTermsAt    DateTime      @map("agreed_to_terms_at") @db.Timestamptz
+  creditUsed          Int            @default(0) @map("credit_used")
+  agreedToTermsAt     DateTime       @map("agreed_to_terms_at") @db.Timestamptz
   // v260：手寫簽名（R2 private bucket 的 key，例 signatures/<bookingId>.png）。法律證據長期保留。
-  signatureImageKey  String?       @map("signature_image_key") @db.VarChar(256)
-  signedAt           DateTime?     @map("signed_at") @db.Timestamptz
-  signedFromUserAgent String?      @map("signed_from_user_agent")
+  signatureImageKey   String?        @map("signature_image_key") @db.VarChar(256)
+  signedAt            DateTime?      @map("signed_at") @db.Timestamptz
+  signedFromUserAgent String?        @map("signed_from_user_agent")
   // 超賣標記：booking 接受但容量已滿，提醒教練處理
-  overCapacity       Boolean       @default(false) @map("over_capacity")
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  overCapacity        Boolean        @default(false) @map("over_capacity")
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  user          User           @relation(fields: [userId], references: [lineUserId], onDelete: Restrict)
-  paymentProofs   PaymentProof[]
-  reminderLogs    ReminderLog[]
-  refundRequests  RefundRequest[] // v274
-  paymentEntries  PaymentEntry[]  // v366：付款/折抵逐筆明細帳
+  user           User            @relation(fields: [userId], references: [lineUserId], onDelete: Restrict)
+  paymentProofs  PaymentProof[]
+  reminderLogs   ReminderLog[]
+  refundRequests RefundRequest[] // v274
+  paymentEntries PaymentEntry[] // v366：付款/折抵逐筆明細帳
 
   // v355：效能索引（原本完全沒有，所有 admin/coach/cron 查詢都是 seq scan）
   @@index([refId, type, status]) // by-trip / coach-today / reminders
@@ -403,23 +403,23 @@ model Booking {
 }
 
 model PaymentProof {
-  id         String           @id @default(uuid()) @db.Uuid
-  bookingId  String           @map("booking_id") @db.Uuid
-  type       PaymentProofType
-  amount     Int
+  id           String           @id @default(uuid()) @db.Uuid
+  bookingId    String           @map("booking_id") @db.Uuid
+  type         PaymentProofType
+  amount       Int
   // v238：照片變 optional（後5碼 + 說明就夠核對）；imageKey 改 nullable
-  imageKey   String?          @map("image_key")
+  imageKey     String?          @map("image_key")
   // v379：縮圖 base64（~160px）永遠存 DB → 清單即時顯示、不靠 R2 presign，修「無預覽」+ 加速。
   //   大圖仍走 imageKey（R2 key 優先，R2 不行才退 base64）。
-  thumbBase64 String?         @map("thumb_base64") @db.Text
-  last5      String?          @map("last5") @db.VarChar(8) // 匯款帳號後 5 碼
-  note       String? // 匯款說明（選填）
-  uploadedAt DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz
-  verifiedBy String?          @map("verified_by") @db.VarChar(64)
-  verifiedAt DateTime?        @map("verified_at") @db.Timestamptz
+  thumbBase64  String?          @map("thumb_base64") @db.Text
+  last5        String?          @map("last5") @db.VarChar(8) // 匯款帳號後 5 碼
+  note         String? // 匯款說明（選填）
+  uploadedAt   DateTime         @default(now()) @map("uploaded_at") @db.Timestamptz
+  verifiedBy   String?          @map("verified_by") @db.VarChar(64)
+  verifiedAt   DateTime?        @map("verified_at") @db.Timestamptz
   // v297：駁回保留紀錄而不刪，客戶看得到老闆說明
-  rejectedAt   DateTime? @map("rejected_at")   @db.Timestamptz
-  rejectReason String?   @map("reject_reason") @db.Text
+  rejectedAt   DateTime?        @map("rejected_at") @db.Timestamptz
+  rejectReason String?          @map("reject_reason") @db.Text
 
   booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   verifier User?   @relation(fields: [verifiedBy], references: [lineUserId], onDelete: SetNull)
@@ -435,8 +435,8 @@ model PaymentProof {
 model PaymentEntry {
   id            String   @id @default(uuid()) @db.Uuid
   bookingId     String   @map("booking_id") @db.Uuid
-  amount        Int                                  // 正=加付款；負=沖銷
-  kind          String   @db.VarChar(24)             // transfer/cash/linepay/credit/boss_discount/assistant/other/reversal
+  amount        Int // 正=加付款；負=沖銷
+  kind          String   @db.VarChar(24) // transfer/cash/linepay/credit/boss_discount/assistant/other/reversal
   isCash        Boolean  @default(true) @map("is_cash")
   note          String?  @db.Text
   createdById   String?  @map("created_by_id") @db.VarChar(64)
@@ -481,26 +481,26 @@ model BookingStatusLog {
 
 // v274：退款申請（兩段式 — admin 發起 → 客戶確認 → 執行）
 model RefundRequest {
-  id              String    @id @default(uuid()) @db.Uuid
-  bookingId       String    @map("booking_id") @db.Uuid
-  requestedBy     String    @map("requested_by") @db.VarChar(64) // admin / customer 的 lineUserId
+  id             String    @id @default(uuid()) @db.Uuid
+  bookingId      String    @map("booking_id") @db.Uuid
+  requestedBy    String    @map("requested_by") @db.VarChar(64) // admin / customer 的 lineUserId
   // v280：誰發起的（customer 客戶自助 / admin 老闆發起給客戶確認）
-  initiatedBy     String    @default("admin") @map("initiated_by") @db.VarChar(16)
-  method          String    @db.VarChar(16)   // "cash" 或 "credit"
-  amount          Int                          // 退款金額 NT$
-  creditBonusPct  Int       @default(0) @map("credit_bonus_pct") // 抵用金額外加成 %
-  reason          String?   @db.Text
+  initiatedBy    String    @default("admin") @map("initiated_by") @db.VarChar(16)
+  method         String    @db.VarChar(16) // "cash" 或 "credit"
+  amount         Int // 退款金額 NT$
+  creditBonusPct Int       @default(0) @map("credit_bonus_pct") // 抵用金額外加成 %
+  reason         String?   @db.Text
   // v275：退款備註（admin 寫實際退款管道，內部用，會 copy 到 booking.refundNote）
-  refundNote      String?   @map("refund_note") @db.Text
+  refundNote     String?   @map("refund_note") @db.Text
   // 狀態：
   // pending_customer (admin 發起，等客戶) / accepted (客戶同意) /
   // questioning (客戶有疑問) / executed (已執行) / cancelled (admin 取消申請) /
   // v280：pending_admin (客戶發起，等 admin 審) / rejected_by_admin
-  status          String    @default("pending_customer") @db.VarChar(32)
-  customerNote    String?   @map("customer_note") @db.Text
-  respondedAt     DateTime? @map("responded_at") @db.Timestamptz
-  executedAt      DateTime? @map("executed_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  status         String    @default("pending_customer") @db.VarChar(32)
+  customerNote   String?   @map("customer_note") @db.Text
+  respondedAt    DateTime? @map("responded_at") @db.Timestamptz
+  executedAt     DateTime? @map("executed_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
@@ -545,41 +545,41 @@ model TripMedia {
 // v318：客製化潛水願望單
 // 客戶提出想潛的時間/地點/方式 → 老闆與客戶來回討論 → 老闆確認後開正式場次
 model DiveWish {
-  id              String   @id @default(uuid()) @db.Uuid
+  id                 String    @id @default(uuid()) @db.Uuid
   // v328：願望單編號 W20260605-XX
-  code            String?  @unique @map("code") @db.VarChar(12)
-  userId          String   @map("user_id") @db.VarChar(64)
+  code               String?   @unique @map("code") @db.VarChar(12)
+  userId             String    @map("user_id") @db.VarChar(64)
   // 願望內容
-  type            String   @db.VarChar(16) // "boat" 船潛 / "shore" 岸潛 / "night" 夜潛 / "tour" 潛水團
-  preferredDate   DateTime @map("preferred_date") @db.Date
+  type               String    @db.VarChar(16) // "boat" 船潛 / "shore" 岸潛 / "night" 夜潛 / "tour" 潛水團
+  preferredDate      DateTime  @map("preferred_date") @db.Date
   // 備選日期: ["YYYY-MM-DD", ...]
-  alternativeDates Json    @default("[]") @map("alternative_dates")
+  alternativeDates   Json      @default("[]") @map("alternative_dates")
   // 標準潛點 id: ["龍洞", "鼻頭", ...]
-  diveSiteIds     Json     @default("[]") @map("dive_site_ids")
+  diveSiteIds        Json      @default("[]") @map("dive_site_ids")
   // 客戶自填的「其他潛點」（如：綠島、墾丁）
-  otherSites      String?  @map("other_sites")
-  participants    Int      @default(1)
-  budgetPerPerson Int?     @map("budget_per_person")
-  customerNote    String?  @map("customer_note") @db.Text
+  otherSites         String?   @map("other_sites")
+  participants       Int       @default(1)
+  budgetPerPerson    Int?      @map("budget_per_person")
+  customerNote       String?   @map("customer_note") @db.Text
   // 參考圖片: [{ url, key?, type: "r2"|"link", caption? }]
-  referenceImages Json     @default("[]") @map("reference_images")
+  referenceImages    Json      @default("[]") @map("reference_images")
   // 討論串: [{ from: "customer"|"boss", text, at: ISO string, actorId, attachments? }]
-  messages        Json     @default("[]")
+  messages           Json      @default("[]")
   // 狀態
-  status          String   @default("pending") @db.VarChar(16) // pending / discussing / converted / cancelled
-  cancelledBy     String?  @map("cancelled_by") @db.VarChar(16) // customer / boss / system (7天自動)
-  cancellationReason String? @map("cancellation_reason") @db.Text
+  status             String    @default("pending") @db.VarChar(16) // pending / discussing / converted / cancelled
+  cancelledBy        String?   @map("cancelled_by") @db.VarChar(16) // customer / boss / system (7天自動)
+  cancellationReason String?   @map("cancellation_reason") @db.Text
   // 7 天無互動自動關閉
-  lastActivityAt  DateTime @default(now()) @map("last_activity_at") @db.Timestamptz
+  lastActivityAt     DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz
   // 轉成正式場次
-  convertedTripId String?  @map("converted_trip_id") @db.Uuid
-  convertedTourId String?  @map("converted_tour_id") @db.Uuid
-  convertedAt     DateTime? @map("converted_at") @db.Timestamptz
-  cancelledAt     DateTime? @map("cancelled_at") @db.Timestamptz
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  convertedTripId    String?   @map("converted_trip_id") @db.Uuid
+  convertedTourId    String?   @map("converted_tour_id") @db.Uuid
+  convertedAt        DateTime? @map("converted_at") @db.Timestamptz
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  user            User     @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -664,39 +664,45 @@ model SiteConfig {
   firstOrderRewardExpiryDays Int @default(360) @map("first_order_reward_expiry_days")
 
   // v388：註冊禮金（Email 驗證通過後發；0 = 停用）
-  signupRewardAmount         Int @default(50)  @map("signup_reward_amount")
-  signupRewardExpiryDays     Int @default(0)   @map("signup_reward_expiry_days") // 0 = 永不過期
+  signupRewardAmount     Int @default(50) @map("signup_reward_amount")
+  signupRewardExpiryDays Int @default(0) @map("signup_reward_expiry_days") // 0 = 永不過期
   // v388：VIP5 滿級後每 N 潛回饋 M 元抵用金（0 = 停用）
-  vipOverflowDives           Int @default(50)   @map("vip_overflow_dives")
-  vipOverflowCredit          Int @default(1000) @map("vip_overflow_credit")
+  vipOverflowDives       Int @default(50) @map("vip_overflow_dives")
+  vipOverflowCredit      Int @default(1000) @map("vip_overflow_credit")
 
   // v264：自動發送設定
   //   每日天氣回報（Cronicle 觸發）
-  dailyWeatherReportEnabled Boolean @default(false) @map("daily_weather_report_enabled")
+  dailyWeatherReportEnabled    Boolean   @default(false) @map("daily_weather_report_enabled")
   // recipients: ["line:Uxxx", "email:xxx@yy.com", ...]
-  dailyWeatherReportRecipients Json @default("[]") @map("daily_weather_report_recipients")
+  dailyWeatherReportRecipients Json      @default("[]") @map("daily_weather_report_recipients")
   dailyWeatherReportLastSentAt DateTime? @map("daily_weather_report_last_sent_at") @db.Timestamptz
   // v389：發送時段（台灣時間，僅供 UI 產生 Cronicle UTC cron + 顯示），格式 [{"h":22,"m":0},{"h":5,"m":0}]
-  weatherReportSlots Json @default("[{\"h\":22,\"m\":0},{\"h\":5,\"m\":0}]") @map("weather_report_slots")
+  weatherReportSlots           Json      @default("[{\"h\":22,\"m\":0},{\"h\":5,\"m\":0}]") @map("weather_report_slots")
   // v389：發送內容開關，格式 {"wind":true,"temp":true,"sessions":true,"wave":false}
-  weatherReportContent Json @default("{\"wind\":true,\"temp\":true,\"sessions\":true,\"wave\":false}") @map("weather_report_content")
+  weatherReportContent         Json      @default("{\"wind\":true,\"temp\":true,\"sessions\":true,\"wave\":false}") @map("weather_report_content")
 
   // v315：每日訂單日報（早 07:00 由 Cronicle 觸發）
-  dailyBriefingEnabled Boolean @default(true) @map("daily_briefing_enabled")
+  dailyBriefingEnabled        Boolean   @default(true) @map("daily_briefing_enabled")
   // 是否也發給有 coach 角色的人（教練版只列場次+客戶，不含金額）
-  dailyBriefingIncludeCoaches Boolean @default(true) @map("daily_briefing_include_coaches")
-  dailyBriefingLastSentAt DateTime? @map("daily_briefing_last_sent_at") @db.Timestamptz
+  dailyBriefingIncludeCoaches Boolean   @default(true) @map("daily_briefing_include_coaches")
+  dailyBriefingLastSentAt     DateTime? @map("daily_briefing_last_sent_at") @db.Timestamptz
 
   // v391：場次 Dump 自動優惠開頭（開關 + 可編輯文案）
   dumpPromoEnabled Boolean @default(false) @map("dump_promo_enabled")
-  dumpPromoText    String  @default("")    @map("dump_promo_text")
+  dumpPromoText    String  @default("") @map("dump_promo_text")
+
+  // v403：首頁「最新動態」影片清單 + 模式
+  // homeVideosMode: "curated" 用 homeVideos JSON；"auto" 改打 /api/youtube/recent
+  // homeVideos: [{id, title, isShort}]
+  homeVideosMode String @default("curated") @map("home_videos_mode") @db.VarChar(16)
+  homeVideos     Json   @default("[]") @map("home_videos")
 
   // v392：氣瓶限時折扣（自動套用；每支氣瓶折抵 NT$，可設理由 + 起訖日）
   tankPromoEnabled  Boolean   @default(false) @map("tank_promo_enabled")
-  tankPromoDiscount Int       @default(0)     @map("tank_promo_discount")
-  tankPromoReason   String    @default("")    @map("tank_promo_reason")
+  tankPromoDiscount Int       @default(0) @map("tank_promo_discount")
+  tankPromoReason   String    @default("") @map("tank_promo_reason")
   tankPromoStart    DateTime? @map("tank_promo_start") @db.Timestamptz
-  tankPromoEnd      DateTime? @map("tank_promo_end")   @db.Timestamptz
+  tankPromoEnd      DateTime? @map("tank_promo_end") @db.Timestamptz
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
@@ -728,8 +734,8 @@ model AuditLog {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // 操作者
-  actorId   String? @map("actor_id") @db.VarChar(64) // lineUserId 或 "system"
-  actorName String? @map("actor_name") @db.VarChar(128)
+  actorId        String? @map("actor_id") @db.VarChar(64) // lineUserId 或 "system"
+  actorName      String? @map("actor_name") @db.VarChar(128)
   // v334：操作者角色（customer / admin / boss / system）+ IP + UA
   actorRole      String? @map("actor_role") @db.VarChar(16)
   actorIp        String? @map("actor_ip") @db.VarChar(64)

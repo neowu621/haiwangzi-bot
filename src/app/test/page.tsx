@@ -89,13 +89,14 @@ const LineIcon = ({ s = 18 }: { s?: number }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.5 2 2 5.8 2 10.4c0 4.1 3.6 7.6 8.5 8.2.3.07.8.2.9.5.1.27.06.7.03.97l-.14.86c-.04.25-.2 1 .87.54s5.8-3.4 7.9-5.85C21.5 14 22 12.3 22 10.4 22 5.8 17.5 2 12 2z" /></svg>
 );
 
-// 最新動態 — 5 支精選影片。優先顯示這份策展清單；之後想開「自動抓最新」
-// 模式時，把 FETCH_MODE 改 "auto"，前端會改用 /api/youtube/recent。
+// v403：最新動態影片清單 + 模式改由 admin 後台管理（/admin/settings 首頁 tab）
+//   - 前端先讀 /api/config → { homeVideosMode, homeVideos }
+//   - homeVideosMode === "auto" 時改打 /api/youtube/recent 抓最新；失敗 fallback 用 homeVideos
+//   - 都拿不到 → 用 BUILTIN_FALLBACK_VIDS 兜底（避免首頁空白）
 type YtVideo = { id: string; title: string; isShort: boolean };
-const FETCH_MODE: "curated" | "auto" = "curated";
 
-// 策展清單（依此順序顯示，第一支自動 feat 大格）
-const CURATED_VIDS: YtVideo[] = [
+// 內建保底（DB 為空、API 全炸時最後一道防線）
+const BUILTIN_FALLBACK_VIDS: YtVideo[] = [
   { id: "8nDJqaDl_sM", title: "萊萊鶯歌石剪輯", isShort: true },
   { id: "04q6aMx_4U4", title: "海王子潛水", isShort: false },
   { id: "0XE0lzv7jpY", title: "海王子 Shorts", isShort: true },
@@ -111,26 +112,38 @@ export default function HomePage() {
   const [playing, setPlaying] = useState<string | null>(null);
   const [loaderHide, setLoaderHide] = useState(false);
   const bubbleRef = useRef<HTMLDivElement>(null);
-  // 最新動態 — 預設用 CURATED_VIDS 策展清單；若 FETCH_MODE === "auto" 才打 API。
-  const [videos, setVideos] = useState<YtVideo[]>(CURATED_VIDS);
-  const [videosLoading, setVideosLoading] = useState(false);
+  // v403：最新動態影片清單從 /api/config 取，模式由 admin 後台控制
+  const [videos, setVideos] = useState<YtVideo[]>(BUILTIN_FALLBACK_VIDS);
+  const [videosLoading, setVideosLoading] = useState(true);
   useEffect(() => {
-    if (FETCH_MODE !== "auto") return;
     let cancelled = false;
-    setVideosLoading(true);
-    fetch("/api/youtube/recent")
-      .then((r) => r.json())
-      .then((data: { videos?: YtVideo[]; error?: string }) => {
+    (async () => {
+      try {
+        const cfg = await fetch("/api/config").then((r) => r.json()).catch(() => null) as
+          | { homeVideosMode?: "curated" | "auto"; homeVideos?: YtVideo[] }
+          | null;
         if (cancelled) return;
-        const list = Array.isArray(data.videos) && data.videos.length > 0 ? data.videos : CURATED_VIDS;
-        setVideos(list);
-        setVideosLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setVideos(CURATED_VIDS);
-        setVideosLoading(false);
-      });
+        const mode = cfg?.homeVideosMode ?? "curated";
+        const curated = Array.isArray(cfg?.homeVideos) && cfg!.homeVideos!.length > 0
+          ? cfg!.homeVideos!
+          : BUILTIN_FALLBACK_VIDS;
+        if (mode === "auto") {
+          // 改打 RSS — 失敗 fallback 用後台策展清單
+          try {
+            const data = await fetch("/api/youtube/recent").then((r) => r.json()) as
+              { videos?: YtVideo[]; error?: string };
+            if (cancelled) return;
+            setVideos(Array.isArray(data.videos) && data.videos.length > 0 ? data.videos : curated);
+          } catch {
+            if (!cancelled) setVideos(curated);
+          }
+        } else {
+          setVideos(curated);
+        }
+      } finally {
+        if (!cancelled) setVideosLoading(false);
+      }
+    })();
     return () => { cancelled = true; };
   }, []);
 

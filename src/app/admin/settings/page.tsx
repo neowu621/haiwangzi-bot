@@ -109,6 +109,26 @@ interface Config {
   tankPromoReason?: string;
   tankPromoStart?: string | null;
   tankPromoEnd?: string | null;
+  // v403：首頁「最新動態」影片清單 + 模式
+  homeVideosMode?: "curated" | "auto";
+  homeVideos?: Array<{ id: string; title: string; isShort: boolean }>;
+}
+
+// v403：把 YouTube URL/Shorts/11 碼 id → { id, isShort }；無法 parse 回 null
+function parseYtUrl(raw: string): { id: string; isShort: boolean } | null {
+  const s = raw.trim();
+  if (!s) return null;
+  const idOnly = s.match(/^[A-Za-z0-9_-]{11}$/);
+  if (idOnly) return { id: idOnly[0], isShort: false };
+  let m = s.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+  if (m) return { id: m[1], isShort: false };
+  m = s.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/);
+  if (m) return { id: m[1], isShort: true };
+  m = s.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  if (m) return { id: m[1], isShort: false };
+  m = s.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/);
+  if (m) return { id: m[1], isShort: false };
+  return null;
 }
 
 // v391：Dump 優惠開頭預設文案（老闆可在系統設定編輯）
@@ -442,6 +462,11 @@ export default function SettingsPage() {
             </Button>
           </div>
         </SectionCard>
+
+        {/* v403：首頁「最新動態」YouTube 影片清單 + 模式 */}
+        <div className="mt-4">
+          <HomeVideosCard cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
+        </div>
         </TabsContent>
 
         <TabsContent value="links" className="mt-4">
@@ -1962,5 +1987,208 @@ function StorageStatsPanel() {
         </details>
       )}
     </div>
+  );
+}
+
+/* ─── v403：首頁「最新動態」影片清單 + 模式管理 ─────────────── */
+function HomeVideosCard({
+  cfg, setCfg, save, saving,
+}: {
+  cfg: Config;
+  setCfg: React.Dispatch<React.SetStateAction<Config | null>>;
+  save: (section: string, patch: Partial<Config>) => Promise<void>;
+  saving: string | null;
+}) {
+  const mode = cfg.homeVideosMode ?? "curated";
+  const vids = cfg.homeVideos ?? [];
+  const [bulkInput, setBulkInput] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+
+  function update(next: Array<{ id: string; title: string; isShort: boolean }>) {
+    setCfg((c) => (c ? { ...c, homeVideos: next } : c));
+  }
+
+  function moveItem(idx: number, dir: -1 | 1) {
+    const next = [...vids];
+    const tgt = idx + dir;
+    if (tgt < 0 || tgt >= next.length) return;
+    [next[idx], next[tgt]] = [next[tgt], next[idx]];
+    update(next);
+  }
+  function delItem(idx: number) {
+    update(vids.filter((_, i) => i !== idx));
+  }
+  function addOne() {
+    const parsed = parseYtUrl(bulkInput);
+    if (!parsed) { setErrMsg("無法解析 URL — 請貼 YouTube 連結（含 watch / shorts / youtu.be）或 11 碼影片 ID。"); return; }
+    if (vids.some((v) => v.id === parsed.id)) { setErrMsg(`已存在：${parsed.id}`); return; }
+    update([...vids, { id: parsed.id, title: "", isShort: parsed.isShort }]);
+    setBulkInput("");
+    setErrMsg("");
+  }
+  function bulkParse() {
+    const lines = bulkInput.split(/[\s,;\n]+/).map((s) => s.trim()).filter(Boolean);
+    if (!lines.length) { setErrMsg("請貼一或多個 URL，每行一個（或用空白/逗號分隔）"); return; }
+    const next = [...vids];
+    const failed: string[] = [];
+    let added = 0;
+    for (const ln of lines) {
+      const p = parseYtUrl(ln);
+      if (!p) { failed.push(ln); continue; }
+      if (next.some((v) => v.id === p.id)) continue;
+      next.push({ id: p.id, title: "", isShort: p.isShort });
+      added++;
+    }
+    update(next);
+    setBulkInput("");
+    setErrMsg(
+      `已加入 ${added} 支` +
+      (failed.length ? `；無法解析 ${failed.length} 行：${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}` : "")
+    );
+  }
+
+  return (
+    <SectionCard title="🎬 首頁「最新動態」YouTube 影片">
+      <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+        老闆可在這裡管理首頁「最新動態」區塊顯示的影片清單與抓取模式。儲存後最多 5 分鐘內生效（前端有快取）。
+      </p>
+
+      {/* 模式選擇 */}
+      <div className="mb-4 rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+        <Label className="mb-2 block text-xs font-semibold text-[var(--foreground)]">抓取模式</Label>
+        <div className="flex flex-col gap-2">
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input type="radio" name="hvm" checked={mode === "curated"}
+              onChange={() => setCfg((c) => c ? { ...c, homeVideosMode: "curated" } : c)}
+              className="mt-1 h-4 w-4 accent-[var(--color-phosphor)]" />
+            <div>
+              <div className="font-medium">策展模式（curated）</div>
+              <div className="text-[11px] text-[var(--muted-foreground)]">用下方清單固定顯示這些影片，依順序排版（第一支大格、其餘 4 小格）</div>
+            </div>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input type="radio" name="hvm" checked={mode === "auto"}
+              onChange={() => setCfg((c) => c ? { ...c, homeVideosMode: "auto" } : c)}
+              className="mt-1 h-4 w-4 accent-[var(--color-phosphor)]" />
+            <div>
+              <div className="font-medium">自動模式（auto）</div>
+              <div className="text-[11px] text-[var(--muted-foreground)]">改打 <code>/api/youtube/recent</code>，自動抓 YouTube 頻道最新 5 支（下方清單作為 API 失敗時的備用）</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* 影片清單 */}
+      <div className="mb-3">
+        <div className="mb-2 flex items-center justify-between">
+          <Label className="text-xs font-semibold text-[var(--foreground)]">影片清單（{vids.length} 支）</Label>
+          {vids.length > 0 && (
+            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]"
+              onClick={() => { if (window.confirm("清空整個清單？")) update([]); }}>
+              清空
+            </Button>
+          )}
+        </div>
+        {vids.length === 0 ? (
+          <p className="rounded border border-dashed px-3 py-4 text-center text-[11px] text-[var(--muted-foreground)]"
+            style={{ borderColor: "var(--border)" }}>
+            還沒有影片，請從下方加入。
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-[var(--muted)]">
+                  <th className="border px-2 py-1.5 text-left whitespace-nowrap" style={{ borderColor: "var(--border)" }}>順序</th>
+                  <th className="border px-2 py-1.5 text-left whitespace-nowrap" style={{ borderColor: "var(--border)" }}>類型</th>
+                  <th className="border px-2 py-1.5 text-left whitespace-nowrap" style={{ borderColor: "var(--border)" }}>影片 ID</th>
+                  <th className="border px-2 py-1.5 text-left" style={{ borderColor: "var(--border)" }}>標題（hover tooltip）</th>
+                  <th className="border px-2 py-1.5 whitespace-nowrap" style={{ borderColor: "var(--border)" }}>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vids.map((v, i) => (
+                  <tr key={`${v.id}-${i}`} className={i === 0 ? "bg-amber-50" : ""}>
+                    <td className="border px-2 py-1 whitespace-nowrap" style={{ borderColor: "var(--border)" }}>
+                      <span className="font-mono">{i + 1}</span>
+                      {i === 0 && <span className="ml-1 rounded bg-amber-200 px-1 text-[9px] font-bold text-amber-900">大格</span>}
+                    </td>
+                    <td className="border px-2 py-1 whitespace-nowrap" style={{ borderColor: "var(--border)" }}>
+                      <label className="flex cursor-pointer items-center gap-1 text-[11px]">
+                        <input type="checkbox" checked={v.isShort}
+                          onChange={(e) => {
+                            const next = [...vids];
+                            next[i] = { ...v, isShort: e.target.checked };
+                            update(next);
+                          }}
+                          className="h-3 w-3" />
+                        Shorts
+                      </label>
+                    </td>
+                    <td className="border px-2 py-1 font-mono text-[11px]" style={{ borderColor: "var(--border)" }}>
+                      <a href={`https://www.youtube.com/${v.isShort ? "shorts/" : "watch?v="}${v.id}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-blue-700 hover:underline">
+                        {v.id} ↗
+                      </a>
+                    </td>
+                    <td className="border px-2 py-1" style={{ borderColor: "var(--border)" }}>
+                      <Input value={v.title}
+                        onChange={(e) => {
+                          const next = [...vids];
+                          next[i] = { ...v, title: e.target.value };
+                          update(next);
+                        }}
+                        placeholder="(選填) 例：202606 萊萊鶯歌石剪輯"
+                        className="h-7 text-xs" />
+                    </td>
+                    <td className="border px-1 py-1 whitespace-nowrap" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => moveItem(i, -1)} disabled={i === 0}
+                          className="rounded border px-1 text-[10px] disabled:opacity-30">↑</button>
+                        <button onClick={() => moveItem(i, 1)} disabled={i === vids.length - 1}
+                          className="rounded border px-1 text-[10px] disabled:opacity-30">↓</button>
+                        <button onClick={() => delItem(i)}
+                          className="rounded border border-red-300 px-1 text-[10px] text-red-700 hover:bg-red-50">刪</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 加入新影片 */}
+      <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+        <Label className="mb-2 block text-xs font-semibold text-[var(--foreground)]">加入新影片</Label>
+        <textarea
+          rows={3}
+          className="w-full rounded-md border p-2 text-xs font-mono"
+          style={{ borderColor: "var(--border)" }}
+          placeholder={"貼 YouTube 連結，每行一個。支援：\nhttps://www.youtube.com/watch?v=XXXX\nhttps://www.youtube.com/shorts/XXXX\nhttps://youtu.be/XXXX\n或直接貼 11 碼影片 ID"}
+          value={bulkInput}
+          onChange={(e) => { setBulkInput(e.target.value); setErrMsg(""); }}
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={addOne}>+ 加入單筆</Button>
+          <Button size="sm" variant="outline" onClick={bulkParse}>📋 批次解析</Button>
+          {errMsg && <span className="text-[11px] text-amber-700">{errMsg}</span>}
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+          onClick={() => save("首頁影片", {
+            homeVideosMode: mode,
+            homeVideos: vids,
+          })}
+          disabled={saving === "首頁影片"}>
+          <Save className="mr-1.5 h-4 w-4" />
+          {saving === "首頁影片" ? "儲存中..." : "儲存首頁影片設定"}
+        </Button>
+      </div>
+    </SectionCard>
   );
 }

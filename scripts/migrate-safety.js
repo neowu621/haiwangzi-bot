@@ -57,6 +57,10 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_report_slots JSONB NOT NULL DEFAULT '[{"h":22,"m":0},{"h":5,"m":0}]'::jsonb`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_report_content JSONB NOT NULL DEFAULT '{"wind":true,"temp":true,"sessions":true,"wave":false}'::jsonb`,
 
+  // v403: 首頁影片清單 + 模式（DB 管理）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_videos_mode VARCHAR(16) NOT NULL DEFAULT 'curated'`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_videos JSONB NOT NULL DEFAULT '[]'::jsonb`,
+
   // v275: 退款備註
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,
   `ALTER TABLE refund_requests ADD COLUMN IF NOT EXISTS refund_note TEXT`,

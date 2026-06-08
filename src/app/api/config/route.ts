@@ -17,6 +17,9 @@ export async function GET() {
   let paymentInfo: PaymentInfo = {};
   let cancellationPolicy = DEFAULT_CANCELLATION_POLICY;
   let safetyPolicy = DEFAULT_SAFETY_POLICY;
+  // v403：首頁影片清單 + 模式
+  let homeVideosMode: "curated" | "auto" = "curated";
+  let homeVideos: Array<{ id: string; title: string; isShort: boolean }> = [];
   try {
     const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
     if (cfg?.externalLinks) {
@@ -30,6 +33,19 @@ export async function GET() {
     }
     if (cfg?.safetyPolicy) {
       safetyPolicy = cfg.safetyPolicy;
+    }
+    const rawMode = (cfg as unknown as { homeVideosMode?: string } | null)?.homeVideosMode;
+    if (rawMode === "auto" || rawMode === "curated") homeVideosMode = rawMode;
+    const rawVids = (cfg as unknown as { homeVideos?: unknown } | null)?.homeVideos;
+    if (Array.isArray(rawVids)) {
+      homeVideos = rawVids
+        .filter((v): v is { id: string; title?: string; isShort?: boolean } =>
+          !!v && typeof (v as { id?: unknown }).id === "string" && (v as { id: string }).id.length > 0)
+        .map((v) => ({
+          id: v.id,
+          title: typeof v.title === "string" ? v.title : "",
+          isShort: !!v.isShort,
+        }));
     }
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
@@ -56,5 +72,7 @@ export async function GET() {
     externalLinks,
     cancellationPolicy,
     safetyPolicy,
+    homeVideosMode,
+    homeVideos,
   });
 }
