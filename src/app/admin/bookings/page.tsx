@@ -3,6 +3,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
+import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,9 +175,12 @@ export default function AdminBookingsPage() {
   const { adminUser } = useAdminAuth();
   const isAdminOrBoss = adminUser?.effectiveRoles.some((r) => r === "admin" || r === "boss") ?? false;
 
-  const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const BOOKINGS_URL = "/api/admin/bookings";
+  const [bookings, setBookings] = useState<AdminBooking[]>(
+    () => getCached<{ bookings: AdminBooking[] }>(BOOKINGS_URL)?.bookings ?? [],
+  );
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null); // v320
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getCached(BOOKINGS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminBooking | null>(null);
   // v314：開啟編輯時 snapshot 原始值，儲存前比對差異
@@ -430,12 +434,15 @@ export default function AdminBookingsPage() {
   }
 
   useEffect(() => {
-    // v183：只載 /api/admin/bookings；by-trip 改放在 /admin/trips 展開
-    adminFetch<{ bookings: AdminBooking[] }>("/api/admin/bookings")
-      .then((b) => setBookings(b.bookings))
-      .catch((e) => setErr(e.message))
-      .finally(() => setLoading(false));
+    // v399：先秀快取（秒開）、背景重新驗證；切頁時忽略未回結果
+    let alive = true;
+    cachedFetch<{ bookings: AdminBooking[] }>(BOOKINGS_URL)
+      .then((b) => { if (alive) { setBookings(b.bookings); setLoading(false); } })
+      .catch((e) => { if (alive) { setErr(e.message); setLoading(false); } });
+    return () => { alive = false; };
   }, []);
+  // v399：本地狀態變動（核可/退款等）即時同步回快取，避免下次切回閃舊資料
+  useEffect(() => { setCached(BOOKINGS_URL, { bookings }); }, [bookings]);
 
   // 全部訂單: build unique trip keys for filter
   const tripKeyOptions: { key: string; label: string }[] = [{ key: "all", label: "全部" }];

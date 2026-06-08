@@ -44,6 +44,23 @@ export async function adminFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  // v399：GET 去重 — 同一 path 同時只發一支（連點/快速切頁不疊請求）
+  if (method === "GET" && !init?.body) {
+    const ex = getInflight.get(path);
+    if (ex) return ex as Promise<T>;
+    const p = rawAdminFetch<T>(path, init).finally(() => {
+      if (getInflight.get(path) === p) getInflight.delete(path);
+    });
+    getInflight.set(path, p as Promise<unknown>);
+    return p;
+  }
+  return rawAdminFetch<T>(path, init);
+}
+
+const getInflight = new Map<string, Promise<unknown>>();
+
+async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAdminToken();
   const res = await fetch(path, {
     ...init,

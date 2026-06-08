@@ -2,6 +2,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
+
+const TOURS_URL = "/api/admin/tours";
 import { Trash2, Ban, X, Copy, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { weekdayTW } from "@/lib/utils";
 import ExcelJS from "exceljs";
@@ -131,8 +134,10 @@ const BLANK: FormState = {
 };
 
 export default function ToursPage() {
-  const [tours, setTours] = useState<Tour[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tours, setTours] = useState<Tour[]>(
+    () => getCached<{ tours: Tour[] }>(TOURS_URL)?.tours ?? [],
+  );
+  const [loading, setLoading] = useState(() => getCached(TOURS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "open" | "cancelled">("all");
   const [destFilter, setDestFilter] = useState<"all" | "taiwan" | "overseas">("all");
@@ -210,8 +215,8 @@ export default function ToursPage() {
 
   async function load() {
     try {
-      setLoading(true);
-      const data = await adminFetch<{ tours: Tour[] }>("/api/admin/tours");
+      if (getCached(TOURS_URL) === undefined) setLoading(true);
+      const data = await cachedFetch<{ tours: Tour[] }>(TOURS_URL, { force: true });
       setTours(data.tours);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "載入失敗");
@@ -221,6 +226,8 @@ export default function ToursPage() {
   }
 
   useEffect(() => { load(); }, []);
+  // v399：本地狀態變動同步回快取
+  useEffect(() => { setCached(TOURS_URL, { tours }); }, [tours]);
 
   function newTrip() {
     setForm(BLANK);

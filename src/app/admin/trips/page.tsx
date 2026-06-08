@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { getCached, setCached } from "@/lib/admin-cache";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,10 +204,14 @@ function estimatedRevenue(trip: Trip): number {
 }
 
 export default function AdminTripsPage() {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [sites, setSites] = useState<Site[]>([]);
+  const [trips, setTrips] = useState<Trip[]>(
+    () => getCached<{ trips: Trip[] }>("/api/admin/trips")?.trips ?? [],
+  );
+  const [sites, setSites] = useState<Site[]>(
+    () => (getCached<Site[]>("/api/admin/sites") as Site[] | undefined) ?? [],
+  );
   const [coaches, setCoaches] = useState<Coach[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getCached("/api/admin/trips") === undefined);
   const [err, setErr] = useState<string | null>(null);
 
   // Dialog state
@@ -303,10 +308,10 @@ export default function AdminTripsPage() {
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches"),
       adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string } }>("/api/admin/site-config"),
     ]).then(([t, s, c, cfg]) => {
-      if (t.status === "fulfilled") setTrips(t.value.trips ?? []);
+      if (t.status === "fulfilled") { setTrips(t.value.trips ?? []); setCached("/api/admin/trips", { trips: t.value.trips ?? [] }); }
       else setErr("場次載入失敗：" + (t.reason?.message ?? String(t.reason)));
 
-      if (s.status === "fulfilled") setSites(Array.isArray(s.value) ? s.value : []);
+      if (s.status === "fulfilled") { setSites(Array.isArray(s.value) ? s.value : []); setCached("/api/admin/sites", Array.isArray(s.value) ? s.value : []); }
       if (c.status === "fulfilled") setCoaches(c.value.coaches ?? []);
       if (cfg.status === "fulfilled") {
         const dp = cfg.value.config.defaultTripPricing;
@@ -320,6 +325,8 @@ export default function AdminTripsPage() {
       }
     }).finally(() => setLoading(false));
   }, []);
+  // v399：場次本地變動同步回快取
+  useEffect(() => { setCached("/api/admin/trips", { trips }); }, [trips]);
 
   function siteName(id: string) {
     return sites.find((s) => s.id === id)?.name ?? id;

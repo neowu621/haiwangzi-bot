@@ -7,6 +7,9 @@
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
+
+const STATS_URL = "/api/admin/stats";
 import { useRouter } from "next/navigation";
 import {
   Calendar, ChevronRight, Sun, Moon,
@@ -85,32 +88,30 @@ const PAY_STATUS_COLOR: Record<string, string> = {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<Stats | null>(() => getCached<Stats>(STATS_URL) ?? null);
   const [pendingWishes, setPendingWishes] = useState(0); // v318
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getCached(STATS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     setRefreshing(true);
-    try {
-      const d = await adminFetch<Stats>("/api/admin/stats");
-      setStats(d);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-    // v318：拉願望單 pending + discussing 數，獨立失敗不影響主 dashboard
-    try {
-      const w = await adminFetch<{ counts: Array<{ status: string; _count: { _all: number } }> }>(
-        "/api/admin/dive-wishes?status=all"
-      );
+    // v399：stats 與願望單數「並行」拉（原本序列等待），stats 走快取秒開
+    const [s, w] = await Promise.allSettled([
+      cachedFetch<Stats>(STATS_URL, { force: true }),
+      adminFetch<{ counts: Array<{ status: string; _count: { _all: number } }> }>(
+        "/api/admin/dive-wishes?status=all",
+      ),
+    ]);
+    if (s.status === "fulfilled") { setStats(s.value); setCached(STATS_URL, s.value); }
+    else setErr(s.reason instanceof Error ? s.reason.message : "載入失敗");
+    if (w.status === "fulfilled") {
       const map: Record<string, number> = {};
-      for (const c of w.counts ?? []) map[c.status] = c._count._all;
+      for (const c of w.value.counts ?? []) map[c.status] = c._count._all;
       setPendingWishes((map.pending ?? 0) + (map.discussing ?? 0));
-    } catch { /* ignore */ }
+    }
+    setLoading(false);
+    setRefreshing(false);
   }
 
   useEffect(() => { load(); }, []);

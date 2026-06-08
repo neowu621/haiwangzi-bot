@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { getCached, cachedFetch } from "@/lib/admin-cache";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
@@ -159,17 +160,19 @@ export default function CreditsPage() {
   }
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const qs = new URLSearchParams();
+    if (reasonFilter !== "all") qs.set("reason", reasonFilter);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    qs.set("limit", "500");
+    const url = `/api/admin/credits?${qs.toString()}`;
+    // v399：有快取就先秀、不轉圈；背景重新驗證
+    const cached = getCached<{ txs: CreditTx[]; stats: Stats }>(url);
+    if (cached) { setTxs(cached.txs); setStats(cached.stats); setLoading(false); }
+    else setLoading(true);
     setErr(null);
     try {
-      const qs = new URLSearchParams();
-      if (reasonFilter !== "all") qs.set("reason", reasonFilter);
-      if (from) qs.set("from", from);
-      if (to) qs.set("to", to);
-      qs.set("limit", "500");
-      const r = await adminFetch<{ txs: CreditTx[]; stats: Stats }>(
-        `/api/admin/credits?${qs.toString()}`,
-      );
+      const r = await cachedFetch<{ txs: CreditTx[]; stats: Stats }>(url, { force: true });
       setTxs(r.txs);
       setStats(r.stats);
     } catch (e) {

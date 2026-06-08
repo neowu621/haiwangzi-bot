@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
+
+const USERS_URL = "/api/admin/users";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,10 +146,12 @@ function roleBadgeVariant(r: Role): "coral" | "ocean" | "muted" {
 }
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>(
+    () => getCached<{ users: AdminUser[] }>(USERS_URL)?.users ?? [],
+  );
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null); // v320
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getCached(USERS_URL) === undefined);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState("");
@@ -178,7 +183,7 @@ export default function AdminUsersPage() {
 
   async function load() {
     try {
-      const d = await adminFetch<{ users: AdminUser[] }>("/api/admin/users");
+      const d = await cachedFetch<{ users: AdminUser[] }>(USERS_URL, { force: true });
       setUsers(d.users);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -186,6 +191,8 @@ export default function AdminUsersPage() {
       setLoading(false);
     }
   }
+  // v399：本地狀態變動同步回快取
+  useEffect(() => { setCached(USERS_URL, { users }); }, [users]);
 
   useEffect(() => {
     load();
