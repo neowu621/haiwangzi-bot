@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>海王子首頁 — 最新動態(自動) + 後台設定 預覽</title>
+<style>
+  :root{
+    --abyss:#02152a; --deep:#052744; --ocean:#0a3e72; --blue:#1b6fb8;
+    --sky:#3aa6e6; --glow:#66d8f6; --glow-soft:#a5e8fb; --foam:#eaf6ff;
+    --mist:#9fc4e2; --gold:#ffd36b; --line:#06C755;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Noto Sans TC","Segoe UI","PingFang TC",sans-serif;background:#0a1622;color:var(--foam);}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px;}
+  .lbl{font-size:11px;letter-spacing:2px;color:var(--glow);text-transform:uppercase;font-weight:700;}
+  h2{font-family:"Noto Serif TC",serif;font-weight:900;font-size:30px;margin:6px 0 4px;color:#fff;}
+  .sub{color:var(--mist);font-size:14px;margin-bottom:22px;}
+  /* ===== 最新動態 section（深藍實拍風）===== */
+  .news{background:radial-gradient(120% 120% at 50% 0%, var(--deep), var(--abyss));border:1px solid rgba(102,216,246,0.15);border-radius:20px;padding:28px;position:relative;overflow:hidden;}
+  .pill{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:1px;}
+  .pill-yt{background:#ff000022;color:#ff6b6b;border:1px solid #ff000044;}
+  .pill-short{background:#a855f722;color:#d8b4fe;border:1px solid #a855f744;}
+  .pill-ig{background:linear-gradient(45deg,#f0933722,#cc2c7022);color:#f9a8d4;border:1px solid #cc2c7044;}
+  .pill-auto{background:#22c55e22;color:#86efac;border:1px solid #22c55e44;}
+  .pill-pin{background:var(--gold);color:#3a2a00;}
+  /* YT 不對稱網格 */
+  .yt-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-top:8px;}
+  .yt-card{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(102,216,246,0.2);background:#04263f;aspect-ratio:16/9;cursor:pointer;}
+  .yt-card.big{grid-row:span 2;aspect-ratio:auto;}
+  .yt-thumb{position:absolute;inset:0;background:linear-gradient(160deg,#0a3e72,#02152a);display:flex;align-items:flex-end;}
+  .yt-thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff;text-shadow:0 2px 12px #000;}
+  .yt-meta{position:relative;width:100%;padding:10px 12px;background:linear-gradient(transparent,rgba(2,21,42,0.92));}
+  .yt-title{font-size:13px;font-weight:700;color:#fff;line-height:1.35;}
+  .yt-card.big .yt-title{font-size:16px;}
+  .yt-date{font-size:10px;color:var(--mist);margin-top:3px;}
+  .badges{position:absolute;top:8px;left:8px;display:flex;gap:5px;z-index:2;}
+  /* IG 格狀 */
+  .ig-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px;}
+  .ig-card{aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#13314f,#091a2b);position:relative;cursor:pointer;}
+  .ig-card::after{content:"📷";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.4;}
+  .social{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+  .social a{font-size:12px;font-weight:700;padding:8px 14px;border-radius:30px;text-decoration:none;color:#fff;}
+  .s-yt{background:#ff0000;} .s-ig{background:linear-gradient(45deg,#f09433,#cc2c70,#bc1888);} .s-fb{background:#1877f2;} .s-line{background:var(--line);}
+  .flowline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--mist);margin-top:6px;}
+  .flowline b{color:var(--glow);}
+  /* ===== 後台設定面板 ===== */
+  .admin{background:#fff;color:#0a2342;border-radius:16px;padding:22px 24px;margin-top:30px;}
+  .admin h3{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .admin .hint{font-size:12px;color:#64748b;margin-bottom:16px;}
+  .card{border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:14px;}
+  .card .ct{font-weight:700;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+  .row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap;}
+  .row label{font-size:12px;color:#475569;min-width:120px;}
+  input[type=text],textarea,select{border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font-size:13px;flex:1;min-width:180px;}
+  textarea{width:100%;font-family:monospace;font-size:11px;}
+  .toggle{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;}
+  .badge2{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;}
+  .b-rec{background:#dcfce7;color:#166534;}
+  .b-opt{background:#fef3c7;color:#92400e;}
+  .save{background:#14b8a6;color:#fff;border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13px;cursor:pointer;}
+  .note{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:9px 11px;font-size:11px;color:#64748b;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ 前台：最新動態 section ============ -->
+  <div class="lbl">Latest · 自動更新</div>
+  <h2>最新動態</h2>
+  <div class="sub">YouTube 影片每小時自動抓最新；Instagram 自動同步——汪汪只要正常發片發限動，首頁就自己長出來。</div>
+
+  <div class="news">
+    <!-- YouTube -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <span class="pill pill-yt">▶ YouTube</span>
+      <span class="pill pill-auto">⚙ 自動抓取</span>
+      <span style="font-size:11px;color:var(--mist);">頻道 @haiwangzi-northeast-coast · 每小時更新</span>
+    </div>
+    <div class="yt-grid">
+      <div class="yt-card big">
+        <div class="badges"><span class="pill pill-yt">YouTube</span><span class="pill pill-pin">★ 精選</span></div>
+        <div class="yt-thumb"><div class="play">▶</div><div class="yt-meta"><div class="yt-title">東北角龍洞｜跟著汪汪教練 Fun Dive 全紀錄</div><div class="yt-date">2026/06/01 · 手動精選置頂</div></div></div>
+      </div>
+      <div class="yt-card">
+        <div class="badges"><span class="pill pill-auto">自動</span></div>
+        <div class="yt-thumb"><div class="play">▶</div><div class="yt-meta"><div class="yt-title">小琉球海龜共游</div><div class="yt-date">3 天前</div></div></div>
+      </div>
+      <div class="yt-card">
+        <div class="badges"><span class="pill pill-short">Shorts</span></div>
+        <div class="yt-thumb"><div class="play">▶</div><div class="yt-meta"><div class="yt-title">60秒：中性浮力小技巧</div><div class="yt-date">5 天前</div></div></div>
+      </div>
+      <div class="yt-card">
+        <div class="badges"><span class="pill pill-auto">自動</span></div>
+        <div class="yt-thumb"><div class="play">▶</div><div class="yt-meta"><div class="yt-title">綠島大香菇潛點導覽</div><div class="yt-date">1 週前</div></div></div>
+      </div>
+      <div class="yt-card">
+        <div class="badges"><span class="pill pill-short">Shorts</span></div>
+        <div class="yt-thumb"><div class="play">▶</div><div class="yt-meta"><div class="yt-title">水下手勢教學</div><div class="yt-date">2 週前</div></div></div>
+      </div>
+    </div>
+
+    <!-- Instagram -->
+    <div style="display:flex;align-items:center;gap:8px;margin:22px 0 2px;">
+      <span class="pill pill-ig">📷 Instagram</span>
+      <span class="pill pill-auto">⚙ 自動同步</span>
+      <span style="font-size:11px;color:var(--mist);">@chengruwang · 第三方動態牆</span>
+    </div>
+    <div class="ig-grid">
+      <div class="ig-card"></div><div class="ig-card"></div><div class="ig-card"></div>
+      <div class="ig-card"></div><div class="ig-card"></div><div class="ig-card"></div>
+    </div>
+
+    <!-- 社群追蹤 -->
+    <div class="social">
+      <a class="s-yt" href="#">▶ 訂閱 YouTube</a>
+      <a class="s-ig" href="#">📷 追蹤 Instagram</a>
+      <a class="s-fb" href="#">f Facebook</a>
+      <a class="s-line" href="#">＋ 加 LINE 預約</a>
+    </div>
+  </div>
+
+  <div class="flowline">
+    🔄 自動更新流程：<b>YouTube RSS</b> → 每小時 cron 抓最新 → 寫入 <b>MediaPost</b>（去重）→ 首頁直接讀（已快取，秒開）。
+    汪汪手動可：<b>精選置頂</b> / <b>隱藏某則</b> / <b>補手動貼文</b>。
+  </div>
+
+  <!-- ============ 後台：動態訊息設定 ============ -->
+  <div class="admin">
+    <h3>📡 動態訊息設定（系統設定 → 新分頁）</h3>
+    <div class="hint">汪汪在這裡設定一次，首頁「最新動態」就會自動維護。平常完全不用碰。</div>
+
+    <!-- YouTube -->
+    <div class="card">
+      <div class="ct">▶ YouTube 自動抓取 <span class="badge2 b-rec">推薦：RSS 免金鑰</span></div>
+      <div class="row"><label class="toggle"><input type="checkbox" checked> 啟用自動抓取</label></div>
+      <div class="row"><label>頻道 ID / Handle</label><input type="text" value="@haiwangzi-northeast-coast"></div>
+      <div class="row"><label>顯示數量</label><select><option>5</option><option selected>6</option><option>8</option></select>
+        <label style="min-width:auto">更新頻率</label><select><option selected>每小時</option><option>每天</option></select></div>
+      <div class="row"><label>抓取方式</label>
+        <select><option selected>RSS（免金鑰、零維護）</option><option>YouTube Data API（需金鑰、可分 Shorts）</option></select></div>
+      <div class="note">RSS 自動帶最新影片；想「手動精選某部代表作置頂」→ 到「最新動態」頁把該則設 ★ 精選即可（已有功能）。</div>
+    </div>
+
+    <!-- Instagram -->
+    <div class="card">
+      <div class="ct">📷 Instagram 自動同步 <span class="badge2 b-rec">推薦：第三方動態牆</span></div>
+      <div class="row"><label class="toggle"><input type="checkbox" checked> 啟用</label>
+        <label style="min-width:auto">方式</label>
+        <select><option selected>第三方動態牆（Behold.so / LightWidget）</option><option>Instagram Graph API（自建）</option></select></div>
+      <div class="row"><label>嵌入碼 / Widget ID</label></div>
+      <textarea rows="2" placeholder="貼上 Behold.so 或 LightWidget 給的嵌入碼（授權一次、自動同步最新貼文）"></textarea>
+      <div class="note">最省事：到 behold.so 用 IG 帳號授權一次 → 複製嵌入碼貼這 → 之後汪汪發限動/貼文，首頁自動更新，零維護。</div>
+    </div>
+
+    <!-- 社群連結（已存在 site-config） -->
+    <div class="card">
+      <div class="ct">🔗 社群連結 <span class="badge2 b-opt">已存在後台</span></div>
+      <div class="row"><label>YouTube</label><input type="text" value="https://youtube.com/@haiwangzi-northeast-coast"></div>
+      <div class="row"><label>Instagram</label><input type="text" value="https://instagram.com/chengruwang"></div>
+      <div class="row"><label>Facebook</label><input type="text" value="https://facebook.com/..."></div>
+    </div>
+
+    <div style="text-align:right;"><button class="save">💾 儲存動態訊息設定</button></div>
+  </div>
+
+</div>
+</body>
+</html>
