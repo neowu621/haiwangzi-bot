@@ -112,6 +112,11 @@ interface Config {
   // v403：首頁「最新動態」影片清單 + 模式
   homeVideosMode?: "curated" | "auto";
   homeVideos?: Array<{ id: string; title: string; isShort: boolean }>;
+  // v406：最新動態進階
+  homeVideoFeaturedId?: string;
+  homeVideoCount?: number;
+  homeVideoExcludeIds?: string[];
+  homeVideoFilter?: "all" | "long";
 }
 
 // v403：把 YouTube URL/Shorts/11 碼 id → { id, isShort }；無法 parse 回 null
@@ -2072,9 +2077,45 @@ function HomeVideosCard({
               className="mt-1 h-4 w-4 accent-[var(--color-phosphor)]" />
             <div>
               <div className="font-medium">自動模式（auto）</div>
-              <div className="text-[11px] text-[var(--muted-foreground)]">改打 <code>/api/youtube/recent</code>，自動抓 YouTube 頻道最新 5 支（下方清單作為 API 失敗時的備用）</div>
+              <div className="text-[11px] text-[var(--muted-foreground)]">自動抓 YouTube 頻道最新影片（套用下方「進階」的精選置頂／數量／排除／長片濾鏡）；API 失敗時用下方清單備用</div>
             </div>
           </label>
+        </div>
+      </div>
+
+      {/* v406：進階（精選置頂 / 數量 / 排除 / 長片濾鏡）*/}
+      <div className="mb-4 rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+        <p className="mb-2 text-xs font-semibold text-[var(--foreground)]">🎯 進階（auto 模式生效）</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div>
+            <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">⭐ 精選置頂影片 ID（放大格，留空＝自動用最新）</Label>
+            <Input value={cfg.homeVideoFeaturedId ?? ""} placeholder="例：04q6aMx_4U4"
+              onChange={(e) => setCfg((c) => c ? { ...c, homeVideoFeaturedId: e.target.value.trim() } : c)} />
+          </div>
+          <div>
+            <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">顯示數量</Label>
+            <select value={cfg.homeVideoCount ?? 5}
+              onChange={(e) => setCfg((c) => c ? { ...c, homeVideoCount: Number(e.target.value) } : c)}
+              className="w-full rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }}>
+              {[3, 4, 5, 6, 8].map((n) => <option key={n} value={n}>{n} 支</option>)}
+            </select>
+          </div>
+          <div>
+            <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">影片類型</Label>
+            <select value={cfg.homeVideoFilter ?? "all"}
+              onChange={(e) => setCfg((c) => c ? { ...c, homeVideoFilter: e.target.value as "all" | "long" } : c)}
+              className="w-full rounded-md border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border)" }}>
+              <option value="all">長片 + Shorts（全部）</option>
+              <option value="long">只要正式長片（排除 Shorts）</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="mb-1 block text-[11px] text-[var(--muted-foreground)]">🚫 排除的影片 ID（不想上首頁的素材片，一行一個或逗號分隔）</Label>
+            <textarea rows={2} className="w-full rounded-md border p-2 text-xs font-mono" style={{ borderColor: "var(--border)" }}
+              value={(cfg.homeVideoExcludeIds ?? []).join("\n")}
+              placeholder={"abc123\ndef456"}
+              onChange={(e) => setCfg((c) => c ? { ...c, homeVideoExcludeIds: e.target.value.split(/[\n,，\s]+/).map((s) => s.trim()).filter(Boolean) } : c)} />
+          </div>
         </div>
       </div>
 
@@ -2183,6 +2224,10 @@ function HomeVideosCard({
           onClick={() => save("首頁影片", {
             homeVideosMode: mode,
             homeVideos: vids,
+            homeVideoFeaturedId: cfg.homeVideoFeaturedId ?? "",
+            homeVideoCount: cfg.homeVideoCount ?? 5,
+            homeVideoExcludeIds: cfg.homeVideoExcludeIds ?? [],
+            homeVideoFilter: cfg.homeVideoFilter ?? "all",
           })}
           disabled={saving === "首頁影片"}>
           <Save className="mr-1.5 h-4 w-4" />

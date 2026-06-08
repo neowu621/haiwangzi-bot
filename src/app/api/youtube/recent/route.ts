@@ -47,7 +47,7 @@ export async function GET() {
         title,
         isShort: linkHref.includes("/shorts/"),
       });
-      if (videos.length >= 5) break;
+      if (videos.length >= 15) break; // v406：多抓一些，讓前端能扣除排除/Shorts後仍足量
     }
 
     return jsonResponse({ videos });

@@ -20,6 +20,11 @@ export async function GET() {
   // v403：首頁影片清單 + 模式
   let homeVideosMode: "curated" | "auto" = "curated";
   let homeVideos: Array<{ id: string; title: string; isShort: boolean }> = [];
+  // v406：最新動態進階
+  let homeVideoFeaturedId = "";
+  let homeVideoCount = 5;
+  let homeVideoExcludeIds: string[] = [];
+  let homeVideoFilter: "all" | "long" = "all";
   try {
     const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
     if (cfg?.externalLinks) {
@@ -47,6 +52,14 @@ export async function GET() {
           isShort: !!v.isShort,
         }));
     }
+    const c = cfg as unknown as {
+      homeVideoFeaturedId?: string; homeVideoCount?: number;
+      homeVideoExcludeIds?: unknown; homeVideoFilter?: string;
+    } | null;
+    if (typeof c?.homeVideoFeaturedId === "string") homeVideoFeaturedId = c.homeVideoFeaturedId;
+    if (typeof c?.homeVideoCount === "number") homeVideoCount = c.homeVideoCount;
+    if (Array.isArray(c?.homeVideoExcludeIds)) homeVideoExcludeIds = (c!.homeVideoExcludeIds as unknown[]).filter((x): x is string => typeof x === "string");
+    if (c?.homeVideoFilter === "long" || c?.homeVideoFilter === "all") homeVideoFilter = c.homeVideoFilter;
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
   }
@@ -74,5 +87,9 @@ export async function GET() {
     safetyPolicy,
     homeVideosMode,
     homeVideos,
+    homeVideoFeaturedId,
+    homeVideoCount,
+    homeVideoExcludeIds,
+    homeVideoFilter,
   });
 }

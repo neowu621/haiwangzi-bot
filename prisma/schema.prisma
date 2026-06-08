@@ -696,6 +696,11 @@ model SiteConfig {
   // homeVideos: [{id, title, isShort}]
   homeVideosMode String @default("curated") @map("home_videos_mode") @db.VarChar(16)
   homeVideos     Json   @default("[]") @map("home_videos")
+  // v406：最新動態進階 — 精選置頂ID / 顯示數量 / 排除清單 / 長片濾鏡(all|long)
+  homeVideoFeaturedId String @default("")    @map("home_video_featured_id") @db.VarChar(32)
+  homeVideoCount      Int    @default(5)     @map("home_video_count")
+  homeVideoExcludeIds Json   @default("[]")  @map("home_video_exclude_ids")
+  homeVideoFilter     String @default("all") @map("home_video_filter") @db.VarChar(8)
 
   // v392：氣瓶限時折扣（自動套用；每支氣瓶折抵 NT$，可設理由 + 起訖日）
   tankPromoEnabled  Boolean   @default(false) @map("tank_promo_enabled")

@@ -60,6 +60,11 @@ const PATCHES = [
   // v403: 首頁影片清單 + 模式（DB 管理）
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_videos_mode VARCHAR(16) NOT NULL DEFAULT 'curated'`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_videos JSONB NOT NULL DEFAULT '[]'::jsonb`,
+  // v406：最新動態進階
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_featured_id VARCHAR(32) NOT NULL DEFAULT ''`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_count INTEGER NOT NULL DEFAULT 5`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_exclude_ids JSONB NOT NULL DEFAULT '[]'::jsonb`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_video_filter VARCHAR(8) NOT NULL DEFAULT 'all'`,
 
   // v275: 退款備註
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,

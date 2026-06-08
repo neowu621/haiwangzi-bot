@@ -122,26 +122,39 @@ export default function HomePage() {
     (async () => {
       try {
         const cfg = await fetch("/api/config").then((r) => r.json()).catch(() => null) as
-          | { homeVideosMode?: "curated" | "auto"; homeVideos?: YtVideo[] }
+          | { homeVideosMode?: "curated" | "auto"; homeVideos?: YtVideo[];
+              homeVideoFeaturedId?: string; homeVideoCount?: number;
+              homeVideoExcludeIds?: string[]; homeVideoFilter?: "all" | "long" }
           | null;
         if (cancelled) return;
         const mode = cfg?.homeVideosMode ?? "curated";
         const curated = Array.isArray(cfg?.homeVideos) && cfg!.homeVideos!.length > 0
           ? cfg!.homeVideos!
           : BUILTIN_FALLBACK_VIDS;
+        // 取基底清單
+        let base: YtVideo[] = curated;
         if (mode === "auto") {
-          // 改打 RSS — 失敗 fallback 用後台策展清單
           try {
-            const data = await fetch("/api/youtube/recent").then((r) => r.json()) as
-              { videos?: YtVideo[]; error?: string };
+            const data = await fetch("/api/youtube/recent").then((r) => r.json()) as { videos?: YtVideo[] };
             if (cancelled) return;
-            setVideos(Array.isArray(data.videos) && data.videos.length > 0 ? data.videos : curated);
-          } catch {
-            if (!cancelled) setVideos(curated);
-          }
-        } else {
-          setVideos(curated);
+            base = Array.isArray(data.videos) && data.videos.length > 0 ? data.videos : curated;
+          } catch { base = curated; }
         }
+        // v406：排除 → 長片濾鏡 → 精選置頂 → 限制數量
+        const exclude = new Set((cfg?.homeVideoExcludeIds ?? []).map((s) => (s ?? "").trim()).filter(Boolean));
+        const filter = cfg?.homeVideoFilter ?? "all";
+        const count = Math.max(1, Math.min(12, cfg?.homeVideoCount ?? 5));
+        const featuredId = (cfg?.homeVideoFeaturedId ?? "").trim();
+        let list = base.filter((v) => !exclude.has(v.id));
+        if (filter === "long") list = list.filter((v) => !v.isShort);
+        if (featuredId) {
+          const found = list.find((v) => v.id === featuredId);
+          const rest = list.filter((v) => v.id !== featuredId);
+          list = [found ?? { id: featuredId, title: "精選影片", isShort: false }, ...rest];
+        }
+        list = list.slice(0, count);
+        if (list.length === 0) list = BUILTIN_FALLBACK_VIDS.slice(0, count);
+        if (!cancelled) setVideos(list);
       } finally {
         if (!cancelled) setVideosLoading(false);
       }

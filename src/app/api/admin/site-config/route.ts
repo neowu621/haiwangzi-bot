@@ -126,6 +126,11 @@ const PatchSchema = z.object({
     title: z.string().max(120).default(""),
     isShort: z.boolean().default(false),
   })).max(20).optional(),
+  // v406：最新動態進階
+  homeVideoFeaturedId: z.string().max(32).optional(),
+  homeVideoCount: z.number().int().min(1).max(12).optional(),
+  homeVideoExcludeIds: z.array(z.string().max(32)).max(50).optional(),
+  homeVideoFilter: z.enum(["all", "long"]).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -219,6 +224,11 @@ export async function GET(req: NextRequest) {
       // v403 首頁影片
       homeVideosMode: (row as unknown as { homeVideosMode?: string }).homeVideosMode ?? "curated",
       homeVideos: ((row as unknown as { homeVideos?: unknown }).homeVideos as Array<{ id: string; title: string; isShort: boolean }> | undefined) ?? [],
+      // v406 最新動態進階
+      homeVideoFeaturedId: (row as unknown as { homeVideoFeaturedId?: string }).homeVideoFeaturedId ?? "",
+      homeVideoCount: (row as unknown as { homeVideoCount?: number }).homeVideoCount ?? 5,
+      homeVideoExcludeIds: ((row as unknown as { homeVideoExcludeIds?: unknown }).homeVideoExcludeIds as string[] | undefined) ?? [],
+      homeVideoFilter: (row as unknown as { homeVideoFilter?: string }).homeVideoFilter ?? "all",
     },
     isDefault: false,
     updatedAt: row.updatedAt,
