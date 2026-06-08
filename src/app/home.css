@@ -83,8 +83,12 @@
 .hw .scroll-hint i{width:1px;height:34px;background:linear-gradient(var(--glow),transparent);animation:hw-drop 1.8s ease-in-out infinite}
 @keyframes hw-drop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
 
-.hw .reveal{opacity:0;transform:translateY(34px);transition:opacity .8s,transform .8s}
+/* v419：進場動畫改純 CSS（不依賴 JS observer，避免 LINE 內建瀏覽器 JS 慢時整頁停在透明 = 看似沒載入）。
+   結束狀態 opacity:1 由 animation fill-mode:both 保證；reduce-motion 直接顯示。 */
+.hw .reveal{animation:hw-reveal .7s ease both}
 .hw .reveal.in{opacity:1;transform:none}
+@keyframes hw-reveal{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.hw .reveal{animation:none;opacity:1;transform:none}}
 
 /* POI sections */
 .hw .poi-sec{padding:70px 0}

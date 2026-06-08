@@ -258,7 +258,8 @@ export default function HomePage() {
   useEffect(() => {
     const box = bubbleRef.current;
     if (box && box.childElementCount === 0) {
-      for (let i = 0; i < 30; i++) {
+      // v419：泡泡 30→14，降低 LINE 內建瀏覽器持續動畫負荷
+      for (let i = 0; i < 14; i++) {
         const b = document.createElement("span");
         const size = 4 + Math.random() * 16;
         b.style.left = Math.random() * 100 + "%";
