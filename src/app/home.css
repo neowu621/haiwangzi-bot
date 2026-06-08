@@ -180,10 +180,27 @@
 .hw .rev .stars{color:var(--gold);letter-spacing:3px;margin-bottom:12px}
 .hw .rev p{color:var(--foam);font-size:.96rem;margin-bottom:16px}
 .hw .rev .who{display:flex;align-items:center;gap:11px}
-.hw .rev .who .av{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:linear-gradient(135deg,var(--glow),var(--blue));display:grid;place-items:center;overflow:hidden}
-.hw .rev .who .av span{color:#04263f;font-weight:700;font-size:1rem}
+.hw .rev .who .av{width:52px;height:52px;flex:0 0 52px;border-radius:50%;background:linear-gradient(135deg,var(--glow),var(--blue));display:grid;place-items:center;overflow:hidden;border:2px solid rgba(102,216,246,.35)}
+.hw .rev .who .av span{color:#04263f;font-weight:700;font-size:1.25rem}
 .hw .rev .who b{font-size:.9rem}
 .hw .rev .who small{color:var(--mist);font-size:.76rem;display:block}
+
+/* v413：潛水課程 */
+.hw .courses{padding:70px 0;background:linear-gradient(180deg,#031a32,#05284a)}
+.hw .course-grid{display:grid;gap:24px;grid-template-columns:1fr;margin-top:8px}
+@media(min-width:860px){.hw .course-grid{grid-template-columns:repeat(2,1fr)}}
+.hw .course-card{position:relative;display:flex;flex-direction:column;border-radius:20px;padding:30px 28px;background:linear-gradient(180deg,rgba(10,62,114,.32),rgba(3,26,50,.5));border:1px solid rgba(102,216,246,.28);box-shadow:0 30px 70px -28px rgba(2,21,42,.9),inset 0 0 40px -20px rgba(102,216,246,.25)}
+.hw .course-card .badge{font-family:var(--en);font-weight:600;letter-spacing:.22em;font-size:.7rem;color:var(--glow);text-transform:uppercase}
+.hw .course-card h3{font-family:var(--serif);font-weight:800;font-size:1.5rem;letter-spacing:.03em;margin:10px 0 16px;color:var(--foam)}
+.hw .course-card .price-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid rgba(102,216,246,.16)}
+.hw .course-card .price{font-family:var(--serif);font-weight:900;font-size:2rem;color:var(--glow);text-shadow:0 0 24px rgba(102,216,246,.4)}
+.hw .course-card .incl{font-size:.82rem;color:var(--mist)}
+.hw .course-card ul{display:flex;flex-direction:column;gap:13px;flex:1;margin-bottom:24px}
+.hw .course-card li{display:flex;gap:11px;align-items:flex-start;font-size:.94rem;line-height:1.6;color:var(--glow-soft)}
+.hw .course-card li i{flex:0 0 7px;width:7px;height:7px;margin-top:8px;border-radius:50%;background:var(--glow);box-shadow:0 0 8px rgba(102,216,246,.7)}
+.hw .course-card li.hl{color:var(--foam)}
+.hw .course-card li.hl i{background:var(--gold);box-shadow:0 0 10px rgba(255,211,107,.8)}
+.hw .course-card .course-cta{justify-content:center;width:100%;padding:15px;font-size:1rem;margin-top:auto}
 
 /* FAQ */
 .hw .faq{padding:70px 0;background:linear-gradient(180deg,var(--abyss),#05284a)}

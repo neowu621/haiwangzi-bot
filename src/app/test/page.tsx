@@ -16,7 +16,42 @@ const NAV = [
   { href: "#trips", label: "潛旅目的地" },
   { href: "#news", label: "最新動態" },
   { href: "#about", label: "關於汪汪" },
+  { href: "#courses", label: "潛水課程" },
   { href: "#faq", label: "常見問題" },
+];
+
+// v413：潛水課程（依老闆提供內容）
+const COURSES = [
+  {
+    badge: "考證照 · OPEN WATER",
+    title: "開放水域潛水員 OW（保證班）",
+    price: "NT$14,500",
+    includes: "含教材・氣瓶・裝備・泳池費",
+    items: [
+      { t: "學科 2 小時 ＋ 泳池 4 小時 ＋ 海洋實習 2 天（6 支氣瓶）", hl: false },
+      { t: "加贈 1 天 Fun Dive（3 支氣瓶），海洋實習共 9 支氣瓶", hl: true },
+      { t: "地點：學科 三重｜泳池 青年公園（萬華水源路）｜海洋實習 東北角", hl: false },
+      { t: "上課採預約制，日期確定後開課", hl: false },
+      { t: "時間彈性：可連續 4 天，或拆開上；平日／假日晚上也能排學科、泳池", hl: false },
+      { t: "結業一年內：外島＋國外旅行各 1 次，免費租裝備", hl: true },
+      { t: "報名繳訂金 NT$6,000，首日上課繳清尾款", hl: false },
+    ],
+  },
+  {
+    badge: "進階 · ADVANCED",
+    title: "進階開放水域潛水員 AOW",
+    price: "NT$14,500",
+    includes: "含教材・氣瓶・裝備・證照費",
+    items: [
+      { t: "學科 2 小時 ＋ 海洋實習 2 天（6 支氣瓶）", hl: false },
+      { t: "加贈 1 天 Fun Dive（3 支氣瓶），海洋實習共 9 支氣瓶", hl: true },
+      { t: "七大專長：船潛・水下導航・夜潛・深潛・放流・頂尖中性浮力・水推 DPV", hl: false },
+      { t: "另含浮力袋、打撈袋使用與魚類辨識", hl: false },
+      { t: "上課採預約制，日期確定後開課", hl: false },
+      { t: "加購高氧（Nitrox）證照優惠價 NT$3,500", hl: true },
+      { t: "報名繳訂金 NT$6,000，首日上課繳清尾款", hl: false },
+    ],
+  },
 ];
 
 const SPOTS = [
@@ -394,6 +429,30 @@ export default function HomePage() {
                   </div>
                   <div><b>{r.name}</b><small>{r.activity}</small></div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* v413：潛水課程 */}
+      <section className="courses" id="courses">
+        <div className="wrap">
+          <div className="sec-head reveal"><span className="eyebrow">Diving Courses</span><h2 className="section-title">潛水課程</h2>
+            <p className="sec-sub">從零基礎到進階，跟著汪汪一步步把證照變成真正的能力——課程時間可彈性安排。</p>
+          </div>
+          <div className="course-grid">
+            {COURSES.map((c) => (
+              <div key={c.title} className="course-card reveal">
+                <span className="badge">{c.badge}</span>
+                <h3>{c.title}</h3>
+                <div className="price-row"><span className="price">{c.price}</span><span className="incl">{c.includes}</span></div>
+                <ul>
+                  {c.items.map((it, i) => (
+                    <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
+                  ))}
+                </ul>
+                <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line course-cta"><LineIcon />LINE 報名・諮詢</a>
               </div>
             ))}
           </div>

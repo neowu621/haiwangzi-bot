@@ -154,7 +154,8 @@ const PatchSchema = z.object({
   // v409：首頁學員怎麼說（最多 6 格）
   homeTestimonials: z.array(z.object({
     name: z.string().max(40).default(""),
-    avatar: z.string().max(500).default(""),
+    // avatar 可為圖片 URL，或上傳壓縮後的 data URL（256px 方形，~20-40KB）
+    avatar: z.string().max(300000).default(""),
     activity: z.string().max(60).default(""),
     text: z.string().max(400).default(""),
   })).max(6).optional(),
