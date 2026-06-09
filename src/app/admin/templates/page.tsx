@@ -22,6 +22,7 @@ interface TemplateInfo {
   icon: string;
   lineEnabled: boolean;
   emailEnabled: boolean;
+  inAppEnabled: boolean;
   editableFields: EditableField[];
   override: Partial<Record<FieldKey, string | null>> | null;
 }
@@ -135,21 +136,22 @@ export default function AdminTemplatesPage() {
     setDraft(d);
   }, [cur]);
 
-  const isOn = cur ? cur.lineEnabled || cur.emailEnabled : false;
+  const isOn = cur ? cur.lineEnabled || cur.emailEnabled || cur.inAppEnabled : false;
 
   function val(k: string) {
     return draft[k] ?? "";
   }
 
-  async function toggleCh(ch: "line" | "email") {
+  async function toggleCh(ch: "line" | "email" | "inApp") {
     if (!cur) return;
-    const next = ch === "line" ? !cur.lineEnabled : !cur.emailEnabled;
+    const cur0 = ch === "line" ? cur.lineEnabled : ch === "email" ? cur.emailEnabled : cur.inAppEnabled;
+    const next = !cur0;
+    const field = ch === "line" ? "lineEnabled" : ch === "email" ? "emailEnabled" : "inAppEnabled";
+    const chLabel = ch === "line" ? "LINE" : ch === "email" ? "Email" : "站內通知";
     // optimistic
     setTemplates((arr) =>
       arr.map((t, i) =>
-        i === curIdx
-          ? { ...t, lineEnabled: ch === "line" ? next : t.lineEnabled, emailEnabled: ch === "email" ? next : t.emailEnabled }
-          : t,
+        i === curIdx ? { ...t, [field]: next } : t,
       ),
     );
     try {
@@ -157,10 +159,10 @@ export default function AdminTemplatesPage() {
         method: "POST",
         body: JSON.stringify({
           key: cur.key,
-          [ch === "line" ? "lineEnabled" : "emailEnabled"]: next,
+          [field]: next,
         }),
       });
-      showToast(`「${cur.label}」${ch === "line" ? "LINE" : "Email"} 已${next ? "開啟" : "關閉"}`);
+      showToast(`「${cur.label}」${chLabel} 已${next ? "開啟" : "關閉"}`);
     } catch (e) {
       // rollback
       await reload();
@@ -180,7 +182,7 @@ export default function AdminTemplatesPage() {
         body[f.key] = v && v !== f.defaultValue ? v : null;
       }
       await adminFetch("/api/admin/templates", { method: "POST", body: JSON.stringify(body) });
-      const ch = [cur.lineEnabled && "LINE", cur.emailEnabled && "Email"].filter(Boolean).join(" + ");
+      const ch = [cur.lineEnabled && "LINE", cur.emailEnabled && "Email", cur.inAppEnabled && "站內"].filter(Boolean).join(" + ");
       showToast(`已儲存「${cur.label}」（發送：${ch}）`);
       await reload();
     } catch (e) {
@@ -237,7 +239,7 @@ export default function AdminTemplatesPage() {
         {/* hint */}
         <div style={hintbarStyle}>
           每張卡片的「動態資料」（客戶名・日期・金額）由系統<b style={{ color: "#0e4c5a" }}>自動帶入</b>，這裡只改文字描述 ·
-          在區塊2勾選要發 <b style={{ color: "#0e4c5a" }}>LINE / Email</b> ·
+          在區塊2勾選要發 <b style={{ color: "#0e4c5a" }}>LINE / Email / 站內通知</b> ·
           改完按 <b style={{ color: "#0e4c5a" }}>儲存</b>，再到區塊3各自 <b style={{ color: "#0e4c5a" }}>試送到我</b> 確認。
         </div>
 
@@ -271,7 +273,7 @@ export default function AdminTemplatesPage() {
                   <div style={navGroupStyle}>{g.group}</div>
                   {g.items.map(({ idx, t, step }) => {
                     const active = idx === curIdx;
-                    const off = !(t.lineEnabled || t.emailEnabled);
+                    const off = !(t.lineEnabled || t.emailEnabled || t.inAppEnabled);
                     const isInt = step === "內";
                     return (
                       <div
@@ -306,6 +308,7 @@ export default function AdminTemplatesPage() {
                         </span>
                         <ChannelDot on={t.lineEnabled}>L</ChannelDot>
                         <ChannelDot on={t.emailEnabled}>E</ChannelDot>
+                        <ChannelDot on={t.inAppEnabled}>站</ChannelDot>
                       </div>
                     );
                   })}
@@ -350,11 +353,12 @@ export default function AdminTemplatesPage() {
                   {/* 管道開關 */}
                   <div style={{ background: "#f5f9f9", border: "1px solid #e1ebeb", borderRadius: 11, padding: "11px 13px", margin: "0 4px 14px" }}>
                     <span style={{ fontSize: 10.5, letterSpacing: 1, color: "#9aabae", fontWeight: 700, marginBottom: 9, display: "block" }}>
-                      發送管道（可選 LINE／Email／兩者）
+                      發送管道（可選 LINE／Email／站內通知，可複選）
                     </span>
                     <div style={{ display: "flex", gap: 9 }}>
                       <ChannelBox icon="💬" label="LINE" on={cur.lineEnabled} onToggle={() => toggleCh("line")} />
                       <ChannelBox icon="✉️" label="Email" on={cur.emailEnabled} onToggle={() => toggleCh("email")} />
+                      <ChannelBox icon="📬" label="站內通知" on={cur.inAppEnabled} onToggle={() => toggleCh("inApp")} />
                     </div>
                   </div>
 
@@ -365,7 +369,7 @@ export default function AdminTemplatesPage() {
                       borderRadius: 10, padding: "10px 13px", fontSize: 12, fontWeight: 600,
                       margin: "0 4px 14px",
                     }}>
-                      ⏸️ 兩個管道都已關閉，此模板不會發送。請至少開啟一個管道。
+                      ⏸️ 三個管道都已關閉，此模板不會發送。請至少開啟一個管道。
                     </div>
                   )}
 

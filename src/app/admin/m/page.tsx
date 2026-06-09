@@ -84,7 +84,7 @@ export default function MobileAdminHome() {
       accent: (stats?.pendingProofs ?? 0) > 0,
     },
     {
-      href: "/admin/trips",
+      href: "/admin/m/trips",
       icon: CalendarDays,
       emoji: "📅",
       title: "今明場次",
@@ -95,7 +95,7 @@ export default function MobileAdminHome() {
       accent: false,
     },
     {
-      href: "/admin/bookings",
+      href: "/admin/m/bookings",
       icon: ClipboardList,
       emoji: "📋",
       title: "訂單快查",
@@ -113,7 +113,7 @@ export default function MobileAdminHome() {
       accent: (stats?.pendingWishes ?? 0) > 0,
     },
     {
-      href: "/admin/broadcast",
+      href: "/admin/m/broadcast",
       icon: Megaphone,
       emoji: "📣",
       title: "快速群發",

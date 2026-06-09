@@ -44,6 +44,14 @@ export function notifyCustomer(opts: {
       });
       if (!user) return;
 
+      // 模板層站內通知開關（只取 inAppEnabled 一欄；buildFlexByKeyAsync 自行查 override，這裡不重用以免破壞 LINE 行為）
+      const tpl = await prisma.messageTemplate.findUnique({
+        where: { key: opts.templateKey },
+        select: { inAppEnabled: true },
+      });
+      const inAppOn =
+        tpl?.inAppEnabled ?? FLEX_TEMPLATE_META[opts.templateKey]?.defaultInApp ?? true;
+
       // LINE flex
       if (user.notifyByLine ?? true) {
         const lineClient = getLineClient();
@@ -60,8 +68,9 @@ export function notifyCustomer(opts: {
         await sendEmail({ to: user.email, subject: content.subject, text: content.text, html: content.html });
       }
 
-      // 站內訊息通知（第三通道）— 預設全開、不受 opt-in 控制；inApp:false 才略過
-      if (opts.inApp !== false) {
+      // 站內訊息通知（第三通道）— 受模板層開關控制（inAppOn）；呼叫端 inApp:false 也可關
+      // 不受會員 opt-in（notifyByLine/notifyByEmail）影響
+      if (opts.inApp !== false && inAppOn) {
         try {
           const fallbackTitle = FLEX_TEMPLATE_LABELS[opts.templateKey] ?? "通知";
           const fallbackLink =

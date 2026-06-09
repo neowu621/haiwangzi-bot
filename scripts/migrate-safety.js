@@ -310,6 +310,8 @@ const PATCHES = [
   // ── v196 message_templates 加管道開關 ───────────────────────────────
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS line_enabled BOOLEAN`,
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN`,
+  // 站內訊息通知（第三通道）模板層開關（null = 用 template 預設 defaultInApp）
+  `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS in_app_enabled BOOLEAN`,
 
   // ── v186 tour_packages 行銷欄位 ─────────────────────────────────────
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS subtitle TEXT`,

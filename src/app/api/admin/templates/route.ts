@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       // null override 時 fallback 到預設
       lineEnabled: o?.lineEnabled ?? meta.defaultLine,
       emailEnabled: o?.emailEnabled ?? meta.defaultEmail,
+      inAppEnabled: o?.inAppEnabled ?? meta.defaultInApp,
       editableFields: FLEX_EDITABLE_FIELDS[
         key as keyof typeof FLEX_EDITABLE_FIELDS
       ],
@@ -64,6 +65,7 @@ const PatchSchema = z.object({
   altText: z.string().nullable().optional(),
   lineEnabled: z.boolean().nullable().optional(),
   emailEnabled: z.boolean().nullable().optional(),
+  inAppEnabled: z.boolean().nullable().optional(),
 });
 
 // POST /api/admin/templates - upsert override
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest) {
     altText: string | null;
     lineEnabled?: boolean | null;
     emailEnabled?: boolean | null;
+    inAppEnabled?: boolean | null;
     updatedBy: string;
   } = {
     title: data.title ?? null,
@@ -100,6 +103,7 @@ export async function POST(req: NextRequest) {
   };
   if (data.lineEnabled !== undefined) patch.lineEnabled = data.lineEnabled;
   if (data.emailEnabled !== undefined) patch.emailEnabled = data.emailEnabled;
+  if (data.inAppEnabled !== undefined) patch.inAppEnabled = data.inAppEnabled;
 
   const t = await prisma.messageTemplate.upsert({
     where: { key: data.key },

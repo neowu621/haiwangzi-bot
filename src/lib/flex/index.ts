@@ -115,29 +115,30 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
 };
 
 // v196：每個 template 的分組 + icon + 預設管道開關
+// defaultInApp：站內訊息通知（第三通道）預設值。客戶旅程相關 = true；純內部/管理用（發給老闆）= false
 export const FLEX_TEMPLATE_META: Record<
   FlexTemplateKey,
-  { group: string; icon: string; defaultLine: boolean; defaultEmail: boolean }
+  { group: string; icon: string; defaultLine: boolean; defaultEmail: boolean; defaultInApp: boolean }
 > = {
-  welcome:         { group: "加入",          icon: "👋", defaultLine: true,  defaultEmail: true  },
-  booking_confirm: { group: "預約",          icon: "✅", defaultLine: true,  defaultEmail: true  },
-  deposit_notice:  { group: "收款",          icon: "💰", defaultLine: true,  defaultEmail: true  },
-  deposit_confirm: { group: "收款",          icon: "✅", defaultLine: true,  defaultEmail: true  },
-  final_reminder:  { group: "收款",          icon: "🛟", defaultLine: true,  defaultEmail: true  },
-  trip_guide:      { group: "行前",          icon: "📘", defaultLine: true,  defaultEmail: true  },
-  d1_reminder:     { group: "行前",          icon: "🐡", defaultLine: true,  defaultEmail: false },
-  weather_cancel:  { group: "異常",          icon: "🌧️", defaultLine: true,  defaultEmail: true  },
-  overcap_alert:   { group: "管理者（內部）", icon: "⚠️", defaultLine: true,  defaultEmail: true  },
-  admin_weekly:    { group: "管理者（內部）", icon: "📊", defaultLine: false, defaultEmail: true  },
-  attendance_confirmed:    { group: "到場 / 完成", icon: "🐠", defaultLine: true,  defaultEmail: false },
-  first_order_reward_grant:{ group: "到場 / 完成", icon: "🎁", defaultLine: true,  defaultEmail: true  },
-  refund_request:          { group: "異常",        icon: "💸", defaultLine: true,  defaultEmail: true  },
-  payment_reject:          { group: "收款",        icon: "🚫", defaultLine: true,  defaultEmail: true  },
-  booking_cancel:          { group: "異常",        icon: "❌", defaultLine: true,  defaultEmail: true  },
-  refund_complete:         { group: "異常",        icon: "✅", defaultLine: true,  defaultEmail: true  },
-  vip_upgrade:             { group: "會員",        icon: "🌟", defaultLine: true,  defaultEmail: true  },
-  birthday_credit:         { group: "會員",        icon: "🎂", defaultLine: true,  defaultEmail: true  },
-  credit_expiry:           { group: "會員",        icon: "💳", defaultLine: true,  defaultEmail: true  },
+  welcome:         { group: "加入",          icon: "👋", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  booking_confirm: { group: "預約",          icon: "✅", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  deposit_notice:  { group: "收款",          icon: "💰", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  deposit_confirm: { group: "收款",          icon: "✅", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  final_reminder:  { group: "收款",          icon: "🛟", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  trip_guide:      { group: "行前",          icon: "📘", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  d1_reminder:     { group: "行前",          icon: "🐡", defaultLine: true,  defaultEmail: false, defaultInApp: true  },
+  weather_cancel:  { group: "異常",          icon: "🌧️", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  overcap_alert:   { group: "管理者（內部）", icon: "⚠️", defaultLine: true,  defaultEmail: true,  defaultInApp: false },
+  admin_weekly:    { group: "管理者（內部）", icon: "📊", defaultLine: false, defaultEmail: true,  defaultInApp: false },
+  attendance_confirmed:    { group: "到場 / 完成", icon: "🐠", defaultLine: true,  defaultEmail: false, defaultInApp: true  },
+  first_order_reward_grant:{ group: "到場 / 完成", icon: "🎁", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  refund_request:          { group: "異常",        icon: "💸", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  payment_reject:          { group: "收款",        icon: "🚫", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  booking_cancel:          { group: "異常",        icon: "❌", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  refund_complete:         { group: "異常",        icon: "✅", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  vip_upgrade:             { group: "會員",        icon: "🌟", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  birthday_credit:         { group: "會員",        icon: "🎂", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  credit_expiry:           { group: "會員",        icon: "💳", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
 };
 
 /**
