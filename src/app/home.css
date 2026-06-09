@@ -245,6 +245,19 @@
 .hw .qa button .ic::after{width:2px;height:14px;transform:translate(-50%,-50%);transition:transform .3s}
 .hw .qa.open button .ic::after{transform:translate(-50%,-50%) scaleY(0)}
 .hw .qa .ans{max-height:0;overflow:hidden;transition:max-height .35s;color:var(--mist)}
+/* v429：/test 改用原生 <details>（零 JS 開合）；以下 details.qa 規則與上方 .qa button 版「並存」，
+   讓正式首頁 /（button 版）與 /test（details 版）兩者都正常。 */
+.hw details.qa summary{width:100%;text-align:left;list-style:none;color:var(--foam);font-family:var(--sans);font-weight:700;font-size:1.05rem;cursor:pointer;padding:20px 0;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.hw details.qa summary::-webkit-details-marker{display:none}
+.hw details.qa summary::marker{content:""}
+.hw details.qa summary .ic{flex:0 0 auto;width:24px;height:24px;position:relative;transition:transform .3s}
+.hw details.qa summary .ic::before,.hw details.qa summary .ic::after{content:"";position:absolute;background:var(--glow);left:50%;top:50%}
+.hw details.qa summary .ic::before{width:14px;height:2px;transform:translate(-50%,-50%)}
+.hw details.qa summary .ic::after{width:2px;height:14px;transform:translate(-50%,-50%);transition:transform .3s}
+.hw details.qa[open] summary .ic::after{transform:translate(-50%,-50%) scaleY(0)}
+.hw details.qa .ans{max-height:none}
+.hw details.qa[open] .ans{animation:hw-qa-open .35s ease both}
+@keyframes hw-qa-open{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .hw .qa .ans p{padding:0 0 20px}
 .hw .faq-cat{display:flex;align-items:baseline;flex-wrap:wrap;gap:12px;margin:32px 0 2px;padding-top:10px;border-top:1px solid rgba(102,216,246,.1)}
 .hw .faq-cat:first-child{margin-top:0;padding-top:0;border-top:none}
