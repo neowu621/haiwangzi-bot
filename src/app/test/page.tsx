@@ -127,7 +127,7 @@ export default function HomePage() {
             <p>潛水這件事，最重要的從來不是裝備有多好，而是帶你下水的人夠不夠專業、夠不夠細心。從第一次教學到現在，我最在意的就是兩個字——「安心」。</p>
             <p>無論你是完全沒碰過水的新手，還是想精進的進階潛水員，我都會依照你的狀況，把節奏調到最舒服，讓你把注意力放在欣賞海裡的世界。</p>
             <div className="stats">
-              <div className="stat"><b>20+</b><small>教學年資</small></div>
+              <div className="stat"><b>10+</b><small>教學年資</small></div>
               <div className="stat"><b>10,000+</b><small>潛水次數</small></div>
               <div className="stat"><b>1,000+</b><small>累積潛水人數</small></div>
             </div>
