@@ -3,7 +3,7 @@
 //   - 讀 /api/config → { homeVideosMode, homeVideos, ... }；auto 模式打 /api/youtube/recent
 //   - 4 格 9:16 facade，點擊開 lightbox 播放（含 playing 狀態、Esc 關閉、鎖捲動、iframe）
 //   - 完整保留 v403/v406/v407B/v417/v417b/v423b 的去重 / 亂數抽 4 支邏輯
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { YT_CHANNEL, IG_URL, FB_URL } from "./data";
 
 type YtVideo = { id: string; title: string; isShort: boolean };
@@ -22,6 +22,19 @@ export default function NewsVideos() {
   const [videosLoading, setVideosLoading] = useState(true);
   const [playing, setPlaying] = useState<string | null>(null);
   const [loaderHide, setLoaderHide] = useState(false);
+  const marqueeRef = useRef<HTMLDivElement>(null);
+
+  // v431：輪播只在「捲到畫面內」才跑動畫（IntersectionObserver 切換 .run）→ 首屏不動、省資源、不影響 Speed Index
+  useEffect(() => {
+    const el = marqueeRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (es) => es.forEach((e) => el.classList.toggle("run", e.isIntersecting)),
+      { rootMargin: "120px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [videosLoading]);
 
   // v403：最新動態影片清單從 /api/config 取，模式由 admin 後台控制
   useEffect(() => {
@@ -50,7 +63,7 @@ export default function NewsVideos() {
         // v406：排除 → 長片濾鏡 → 精選置頂 → 限制數量
         const exclude = new Set((cfg?.homeVideoExcludeIds ?? []).map((s) => (s ?? "").trim()).filter(Boolean));
         const filter = cfg?.homeVideoFilter ?? "all";
-        const count = Math.max(1, Math.min(12, cfg?.homeVideoCount ?? 5));
+        const count = Math.max(1, Math.min(12, cfg?.homeVideoCount ?? 8));
         const featuredId = (cfg?.homeVideoFeaturedId ?? "").trim();
         // 去重：依 id + 標題（v430）。同一支影片若被用兩個不同 id 重複貼入，靠標題也能去掉，
         //   確保亂數抽出的 4 支彼此不同、不會出現重複縮圖。
@@ -116,34 +129,52 @@ export default function NewsVideos() {
         <span className="lt">載入最新動態…</span>
       </div>
       <div className="sec-head reveal"><span className="eyebrow">News &amp; Updates</span><h2 className="section-title">最新動態</h2><p>最新潛水影片整合在這裡，一次看完。</p></div>
-      <div className="vid-grid shorts reveal">
-        {videosLoading ? (
-          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
-            載入最新影片中…
+      {videosLoading ? (
+        <div className="reveal" style={{ textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
+          載入最新影片中…
+        </div>
+      ) : videos.length === 0 ? (
+        <div className="reveal" style={{ textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
+          目前沒有影片，<a href={YT_CHANNEL} target="_blank" rel="noopener" style={{ color: "#66d8f6", textDecoration: "underline" }}>到 YouTube 頻道看看 →</a>
+        </div>
+      ) : (
+        // v431：8 支直式（9:16）Shorts 自動輪播（左→右循環）。
+        //   - 軌道＝清單複製兩份做無縫循環；CSS transform 動畫（GPU 合成）
+        //   - 只在捲到畫面內才跑（.run）、hover/播放時暫停、尊重 prefers-reduced-motion
+        //   - 縮圖 lazy（loading="lazy"），點擊開 lightbox（facade）
+        <div
+          className={`vid-marquee reveal${playing ? " paused" : ""}`}
+          ref={marqueeRef}
+        >
+          <div className="vid-track">
+            {[...videos.slice(0, 8), ...videos.slice(0, 8)].map((v, i) => (
+              <button
+                key={`${v.id}-${i}`}
+                type="button"
+                className="vid short"
+                onClick={() => setPlaying(v.id)}
+                title={v.title}
+                aria-hidden={i >= Math.min(videos.length, 8)}
+                tabIndex={i >= Math.min(videos.length, 8) ? -1 : 0}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="thumb"
+                  src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`}
+                  alt={v.title}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="scrim" />
+                <div className="play" />
+                <div className="meta">
+                  <small>{v.isShort ? "SHORTS" : "YOUTUBE"}</small>
+                </div>
+              </button>
+            ))}
           </div>
-        ) : videos.length === 0 ? (
-          <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.6)" }}>
-            目前沒有影片，<a href={YT_CHANNEL} target="_blank" rel="noopener" style={{ color: "#66d8f6", textDecoration: "underline" }}>到 YouTube 頻道看看 →</a>
-          </div>
-        ) : (
-          // v417：4 格直式（9:16）Shorts 牆，點擊開 lightbox 播放（facade）
-          videos.slice(0, 4).map((v) => (
-            <div
-              key={v.id}
-              className="vid short"
-              style={{ backgroundImage: `url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)` }}
-              onClick={() => setPlaying(v.id)}
-              title={v.title}
-            >
-              <div className="scrim" />
-              <div className="play" />
-              <div className="meta">
-                <small>{v.isShort ? "SHORTS" : "YOUTUBE"}</small>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+        </div>
+      )}
       <div className="news-follow reveal">
         <span className="lbl">追蹤海王子，不錯過每一支新影片：</span>
         <div className="follow-btns">
