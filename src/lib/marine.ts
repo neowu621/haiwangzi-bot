@@ -73,10 +73,12 @@ async function fetchStation(stationId: string, apiKey: string): Promise<ObsTime[
   const url = `${CWA_BASE}?Authorization=${apiKey}&StationID=${encodeURIComponent(stationId)}&format=JSON`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`CWA O-B0075-001 HTTP ${res.status}`);
+  // v445 修：CWA O-B0075-001 回的是小寫 "records"（原本讀大寫 "Records" → 永遠 undefined →
+  //   海象一直靜默抓不到。這是「天氣報告沒含海象」的真正根因）。
   const data = (await res.json()) as {
-    Records?: { SeaSurfaceObs?: { Location?: Array<{ StationObsTimes?: { StationObsTime?: ObsTime[] } }> } };
+    records?: { SeaSurfaceObs?: { Location?: Array<{ StationObsTimes?: { StationObsTime?: ObsTime[] } }> } };
   };
-  return data.Records?.SeaSurfaceObs?.Location?.[0]?.StationObsTimes?.StationObsTime ?? [];
+  return data.records?.SeaSurfaceObs?.Location?.[0]?.StationObsTimes?.StationObsTime ?? [];
 }
 
 /** 在 48hr 序列裡，由新到舊找某欄位第一個有效值 */
