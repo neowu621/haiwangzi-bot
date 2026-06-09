@@ -305,3 +305,33 @@
 .hw .dotnav a.active .dot{background:var(--glow);border-color:var(--glow);box-shadow:0 0 12px rgba(102,216,246,.9)}
 .hw .dotnav .lbl{font-family:var(--sans);font-size:.78rem;color:var(--foam);background:rgba(2,21,42,.82);border:1px solid rgba(102,216,246,.32);padding:5px 12px;border-radius:999px;white-space:nowrap;opacity:0;transform:translateX(10px);transition:.25s;backdrop-filter:blur(6px);pointer-events:none}
 .hw .dotnav a:hover .lbl,.hw .dotnav a.active .lbl{opacity:1;transform:none}
+
+/* ===== v424t：/test 改版預覽新增樣式（依附件三類潛水員建議） ===== */
+/* 預覽標記 pill */
+.hw .preview-pill{display:inline-block;margin-bottom:16px;padding:6px 14px;border-radius:999px;background:rgba(255,138,91,.16);border:1px solid rgba(255,138,91,.5);color:#ffb892;font-size:.74rem;letter-spacing:.06em}
+/* 難度分級彩標（潛點/潛旅卡右上角） */
+.hw .poi .lvl{position:absolute;top:14px;right:14px;z-index:3;font-size:.68rem;font-weight:700;letter-spacing:.05em;padding:4px 11px;border-radius:999px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.hw .lvl-easy{background:rgba(95,214,163,.20);border:1px solid rgba(95,214,163,.6);color:#aef0cf}
+.hw .lvl-mid{background:rgba(102,216,246,.18);border:1px solid rgba(102,216,246,.6);color:#bfecff}
+.hw .lvl-hard{background:rgba(255,138,91,.20);border:1px solid rgba(255,138,91,.65);color:#ffc4a6}
+/* sec-head 練功提示 */
+.hw .sec-hint{display:inline-block;margin-top:14px;font-size:.86rem;color:var(--glow-soft);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.28);padding:8px 16px;border-radius:999px}
+.hw .sec-hint b{color:var(--glow)}
+/* 第一次潛水流程（4 步驟） */
+.hw .startflow{padding:64px 0;background:linear-gradient(180deg,var(--abyss),#04223f)}
+.hw .flow-grid{display:grid;gap:16px;grid-template-columns:1fr;margin-top:8px}
+@media(min-width:560px){.hw .flow-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.hw .flow-grid{grid-template-columns:repeat(4,1fr)}}
+.hw .flow-step{position:relative;background:rgba(102,216,246,.06);border:1px solid rgba(102,216,246,.2);border-radius:18px;padding:26px 22px;text-align:center}
+.hw .flow-step .fn{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:50%;background:rgba(102,216,246,.12);border:1px solid rgba(102,216,246,.5);color:var(--glow);font-family:var(--en);font-weight:600;font-size:1.3rem;margin-bottom:14px}
+.hw .flow-step h3{font-family:var(--serif);font-weight:800;font-size:1.12rem;color:var(--foam);margin-bottom:8px}
+.hw .flow-step p{color:var(--mist);font-size:.88rem;line-height:1.6}
+.hw .flow-cta{text-align:center;margin-top:26px}
+/* 進階 / 找潛伴 callout */
+.hw .adv-callout{display:grid;gap:16px;grid-template-columns:1fr;margin-top:26px}
+@media(min-width:760px){.hw .adv-callout{grid-template-columns:repeat(2,1fr)}}
+.hw .adv-card{background:linear-gradient(160deg,rgba(10,62,114,.3),rgba(2,21,42,.5));border:1px solid rgba(102,216,246,.25);border-radius:18px;padding:26px 24px}
+.hw .adv-card h3{font-family:var(--serif);font-weight:800;font-size:1.3rem;color:var(--foam);margin:8px 0 10px}
+.hw .adv-card p{color:var(--glow-soft);font-size:.92rem;line-height:1.7}
+/* 課程價格為「LINE 詢問」時縮小字級 */
+.hw .course-card .price.ask{font-size:1.2rem;letter-spacing:.03em}
