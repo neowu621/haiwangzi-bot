@@ -24,8 +24,11 @@ export async function GET(
     siteMap.get(id) ?? { id, name: id, region: null, description: "", difficulty: null, maxDepth: "", features: [], images: [], youtubeUrl: null, locationUrl: null, cautions: null },
   );
 
+  // 只回前端展示需要的公開欄位；此端點帶 public 快取，
+  // 絕不可外洩教練內部資料（feePerDive 成本 / lineUserId 個資 / note 備註）
   const coaches = await prisma.coach.findMany({
     where: { id: { in: trip.coachIds } },
+    select: { id: true, realName: true, cert: true, specialty: true },
   });
   const booked = await prisma.booking.aggregate({
     where: { refId: id, type: "daily", status: { not: "cancelled_by_user" } },
