@@ -1234,10 +1234,9 @@ function AutoSendSection({
   // v389：發送時段（台灣時間）+ 內容開關
   const slots = cfg.weatherReportSlots ?? [{ h: 22, m: 0 }, { h: 5, m: 0 }];
   const content = cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false };
-  // 台灣時間 → UTC cron（台灣 = UTC+8）
-  function twToUtcCron(h: number, m: number) {
-    const uh = (h - 8 + 24) % 24;
-    return `${m} ${uh} * * *`;
+  // v444：Cronicle 現以 Asia/Taipei 執行 → 直接用台灣時間 cron，不再換算 UTC（避免貼錯）
+  function twCron(h: number, m: number) {
+    return `${m} ${h} * * *`;
   }
   const pad = (n: number) => String(n).padStart(2, "0");
   function setSlots(next: Array<{ h: number; m: number }>) {
@@ -1348,7 +1347,7 @@ function AutoSendSection({
           <div>
             <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日（訂單，非天氣）</p>
             <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以 UTC 跑 → cron <span className="font-mono">0 13 * * *</span>）。<br/>
+              每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以台灣時間跑 → cron <span className="font-mono">0 21 * * *</span>）。<br/>
               老闆/admin：完整版（明日場次+客戶+應收+待審匯款+今日待結算+月統計）LINE + Email。<br/>
               教練：精簡版 LINE，只列明日場次與客戶清單+電話（不含金額）。
             </p>
@@ -1403,7 +1402,7 @@ function AutoSendSection({
             發送時段 <span className="ml-1 rounded bg-[#e0f7f3] px-1.5 py-0.5 text-[10px] font-bold text-[#0e9e8e]">台灣時間</span>
           </p>
           <p className="mt-0.5 ml-7 mb-2 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-            想一天發幾次都可以。右邊灰框是系統自動換算的 <b>UTC cron</b>，直接貼到 Cronicle（解決時區混淆）。
+            想一天發幾次都可以。右邊灰框是對應的 <b>cron（台灣時間）</b>，直接貼到 Cronicle（Cronicle 現以台灣時間執行）。
           </p>
           <div className="ml-7 space-y-2">
             {slots.map((s, i) => {
@@ -1423,7 +1422,7 @@ function AutoSendSection({
                     <div className="truncate text-[10px] text-[var(--muted-foreground)]">{meta.desc}</div>
                   </div>
                   <span className="ml-auto rounded bg-[var(--muted)]/50 px-2 py-1 font-mono text-[11px] text-[var(--muted-foreground)]">
-                    UTC {twToUtcCron(s.h, s.m)}
+                    台灣 {twCron(s.h, s.m)}
                   </span>
                   <button onClick={() => removeSlot(i)} className="px-1 text-[var(--muted-foreground)] hover:text-[var(--color-coral)]" title="刪除時段">✕</button>
                 </div>
@@ -1656,10 +1655,10 @@ function AutoSendSection({
 
         {/* v389：Cronicle 指令 + 各時段 cron 一覽 */}
         <div className="mt-3 ml-7 rounded-lg p-3 text-[10.5px] leading-relaxed" style={{ background: "var(--color-ocean-deep)", color: "#cbe7e2" }}>
-          <span className="text-[#7dd3c8]"># Cronicle 排程（{slots.length} 個時段，台灣時間 → UTC）</span><br />
+          <span className="text-[#7dd3c8]"># Cronicle 排程（{slots.length} 個時段，台灣時間）</span><br />
           {slots.map((s, i) => (
             <span key={i}>
-              {slotMeta(s.h).emoji} 台灣 {pad(s.h)}:{pad(s.m)} → <code className="text-white">UTC {twToUtcCron(s.h, s.m)}</code><br />
+              {slotMeta(s.h).emoji} 台灣 {pad(s.h)}:{pad(s.m)} → <code className="text-white">{twCron(s.h, s.m)}</code><br />
             </span>
           ))}
           <span className="text-[#7dd3c8]"># Command（所有時段共用）</span><br />
@@ -1689,8 +1688,8 @@ function AutoSendSection({
       </div>
 
       <div className="mt-3 rounded bg-[var(--muted)]/40 p-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-        📋 <b>明日訂單預報的 Cronicle 排程</b>（Cronicle 以 UTC 執行）：<br />
-        台灣 21:00 → <code>UTC 0 13 * * *</code>（每天一次）<br />
+        📋 <b>明日訂單預報的 Cronicle 排程</b>（Cronicle 以台灣時間執行）：<br />
+        台灣 21:00 → <code>0 21 * * *</code>（每天一次）<br />
         Command：<br />
         <code className="block mt-1 break-all">
           curl -fsS -X POST -H &quot;Authorization: Bearer $HAIWANGZI_CRON_SECRET&quot; &quot;$HAIWANGZI_BASE_URL/api/cron/daily-briefing&quot;
