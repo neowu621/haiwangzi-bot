@@ -232,13 +232,13 @@
 .hw .rev .rev-name{grid-area:name;align-self:start;font-weight:700;font-size:.92rem;color:var(--foam)}
 .hw .rev h4{grid-area:head;font-family:var(--serif);font-weight:800;font-size:1.05rem;margin:10px 0 0;color:var(--foam);line-height:1.45}
 .hw .rev p{grid-area:body;color:var(--foam);font-size:.96rem;margin:6px 0 0}
-/* v440：照片版見證卡 — 上方橫幅照片 + 下方文字（橫幅負邊距貼齊卡片邊緣，卡片 overflow 裁圓角） */
-.hw .rev.has-photo{display:flex;flex-direction:column;gap:6px;overflow:hidden}
-.hw .rev .rev-banner{display:block;width:calc(100% + 48px);max-width:none;margin:-24px -24px 6px;aspect-ratio:3/2;object-fit:cover;border-bottom:1px solid rgba(102,216,246,.18)}
-.hw .rev.has-photo .stars{margin:0;color:var(--gold);letter-spacing:3px}
-.hw .rev.has-photo .rev-name{font-weight:700;font-size:.92rem;color:var(--foam)}
-.hw .rev.has-photo h4{font-family:var(--serif);font-weight:800;font-size:1.05rem;margin:6px 0 0;color:var(--foam);line-height:1.45}
-.hw .rev.has-photo p{color:var(--foam);font-size:.96rem;margin:6px 0 0}
+/* v446：照片版見證卡 — 圖片縮小放左、★★★★★/暱稱/標題放圖片右邊、內文在下方整列 */
+.hw .rev.has-photo{grid-template-areas:"ph stars" "ph name" "ph head" "body body";column-gap:14px;row-gap:2px;align-content:start;overflow:visible}
+.hw .rev.has-photo .rev-banner{grid-area:ph;align-self:start;width:clamp(108px,32vw,150px);max-width:none;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:1px solid rgba(102,216,246,.25);margin:0}
+.hw .rev.has-photo .stars{grid-area:stars;align-self:end;color:var(--gold);letter-spacing:3px;margin:0}
+.hw .rev.has-photo .rev-name{grid-area:name;align-self:start;font-weight:700;font-size:.92rem;color:var(--foam)}
+.hw .rev.has-photo h4{grid-area:head;font-family:var(--serif);font-weight:800;font-size:1.05rem;margin:4px 0 0;color:var(--foam);line-height:1.45}
+.hw .rev.has-photo p{grid-area:body;color:var(--foam);font-size:.96rem;margin:10px 0 0}
 /* v414：總結語 */
 .hw .rev-conclusion{text-align:center;margin:28px auto 0;max-width:760px;color:var(--glow-soft);font-size:1rem;line-height:1.85}
 .hw .rev-conclusion b{color:var(--foam)}

@@ -1262,10 +1262,19 @@ function AutoSendSection({
   const marinePoints = cfg.weatherMarinePoints ?? [
     { label: "龍洞區", buoyId: "46694A", tideId: "C4A02" },
     { label: "基隆區", buoyId: "C6B01", tideId: "C4B01" },
+    { label: "萊萊鶯歌石", buoyId: "46694A", tideId: "C4A05" },
   ];
   const marineFields = cfg.weatherMarineFields ?? { waveHeight: true, waveDir: true, wavePeriod: true, seaTemp: true, current: true, tide: true };
   function updateMarinePoint(i: number, key: "label" | "buoyId" | "tideId", val: string) {
     setCfg((c) => (c ? { ...c, weatherMarinePoints: marinePoints.map((p, idx) => (idx === i ? { ...p, [key]: val } : p)) } : c));
+  }
+  // v446：海象回報點可新增/刪除（最多 5 區）
+  function addMarinePoint() {
+    if (marinePoints.length >= 5) return;
+    setCfg((c) => (c ? { ...c, weatherMarinePoints: [...marinePoints, { label: "萊萊鶯歌石", buoyId: "46694A", tideId: "C4A05" }] } : c));
+  }
+  function removeMarinePoint(i: number) {
+    setCfg((c) => (c ? { ...c, weatherMarinePoints: marinePoints.filter((_, idx) => idx !== i) } : c));
   }
   function toggleMarineField(key: keyof NonNullable<Config["weatherMarineFields"]>) {
     setCfg((c) => (c ? { ...c, weatherMarineFields: { ...marineFields, [key]: !marineFields[key] } } : c));
@@ -1580,8 +1589,14 @@ function AutoSendSection({
                     {TIDE_OPTS.map((o) => <option key={o.id} value={o.id}>潮位：{o.name}</option>)}
                   </select>
                 </div>
+                {marinePoints.length > 1 && (
+                  <button type="button" onClick={() => removeMarinePoint(i)} className="mt-1.5 text-[11px] text-[var(--color-coral)]">✕ 移除此區</button>
+                )}
               </div>
             ))}
+            {marinePoints.length < 5 && (
+              <button type="button" onClick={addMarinePoint} className="w-full rounded-lg border border-dashed py-1.5 text-[12px] font-semibold text-[#0e9e8e]" style={{ borderColor: "var(--border)", background: "#fff" }}>＋ 新增海象回報點（萊萊／其他）</button>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
               {MARINE_FIELD_OPTS.map((f) => (
                 <label key={f.k} className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] cursor-pointer" style={{ borderColor: "var(--border)", background: "#fff" }}>
