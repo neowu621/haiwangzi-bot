@@ -110,7 +110,7 @@ export const TRIPS = [
 // v424t：難度分級 → 顏色 class（初級綠 / 進階藍 / 挑戰橘）
 export const LVL_CLASS: Record<string, string> = { "初級": "easy", "進階": "mid", "挑戰": "hard" };
 
-export type Testimonial = { name: string; avatar: string; activity: string; title: string; text: string };
+export type Testimonial = { name: string; avatar: string; activity: string; title: string; text: string; photo?: string };
 // 內建保底（後台未設定時顯示）；後台 homeTestimonials 有資料時整組取代。第 1 則為「主打長文卡」。
 export const BUILTIN_REVIEWS: Testimonial[] = [
   { name: "百潛菜雞學員", activity: "小琉球考證 → 東北角長期練功", title: "從菜雞到近百潛的蛻變 🐠", avatar: "/home/review-featured.webp",
@@ -125,7 +125,7 @@ export const BUILTIN_REVIEWS: Testimonial[] = [
     text: "體能、技術都超強的教練 💪，而且永遠都把老人家照顧得好好的 🤗。跟著他下水，全家大小都能玩得安心又開心 💙" },
   { name: "海底攝影愛好者", activity: "", title: "內太空般的靜謐之美 🌌", avatar: "/home/review-photo.webp",
     text: "跟著汪汪教練悠遊在這片海底世界，盡情欣賞成群豔麗的海扇、穿梭的魚群，還有優雅滑過的海龜 🐢。抬頭望去，陽光灑落在心醉的湛藍海水中，氣泡靜靜上升 🫧，四周一片寧靜，彷彿時間在此刻停格 ⏳。我想——這就是「內太空」最迷人的地方吧 ✨" },
-  { name: "壁潛漫遊者", activity: "", title: "每一潛都過癮的滿足感 🫧", avatar: "",
+  { name: "壁潛漫遊者", activity: "", title: "每一潛都過癮的滿足感 🫧", avatar: "", photo: "/home/review-wall.webp",
     text: "汪汪教練帶潛經驗豐富又認真 💪，挑的潛點每一個都精彩、各有特色，每次潛完都有滿滿過癮的滿足感 🤿。最難忘的是沿著珊瑚陡壁緩緩前行，抬頭看著一串串氣泡向上升起——那一刻真心覺得，白色氣泡，是我們與海洋的對話 🌊🫧。" },
 ];
 export const DEFAULT_REVIEWS_NOTE = "想在東北角安心練功、突破自己、又能拍到美照與美好回憶，那就交給汪汪教練準沒錯！🐬🌊";

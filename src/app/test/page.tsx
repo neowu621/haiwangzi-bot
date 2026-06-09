@@ -183,12 +183,18 @@ export default function HomePage() {
           })()}
           <div className="rev-grid">
             {reviews.slice(1).map((r, i) => (
-              <div key={`${r.name}-${i}`} className="rev reveal">
+              <div key={`${r.name}-${i}`} className={`rev reveal${r.photo ? " has-photo" : ""}`}>
+                {r.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="rev-banner" src={r.photo} alt={r.title || r.name} loading="lazy" decoding="async" />
+                ) : null}
                 <div className="stars">★★★★★</div>
                 <b className="rev-name">{r.name}</b>
-                <div className="av" style={r.avatar ? { backgroundImage: `url(${r.avatar})` } : undefined}>
-                  {!r.avatar && r.name ? <span>{r.name.slice(0, 1)}</span> : null}
-                </div>
+                {!r.photo ? (
+                  <div className="av" style={r.avatar ? { backgroundImage: `url(${r.avatar})` } : undefined}>
+                    {!r.avatar && r.name ? <span>{r.name.slice(0, 1)}</span> : null}
+                  </div>
+                ) : null}
                 {r.title ? <h4>{r.title}</h4> : null}
                 <p>{r.text}</p>
               </div>
