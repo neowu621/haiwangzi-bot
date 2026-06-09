@@ -8,7 +8,12 @@ export const LINE_BOOK_URL =
 // v432：LINE 官方帳號 ID（從加好友連結擷取）+ 帶預填訊息的深連結。
 //   點下去會開啟與海王子的 LINE 聊天、輸入框預填指定文字（客戶按送出後，老闆即知是問哪個項目）。
 //   注意：文字需使用者自行送出；對「已加好友」最穩。
-export const LINE_OA_ID = (LINE_BOOK_URL.split("/ti/p/")[1] || "@894bpmew").trim();
+const RAW_OA_ID = (LINE_BOOK_URL.split("/ti/p/")[1] || "@894bpmew").trim();
+// v434 修：production 環境變數可能已把 @ 編碼成 %40；先 decode 正規化成 "@894bpmew"，
+//   否則下面再 encode 一次會變成雙重編碼 %2540 → LINE「找不到該客戶」。
+export const LINE_OA_ID = (() => {
+  try { return decodeURIComponent(RAW_OA_ID); } catch { return RAW_OA_ID; }
+})();
 export function lineMsg(text: string) {
   return `https://line.me/R/oaMessage/${encodeURIComponent(LINE_OA_ID)}/?${encodeURIComponent(text)}`;
 }
