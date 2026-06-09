@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_TC, Noto_Serif_TC, Outfit, Inter } from "next/font/google";
-import { LiffProvider } from "@/lib/liff/LiffProvider";
 import "./globals.css";
 
 const notoSansTc = Noto_Sans_TC({
@@ -54,7 +53,8 @@ export default function RootLayout({
       className={`${notoSansTc.variable} ${notoSerifTc.variable} ${outfit.variable} ${inter.variable}`}
     >
       <body>
-        <LiffProvider>{children}</LiffProvider>
+        {/* v423：LiffProvider 已下放到 src/app/liff/layout.tsx，公開頁不再背 LIFF client JS */}
+        {children}
       </body>
     </html>
   );

@@ -550,7 +550,13 @@ export default function ProfilePage() {
         {/* Admin / Boss / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
         {((me.roles ?? [me.role]).includes("admin") ||
           (me.roles ?? [me.role]).includes("boss")) && (
-          <Link href="/admin">
+          <Link
+            href={
+              typeof window !== "undefined" && window.innerWidth < 768
+                ? "/admin/m"
+                : "/admin"
+            }
+          >
             <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">

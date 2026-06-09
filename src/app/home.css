@@ -52,7 +52,9 @@
 
 /* HERO */
 .hw .hero{position:relative;min-height:100svh;display:flex;align-items:center;padding:90px 0 9vh;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
-.hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.webp) center/cover}
+/* v423：hero 背景圖手機改用較小裁切版（src-08.webp 21KB vs src-01.webp 137KB）+ 加深 overlay 讓低解析也耐看；桌機維持 src-01.webp 高解析 */
+.hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.55),rgba(2,21,42,.94)),url(/home/src-08.webp) center/cover}
+@media(min-width:980px){.hw .hero-bg{background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.webp) center/cover}}
 .hw .light-shaft{position:absolute;top:-25%;width:150px;height:165%;background:linear-gradient(180deg,rgba(165,232,251,.30),transparent 70%);filter:blur(24px);transform:skewX(-12deg);opacity:.5;z-index:1}
 .hw .light-shaft.s1{left:10%;animation:hw-shaft 9s ease-in-out infinite alternate}
 .hw .light-shaft.s2{left:42%;height:135%;animation:hw-shaft 11s ease-in-out infinite alternate-reverse}
@@ -75,8 +77,9 @@
 .hw .hero h1 .hl{color:var(--glow)}
 .hw .hero .lead{max-width:520px;margin:22px 0 30px;font-size:clamp(1.02rem,4vw,1.22rem);color:var(--glow-soft);font-weight:300}
 .hw .hero-cta{display:flex;flex-wrap:wrap;gap:14px}
-.hw .hero-coach{position:relative;display:none;align-self:center}
-@media(min-width:980px){.hw .hero-coach{display:block}}
+/* v423：修手機看不到教練圖 — 改成手機也顯示（hero 文字下方、置中、限寬 360px），桌機維持右側 */
+.hw .hero-coach{position:relative;display:block;align-self:center;width:100%;max-width:360px;margin:6px auto 0}
+@media(min-width:980px){.hw .hero-coach{max-width:none;margin:0}}
 .hw .hero-coach img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center top;border-radius:24px;border:1px solid rgba(102,216,246,.3);box-shadow:0 30px 80px -20px rgba(2,21,42,.9),0 0 0 6px rgba(102,216,246,.06);animation:hw-float 6s ease-in-out infinite}
 @keyframes hw-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
 .hw .hero-coach .tagpill{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(2,21,42,.78);backdrop-filter:blur(8px);border:1px solid rgba(102,216,246,.35);border-radius:999px;padding:9px 20px;font-size:.86rem;color:var(--glow-soft)}

@@ -186,8 +186,31 @@ model User {
   verifiedProofs    PaymentProof[]
   creditTxs         CreditTx[]
   emailVerifyTokens EmailVerifyToken[]
+  notifications     Notification[] // 站內訊息通知（第三通道）
 
   @@map("users")
+}
+
+// 站內訊息通知（第三通道）— LINE flex / Email 之外的 App 內通知中心
+//   notifyCustomer 觸發時與 LINE/Email 同步寫一筆；預設全開、不受會員 opt-in 控制
+//   純文字、零圖片；cursor 分頁載入，未讀數獨立輕端點查詢
+model Notification {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.VarChar(64)
+  templateKey String    @map("template_key") @db.VarChar(64)
+  title       String
+  body        String
+  linkUrl     String?   @map("link_url")
+  icon        String?   @db.VarChar(16)
+  isRead      Boolean   @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+  @@map("notifications")
 }
 
 // v256：Email 驗證 token

@@ -2,6 +2,7 @@
 // v402：東北角海王子 — 公開行銷首頁（移植自原型「藍色實拍版」）。
 //   最新動態的 YouTube/Instagram 自動抓取於後續版本接上（MediaPost + Behold）。
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import "./home.css";
 import { APP_VERSION } from "@/lib/version";
 
@@ -226,7 +227,14 @@ export default function HomePage() {
         const filter = cfg?.homeVideoFilter ?? "all";
         const count = Math.max(1, Math.min(12, cfg?.homeVideoCount ?? 5));
         const featuredId = (cfg?.homeVideoFeaturedId ?? "").trim();
-        let list = base.filter((v) => !exclude.has(v.id));
+        // 去重：同一支影片 id 只保留第一筆，確保亂數抽出的 4 支彼此不同（v423b）
+        const seenIds = new Set<string>();
+        let list = base.filter((v) => {
+          const id = (v?.id ?? "").trim();
+          if (!id || exclude.has(id) || seenIds.has(id)) return false;
+          seenIds.add(id);
+          return true;
+        });
         if (filter === "long") list = list.filter((v) => !v.isShort);
         // v417b：策展模式從清單亂數抽取（每次進站隨機 4 支）；精選置頂仍固定在最前
         const shuffle = (a: YtVideo[]) => {
@@ -329,8 +337,15 @@ export default function HomePage() {
             </div>
           </div>
           <div className="hero-coach">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/home/src-hero.webp" alt="東北角海王子潛水教練 汪汪" fetchPriority="high" decoding="async" />
+            {/* v423：改 next/image — 手機只載 ~360px 寬版本（省流量），保留 priority 首屏優先 */}
+            <Image
+              src="/home/src-hero.webp"
+              alt="東北角海王子潛水教練 汪汪"
+              width={840}
+              height={840}
+              priority
+              sizes="(max-width: 979px) 360px, 440px"
+            />
             <span className="tagpill">潛水教練 ｜ 海王子．汪汪</span>
           </div>
         </div>

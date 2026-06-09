@@ -413,6 +413,23 @@ const PATCHES = [
   `CREATE UNIQUE INDEX IF NOT EXISTS dive_wishes_code_key ON dive_wishes(code)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS bookings_code_key ON bookings(code)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS bookings_pay_link_token_key ON bookings(pay_link_token)`,
+
+  // 站內訊息通知（第三通道）— App 內通知中心
+  `CREATE TABLE IF NOT EXISTS notifications (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id VARCHAR(64) NOT NULL,
+     template_key VARCHAR(64) NOT NULL,
+     title TEXT NOT NULL,
+     body TEXT NOT NULL,
+     link_url TEXT,
+     icon VARCHAR(16),
+     is_read BOOLEAN NOT NULL DEFAULT FALSE,
+     read_at TIMESTAMPTZ,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     CONSTRAINT notifications_user_fk FOREIGN KEY (user_id) REFERENCES users(line_user_id) ON DELETE CASCADE
+   )`,
+  `CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS notifications_user_read_idx ON notifications(user_id, is_read)`,
 ];
 
 async function main() {

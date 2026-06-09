@@ -10,6 +10,8 @@ import {
   Edit3,
   XCircle,
   Loader2,
+  Bell,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -310,6 +312,15 @@ export default function MyBookingsPage() {
   return (
     <LiffShell title="我的預約" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <div className="px-4 pt-4">
+        {/* 站內通知中心入口 */}
+        <Link
+          href="/liff/notifications"
+          className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm hover:bg-[var(--muted)]/30"
+        >
+          <Bell className="h-4 w-4 text-[var(--color-coral)]" />
+          <span className="flex-1 font-medium">通知中心</span>
+          <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)]" />
+        </Link>
         {/* v267：背景刷新指示（有快取資料 + 正在拉新資料時顯示） */}
         {refreshing && (
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-phosphor)]/10 px-3 py-1 text-[10px] text-[var(--color-phosphor)]">
