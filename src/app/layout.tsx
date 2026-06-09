@@ -1,19 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_TC, Noto_Serif_TC, Outfit, Inter } from "next/font/google";
+import { Noto_Sans_TC, Outfit } from "next/font/google";
 import "./globals.css";
 
+// v428：載入優化 — 移除「Noto Serif TC（CJK 明體，render-blocking 字體 CSS 大宗）」與
+//   全站未使用的 Inter；Noto Sans TC 字重 6→4（砍 300/600，faux 合成可接受）。
+//   首頁標題改用黑體（home.css 的 --serif 重新指向 --font-noto-tc）。
 const notoSansTc = Noto_Sans_TC({
   variable: "--font-noto-tc",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "900"],
-  display: "swap",
-});
-
-// v422：首頁標題/英文字 改用 next/font 自架（取代 page.tsx 內 render-blocking 的 Google Fonts <link>）
-const notoSerifTc = Noto_Serif_TC({
-  variable: "--font-noto-serif-tc",
-  subsets: ["latin"],
-  weight: ["700", "900"],
+  weight: ["400", "500", "700", "900"],
   display: "swap",
 });
 
@@ -21,12 +16,6 @@ const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
   display: "swap",
 });
 
@@ -50,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-Hant"
-      className={`${notoSansTc.variable} ${notoSerifTc.variable} ${outfit.variable} ${inter.variable}`}
+      className={`${notoSansTc.variable} ${outfit.variable}`}
     >
       <body>
         {/* v423：LiffProvider 已下放到 src/app/liff/layout.tsx，公開頁不再背 LIFF client JS */}

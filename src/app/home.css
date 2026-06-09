@@ -5,7 +5,8 @@
   --glow:#66d8f6;--glow-soft:#a5e8fb;--foam:#eaf6ff;--mist:#9fc4e2;--gold:#ffd36b;
   --line:#06C755;--ink:#02152a;--maxw:1200px;
   /* v422：改用 layout next/font 自架字體變數（非阻塞、無外部 Google Fonts 請求） */
-  --serif:var(--font-noto-serif-tc),'Noto Serif TC',serif;--sans:var(--font-noto-tc),'Noto Sans TC',sans-serif;--en:var(--font-outfit),'Outfit',sans-serif;
+  /* v428：標題改黑體（移除 CJK 明體 Noto Serif TC 以大幅降低 render-blocking 字體 CSS）；--serif 名稱保留相容，實際指向黑體 */
+  --serif:var(--font-noto-tc),'Noto Sans TC',sans-serif;--sans:var(--font-noto-tc),'Noto Sans TC',sans-serif;--en:var(--font-outfit),'Outfit',sans-serif;
 }
 .hw *{margin:0;padding:0;box-sizing:border-box}
 .hw{font-family:var(--sans);color:var(--foam);background:var(--abyss);line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
