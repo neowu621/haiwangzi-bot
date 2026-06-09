@@ -1552,6 +1552,11 @@ function AutoSendSection({
                 <span>{item.label}</span>
               </label>
             ))}
+            {/* v447：海象不是這裡的勾選項，是下方 4b 的回報點；放一格指示避免老闆以為漏掉 */}
+            <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-[12px]" style={{ borderColor: "var(--color-ocean-deep)", background: "#f0f9ff" }}>
+              <span>🌊 海象（浪高/海溫/海流/潮位）</span>
+              <span className="ml-auto text-[10px] font-semibold text-[var(--color-ocean-deep)]">↓ 下方 4b 設定</span>
+            </div>
           </div>
           <p className="mt-1.5 ml-7 text-[10px] text-[var(--muted-foreground)]">
             ※ 浪高/海溫/海流/潮位請改用下方「🌊 海象」區（真實浮標資料）。

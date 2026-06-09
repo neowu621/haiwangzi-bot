@@ -69,16 +69,22 @@ interface ObsTime {
   };
 }
 
-async function fetchStation(stationId: string, apiKey: string): Promise<ObsTime[]> {
-  const url = `${CWA_BASE}?Authorization=${apiKey}&StationID=${encodeURIComponent(stationId)}&format=JSON`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+// v447：一次抓「整份 O-B0075-001」（不帶 StationID），回 stationID → 觀測序列 的 map。
+//   原本每個站各打一次（3 區 = 6 筆併發）會被 CWA 限流而全空 → 海象消失。改成一次抓全部、本機挑站。
+//   v445 修：CWA 回的是小寫 "records"（曾誤讀大寫 "Records" → 永遠 undefined → 海象靜默抓不到的真正根因）。
+async function fetchAllStations(apiKey: string): Promise<Map<string, ObsTime[]>> {
+  const url = `${CWA_BASE}?Authorization=${apiKey}&format=JSON`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`CWA O-B0075-001 HTTP ${res.status}`);
-  // v445 修：CWA O-B0075-001 回的是小寫 "records"（原本讀大寫 "Records" → 永遠 undefined →
-  //   海象一直靜默抓不到。這是「天氣報告沒含海象」的真正根因）。
   const data = (await res.json()) as {
-    records?: { SeaSurfaceObs?: { Location?: Array<{ StationObsTimes?: { StationObsTime?: ObsTime[] } }> } };
+    records?: { SeaSurfaceObs?: { Location?: Array<{ Station?: { StationID?: string }; StationObsTimes?: { StationObsTime?: ObsTime[] } }> } };
   };
-  return data.records?.SeaSurfaceObs?.Location?.[0]?.StationObsTimes?.StationObsTime ?? [];
+  const map = new Map<string, ObsTime[]>();
+  for (const loc of data.records?.SeaSurfaceObs?.Location ?? []) {
+    const id = loc.Station?.StationID;
+    if (id) map.set(id, loc.StationObsTimes?.StationObsTime ?? []);
+  }
+  return map;
 }
 
 /** 在 48hr 序列裡，由新到舊找某欄位第一個有效值 */
@@ -92,13 +98,11 @@ function latestValid<T>(times: ObsTime[], pick: (we: NonNullable<ObsTime["Weathe
   return null;
 }
 
-/** 抓單一回報點（浮標 + 潮位），取最新有效值。任何失敗回 null。 */
-export async function fetchMarinePoint(p: MarinePoint, apiKey: string): Promise<MarineReading | null> {
+/** 從「全部測站 map」組單一回報點（浮標 + 潮位），取最新有效值。無資料回 null。 */
+export function buildMarineReading(p: MarinePoint, stationMap: Map<string, ObsTime[]>): MarineReading | null {
   try {
-    const [buoy, tide] = await Promise.all([
-      fetchStation(p.buoyId, apiKey).catch(() => [] as ObsTime[]),
-      p.tideId ? fetchStation(p.tideId, apiKey).catch(() => [] as ObsTime[]) : Promise.resolve([] as ObsTime[]),
-    ]);
+    const buoy = stationMap.get(p.buoyId) ?? [];
+    const tide = p.tideId ? (stationMap.get(p.tideId) ?? []) : [];
     if (buoy.length === 0 && tide.length === 0) return null;
 
     const obsTime = (() => {
@@ -210,7 +214,14 @@ export async function buildMarineSection(
   apiKey: string | undefined,
 ): Promise<{ text: string; light: Light } | null> {
   if (!apiKey || points.length === 0) return null;
-  const readings = await Promise.all(points.map((p) => fetchMarinePoint(p, apiKey)));
+  let stationMap: Map<string, ObsTime[]>;
+  try {
+    stationMap = await fetchAllStations(apiKey); // v447：一次抓全部，避免多區併發被 CWA 限流
+  } catch (e) {
+    console.error("[marine] fetchAllStations failed", e);
+    return null;
+  }
+  const readings = points.map((p) => buildMarineReading(p, stationMap));
   const formatted = readings
     .map((r) => (r ? formatMarinePoint(r, fields) : null))
     .filter((x): x is { text: string; light: Light } => x !== null);
