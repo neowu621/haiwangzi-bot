@@ -77,6 +77,14 @@ async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
+      // v424：401（token 過期/失效）→ 清掉 token 並導回登入頁，避免停在「session expired」死路
+      //   （簡版後台 /admin/m 與完整版一致：過期就重新登入）
+      if (res.status === 401 && typeof window !== "undefined") {
+        clearAdminToken();
+        if (!window.location.pathname.startsWith("/admin/login")) {
+          window.location.href = "/admin/login";
+        }
+      }
       // 用 || 而非 ??：空字串也要 fallback 到 HTTP status，避免 "場次載入失敗：" 後面空白
       throw new Error(err.error || err.detail || `HTTP ${res.status}`);
     }

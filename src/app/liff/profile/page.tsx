@@ -13,6 +13,7 @@ import {
   Calendar,
   ChevronUp,
   Settings,
+  Bell,
 } from "lucide-react";
 import {
   Card,
@@ -36,7 +37,7 @@ import { BottomNav } from "@/components/shell/BottomNav";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
-import { getVipTier, getNextTierProgress, VIP_TIERS, type VipTier } from "@/lib/vip-tier";
+import { getVipTier, VIP_TIERS, type VipTier } from "@/lib/vip-tier";
 import { cn } from "@/lib/utils";
 
 interface Companion {
@@ -470,8 +471,11 @@ export default function ProfilePage() {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <div className="text-base font-bold">
-                {me.realName || me.displayName}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-base font-bold">
+                  {me.realName || me.displayName}
+                </span>
+                <VipMiniBadge vipLevel={me.vipLevel ?? 1} />
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--muted-foreground)] tabular flex-wrap">
                 <span>ID: {me.lineUserId.slice(0, 10)}...</span>
@@ -494,11 +498,6 @@ export default function ProfilePage() {
               <div className="text-[10px] text-[var(--muted-foreground)]">
                 海王子累積
               </div>
-              {me.logCount > 0 && (
-                <div className="text-[9px] text-[var(--muted-foreground)] mt-0.5">
-                  含他處 {me.logCount} 支
-                </div>
-              )}
             </div>
             <button
               type="button"
@@ -537,12 +536,8 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* 海王子潛水會員等級卡 — 用海王子累積次數計算等級（防自填灌水）*/}
-        <VipTierCard
-          vipLevel={me.vipLevel ?? 1}
-          haiwangziLogCount={me.haiwangziLogCount ?? 0}
-          totalSpend={me.totalSpend ?? 0}
-        />
+        {/* 站內訊息通知卡（類似抵用金概念）— 點進去看 /liff/notifications */}
+        <NotificationCard liff={liff} />
 
         {/* 補償金 / 抵用金 卡 */}
         <CreditCard balance={me.creditBalance ?? 0} liff={liff} />
@@ -989,16 +984,8 @@ export default function ProfilePage() {
 }
 
 // ── 海王子潛水會員等級卡 ────────────────────────────
-function VipTierCard({
-  vipLevel,
-  haiwangziLogCount,
-  totalSpend,
-}: {
-  vipLevel: number;
-  haiwangziLogCount: number;
-  totalSpend: number;
-}) {
-  // 從 /api/vip-tiers (公開) 拿 admin 自訂等級
+// v424：會員等級縮成「名字右邊的小徽章」— 只顯示 emoji + LV + 名稱（其餘明細移除）
+function VipMiniBadge({ vipLevel }: { vipLevel: number }) {
   const [tiers, setTiers] = useState<VipTier[]>(VIP_TIERS);
   useEffect(() => {
     fetch("/api/vip-tiers")
@@ -1009,77 +996,76 @@ function VipTierCard({
       .catch(() => {});
   }, []);
   const tier = getVipTier(vipLevel, tiers);
-  const progress = getNextTierProgress(haiwangziLogCount, totalSpend, tiers);
-
   return (
-    <Card
-      className="border-2"
-      style={{ borderColor: tier.color }}
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold leading-none"
+      style={{
+        backgroundColor: `${tier.color}20`,
+        color: tier.color,
+        border: `1px solid ${tier.color}55`,
+      }}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-14 w-14 items-center justify-center rounded-full text-3xl"
-            style={{ backgroundColor: `${tier.color}25` }}
-          >
-            {tier.emoji}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-bold tabular">LV {tier.level}</span>
-              <span className="text-sm font-semibold">{tier.name}</span>
-              <span className="text-[10px] text-[var(--muted-foreground)] tracking-wider">
-                {tier.enName.toUpperCase()}
-              </span>
-            </div>
-            <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)] tabular">
-              海王子累積 {haiwangziLogCount} 支 · 累計消費 NT${" "}
-              {totalSpend.toLocaleString()}
-            </div>
-          </div>
-        </div>
+      <span className="text-sm leading-none">{tier.emoji}</span>
+      LV{tier.level} {tier.name}
+    </span>
+  );
+}
 
-        {progress && (
-          <div className="mt-3 rounded-md bg-[var(--muted)]/50 p-2 text-[11px] tabular">
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--muted-foreground)]">
-                距離 LV {progress.next.level} {progress.next.name}{" "}
-                {progress.next.emoji}
-              </span>
-            </div>
-            <div className="mt-1 flex gap-3 text-[10px]">
-              {progress.logsLeft > 0 && (
-                <span>還差 {progress.logsLeft} 支潛水</span>
-              )}
-              {progress.spendLeft > 0 && (
-                <span>
-                  或 NT$ {progress.spendLeft.toLocaleString()} 累計消費
-                </span>
-              )}
-              {progress.logsLeft === 0 && progress.spendLeft === 0 && (
-                <span className="text-[var(--color-phosphor)] font-bold">
-                  即將升等！
-                </span>
-              )}
-            </div>
-          </div>
+// v424：站內訊息通知卡（仿抵用金卡樣式）— 顯示未讀數，點進去看 /liff/notifications
+function NotificationCard({ liff }: { liff: ReturnType<typeof useLiff> }) {
+  const [unread, setUnread] = useState<number>(0);
+  useEffect(() => {
+    let alive = true;
+    liff
+      .fetchWithAuth<{ count: number }>("/api/me/notifications/unread-count")
+      .then((d) => {
+        if (alive) setUnread(d.count ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [liff]);
+  const has = unread > 0;
+  return (
+    <Link href="/liff/notifications" className="block">
+      <Card
+        className={cn(
+          "cursor-pointer border-2 transition-colors",
+          has
+            ? "border-[var(--color-coral)]/50 bg-[var(--color-coral)]/5 hover:bg-[var(--color-coral)]/10"
+            : "border-[var(--border)] hover:bg-[var(--muted)]",
         )}
-
-        <div className="mt-2 space-y-0.5">
-          <div className="text-[10px] font-semibold text-[var(--muted-foreground)]">
-            您的會員福利
+      >
+        <CardContent className="flex items-center gap-3 p-4">
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-ocean-deep)]/10">
+            <Bell className="h-6 w-6 text-[var(--color-ocean-deep)]" />
+            {has && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--color-coral)] px-1 text-[10px] font-bold text-white">
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
           </div>
-          <ul className="space-y-0.5 text-[11px]">
-            {tier.benefits.map((b, i) => (
-              <li key={i} className="flex items-start gap-1">
-                <span style={{ color: tier.color }}>✦</span>
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="flex-1">
+            <div className="text-[11px] text-[var(--muted-foreground)]">
+              站內訊息通知
+            </div>
+            <div
+              className={cn(
+                "text-base font-bold",
+                has ? "text-[var(--color-coral)]" : "",
+              )}
+            >
+              {has ? `${unread} 則未讀訊息` : "目前沒有未讀訊息"}
+            </div>
+            <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+              預約進度、付款、退款等通知都會在這裡
+            </div>
+          </div>
+          <span className="text-[var(--color-coral)]">▸</span>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
