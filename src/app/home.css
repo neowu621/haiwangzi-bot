@@ -225,15 +225,16 @@
 .hw .rev-grid{display:grid;gap:18px;grid-template-columns:1fr}
 @media(min-width:560px){.hw .rev-grid{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:980px){.hw .rev-grid{grid-template-columns:repeat(3,1fr)}}
-.hw .rev{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av stars" "av name" "head head" "body body";column-gap:14px;row-gap:3px;align-content:start;background:rgba(102,216,246,.06);border:1px solid rgba(102,216,246,.18);border-radius:18px;padding:24px}
-.hw .rev .av{grid-area:av;width:56px;height:56px;border-radius:50%;align-self:center;background:linear-gradient(135deg,var(--glow),var(--blue)) center/cover no-repeat;display:grid;place-items:center;overflow:hidden;box-shadow:0 0 10px rgba(102,216,246,.25)}
+/* v446：統一版型 — 頭像/照片在左（貫穿），★星等/暱稱/標題/內文全在右欄（與第一張長文卡一致） */
+.hw .rev{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av stars" "av name" "av head" "av body";column-gap:14px;row-gap:3px;align-content:start;background:rgba(102,216,246,.06);border:1px solid rgba(102,216,246,.18);border-radius:18px;padding:24px}
+.hw .rev .av{grid-area:av;width:56px;height:56px;border-radius:50%;align-self:start;background:linear-gradient(135deg,var(--glow),var(--blue)) center/cover no-repeat;display:grid;place-items:center;overflow:hidden;box-shadow:0 0 10px rgba(102,216,246,.25)}
 .hw .rev .av span{color:#04263f;font-weight:700;font-size:1.35rem}
 .hw .rev .stars{grid-area:stars;align-self:end;color:var(--gold);letter-spacing:3px;margin:0}
 .hw .rev .rev-name{grid-area:name;align-self:start;font-weight:700;font-size:.92rem;color:var(--foam)}
 .hw .rev h4{grid-area:head;font-family:var(--serif);font-weight:800;font-size:1.05rem;margin:10px 0 0;color:var(--foam);line-height:1.45}
 .hw .rev p{grid-area:body;color:var(--foam);font-size:.96rem;margin:6px 0 0}
-/* v446：照片版見證卡 — 圖片縮小放左、★★★★★/暱稱/標題放圖片右邊、內文在下方整列 */
-.hw .rev.has-photo{grid-template-areas:"ph stars" "ph name" "ph head" "body body";column-gap:14px;row-gap:2px;align-content:start;overflow:visible}
+/* v446：照片版見證卡 — 與其他卡統一：圖片在左（貫穿），★星等/暱稱/標題/內文全在右欄 */
+.hw .rev.has-photo{grid-template-areas:"ph stars" "ph name" "ph head" "ph body";column-gap:14px;row-gap:2px;align-content:start;overflow:visible}
 .hw .rev.has-photo .rev-banner{grid-area:ph;align-self:start;width:clamp(108px,32vw,150px);max-width:none;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:1px solid rgba(102,216,246,.25);margin:0}
 .hw .rev.has-photo .stars{grid-area:stars;align-self:end;color:var(--gold);letter-spacing:3px;margin:0}
 .hw .rev.has-photo .rev-name{grid-area:name;align-self:start;font-weight:700;font-size:.92rem;color:var(--foam)}
