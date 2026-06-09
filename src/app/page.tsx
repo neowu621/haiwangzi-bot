@@ -441,8 +441,8 @@ export default function HomePage() {
             <p>無論你是完全沒碰過水的新手，還是想精進的進階潛水員，我都會依照你的狀況，把節奏調到最舒服，讓你把注意力放在欣賞海裡的世界。</p>
             <div className="stats">
               <div className="stat"><b>20+</b><small>教學年資</small></div>
-              <div className="stat"><b>20000+</b><small>潛水次數</small></div>
-              <div className="stat"><b>1200+</b><small>累積潛水人數</small></div>
+              <div className="stat"><b>20,000+</b><small>潛水次數</small></div>
+              <div className="stat"><b>2,000+</b><small>累積潛水人數</small></div>
             </div>
           </div>
         </div>
