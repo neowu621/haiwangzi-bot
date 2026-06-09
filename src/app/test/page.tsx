@@ -13,7 +13,7 @@ import SiteNav from "./_home/SiteNav";
 import Bubbles from "./_home/Bubbles";
 import NewsVideos from "./_home/NewsVideos";
 import {
-  lineMsg, YT_CHANNEL, IG_URL, FB_URL, NAV,
+  LINE_BOOK_URL, YT_CHANNEL, IG_URL, FB_URL, NAV,
   COURSES, SPOTS, TRIPS, LVL_CLASS,
   BUILTIN_REVIEWS, DEFAULT_REVIEWS_NOTE, FAQ, LineIcon,
 } from "./_home/data";
@@ -41,7 +41,7 @@ export default function HomePage() {
             <h1>潛入大海<br />看見<span className="hl">另一個世界</span></h1>
             <p className="lead">剛入門、還在摸索都沒關係——有海王子教練「汪汪」在身邊，每一潛都安心。你只要放鬆，盡情擁抱大海。</p>
             <div className="hero-cta">
-              <a href={lineMsg("我想預約東北角潛水")} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
+              <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
               <a href="#start" className="btn btn-ghost">第一次潛水？看這裡</a>
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function HomePage() {
             <div className="flow-step"><span className="fn">4</span><h3>上岸看美照</h3><p>教練會背專業相機側拍，上岸帶走滿滿的水下回憶。</p></div>
           </div>
           <div className="flow-cta reveal">
-            <a href={lineMsg("我是第一次潛水的新手，想諮詢")} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 諮詢第一次潛水</a>
+            <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 諮詢第一次潛水</a>
           </div>
         </div>
       </section>
@@ -152,7 +152,7 @@ export default function HomePage() {
                     <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
                   ))}
                 </ul>
-                <a href={lineMsg(c.msg)} target="_blank" rel="noopener" className="btn btn-line course-cta"><LineIcon />LINE 報名・諮詢</a>
+                <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line course-cta"><LineIcon />LINE 報名・諮詢</a>
               </div>
             ))}
           </div>
@@ -224,7 +224,7 @@ export default function HomePage() {
           <span className="eyebrow">Let&apos;s Dive</span>
           <h2>準備好下水了嗎？</h2>
           <p>加入官方 LINE，告訴汪汪你想潛的日期與人數，幫你把行程安排好。單人報名也 OK，現場幫你找潛伴。</p>
-          <a href={lineMsg("我想預約東北角潛水")} target="_blank" rel="noopener" className="btn btn-line"><LineIcon s={20} />加 LINE 預約潛水</a>
+          <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon s={20} />加 LINE 預約潛水</a>
         </div>
       </section>
 
@@ -242,7 +242,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="foot-col"><h5>探索</h5>{NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</div>
-            <div className="foot-col"><h5>預約</h5><a href={lineMsg("我想預約東北角潛水")} target="_blank" rel="noopener">LINE 預約潛水</a></div>
+            <div className="foot-col"><h5>預約</h5><a href={LINE_BOOK_URL} target="_blank" rel="noopener">LINE 預約潛水</a></div>
           </div>
           <div className="foot-bottom">© {new Date().getFullYear()} 東北角海王子 Northeast Coast Ocean Prince · 探索海洋 · 安全潛水 · 專業教學</div>
           <div className="foot-version" style={{ textAlign: "center", fontSize: 10, opacity: 0.45, padding: "6px 0 2px", letterSpacing: "0.05em" }}>
@@ -252,7 +252,7 @@ export default function HomePage() {
       </footer>
 
       <div className="mobile-book">
-        <a href={lineMsg("我想預約東北角潛水")} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
+        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
       </div>
     </div>
   );
