@@ -4,6 +4,14 @@ import type React from "react";
 
 export const LINE_BOOK_URL =
   process.env.NEXT_PUBLIC_LINE_ADD_FRIEND_URL ?? "https://line.me/R/ti/p/@894bpmew";
+
+// v432：LINE 官方帳號 ID（從加好友連結擷取）+ 帶預填訊息的深連結。
+//   點下去會開啟與海王子的 LINE 聊天、輸入框預填指定文字（客戶按送出後，老闆即知是問哪個項目）。
+//   注意：文字需使用者自行送出；對「已加好友」最穩。
+export const LINE_OA_ID = (LINE_BOOK_URL.split("/ti/p/")[1] || "@894bpmew").trim();
+export function lineMsg(text: string) {
+  return `https://line.me/R/oaMessage/${encodeURIComponent(LINE_OA_ID)}/?${encodeURIComponent(text)}`;
+}
 export const YT_CHANNEL = "https://www.youtube.com/@haiwangzi-northeast-coast";
 export const IG_URL = "https://www.instagram.com/chengruwang/";
 export const FB_URL = "https://www.facebook.com/profile.php?id=100064926510785";
@@ -27,6 +35,7 @@ export const COURSES = [
   {
     badge: "免證照體驗 · DISCOVER",
     title: "體驗潛水（免證照）",
+    msg: "我想詢問「體驗潛水（免證照）」的費用與時間",
     price: "LINE 詢問",
     includes: "免證照・教練全程陪同・含裝備",
     items: [
@@ -40,6 +49,7 @@ export const COURSES = [
   {
     badge: "持證精進 · FUN DIVE",
     title: "剛拿證照、想把浮力練好？",
+    msg: "我想詢問「持證精進 Fun Dive 練功」",
     price: "LINE 詢問",
     includes: "Fun Dive 練功・平日小團・近一對一",
     items: [
@@ -53,6 +63,7 @@ export const COURSES = [
   {
     badge: "考證照 · OPEN WATER",
     title: "開放水域潛水員 OW（保證班）",
+    msg: "我想詢問「OW 開放水域潛水員」課程",
     price: "NT$14,500",
     includes: "含教材・氣瓶・裝備・泳池費",
     items: [
@@ -68,6 +79,7 @@ export const COURSES = [
   {
     badge: "進階 · ADVANCED",
     title: "進階開放水域潛水員 AOW",
+    msg: "我想詢問「AOW 進階」課程",
     price: "NT$14,500",
     includes: "含教材・氣瓶・裝備・證照費",
     items: [

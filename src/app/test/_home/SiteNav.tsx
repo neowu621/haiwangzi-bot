@@ -3,7 +3,7 @@
 //   從 page.tsx 抽出：scrolled / menuOpen / activeSec 狀態與 scroll/IntersectionObserver。
 //   v408 的「目前裝置」badge（純裝飾）一併留在這裡。
 import { useEffect, useState } from "react";
-import { NAV, LINE_BOOK_URL, LineIcon } from "./data";
+import { NAV, lineMsg, LineIcon } from "./data";
 
 // v408：目前裝置示意 icon（依視窗寬度判斷 手機 / 平板 / 桌面）
 type Device = "mobile" | "tablet" | "desktop";
@@ -61,13 +61,13 @@ export default function SiteNav() {
         <span className="dev-badge" title={`目前裝置：${DEVICE_LABEL[device]}`} aria-label={`目前裝置：${DEVICE_LABEL[device]}`}>
           <DeviceIcon device={device} />
         </span>
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line nav-cta"><LineIcon />LINE 預約</a>
+        <a href={lineMsg("我想預約東北角潛水")} target="_blank" rel="noopener" className="btn btn-line nav-cta"><LineIcon />LINE 預約</a>
         <button className={`nav-toggle${menuOpen ? " open" : ""}`} aria-label="開啟選單" onClick={() => setMenuOpen((o) => !o)}><span /><span /><span /></button>
       </header>
       <div className={`nav-backdrop${menuOpen ? " open" : ""}`} onClick={closeMenu} />
       <nav className={`nav-menu${menuOpen ? " open" : ""}`} aria-label="行動選單">
         {NAV.map((n) => <a key={n.href} href={n.href} onClick={closeMenu}>{n.label}</a>)}
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line" onClick={closeMenu}><LineIcon />LINE 預約</a>
+        <a href={lineMsg("我想預約東北角潛水")} target="_blank" rel="noopener" className="btn btn-line" onClick={closeMenu}><LineIcon />LINE 預約</a>
       </nav>
 
       <div className="dotnav">
