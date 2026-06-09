@@ -227,12 +227,16 @@ export default function HomePage() {
         const filter = cfg?.homeVideoFilter ?? "all";
         const count = Math.max(1, Math.min(12, cfg?.homeVideoCount ?? 5));
         const featuredId = (cfg?.homeVideoFeaturedId ?? "").trim();
-        // 去重：同一支影片 id 只保留第一筆，確保亂數抽出的 4 支彼此不同（v423b）
+        // 去重：依 id + 標題（v430）。同一支影片若被用兩個不同 id 重複貼入，靠標題也能去掉。
         const seenIds = new Set<string>();
+        const seenTitles = new Set<string>();
         let list = base.filter((v) => {
           const id = (v?.id ?? "").trim();
           if (!id || exclude.has(id) || seenIds.has(id)) return false;
+          const title = (v?.title ?? "").trim().toLowerCase();
+          if (title && seenTitles.has(title)) return false;
           seenIds.add(id);
+          if (title) seenTitles.add(title);
           return true;
         });
         if (filter === "long") list = list.filter((v) => !v.isShort);
@@ -281,6 +285,12 @@ export default function HomePage() {
         box.appendChild(b);
       }
     }
+    // v430：首屏無限動畫（泡泡/光束）延後到載入完成後才啟動 → 量測窗內首屏靜態、降 Speed Index
+    const animStart = () => requestAnimationFrame(() => box?.closest(".hw")?.classList.add("anim-on"));
+    let animTimer: number | undefined;
+    const onLoad = () => { animTimer = window.setTimeout(animStart, 300); };
+    if (document.readyState === "complete") onLoad();
+    else window.addEventListener("load", onLoad, { once: true });
     const onScroll = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -289,7 +299,7 @@ export default function HomePage() {
     const spy = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActiveSec((e.target as HTMLElement).id); }), { rootMargin: "-48% 0px -48% 0px" });
     document.querySelectorAll(".hw section[id]").forEach((s) => spy.observe(s));
     const t = window.setTimeout(() => setLoaderHide(true), 1100);
-    return () => { window.removeEventListener("scroll", onScroll); io.disconnect(); spy.disconnect(); window.clearTimeout(t); };
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("load", onLoad); if (animTimer) window.clearTimeout(animTimer); io.disconnect(); spy.disconnect(); window.clearTimeout(t); };
   }, []);
 
   const closeMenu = () => setMenuOpen(false);

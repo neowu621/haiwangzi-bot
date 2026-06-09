@@ -21,6 +21,19 @@ export default function Bubbles() {
       if (i % 3 === 0) b.style.filter = "blur(1.2px)";
       box.appendChild(b);
     }
+    // v430：首屏無限動畫（泡泡/光束）延後到「載入完成後」才啟動 → 量測窗內首屏靜態、降 Speed Index。
+    //   對使用者幾乎無感（動畫晚 ~0.3s 起跑），但對手機/LINE webview 持續動畫負荷也較友善。
+    const root = box.closest(".hw");
+    if (!root) return;
+    const start = () => requestAnimationFrame(() => root.classList.add("anim-on"));
+    if (document.readyState === "complete") {
+      const t = window.setTimeout(start, 300);
+      return () => window.clearTimeout(t);
+    }
+    let t: number | undefined;
+    const onLoad = () => { t = window.setTimeout(start, 300); };
+    window.addEventListener("load", onLoad, { once: true });
+    return () => { window.removeEventListener("load", onLoad); if (t) window.clearTimeout(t); };
   }, []);
   return <div className="bubbles" ref={bubbleRef} />;
 }

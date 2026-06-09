@@ -52,12 +52,17 @@ export default function NewsVideos() {
         const filter = cfg?.homeVideoFilter ?? "all";
         const count = Math.max(1, Math.min(12, cfg?.homeVideoCount ?? 5));
         const featuredId = (cfg?.homeVideoFeaturedId ?? "").trim();
-        // 去重：同一支影片 id 只保留第一筆，確保亂數抽出的 4 支彼此不同（v423b）
+        // 去重：依 id + 標題（v430）。同一支影片若被用兩個不同 id 重複貼入，靠標題也能去掉，
+        //   確保亂數抽出的 4 支彼此不同、不會出現重複縮圖。
         const seenIds = new Set<string>();
+        const seenTitles = new Set<string>();
         let list = base.filter((v) => {
           const id = (v?.id ?? "").trim();
           if (!id || exclude.has(id) || seenIds.has(id)) return false;
+          const title = (v?.title ?? "").trim().toLowerCase();
+          if (title && seenTitles.has(title)) return false;
           seenIds.add(id);
+          if (title) seenTitles.add(title);
           return true;
         });
         if (filter === "long") list = list.filter((v) => !v.isShort);
