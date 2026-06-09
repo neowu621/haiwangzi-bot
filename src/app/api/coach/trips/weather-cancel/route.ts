@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
-import { getLineClient } from "@/lib/line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,23 +36,44 @@ export async function POST(req: NextRequest) {
     data: { status: "cancelled_by_weather", cancellationReason: data.reason },
   });
 
-  // LINE 推播給所有報名者
-  const client = getLineClient();
+  // v443：天氣取消通知改走 notifyCustomer + weather_cancel 模板
+  //   → 統一 LINE / Email / 站內通知、文案與模板一致、尊重會員各通道開關（取代原本純文字 LINE push）
+  const sites = trip.diveSiteIds.length
+    ? await prisma.diveSite.findMany({
+        where: { id: { in: trip.diveSiteIds } },
+        select: { name: true },
+      })
+    : [];
+  const siteName = sites.map((s) => s.name).join("、") || "東北角";
   const dateStr = trip.date.toISOString().slice(0, 10);
-  const message = `⚠️ 場次取消通知\n\n${dateStr} ${trip.startTime} 場次因${data.reason}取消。\n\n請選擇:\n• 改期 → 看其他可預約場次\n• 退款 → 教練會聯繫您`;
+  const liffUrl =
+    process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
-  const results = await Promise.allSettled(
-    bookings.map((b) =>
-      client.pushMessage({
-        to: b.userId,
-        messages: [{ type: "text", text: message }],
-      }),
-    ),
-  );
+  const { notifyCustomer } = await import("@/lib/notify-template");
+  const { weatherCancelEmail } = await import("@/lib/email/templates");
+  for (const b of bookings) {
+    notifyCustomer({
+      userId: b.userId,
+      templateKey: "weather_cancel",
+      params: {
+        date: dateStr,
+        time: trip.startTime,
+        site: siteName,
+        reason: data.reason,
+        url: liffUrl,
+      },
+      altText: `場次取消通知 ${dateStr} ${trip.startTime}`,
+      email: (name) =>
+        weatherCancelEmail({
+          name,
+          date: dateStr,
+          time: trip.startTime,
+          site: siteName,
+          reason: data.reason,
+          url: liffUrl,
+        }),
+    });
+  }
 
-  return NextResponse.json({
-    ok: true,
-    notified: results.filter((r) => r.status === "fulfilled").length,
-    failed: results.filter((r) => r.status === "rejected").length,
-  });
+  return NextResponse.json({ ok: true, notified: bookings.length });
 }
