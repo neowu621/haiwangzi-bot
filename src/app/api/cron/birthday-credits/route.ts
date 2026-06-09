@@ -4,6 +4,7 @@ import { grantCredit } from "@/lib/credit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 // ─────────────────────────────────────────────────────────────
 // /api/cron/birthday-credits

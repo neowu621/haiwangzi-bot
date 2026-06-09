@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 // ─────────────────────────────────────────────────────────────
 // /api/cron/credit-expiry-reminder  （v420）

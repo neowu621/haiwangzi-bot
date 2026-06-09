@@ -15,6 +15,7 @@ import { logBookingStatusChange } from "@/lib/booking-status-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 function taipeiTodayDate(): Date {
   const tw = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });

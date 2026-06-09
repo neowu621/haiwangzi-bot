@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
+import { PUBLIC_STATIC_CACHE_HEADERS } from "@/lib/http-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,5 +112,5 @@ export async function GET() {
     homeVideoFilter,
     homeTestimonials,
     homeReviewsNote,
-  });
+  }, { headers: PUBLIC_STATIC_CACHE_HEADERS });
 }

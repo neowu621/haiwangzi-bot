@@ -6,6 +6,7 @@ import { computePaymentDeadline, activityStartFromTaipei } from "@/lib/payment-d
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 /**
  * v272: /api/cron/payment-reminders

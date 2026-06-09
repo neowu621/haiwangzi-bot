@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
           console.error("[cancel-all log]", t.id, e);
         }
       }
-    });
+    }).catch((e) => console.error("[booking-status-log]", e));
     return NextResponse.json({ ok: true, cancelled: r.count });
   } catch (e) {
     console.error("[POST /admin/bookings/cancel-all]", e);

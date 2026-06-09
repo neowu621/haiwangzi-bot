@@ -27,6 +27,7 @@ export async function GET() {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; HaiwangziBot/1.0)" },
       next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       return jsonResponse({ videos: [], error: `RSS HTTP ${res.status}` });

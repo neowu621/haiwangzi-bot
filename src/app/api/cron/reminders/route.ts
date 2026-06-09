@@ -7,6 +7,7 @@ import { tripGuideEmail, finalReminderEmail, depositReminderEmail } from "@/lib/
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 // ─────────────────────────────────────────────────────────────
 // /api/cron/reminders

@@ -35,6 +35,10 @@ function getTransporter(): Transporter {
       // Gmail App Password 接受 "abcd efgh ijkl mnop" 或 "abcdefghijklmnop" 兩種格式
       pass: GMAIL_APP_PASSWORD.replace(/\s+/g, ""),
     },
+    // 防卡死：SMTP 連線 / 握手 / 傳輸逾時（避免卡住 worker）
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
   return _transporter;
 }

@@ -7,6 +7,7 @@ import { weatherCancelEmail } from "@/lib/email/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 /**
  * /api/cron/weather-check

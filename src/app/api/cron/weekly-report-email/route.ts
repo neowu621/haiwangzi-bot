@@ -5,6 +5,7 @@ import { makeMultiSheetXlsxBuffer } from "@/lib/email/excel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 /**
  * POST /api/cron/weekly-report-email

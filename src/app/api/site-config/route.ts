@@ -5,6 +5,7 @@ import {
   DEFAULT_CARDS,
   type SiteConfig,
 } from "@/lib/site-config";
+import { PUBLIC_STATIC_CACHE_HEADERS } from "@/lib/http-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function GET() {
       ...DEFAULT_SITE_CONFIG,
       gearRentalPrices: {},
       defaultTripPricing: {},
-    });
+    }, { headers: PUBLIC_STATIC_CACHE_HEADERS });
   }
   const cards = Array.isArray(row.cards) && row.cards.length > 0
     ? (row.cards as unknown as SiteConfig["cards"])
@@ -40,5 +41,5 @@ export async function GET() {
     splashCooldownMs: row.splashCooldownMs,
     gearRentalPrices: row.gearRentalPrices ?? {},
     defaultTripPricing: row.defaultTripPricing ?? {},
-  });
+  }, { headers: PUBLIC_STATIC_CACHE_HEADERS });
 }

@@ -55,7 +55,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const data = BodySchema.parse(await req.json());
+  const parsed = BodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "invalid_body", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
 
   // v356：嚴格 contentType 白名單（jpeg/png/webp/pdf）—— 擋掉 SVG 等可帶 script 的格式
   if (!ALLOWED_CONTENT_TYPES.has(data.contentType)) {

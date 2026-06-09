@@ -37,7 +37,14 @@ export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
 
-  const data = BodySchema.parse(await req.json());
+  const parsed = BodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "invalid_body", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  const data = parsed.data;
 
   const tour = await prisma.tourPackage.findUnique({ where: { id: data.tourId } });
   if (!tour) return NextResponse.json({ error: "tour not found" }, { status: 404 });
@@ -163,7 +170,7 @@ export async function POST(req: NextRequest) {
       actorRole: "customer",
       note: `下單（付款狀態：${paymentStatus}）`,
     }),
-  );
+  ).catch((e) => console.error("[booking-status-log]", e));
 
   // v260：手寫簽名上 R2 → 更新 booking
   if (data.signatureDataUrl) {
