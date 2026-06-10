@@ -96,7 +96,7 @@ interface Config {
   dailyWeatherReportLastSentAt?: string | null;
   // v389：天氣回報時段（台灣時間）+ 內容開關
   weatherReportSlots?: Array<{ h: number; m: number }>;
-  weatherReportContent?: { wind: boolean; temp: boolean; sessions: boolean; wave: boolean };
+  weatherReportContent?: { wind: boolean; temp: boolean; sessions: boolean; wave: boolean; forecast?: boolean };
   // v411：海象（浮標+潮位）整合
   weatherMarineEnabled?: boolean;
   weatherMarinePoints?: Array<{ label: string; buoyId: string; tideId: string }>;
@@ -1264,7 +1264,7 @@ function AutoSendSection({
 
   // v389：發送時段（台灣時間）+ 內容開關
   const slots = cfg.weatherReportSlots ?? [{ h: 22, m: 0 }, { h: 5, m: 0 }];
-  const content = cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false };
+  const content = { forecast: true, ...(cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false }) };
   // v444：Cronicle 現以 Asia/Taipei 執行 → 直接用台灣時間 cron，不再換算 UTC（避免貼錯）
   function twCron(h: number, m: number) {
     return `${m} ${h} * * *`;
@@ -1285,7 +1285,7 @@ function AutoSendSection({
   function removeSlot(i: number) {
     setSlots(slots.filter((_, idx) => idx !== i));
   }
-  function toggleContent(key: "wind" | "temp" | "sessions" | "wave") {
+  function toggleContent(key: "wind" | "temp" | "sessions" | "wave" | "forecast") {
     setCfg((c) => (c ? { ...c, weatherReportContent: { ...content, [key]: !content[key] } } : c));
   }
   // v411：海象設定
@@ -1625,6 +1625,7 @@ function AutoSendSection({
               { k: "wind", label: "💨 風速（基隆/宜蘭）" },
               { k: "temp", label: "🌡️ 氣溫" },
               { k: "sessions", label: "📅 今日/明日場次摘要" },
+              { k: "forecast", label: "⛅ 天氣預報（龍洞·萊萊/潮境 06–12 時）" },
             ] as const).map((item) => (
               <label key={item.k} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-[12.5px] cursor-pointer" style={{ borderColor: "var(--border)", background: "#fafcff" }}>
                 <input type="checkbox" checked={content[item.k]} onChange={() => toggleContent(item.k)} />

@@ -13,6 +13,7 @@ import {
   type MarinePoint,
   type MarineFields,
 } from "./marine";
+import { buildForecastSection } from "./forecast";
 
 interface CWAStation {
   StationId: string;
@@ -69,13 +70,14 @@ export async function runDailyWeatherReport(opts?: {
   const startedAt = Date.now();
   const threshold = cfg.weatherWindThreshold ?? 10;
 
-  // v389：發送內容開關（缺省全開、wave 預設關）
+  // v389：發送內容開關（缺省全開、wave 預設關；v456 加 forecast 預設開）
   const contentRaw = (cfg as unknown as { weatherReportContent?: unknown }).weatherReportContent;
   const content = {
     wind: true,
     temp: true,
     sessions: true,
     wave: false,
+    forecast: true,
     ...(contentRaw && typeof contentRaw === "object" && !Array.isArray(contentRaw)
       ? (contentRaw as Record<string, boolean>)
       : {}),
@@ -130,6 +132,13 @@ export async function runDailyWeatherReport(opts?: {
       ? { ...DEFAULT_MARINE_FIELDS, ...(rawFields as Partial<MarineFields>) }
       : DEFAULT_MARINE_FIELDS;
     marineBlock = await buildMarineSection(points, fields, process.env.CWA_API_KEY);
+  }
+
+  // ── 1c. 天氣預報（F-D0047 鄉鎮 3 天，潛水時段 06–12）v456 ──
+  // 循序接在海象之後抓，避免對 CWA 併發（marine 限流教訓）
+  let forecastBlock: string | null = null;
+  if (content.forecast) {
+    forecastBlock = await buildForecastSection(process.env.CWA_API_KEY);
   }
 
   // ── 2. 抓今日 / 明日場次 ────────────────────────────
@@ -214,6 +223,11 @@ export async function runDailyWeatherReport(opts?: {
   // v389：依內容開關組裝各區塊
   const blocks: string[] = [`🌊 海王子潛水 每日營運報告`, dateStr];
 
+  // v456：場次摘要移到最前面（老闆先看今天有沒有團，再看海況）
+  if (content.sessions) {
+    blocks.push(["", "【今日場次】", todayLines, "", "【明日場次】", tomorrowLines].join("\n"));
+  }
+
   if (content.wind || content.temp) {
     const seaLines: string[] = ["", "【海況】"];
     if (content.wind) seaLines.push(`今日風速：${windStatus}`);
@@ -232,8 +246,9 @@ export async function runDailyWeatherReport(opts?: {
     blocks.push(["", marineBlock.text, "", `—— 綜合海況：${marineBlock.light} ${overall}`].join("\n"));
   }
 
-  if (content.sessions) {
-    blocks.push(["", "【今日場次】", todayLines, "", "【明日場次】", tomorrowLines].join("\n"));
+  // v456：天氣預報（未來時段）放在即時海象之後
+  if (forecastBlock) {
+    blocks.push(["", forecastBlock].join("\n"));
   }
 
   blocks.push("", "—", `此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`);

@@ -105,6 +105,7 @@ const PatchSchema = z.object({
       temp: z.boolean(),
       sessions: z.boolean(),
       wave: z.boolean(),
+      forecast: z.boolean().optional(), // v456：鄉鎮天氣預報
     })
     .optional(),
   // v411：海象（浮標+潮位）整合
