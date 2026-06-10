@@ -61,13 +61,38 @@ export async function adminFetch<T>(
 const getInflight = new Map<string, Promise<unknown>>();
 
 async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // v465：逾時 / 連線層錯誤自動重試一次（用全新連線）。
+  //   現象：部署後按 F5，瀏覽器沿用「半死的 keep-alive 舊連線」→ 請求卡住到逾時 →「連線逾時」，
+  //   而 Ctrl+F5 因重開連線就正常。自動重試 = 把 Ctrl+F5 的效果自動化，使用者不用手動硬重整。
+  //   只對「沒帶外部 signal、且非寫入帶 body」的請求重試，避免重送造成重複副作用。
+  const canRetry = !init?.signal && !init?.body;
+  try {
+    return await attemptAdminFetch<T>(path, init, 12_000);
+  } catch (e) {
+    const transient =
+      (e instanceof DOMException && e.name === "AbortError") ||
+      (e instanceof TypeError); // 網路層錯誤（連線重置 / DNS / fetch failed）
+    if (canRetry && transient) {
+      // 全新連線再試一次，逾時放寬到 25 秒
+      return await attemptAdminFetch<T>(path, init, 25_000);
+    }
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("連線逾時，請重試（網路較慢或伺服器較遠）");
+    }
+    throw e;
+  }
+}
+
+async function attemptAdminFetch<T>(path: string, init: RequestInit | undefined, timeoutMs: number): Promise<T> {
   const token = getAdminToken();
-  // v400：請求逾時 — 卡住的請求 25 秒自動中止，釋放連線、顯示錯誤而非無限轉圈
+  // v400：請求逾時 — 卡住的請求自動中止，釋放連線、顯示錯誤而非無限轉圈
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 25_000);
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
     const res = await fetch(path, {
       ...init,
+      // v465：後台資料一律走全新請求，不沿用 HTTP 快取（避免 F5 拿到過期/半死連線的快取狀態）
+      cache: "no-store",
       signal: init?.signal ?? ac.signal,
       headers: {
         "Content-Type": "application/json",
@@ -78,7 +103,6 @@ async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       // v424：401（token 過期/失效）→ 清掉 token 並導回登入頁，避免停在「session expired」死路
-      //   （簡版後台 /admin/m 與完整版一致：過期就重新登入）
       if (res.status === 401 && typeof window !== "undefined") {
         clearAdminToken();
         if (!window.location.pathname.startsWith("/admin/login")) {
@@ -89,11 +113,6 @@ async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
       throw new Error(err.error || err.detail || `HTTP ${res.status}`);
     }
     return res.json();
-  } catch (e) {
-    if (e instanceof DOMException && e.name === "AbortError") {
-      throw new Error("連線逾時，請重試（網路較慢或伺服器較遠）");
-    }
-    throw e;
   } finally {
     clearTimeout(timer);
   }
