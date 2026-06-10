@@ -748,6 +748,9 @@ model SiteConfig {
   tankPromoStart    DateTime? @map("tank_promo_start") @db.Timestamptz
   tankPromoEnd      DateTime? @map("tank_promo_end") @db.Timestamptz
 
+  // v470：Email 發送路徑 — gmail（預設）/ zsend / fallback（Gmail 失敗自動改 ZSend）
+  emailProvider String @default("gmail") @map("email_provider") @db.VarChar(16)
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

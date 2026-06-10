@@ -1,5 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { getSocialFooter } from "../social-footer"; // v344
+import { prisma } from "../prisma";
+import { sendViaZsend, zsendConfigured } from "./zsend"; // v470：ZSend 備用路徑
 
 // Gmail SMTP via App Password
 //
@@ -17,8 +19,34 @@ const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD ?? "";
 
 let _transporter: Transporter | null = null;
 
-export function emailConfigured(): boolean {
+/** Gmail SMTP 是否設定齊全 */
+export function gmailConfigured(): boolean {
   return Boolean(GMAIL_USER && GMAIL_APP_PASSWORD);
+}
+
+/** 任一寄信路徑可用即視為已設定（Gmail 或 ZSend 備用）*/
+export function emailConfigured(): boolean {
+  return gmailConfigured() || zsendConfigured();
+}
+
+// v470：Email 發送路徑（後台可選）。
+//   gmail   = 只用 Gmail（現況預設）
+//   zsend   = 只用 ZSend
+//   fallback= 主要 Gmail，失敗自動改用 ZSend（備用）
+export type EmailProvider = "gmail" | "zsend" | "fallback";
+
+async function resolveEmailProvider(): Promise<EmailProvider> {
+  try {
+    const cfg = await prisma.siteConfig.findUnique({
+      where: { id: "default" },
+      select: { emailProvider: true } as never,
+    });
+    const v = (cfg as unknown as { emailProvider?: string } | null)?.emailProvider;
+    if (v === "zsend" || v === "fallback" || v === "gmail") return v;
+  } catch {
+    /* DB 讀不到 → 用預設 gmail */
+  }
+  return "gmail";
 }
 
 function getTransporter(): Transporter {
@@ -85,12 +113,11 @@ export async function sendEmail(
     return { ok: false, skipped: true, reason: "no recipient email" };
   }
   if (!emailConfigured()) {
-    // dev / 未設定環境 — 只 log
-    console.log("[email] (skipped, no GMAIL_* env)", {
+    console.log("[email] (skipped, no email provider configured)", {
       to: params.to,
       subject: params.subject,
     });
-    return { ok: false, skipped: true, reason: "GMAIL_* env not configured" };
+    return { ok: false, skipped: true, reason: "no email provider configured (GMAIL_* / ZSEND_*)" };
   }
   // v344：在 html 結尾自動附加社群連結 footer（FB / YT / IG）
   let htmlWithFooter = params.html;
@@ -102,7 +129,50 @@ export async function sendEmail(
       // footer 失敗不影響主訊息
     }
   }
+  const finalParams = { ...params, html: htmlWithFooter };
 
+  // v470：依後台設定選發送路徑
+  const provider = await resolveEmailProvider();
+
+  // ZSend 只用 ZSend
+  if (provider === "zsend") {
+    if (!zsendConfigured()) return { ok: false, error: "已選 ZSend 但未設定 ZSEND_API_KEY / ZSEND_FROM" };
+    return toResult(await sendViaZsend(finalParams), "zsend", params);
+  }
+
+  // fallback：先 Gmail，失敗或未設定再 ZSend
+  if (provider === "fallback") {
+    if (gmailConfigured()) {
+      const g = await sendViaGmail(finalParams);
+      if (g.ok) return g;
+      console.warn("[email] Gmail 失敗，改用 ZSend 備用", { error: g.error });
+    }
+    if (zsendConfigured()) return toResult(await sendViaZsend(finalParams), "zsend(fallback)", params);
+    return { ok: false, error: "Gmail 與 ZSend 皆無法寄送" };
+  }
+
+  // 預設 gmail
+  if (gmailConfigured()) return sendViaGmail(finalParams);
+  // gmail 未設定但 zsend 可用 → 用 zsend 保底
+  if (zsendConfigured()) return toResult(await sendViaZsend(finalParams), "zsend(auto)", params);
+  return { ok: false, error: "Gmail 未設定" };
+}
+
+function toResult(
+  r: { ok: boolean; messageId?: string; error?: string },
+  via: string,
+  params: SendEmailParams,
+): SendEmailResult {
+  if (r.ok) {
+    console.log("[email] sent", { to: params.to, subject: params.subject, via, messageId: r.messageId });
+  } else {
+    console.error("[email] FAILED", { to: params.to, via, error: r.error });
+  }
+  return r;
+}
+
+/** Gmail SMTP 寄送（原 sendEmail 邏輯） */
+async function sendViaGmail(params: SendEmailParams): Promise<SendEmailResult> {
   try {
     const info = await getTransporter().sendMail({
       from: FROM_DEFAULT,
@@ -110,18 +180,14 @@ export async function sendEmail(
       replyTo: params.replyTo ?? REPLY_TO_DEFAULT,
       subject: params.subject,
       text: params.text,
-      html: htmlWithFooter,
+      html: params.html,
       attachments: params.attachments,
     });
-    console.log("[email] sent", {
-      to: params.to,
-      subject: params.subject,
-      messageId: info.messageId,
-    });
+    console.log("[email] sent", { to: params.to, subject: params.subject, via: "gmail", messageId: info.messageId });
     return { ok: true, messageId: info.messageId };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[email] FAILED", { to: params.to, error: msg });
+    console.error("[email] FAILED", { to: params.to, via: "gmail", error: msg });
     return { ok: false, error: msg };
   }
 }

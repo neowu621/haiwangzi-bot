@@ -49,6 +49,9 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_amount INT NOT NULL DEFAULT 100`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_expiry_days INT NOT NULL DEFAULT 360`,
 
+  // v470: Email 發送路徑（gmail / zsend / fallback）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS email_provider VARCHAR(16) NOT NULL DEFAULT 'gmail'`,
+
   // v264: 每日天氣自動回報設定
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,

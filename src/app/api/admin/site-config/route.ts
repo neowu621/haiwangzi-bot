@@ -108,6 +108,8 @@ const PatchSchema = z.object({
       forecast: z.boolean().optional(), // v456：鄉鎮天氣預報
     })
     .optional(),
+  // v470：Email 發送路徑
+  emailProvider: z.enum(["gmail", "zsend", "fallback"]).optional(),
   // v411：海象（浮標+潮位）整合
   weatherMarineEnabled: z.boolean().optional(),
   weatherMarinePoints: z
@@ -248,6 +250,8 @@ export async function GET(req: NextRequest) {
       weatherMarineFields:
         ((row as unknown as { weatherMarineFields?: unknown }).weatherMarineFields as Record<string, boolean> | undefined) ??
         { waveHeight: true, waveDir: true, wavePeriod: true, seaTemp: true, current: true, tide: true },
+      // v470 Email 發送路徑
+      emailProvider: (row as unknown as { emailProvider?: string }).emailProvider ?? "gmail",
       // v315 訂單日報
       dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
       dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,

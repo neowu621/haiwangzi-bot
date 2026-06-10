@@ -103,11 +103,36 @@ export default function AdminTemplatesPage() {
   const [sending, setSending] = useState<"line" | "email" | "inApp" | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // v470：Email 發送路徑（gmail / zsend / fallback）
+  const [emailProvider, setEmailProvider] = useState<string>("gmail");
+  const [providerSaving, setProviderSaving] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
   }, []);
+
+  // v470：載入目前 Email 發送路徑設定
+  useEffect(() => {
+    adminFetch<{ config: { emailProvider?: string } }>("/api/admin/site-config")
+      .then((d) => setEmailProvider(d.config?.emailProvider ?? "gmail"))
+      .catch(() => {});
+  }, []);
+
+  async function saveEmailProvider(v: string) {
+    const prev = emailProvider;
+    setEmailProvider(v);
+    setProviderSaving(true);
+    try {
+      await adminFetch("/api/admin/site-config", { method: "POST", body: JSON.stringify({ emailProvider: v }) });
+      showToast(`Email 發送路徑已改為「${v === "gmail" ? "Gmail" : v === "zsend" ? "ZSend" : "自動備援"}」`);
+    } catch (e) {
+      setEmailProvider(prev);
+      showToast("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setProviderSaving(false);
+    }
+  }
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -243,6 +268,23 @@ export default function AdminTemplatesPage() {
           每張卡片的「動態資料」（客戶名・日期・金額）由系統<b style={{ color: "#0e4c5a" }}>自動帶入</b>，這裡只改文字描述 ·
           在區塊2勾選要發 <b style={{ color: "#0e4c5a" }}>LINE / Email / 站內通知</b> ·
           改完按 <b style={{ color: "#0e4c5a" }}>儲存</b>，再到區塊3各自 <b style={{ color: "#0e4c5a" }}>試送到我</b> 確認。
+        </div>
+
+        {/* v470：Email 發送路徑（全站套用，含試送與正式發送） */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#eef6f6", border: "1px solid #d6e6e6", borderRadius: 10, padding: "9px 13px", marginBottom: 12, fontSize: 12.5 }}>
+          <span style={{ fontWeight: 700, color: "#0e4c5a" }}>✉️ Email 發送路徑</span>
+          <select
+            value={emailProvider}
+            disabled={providerSaving}
+            onChange={(e) => saveEmailProvider(e.target.value)}
+            style={{ fontSize: 12.5, padding: "5px 9px", borderRadius: 8, border: "1px solid #c4dada", background: "#fff", fontFamily: "inherit" }}
+          >
+            <option value="gmail">Gmail（預設）</option>
+            <option value="zsend">ZSend</option>
+            <option value="fallback">自動備援（Gmail 失敗改 ZSend）</option>
+          </select>
+          {providerSaving && <span style={{ fontSize: 11, color: "#0a8f86" }}>儲存中…</span>}
+          <span style={{ fontSize: 11, color: "#7c9296" }}>所有 Email（試送＋正式）都走此路徑</span>
         </div>
 
         {err && (
