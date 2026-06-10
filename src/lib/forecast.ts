@@ -156,10 +156,10 @@ export async function buildForecastDays(apiKey: string | undefined): Promise<For
     const lines = per
       .map(({ label, els }) => {
         const s = summarizeWindow(els, targetDay);
-        return s ? `  ${label}：${s}` : null;
+        return s ? `${label}：${s}` : null;
       })
       .filter((x): x is string => x !== null);
-    return lines.length > 0 ? [`⛅ ${dayLabel}預報（06–12 時）`, ...lines].join("\n") : null;
+    return lines.length > 0 ? [`【⛅ 天氣預報（${dayLabel} 06–12 時）】`, ...lines].join("\n") : null;
   };
 
   return {

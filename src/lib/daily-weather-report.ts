@@ -210,41 +210,38 @@ export async function runDailyWeatherReport(opts?: {
   const tripPlace = (t: { diveSiteIds: string[] }) =>
     t.diveSiteIds.map((id) => siteNameMap.get(id) ?? id).join("/");
 
-  const todayLines = todayTrips.length
-    ? todayTrips
-        .map((t) => {
+  // v459：場次改一行式「【今日 龍洞】 08:00（0/∞人）」，每場一行
+  const fmtTripLines = (dayLabel: string, trips: typeof todayTrips): string[] =>
+    trips.length
+      ? trips.map((t) => {
           const booked = bookedMap.get(t.id) ?? 0;
           const cap = t.capacity ?? "∞";
           const place = tripPlace(t);
-          return `  ${t.startTime}${place ? ` ${place}` : ""}（${booked}/${cap}人${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}）`;
+          const extras = `${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}`;
+          return `【${dayLabel}${place ? ` ${place}` : ""}】 ${t.startTime}（${booked}/${cap}人${extras}）`;
         })
-        .join("\n")
-    : "  （無）";
+      : [`【${dayLabel}】 （無場次）`];
 
-  const tomorrowLines = tomorrowTrips.length
-    ? tomorrowTrips
-        .map((t) => {
-          const booked = bookedMap.get(t.id) ?? 0;
-          const cap = t.capacity ?? "∞";
-          const place = tripPlace(t);
-          return `  ${t.startTime}${place ? ` ${place}` : ""}（${booked}/${cap}人）`;
-        })
-        .join("\n")
-    : "  （無）";
+  // v459：依老闆指定編排——標題日期一行 → 場次一行式 → 天氣預報 → 綜合海況 → 海況 → 海象明細
+  const blocks: string[] = [`🌊 海王子潛水 每日營運報告 ${dateStr}`];
 
-  // v389：依內容開關組裝各區塊
-  const blocks: string[] = [`🌊 海王子潛水 每日營運報告`, dateStr];
-
-  // v456/v457：場次摘要最前面（老闆先看今天有沒有團），各日場次後面直接接該日天氣預報
   if (content.sessions) {
-    const seg: string[] = ["", "【今日場次】", todayLines];
-    if (forecast.today) seg.push(forecast.today);
-    seg.push("", "【明日場次】", tomorrowLines);
-    if (forecast.tomorrow) seg.push(forecast.tomorrow);
-    blocks.push(seg.join("\n"));
-  } else if (forecast.today || forecast.tomorrow) {
-    // 場次摘要關閉時，預報獨立成段
-    blocks.push(["", ...[forecast.today, forecast.tomorrow].filter(Boolean)].join("\n"));
+    blocks.push(["", ...fmtTripLines("今日", todayTrips), ...fmtTripLines("明日", tomorrowTrips)].join("\n"));
+  }
+
+  // 天氣預報（有今日給今日、有明日給明日）
+  const fcParts = [forecast.today, forecast.tomorrow].filter((x): x is string => x !== null);
+  if (fcParts.length > 0) {
+    blocks.push(["", ...fcParts].join("\n"));
+  }
+
+  // 綜合海況一句話提到前面（先給結論，明細在最後）
+  if (marineBlock) {
+    const overall =
+      marineBlock.light === "🔴" ? "⚠️ 部分海域不建議下水"
+        : marineBlock.light === "🟡" ? "尚可，部分海域請留意"
+          : "良好，適合下水 🤿";
+    blocks.push(["", `—— 綜合海況：${marineBlock.light} ${overall}`].join("\n"));
   }
 
   if (content.wind || content.temp) {
@@ -256,13 +253,9 @@ export async function runDailyWeatherReport(opts?: {
     blocks.push(seaLines.join("\n"));
   }
 
-  // v411：海象區塊（龍洞區 / 基隆區，真實浪高/海溫/海流/潮位 + 自動判斷）
+  // 海象三區明細放最後（v411）
   if (marineBlock) {
-    const overall =
-      marineBlock.light === "🔴" ? "⚠️ 部分海域不建議下水"
-        : marineBlock.light === "🟡" ? "尚可，部分海域請留意"
-          : "良好，適合下水 🤿";
-    blocks.push(["", marineBlock.text, "", `—— 綜合海況：${marineBlock.light} ${overall}`].join("\n"));
+    blocks.push(["", marineBlock.text].join("\n"));
   }
 
   blocks.push("", "—", `此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`);
