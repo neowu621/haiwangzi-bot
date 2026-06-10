@@ -1162,16 +1162,21 @@ function AutoSendSection({
   const [testResult, setTestResult] = React.useState<string | null>(null);
   const [recipSaving, setRecipSaving] = React.useState(false); // v398：收件人即時存中
   const [recipSaved, setRecipSaved] = React.useState(false);
+  const [newEmail, setNewEmail] = React.useState(""); // v454：手動加 Email 收件人
 
   React.useEffect(() => {
     setUsersLoading(true);
     adminFetch<{ users: AutoSendUser[] }>("/api/admin/users?role=admin,boss,coach")
       .then((d) => {
-        // 只留有真實 role 的（admin/boss/coach）
-        const filtered = (d.users ?? []).filter((u) => {
-          const rs = u.roles && u.roles.length > 0 ? u.roles : [u.role];
-          return rs.some((r) => r === "admin" || r === "boss" || r === "coach");
-        });
+        // 只留有真實 role 的（admin/boss/coach）。
+        // v454：role 或 roles[] 任一命中即算職員，避免殘留 roles=["customer"]
+        // 卻 role="admin" 的帳號被誤濾掉。
+        const STAFF = ["admin", "boss", "coach"];
+        const filtered = (d.users ?? []).filter(
+          (u) =>
+            STAFF.includes(u.role) ||
+            (u.roles ?? []).some((r) => STAFF.includes(r)),
+        );
         setUsers(filtered);
       })
       .catch(() => setUsers([]))
@@ -1181,18 +1186,44 @@ function AutoSendSection({
   const recipients = cfg.dailyWeatherReportRecipients ?? [];
   const recipientSet = new Set(recipients);
 
-  // v346：偵測「孤兒標籤」— 存在清單但對不到任何現役 admin/coach（信箱改過、角色變更、UID 變動）
-  // 這些標籤畫面上沒有對應勾選框，卻仍會被計入與寄送 → 列出來讓 admin 確認後手動清除
+  // v346/v454：偵測「無效標籤」。
+  // - email: 標籤一律有效 —— 老闆可手動填任意工作信箱（如 neowu@msi.com），
+  //   它本來就不該綁某個職員 LINE 帳號，cron 也是直接寄到該信箱。
+  // - line: 標籤只有「對得到現役職員」才有效；對不到的是殘留舊 UID（無法投遞）→ 無效。
   const validTags = new Set<string>();
   for (const u of users) {
     validTags.add(`line:${u.lineUserId}`);
     if (u.email) validTags.add(`email:${u.email}`);
   }
-  // 只有在用戶清單載入完成後才判定孤兒，避免載入中誤判全部為孤兒
-  const orphanTags = usersLoading ? [] : recipients.filter((r) => !validTags.has(r));
-  const liveRecipients = recipients.filter((r) => validTags.has(r));
-  // 計數用「能比對到現役用戶」的數量（載入中先用原始長度避免閃 0）
+  const isValidRecipient = (r: string) =>
+    r.startsWith("email:") ? true : validTags.has(r);
+  // 只有在用戶清單載入完成後才判定，避免載入中誤判全部為孤兒
+  const orphanTags = usersLoading ? [] : recipients.filter((r) => !isValidRecipient(r));
+  const liveRecipients = recipients.filter(isValidRecipient);
+  // 計數用「能投遞」的數量（載入中先用原始長度避免閃 0）
   const sendableCount = usersLoading ? recipients.length : liveRecipients.length;
+
+  // v454：手動 Email 收件人 —— email: 標籤中「不屬於任何職員 email」的，即老闆自填的外部信箱
+  const staffEmailTags = new Set(
+    users.filter((u) => u.email).map((u) => `email:${u.email}`),
+  );
+  const manualEmails = recipients
+    .filter((r) => r.startsWith("email:") && !staffEmailTags.has(r))
+    .map((r) => r.slice(6));
+
+  function addManualEmail() {
+    const e = newEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
+      alert("Email 格式不正確");
+      return;
+    }
+    const tag = `email:${e}`;
+    if (!recipientSet.has(tag)) void persistRecipients([...recipients, tag]);
+    setNewEmail("");
+  }
+  function removeRecipientTag(tag: string) {
+    void persistRecipients(recipients.filter((r) => r !== tag));
+  }
 
   // v398：收件人勾選改「點了就即時存」— 不用再按下方儲存
   async function persistRecipients(next: string[]) {
@@ -1499,7 +1530,55 @@ function AutoSendSection({
           </div>
         )}
 
-        {/* v346：孤兒收件人警告 — 對不到現役 admin/coach 的舊標籤 */}
+        {/* v454：手動 Email 收件人 — 老闆自填的外部信箱（不需綁職員 LINE 帳號） */}
+        <div className="mt-2 rounded-md border p-2.5" style={{ borderColor: "var(--border)" }}>
+          <p className="text-[11px] font-medium text-[var(--foreground)] mb-1.5">
+            📧 手動 Email 收件人（外部信箱，免綁 LINE）
+          </p>
+          {manualEmails.length > 0 ? (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {manualEmails.map((e) => (
+                <span
+                  key={e}
+                  className="inline-flex items-center gap-1 rounded-full bg-[var(--muted)] px-2 py-1 text-[11px]"
+                >
+                  {e}
+                  <button
+                    type="button"
+                    onClick={() => removeRecipientTag(`email:${e}`)}
+                    className="text-[var(--muted-foreground)] hover:text-red-500"
+                    title="移除此收件人"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-2 text-[10px] text-[var(--muted-foreground)]">（尚未加入外部信箱）</p>
+          )}
+          <div className="flex gap-1.5">
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addManualEmail();
+                }
+              }}
+              placeholder="例如 boss@example.com"
+              className="flex-1 rounded-md border px-2 py-1 text-[12px]"
+              style={{ borderColor: "var(--border)" }}
+            />
+            <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={addManualEmail}>
+              ＋ 加入
+            </Button>
+          </div>
+        </div>
+
+        {/* v346：孤兒收件人警告 — 對不到現役職員的殘留 LINE UID（email 不在此列） */}
         {orphanTags.length > 0 && (
           <div className="mt-2 rounded-md border p-2.5 text-[11px]" style={{ borderColor: "#f59e0b", background: "rgba(245,158,11,0.08)" }}>
             <p className="font-medium text-[#92400e]">

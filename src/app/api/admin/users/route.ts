@@ -16,9 +16,33 @@ export async function GET(req: NextRequest) {
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
+  // v454：支援 ?role=admin,boss,coach 伺服器端過濾。
+  // 之前忽略此參數、只回「最近活躍前 500 筆」，導致職員帳號若活躍度不在前段
+  // 就被截掉 → 自動發送收件人 picker 顯示「沒有 admin/boss/coach 用戶」。
+  // 用 OR(role in, roles hasSome) 同時涵蓋舊單一 role 與新 roles[]，避免殘留不一致漏抓。
+  const ROLE_VALUES = ["customer", "coach", "boss", "admin"] as const;
+  type RoleV = (typeof ROLE_VALUES)[number];
+  const roleParam = new URL(req.url).searchParams.get("role");
+  const roleFilter: RoleV[] = roleParam
+    ? roleParam
+        .split(",")
+        .map((r) => r.trim())
+        .filter((r): r is RoleV => (ROLE_VALUES as readonly string[]).includes(r))
+    : [];
+  const hasRoleFilter = roleFilter.length > 0;
+
   const users = await prisma.user.findMany({
+    where: hasRoleFilter
+      ? {
+          deletedAt: null,
+          OR: [
+            { role: { in: roleFilter } },
+            { roles: { hasSome: roleFilter } },
+          ],
+        }
+      : undefined,
     orderBy: { lastActiveAt: "desc" },
-    take: 500,
+    take: hasRoleFilter ? 200 : 500,
   });
 
   // 批次計算每個 user 的 LTV
