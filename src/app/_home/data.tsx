@@ -10,6 +10,40 @@ export const YT_CHANNEL = "https://www.youtube.com/@haiwangzi-northeast-coast";
 export const IG_URL = "https://www.instagram.com/chengruwang/";
 export const FB_URL = "https://www.facebook.com/profile.php?id=100064926510785";
 
+// v462：全彩品牌 icon（FB 藍圓 / YT 紅圓白播放 / IG 漸層方圓），取代原單色圓圈。
+// 純 inline SVG，零外部請求；IG 漸層 id 需 uid 前綴避免同頁重複。
+export const FbIcon = ({ s = 42 }: { s?: number }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="12" fill="#1877F2" />
+    <path fill="#fff" d="M15.9 15.21l.53-3.45h-3.31V9.52c0-.95.46-1.87 1.95-1.87h1.51V4.71s-1.37-.23-2.68-.23c-2.73 0-4.52 1.65-4.52 4.65v2.63H6.34v3.45h3.04v8.35a12.1 12.1 0 0 0 3.74 0v-8.35h2.78z" />
+  </svg>
+);
+export const YtIcon = ({ s = 42 }: { s?: number }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="12" fill="#FF0000" />
+    <path fill="#fff" d="M9.7 7.9 16.9 12l-7.2 4.1z" />
+  </svg>
+);
+export const IgIcon = ({ s = 42, uid = "ig" }: { s?: number; uid?: string }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden="true">
+    <defs>
+      <radialGradient id={`${uid}-g`} cx="30%" cy="107%" r="150%">
+        <stop offset="0%" stopColor="#fdf497" />
+        <stop offset="9%" stopColor="#fdf497" />
+        <stop offset="45%" stopColor="#fd5949" />
+        <stop offset="60%" stopColor="#d6249f" />
+        <stop offset="90%" stopColor="#285AEB" />
+      </radialGradient>
+    </defs>
+    <rect width="24" height="24" rx="6" fill={`url(#${uid}-g)`} />
+    <g fill="none" stroke="#fff" strokeWidth="1.7">
+      <rect x="5.2" y="5.2" width="13.6" height="13.6" rx="4" />
+      <circle cx="12" cy="12" r="3.4" />
+    </g>
+    <circle cx="16.6" cy="7.4" r="1.15" fill="#fff" />
+  </svg>
+);
+
 // v460：順序 = 頁面 section 實際出現順序（上排捷徑、右側圓點都吃這份，必須與內容對齊）
 export const NAV = [
   { href: "#start", label: "新手上路" },
