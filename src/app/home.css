@@ -209,6 +209,11 @@
 
 /* REVIEWS */
 .hw .reviews{padding:70px 0}
+/* 學員怎麼說 intro：副標 + 發光「安心」關鍵字 + 引導句 */
+.hw .rev-intro{color:var(--mist);font-size:1rem;line-height:1.95;max-width:700px;margin:16px auto 0}
+.hw .rev-keyword{font-family:var(--serif);font-weight:900;font-size:clamp(2.6rem,9vw,3.6rem);letter-spacing:.34em;color:var(--glow);text-shadow:0 0 10px rgba(102,216,246,.9),0 0 28px rgba(102,216,246,.6),0 0 48px rgba(102,216,246,.35);display:inline-block;padding:8px 4px 10px;margin:20px 0 4px;border-bottom:2px solid rgba(102,216,246,.45);text-indent:.34em}
+.hw .rev-intro-end{color:var(--glow-soft);font-size:1rem;line-height:1.85;max-width:700px;margin:18px auto 0}
+.hw .rev-intro-end b{color:var(--foam);font-weight:800}
 /* v414：主打長文卡（照片左、文字右） */
 .hw .rev-featured{display:flex;flex-direction:column;gap:18px;background:linear-gradient(160deg,rgba(10,62,114,.3),rgba(2,21,42,.5));border:1px solid rgba(102,216,246,.25);border-radius:22px;padding:28px;margin-bottom:22px;position:relative;overflow:hidden}
 .hw .rev-featured::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sky,#3aa6e6),var(--glow))}

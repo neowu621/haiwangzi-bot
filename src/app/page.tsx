@@ -161,7 +161,13 @@ export default function HomePage() {
       {/* v414：學員怎麼說（主打長文卡 + 精選網格 + 總結語）移到潛水課程後 */}
       <section className="reviews" id="reviews">
         <div className="wrap">
-          <div className="sec-head reveal"><span className="eyebrow">Student Voices</span><h2 className="section-title">學員怎麼說</h2></div>
+          <div className="sec-head reveal">
+            <span className="eyebrow">Student Voices</span>
+            <h2 className="section-title">學員怎麼說</h2>
+            <p className="rev-intro">每位學員的起點都不一樣——怕水的、剛拿證照的、想挑戰更深的海的；<br />但他們信任汪汪的理由，始終只有一個</p>
+            <div className="rev-keyword">安心</div>
+            <p className="rev-intro-end"><b>還在猶豫該找哪位教練？</b>聽聽他們怎麼說，你就懂了。</p>
+          </div>
           {reviews.length > 0 && (() => {
             const f = reviews[0];
             return (
