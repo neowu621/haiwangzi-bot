@@ -13,7 +13,7 @@ import {
   type MarinePoint,
   type MarineFields,
 } from "./marine";
-import { buildForecastSection } from "./forecast";
+import { buildForecastDays } from "./forecast";
 
 interface CWAStation {
   StationId: string;
@@ -134,11 +134,11 @@ export async function runDailyWeatherReport(opts?: {
     marineBlock = await buildMarineSection(points, fields, process.env.CWA_API_KEY);
   }
 
-  // ── 1c. 天氣預報（F-D0047 鄉鎮 3 天，潛水時段 06–12）v456 ──
-  // 循序接在海象之後抓，避免對 CWA 併發（marine 限流教訓）
-  let forecastBlock: string | null = null;
+  // ── 1c. 天氣預報（F-D0047 鄉鎮 3 天，潛水時段 06–12）v456/v457 ──
+  // 今日/明日分開回傳，直接接在各日場次摘要後面。循序抓避免對 CWA 併發（marine 限流教訓）。
+  let forecast: { today: string | null; tomorrow: string | null } = { today: null, tomorrow: null };
   if (content.forecast) {
-    forecastBlock = await buildForecastSection(process.env.CWA_API_KEY);
+    forecast = await buildForecastDays(process.env.CWA_API_KEY);
   }
 
   // ── 2. 抓今日 / 明日場次 ────────────────────────────
@@ -200,12 +200,23 @@ export async function runDailyWeatherReport(opts?: {
     })
     .join("\n");
 
+  // v457：場次行帶潛點地點。diveSiteIds 可能存 DiveSite.id 或直接存中文名（v153 起），
+  // 查得到就用站名、查不到直接顯示原字串。
+  const allSiteIds = [...new Set([...todayTrips, ...tomorrowTrips].flatMap((t) => t.diveSiteIds))];
+  const foundSites = allSiteIds.length
+    ? await prisma.diveSite.findMany({ where: { id: { in: allSiteIds } }, select: { id: true, name: true } })
+    : [];
+  const siteNameMap = new Map(foundSites.map((s) => [s.id, s.name]));
+  const tripPlace = (t: { diveSiteIds: string[] }) =>
+    t.diveSiteIds.map((id) => siteNameMap.get(id) ?? id).join("/");
+
   const todayLines = todayTrips.length
     ? todayTrips
         .map((t) => {
           const booked = bookedMap.get(t.id) ?? 0;
           const cap = t.capacity ?? "∞";
-          return `  ${t.startTime}（${booked}/${cap}人${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}）`;
+          const place = tripPlace(t);
+          return `  ${t.startTime}${place ? ` ${place}` : ""}（${booked}/${cap}人${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}）`;
         })
         .join("\n")
     : "  （無）";
@@ -215,7 +226,8 @@ export async function runDailyWeatherReport(opts?: {
         .map((t) => {
           const booked = bookedMap.get(t.id) ?? 0;
           const cap = t.capacity ?? "∞";
-          return `  ${t.startTime}（${booked}/${cap}人）`;
+          const place = tripPlace(t);
+          return `  ${t.startTime}${place ? ` ${place}` : ""}（${booked}/${cap}人）`;
         })
         .join("\n")
     : "  （無）";
@@ -223,9 +235,16 @@ export async function runDailyWeatherReport(opts?: {
   // v389：依內容開關組裝各區塊
   const blocks: string[] = [`🌊 海王子潛水 每日營運報告`, dateStr];
 
-  // v456：場次摘要移到最前面（老闆先看今天有沒有團，再看海況）
+  // v456/v457：場次摘要最前面（老闆先看今天有沒有團），各日場次後面直接接該日天氣預報
   if (content.sessions) {
-    blocks.push(["", "【今日場次】", todayLines, "", "【明日場次】", tomorrowLines].join("\n"));
+    const seg: string[] = ["", "【今日場次】", todayLines];
+    if (forecast.today) seg.push(forecast.today);
+    seg.push("", "【明日場次】", tomorrowLines);
+    if (forecast.tomorrow) seg.push(forecast.tomorrow);
+    blocks.push(seg.join("\n"));
+  } else if (forecast.today || forecast.tomorrow) {
+    // 場次摘要關閉時，預報獨立成段
+    blocks.push(["", ...[forecast.today, forecast.tomorrow].filter(Boolean)].join("\n"));
   }
 
   if (content.wind || content.temp) {
@@ -244,11 +263,6 @@ export async function runDailyWeatherReport(opts?: {
         : marineBlock.light === "🟡" ? "尚可，部分海域請留意"
           : "良好，適合下水 🤿";
     blocks.push(["", marineBlock.text, "", `—— 綜合海況：${marineBlock.light} ${overall}`].join("\n"));
-  }
-
-  // v456：天氣預報（未來時段）放在即時海象之後
-  if (forecastBlock) {
-    blocks.push(["", forecastBlock].join("\n"));
   }
 
   blocks.push("", "—", `此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`);

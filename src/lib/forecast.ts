@@ -120,26 +120,50 @@ function summarizeWindow(els: Map<string, FcTime[]>, targetDay: string): string 
  * 目標日：台灣時間 09:00 前（05:00 當日寄送）→ 今日；之後（22:00 前一晚寄送/白天手動測試）→ 明日。
  * （CWA 只給未來區段；過了上午，今日 06–12 已從 feed 消失，必須看明日）
  */
-export async function buildForecastSection(apiKey: string | undefined): Promise<string | null> {
-  if (!apiKey) return null;
-  const tw = new Date(Date.now() + 8 * 3600_000); // 以 UTC getter 讀台灣時間
-  const offset = tw.getUTCHours() >= 9 ? 1 : 0;
-  const target = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + offset));
-  const targetDay = `${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}-${String(target.getUTCDate()).padStart(2, "0")}`;
-  const dayLabel = offset === 1 ? "明日" : "今日";
+export interface ForecastDays {
+  /** 今日 06–12 時預報（過了台灣時間 09:00 即 null，CWA 不留過去區段） */
+  today: string | null;
+  /** 明日 06–12 時預報 */
+  tomorrow: string | null;
+}
 
-  const lines: string[] = [];
-  // 循序抓（同 marine 教訓：避免對 CWA 併發被限流）
+/**
+ * 組「今日 / 明日」兩天的潛水時段（06–12 時）預報，分開回傳，
+ * 讓日報能把預報直接接在各日場次摘要後面。
+ * 一個鄉鎮只抓一次（3 天 feed 同時涵蓋今明兩日）；循序抓避免 CWA 併發限流。
+ */
+export async function buildForecastDays(apiKey: string | undefined): Promise<ForecastDays> {
+  if (!apiKey) return { today: null, tomorrow: null };
+  const tw = new Date(Date.now() + 8 * 3600_000); // 以 UTC getter 讀台灣時間
+  const dayStr = (offset: number) => {
+    const t = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + offset));
+    return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
+  };
+  const includeToday = tw.getUTCHours() < 9; // 過了上午，今日 06–12 已成過去 → 只給明日
+
+  const per: Array<{ label: string; els: Map<string, FcTime[]> }> = [];
   for (const p of FORECAST_POINTS) {
     try {
       const els = await fetchTownElements(apiKey, p);
-      if (!els) continue;
-      const s = summarizeWindow(els, targetDay);
-      if (s) lines.push(`${p.label}：${s}`);
+      if (els) per.push({ label: p.label, els });
     } catch (e) {
       console.error("[forecast] fetch failed", p.town, e);
     }
   }
-  if (lines.length === 0) return null;
-  return [`【⛅ 天氣預報（${dayLabel} 06–12 時）】`, ...lines].join("\n");
+  if (per.length === 0) return { today: null, tomorrow: null };
+
+  const render = (targetDay: string, dayLabel: string): string | null => {
+    const lines = per
+      .map(({ label, els }) => {
+        const s = summarizeWindow(els, targetDay);
+        return s ? `  ${label}：${s}` : null;
+      })
+      .filter((x): x is string => x !== null);
+    return lines.length > 0 ? [`⛅ ${dayLabel}預報（06–12 時）`, ...lines].join("\n") : null;
+  };
+
+  return {
+    today: includeToday ? render(dayStr(0), "今日") : null,
+    tomorrow: render(dayStr(1), "明日"),
+  };
 }
