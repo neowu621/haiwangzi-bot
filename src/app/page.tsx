@@ -60,6 +60,98 @@ export default function HomePage() {
         <div className="scroll-hint">SCROLL<i /></div>
       </section>
 
+      {/* v463：版面順序調整 — 學員故事(含「為什麼跟汪汪潛」intro) → 關於汪汪 → 課程 提前到 Hero 之後 */}
+      <section className="reviews" id="reviews">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <span className="eyebrow">Student Voices</span>
+            <h2 className="section-title">學員怎麼說</h2>
+            <p className="rev-intro">每位學員的起點都不一樣——怕水的、剛拿證照的、想挑戰更深的海的；<br />但他們信任汪汪的理由，始終只有一個</p>
+            <div className="rev-keyword">安心</div>
+            <p className="rev-intro-end"><b>還在猶豫該找哪位教練？</b>聽聽他們怎麼說，你就懂了。</p>
+          </div>
+          {reviews.length > 0 && (() => {
+            const f = reviews[0];
+            return (
+              <div className="rev-featured reveal">
+                <div className="photo">
+                  <div className="fphoto" style={f.avatar ? { backgroundImage: `url(${f.avatar})` } : undefined}>
+                    {!f.avatar && f.name ? <span>{f.name.slice(0, 1)}</span> : null}
+                  </div>
+                </div>
+                <div className="body">
+                  <div className="stars">★★★★★</div>
+                  <div className="who"><b>{f.name}</b>{f.activity ? <small>{f.activity}</small> : null}</div>
+                  {f.title ? <h4>{f.title}</h4> : null}
+                  <p>{f.text}</p>
+                </div>
+              </div>
+            );
+          })()}
+          <div className="rev-grid">
+            {reviews.slice(1).map((r, i) => {
+              const img = r.photo || r.avatar;
+              return (
+                <div key={`${r.name}-${i}`} className="rev has-photo reveal">
+                  {img ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="rev-banner" src={img} alt={r.title || r.name} loading="lazy" decoding="async" />
+                  ) : (
+                    <div className="rev-banner rev-banner-ph">{r.name ? <span>{r.name.slice(0, 1)}</span> : null}</div>
+                  )}
+                  <div className="stars">★★★★★</div>
+                  <b className="rev-name">{r.name}</b>
+                  {r.title ? <h4>{r.title}</h4> : null}
+                  <p>{r.text}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="about" id="about">
+        <div className="wrap about-grid">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <div className="about-photo reveal"><img src="/home/src-about.webp" alt="東北角海王子潛水教練 汪汪" loading="lazy" decoding="async" /><div className="badge">潛水教練 ｜ 海王子．汪汪 ｜ 信任．安全</div></div>
+          <div className="about-text reveal">
+            <span className="eyebrow">About the Diver</span>
+            <h2 className="section-title">嗨，我是汪汪</h2>
+            <p>潛水這件事，最重要的從來不是裝備有多好，而是帶你下水的人夠不夠專業、夠不夠細心。從第一次教學到現在，我最在意的就是兩個字——「安心」。</p>
+            <p>無論你是完全沒碰過水的新手，還是想精進的進階潛水員，我都會依照你的狀況，把節奏調到最舒服，讓你把注意力放在欣賞海裡的世界。</p>
+            <div className="stats">
+              <div className="stat"><b>10+</b><small>教學年資</small></div>
+              <div className="stat"><b>10,000+</b><small>潛水次數</small></div>
+              <div className="stat"><b>1,000+</b><small>累積潛水人數</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* v413：潛水課程 */}
+      <section className="courses" id="courses">
+        <div className="wrap">
+          <div className="sec-head reveal"><span className="eyebrow">Diving Courses</span><h2 className="section-title">潛水課程</h2>
+            <p className="sec-sub">從零基礎到進階，跟著汪汪一步步把證照變成真正的能力——課程時間可彈性安排。</p>
+          </div>
+          <div className="course-grid">
+            {COURSES.map((c) => (
+              <div key={c.title} className="course-card reveal">
+                <span className="badge">{c.badge}</span>
+                <h3>{c.title}</h3>
+                <div className="price-row"><span className={`price${c.price.startsWith("NT$") ? "" : " ask"}`}>{c.price}</span><span className="incl">{c.includes}</span></div>
+                <ul>
+                  {c.items.map((it, i) => (
+                    <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
+                  ))}
+                </ul>
+                <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line course-cta"><LineIcon />LINE 報名・諮詢</a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* v424t：新手第一次潛水流程（4 步驟） */}
       <section className="startflow" id="start">
         <div className="wrap">
@@ -114,98 +206,6 @@ export default function HomePage() {
       {/* v429：最新動態影片牆是 client island（fetch /api/config + facade + lightbox） */}
       <section className="news" id="news">
         <NewsVideos />
-      </section>
-
-      <section className="about" id="about">
-        <div className="wrap about-grid">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <div className="about-photo reveal"><img src="/home/src-about.webp" alt="東北角海王子潛水教練 汪汪" loading="lazy" decoding="async" /><div className="badge">潛水教練 ｜ 海王子．汪汪 ｜ 信任．安全</div></div>
-          <div className="about-text reveal">
-            <span className="eyebrow">About the Diver</span>
-            <h2 className="section-title">嗨，我是汪汪</h2>
-            <p>潛水這件事，最重要的從來不是裝備有多好，而是帶你下水的人夠不夠專業、夠不夠細心。從第一次教學到現在，我最在意的就是兩個字——「安心」。</p>
-            <p>無論你是完全沒碰過水的新手，還是想精進的進階潛水員，我都會依照你的狀況，把節奏調到最舒服，讓你把注意力放在欣賞海裡的世界。</p>
-            <div className="stats">
-              <div className="stat"><b>10+</b><small>教學年資</small></div>
-              <div className="stat"><b>10,000+</b><small>潛水次數</small></div>
-              <div className="stat"><b>1,000+</b><small>累積潛水人數</small></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* v413：潛水課程 */}
-      <section className="courses" id="courses">
-        <div className="wrap">
-          <div className="sec-head reveal"><span className="eyebrow">Diving Courses</span><h2 className="section-title">潛水課程</h2>
-            <p className="sec-sub">從零基礎到進階，跟著汪汪一步步把證照變成真正的能力——課程時間可彈性安排。</p>
-          </div>
-          <div className="course-grid">
-            {COURSES.map((c) => (
-              <div key={c.title} className="course-card reveal">
-                <span className="badge">{c.badge}</span>
-                <h3>{c.title}</h3>
-                <div className="price-row"><span className={`price${c.price.startsWith("NT$") ? "" : " ask"}`}>{c.price}</span><span className="incl">{c.includes}</span></div>
-                <ul>
-                  {c.items.map((it, i) => (
-                    <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
-                  ))}
-                </ul>
-                <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line course-cta"><LineIcon />LINE 報名・諮詢</a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* v414：學員怎麼說（主打長文卡 + 精選網格 + 總結語）移到潛水課程後 */}
-      <section className="reviews" id="reviews">
-        <div className="wrap">
-          <div className="sec-head reveal">
-            <span className="eyebrow">Student Voices</span>
-            <h2 className="section-title">學員怎麼說</h2>
-            <p className="rev-intro">每位學員的起點都不一樣——怕水的、剛拿證照的、想挑戰更深的海的；<br />但他們信任汪汪的理由，始終只有一個</p>
-            <div className="rev-keyword">安心</div>
-            <p className="rev-intro-end"><b>還在猶豫該找哪位教練？</b>聽聽他們怎麼說，你就懂了。</p>
-          </div>
-          {reviews.length > 0 && (() => {
-            const f = reviews[0];
-            return (
-              <div className="rev-featured reveal">
-                <div className="photo">
-                  <div className="fphoto" style={f.avatar ? { backgroundImage: `url(${f.avatar})` } : undefined}>
-                    {!f.avatar && f.name ? <span>{f.name.slice(0, 1)}</span> : null}
-                  </div>
-                </div>
-                <div className="body">
-                  <div className="stars">★★★★★</div>
-                  <div className="who"><b>{f.name}</b>{f.activity ? <small>{f.activity}</small> : null}</div>
-                  {f.title ? <h4>{f.title}</h4> : null}
-                  <p>{f.text}</p>
-                </div>
-              </div>
-            );
-          })()}
-          <div className="rev-grid">
-            {reviews.slice(1).map((r, i) => {
-              const img = r.photo || r.avatar;
-              return (
-                <div key={`${r.name}-${i}`} className="rev has-photo reveal">
-                  {img ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className="rev-banner" src={img} alt={r.title || r.name} loading="lazy" decoding="async" />
-                  ) : (
-                    <div className="rev-banner rev-banner-ph">{r.name ? <span>{r.name.slice(0, 1)}</span> : null}</div>
-                  )}
-                  <div className="stars">★★★★★</div>
-                  <b className="rev-name">{r.name}</b>
-                  {r.title ? <h4>{r.title}</h4> : null}
-                  <p>{r.text}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </section>
 
       {/* v429：FAQ 改用原生 <details><summary>，server 渲染、零 JS 開合 */}

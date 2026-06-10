@@ -44,15 +44,15 @@ export const IgIcon = ({ s = 42, uid = "ig" }: { s?: number; uid?: string }) => 
   </svg>
 );
 
-// v460：順序 = 頁面 section 實際出現順序（上排捷徑、右側圓點都吃這份，必須與內容對齊）
+// v460/v463：順序 = 頁面 section 實際出現順序（上排捷徑、右側圓點都吃這份，必須與內容對齊）
 export const NAV = [
+  { href: "#reviews", label: "學員怎麼說" },
+  { href: "#about", label: "關於汪汪" },
+  { href: "#courses", label: "潛水課程" },
   { href: "#start", label: "新手上路" },
   { href: "#spots", label: "東北角潛點" },
   { href: "#trips", label: "潛旅目的地" },
   { href: "#news", label: "最新動態" },
-  { href: "#about", label: "關於汪汪" },
-  { href: "#courses", label: "潛水課程" },
-  { href: "#reviews", label: "學員怎麼說" },
   { href: "#faq", label: "常見問題" },
 ];
 
