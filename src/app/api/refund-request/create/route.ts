@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { notifyAdmins } from "@/lib/message-log"; // v473
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -150,5 +151,12 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  notifyAdmins({
+    templateKey: "refund_request_created",
+    title: "↩️ 新退款申請待處理",
+    body: `客戶申請退款 NT$${data.amount}（${data.method}），原因：${data.reason ?? "未填"}。請進後台審核。`,
+    linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/admin/bookings`,
+    icon: "↩️",
+  });
   return NextResponse.json({ ok: true, refundRequest: rr });
 }

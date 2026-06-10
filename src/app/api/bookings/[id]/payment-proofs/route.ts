@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { publicUrl, isPrivate, type R2Prefix } from "@/lib/r2";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { notifyAdmins } from "@/lib/message-log"; // v473：站內通知管理者
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +135,15 @@ export async function POST(
       { status: 500 },
     );
   }
+
+  // v473：站內通知所有管理者（可在 LIFF 個人中心確認）
+  notifyAdmins({
+    templateKey: "payment_proof_uploaded",
+    title: "💳 新付款證明待核對",
+    body: `訂單 ${id.slice(0, 8)} 上傳了${data.type === "deposit" ? "訂金" : data.type === "final" ? "尾款" : ""}付款證明，金額 NT$${data.amount}、後5碼 ${data.last5 ?? "—"}，請進後台核對。`,
+    linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/admin/bookings`,
+    icon: "💳",
+  });
 
   // v300：log + LINE 通知都改 fire-and-forget，不擋 response
   try {

@@ -19,6 +19,7 @@ import {
 } from "./flex";
 import { sendEmail } from "./email/send";
 import type { EmailContent } from "./email/templates";
+import { logMessage } from "./message-log"; // v473：發送紀錄
 
 export function notifyCustomer(opts: {
   /** 客戶 lineUserId */
@@ -52,12 +53,19 @@ export function notifyCustomer(opts: {
       const inAppOn =
         tpl?.inAppEnabled ?? FLEX_TEMPLATE_META[opts.templateKey]?.defaultInApp ?? true;
 
+      const who = user.realName ?? user.displayName ?? opts.userId;
+
       // LINE flex
       if (user.notifyByLine ?? true) {
         const lineClient = getLineClient();
         if (lineClient) {
-          const flex = await buildFlexByKeyAsync(opts.templateKey, opts.params, opts.altText);
-          await lineClient.pushMessage({ to: opts.userId, messages: [flex] });
+          try {
+            const flex = await buildFlexByKeyAsync(opts.templateKey, opts.params, opts.altText);
+            await lineClient.pushMessage({ to: opts.userId, messages: [flex] });
+            logMessage({ channel: "line", templateKey: opts.templateKey, recipientId: opts.userId, recipient: who, title: opts.altText, status: "sent", source: "notify" });
+          } catch (e) {
+            logMessage({ channel: "line", templateKey: opts.templateKey, recipientId: opts.userId, recipient: who, title: opts.altText, status: "failed", error: e instanceof Error ? e.message : String(e), source: "notify" });
+          }
         }
       }
 
@@ -65,7 +73,8 @@ export function notifyCustomer(opts: {
       if (opts.email && (user.notifyByEmail ?? true) && user.email) {
         const name = user.realName ?? user.displayName ?? "您";
         const content = typeof opts.email === "function" ? opts.email(name) : opts.email;
-        await sendEmail({ to: user.email, subject: content.subject, text: content.text, html: content.html });
+        const r = await sendEmail({ to: user.email, subject: content.subject, text: content.text, html: content.html });
+        logMessage({ channel: "email", templateKey: opts.templateKey, recipientId: opts.userId, recipient: user.email, title: content.subject, status: r.ok ? "sent" : r.skipped ? "skipped" : "failed", error: r.error ?? null, source: "notify" });
       }
 
       // 站內訊息通知（第三通道）— 受模板層開關控制（inAppOn）；呼叫端 inApp:false 也可關
@@ -86,6 +95,7 @@ export function notifyCustomer(opts: {
               icon,
             },
           });
+          logMessage({ channel: "inapp", templateKey: opts.templateKey, recipientId: opts.userId, recipient: who, title: opts.inApp?.title ?? fallbackTitle, status: "sent", source: "notify" });
         } catch (e) {
           // 站內通知寫入失敗不應影響 LINE/Email；獨立 try/catch
           console.error(`[notifyCustomer inApp ${opts.templateKey}]`, e);

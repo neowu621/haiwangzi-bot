@@ -213,6 +213,25 @@ model Notification {
   @@map("notifications")
 }
 
+// v473：訊息發送紀錄（唯一的對外訊息發送 log）— LINE / Email / 站內通知 每一筆發送都記一列
+model MessageLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  channel      String   @db.VarChar(8) // line / email / inapp
+  templateKey  String   @map("template_key") @db.VarChar(64)
+  recipientId  String?  @map("recipient_id") @db.VarChar(64) // 收件人 lineUserId（站內/LINE）
+  recipient    String   @db.VarChar(254) // 顯示用：姓名 / email / userId
+  title        String   // 主旨 / 標題 / altText
+  status       String   @db.VarChar(12) // sent / failed / skipped
+  error        String?  @db.Text
+  source       String   @default("system") @db.VarChar(32) // notify / test / broadcast / weather / orders ...
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt(sort: Desc)])
+  @@index([channel, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("message_logs")
+}
+
 // v256：Email 驗證 token
 //   驗證信寄出時建一筆，使用者點 link 後標 usedAt + 寫 User.emailVerifiedAt
 //   7 天過期。同一 user 可重發（同一 email 共存的 token 都還能用，但只認最後一個）

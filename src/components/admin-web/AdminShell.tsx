@@ -57,6 +57,7 @@ const NAV_GROUPS = [
       { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
       { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
       { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
+      { href: "/admin/message-log", icon: BookOpen, label: "📋 發送紀錄" },
     ],
   },
   {

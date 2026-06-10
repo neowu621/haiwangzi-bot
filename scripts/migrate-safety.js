@@ -52,6 +52,23 @@ const PATCHES = [
   // v470: Email 發送路徑（gmail / zsend / fallback）
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS email_provider VARCHAR(16) NOT NULL DEFAULT 'gmail'`,
 
+  // v473: 訊息發送紀錄表（LINE / Email / 站內通知 每筆發送一列）
+  `CREATE TABLE IF NOT EXISTS message_logs (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     channel VARCHAR(8) NOT NULL,
+     template_key VARCHAR(64) NOT NULL,
+     recipient_id VARCHAR(64),
+     recipient VARCHAR(254) NOT NULL,
+     title TEXT NOT NULL,
+     status VARCHAR(12) NOT NULL,
+     error TEXT,
+     source VARCHAR(32) NOT NULL DEFAULT 'system',
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS message_logs_created_idx ON message_logs(created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS message_logs_channel_idx ON message_logs(channel, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS message_logs_status_idx ON message_logs(status, created_at DESC)`,
+
   // v264: 每日天氣自動回報設定
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,
