@@ -70,8 +70,9 @@ export default function SiteNav() {
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line" onClick={closeMenu}><LineIcon />LINE 預約</a>
       </nav>
 
+      {/* v460：圓點順序 = NAV（已對齊頁面 section 順序），尾端補 #book 預約區 */}
       <div className="dotnav">
-        {[{ id: "top", l: "首頁" }, ...NAV.map((n) => ({ id: n.href.slice(1), l: n.label }))].map((d) => (
+        {[{ id: "top", l: "首頁" }, ...NAV.map((n) => ({ id: n.href.slice(1), l: n.label })), { id: "book", l: "立即預約" }].map((d) => (
           <a key={d.id} href={`#${d.id}`} className={activeSec === d.id ? "active" : ""}><span className="lbl">{d.l}</span><span className="dot" /></a>
         ))}
       </div>
