@@ -227,7 +227,8 @@
 .hw .rev-featured p{color:var(--glow-soft);font-size:.94rem;line-height:1.9}
 @media(min-width:760px){.hw .rev-featured{flex-direction:row;align-items:flex-start;gap:30px;padding:34px}.hw .rev-featured .body{flex:1}.hw .rev-featured .fphoto{width:150px;height:150px;flex:0 0 150px}}
 /* v414：精選卡網格（grid-areas：左大頭像跨兩列 + 右上星等 + 右下暱稱 + 標題 + 內文） */
-.hw .rev-grid{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
+/* v458：同排卡片等高（短卡往下拉伸切齊），卡內內容仍靠上排 */
+.hw .rev-grid{display:grid;gap:18px;grid-template-columns:1fr}
 @media(min-width:560px){.hw .rev-grid{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:980px){.hw .rev-grid{grid-template-columns:repeat(3,1fr)}}
 /* v446：統一版型 — 頭像/照片在左（貫穿），★星等/暱稱/標題/內文全在右欄（與第一張長文卡一致） */
