@@ -180,13 +180,14 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-[var(--card)] border border-[var(--border)] max-h-[85vh] overflow-y-auto"
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--border)] max-h-[85vh] overflow-y-auto shadow-2xl"
+        style={{ background: "var(--background)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-2.5 p-4 border-b border-[var(--border)]">
           <span className="text-2xl leading-none flex-shrink-0">{n.icon ?? "🔔"}</span>
           <div className="min-w-0 flex-1">
-            <div className="text-base font-bold leading-snug">{n.title}</div>
+            <div className="text-base font-bold leading-snug text-[var(--foreground)]">{n.title}</div>
             <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">{relativeTime(n.createdAt)}</div>
           </div>
           <button onClick={onClose} aria-label="關閉" className="flex-shrink-0 text-[var(--muted-foreground)] text-xl leading-none px-1">✕</button>
@@ -194,16 +195,25 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
         <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--foreground)]">
           {n.body}
         </div>
-        {n.linkUrl && (
-          <div className="p-4 pt-0">
+        {/* v471：底部按鈕 — 有連結→「前往查看」(導頁)；沒連結→「關閉」 */}
+        <div className="p-4 pt-1">
+          {n.linkUrl ? (
             <a
               href={n.linkUrl}
               className="block w-full rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
             >
               前往查看 →
             </a>
-          </div>
-        )}
+          ) : (
+            <button
+              onClick={onClose}
+              className="block w-full rounded-xl border border-[var(--border)] py-3 text-center text-sm font-bold text-[var(--muted-foreground)]"
+              style={{ background: "var(--background)" }}
+            >
+              關閉
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
