@@ -71,19 +71,24 @@ interface ObsTime {
 
 // v447：一次抓「整份 O-B0075-001」（不帶 StationID），回 stationID → 觀測序列 的 map。
 //   原本每個站各打一次（3 區 = 6 筆併發）會被 CWA 限流而全空 → 海象消失。改成一次抓全部、本機挑站。
-//   v445 修：CWA 回的是小寫 "records"（曾誤讀大寫 "Records" → 永遠 undefined → 海象靜默抓不到的真正根因）。
+//
+// ⚠ CWA 大小寫陷阱（v455 實測確認，害海象消失兩次的真正根因）：
+//   - 帶 StationID 篩選 → 回小寫 "records"（v445 因此修成小寫）
+//   - 不帶篩選抓全部   → 回大寫 "Records"（v448 改抓全部後又靜默全空）
+//   同一支 API 兩種 casing，因此兩種都接，永遠不要再只讀一種。
+type FeedRecords = { SeaSurfaceObs?: { Location?: Array<{ Station?: { StationID?: string }; StationObsTimes?: { StationObsTime?: ObsTime[] } }> } };
 async function fetchAllStations(apiKey: string): Promise<Map<string, ObsTime[]>> {
   const url = `${CWA_BASE}?Authorization=${apiKey}&format=JSON`;
   const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`CWA O-B0075-001 HTTP ${res.status}`);
-  const data = (await res.json()) as {
-    records?: { SeaSurfaceObs?: { Location?: Array<{ Station?: { StationID?: string }; StationObsTimes?: { StationObsTime?: ObsTime[] } }> } };
-  };
+  const data = (await res.json()) as { records?: FeedRecords; Records?: FeedRecords };
+  const recs = data.records ?? data.Records;
   const map = new Map<string, ObsTime[]>();
-  for (const loc of data.records?.SeaSurfaceObs?.Location ?? []) {
+  for (const loc of recs?.SeaSurfaceObs?.Location ?? []) {
     const id = loc.Station?.StationID;
     if (id) map.set(id, loc.StationObsTimes?.StationObsTime ?? []);
   }
+  if (map.size === 0) console.error("[marine] feed parsed but 0 stations — CWA response shape changed again?");
   return map;
 }
 

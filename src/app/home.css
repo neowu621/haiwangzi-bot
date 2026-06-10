@@ -239,14 +239,15 @@
 .hw .rev h4{grid-area:head;font-family:var(--serif);font-weight:800;font-size:1.16rem;margin:10px 0 0;color:var(--foam);line-height:1.45}
 .hw .rev p{grid-area:body;color:var(--foam);font-size:1.08rem;line-height:1.85;margin:8px 0 0}
 /* v446：照片版見證卡 — 與其他卡統一：圖片在左（貫穿），★星等/暱稱/標題/內文全在右欄 */
-.hw .rev.has-photo{grid-template-areas:"ph stars" "ph name" "ph head" "ph body";column-gap:14px;row-gap:2px;align-content:start;overflow:visible}
-.hw .rev.has-photo .rev-banner{grid-area:ph;align-self:stretch;width:clamp(88px,26vw,116px);height:100%;min-height:124px;max-width:none;object-fit:cover;border-radius:12px;border:1px solid rgba(102,216,246,.25);margin:0;display:grid;place-items:center}
+/* v455：卡片三區塊版型 — 左上圖片 + 右側星等/名稱/標題，下方整段文字滿版 */
+.hw .rev.has-photo{grid-template-areas:"ph stars" "ph name" "ph head" "body body";column-gap:14px;row-gap:2px;align-content:start;overflow:visible}
+.hw .rev.has-photo .rev-banner{grid-area:ph;align-self:start;width:clamp(120px,32vw,160px);aspect-ratio:4/3;height:auto;max-width:none;object-fit:cover;border-radius:12px;border:1px solid rgba(102,216,246,.25);margin:0;display:grid;place-items:center}
 .hw .rev.has-photo .rev-banner-ph{background:linear-gradient(135deg,var(--glow),var(--blue))}
 .hw .rev.has-photo .rev-banner-ph span{color:#04263f;font-weight:800;font-size:2rem}
 .hw .rev.has-photo .stars{grid-area:stars;align-self:end;color:var(--gold);letter-spacing:3px;margin:0}
 .hw .rev.has-photo .rev-name{grid-area:name;align-self:start;font-weight:700;font-size:1rem;color:var(--foam)}
 .hw .rev.has-photo h4{grid-area:head;font-family:var(--serif);font-weight:800;font-size:1.16rem;margin:4px 0 0;color:var(--foam);line-height:1.45}
-.hw .rev.has-photo p{grid-area:body;color:var(--foam);font-size:1.08rem;line-height:1.85;margin:10px 0 0}
+.hw .rev.has-photo p{grid-area:body;color:var(--foam);font-size:1.08rem;line-height:1.85;margin:14px 0 0}
 /* v414：總結語 */
 .hw .rev-conclusion{text-align:center;margin:28px auto 0;max-width:760px;color:var(--glow-soft);font-size:1rem;line-height:1.85}
 .hw .rev-conclusion b{color:var(--foam)}
