@@ -748,7 +748,8 @@ function InAppPreview({ cur, val, sending, onTest }: {
   cur: TemplateInfo; val: (k: string) => string; sending: boolean; onTest: () => void;
 }) {
   const title = val("title");
-  const body = val("bodyText") || val("subtitle");
+  const sub = val("subtitle") || val("bodyText");
+  const btn = val("buttonLabel");
   return (
     <div style={{ margin: "8px 8px 22px", opacity: cur.inAppEnabled ? 1 : 0.4, filter: cur.inAppEnabled ? undefined : "grayscale(.55)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 2px 10px" }}>
@@ -763,17 +764,39 @@ function InAppPreview({ cur, val, sending, onTest }: {
         <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,.1)" }} />
       </div>
 
-      {/* LIFF 個人中心通知列卡片樣式 */}
-      <div style={{ background: "#fff", borderRadius: 11, overflow: "hidden", boxShadow: "0 5px 18px rgba(0,0,0,.22)", padding: "13px 14px", display: "flex", gap: 11 }}>
-        <span style={{ fontSize: 22, lineHeight: 1.1, flexShrink: 0 }}>{cur.icon || "📬"}</span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0a2027", lineHeight: 1.35, marginBottom: 3 }}>{title}</div>
-          {body && <div style={{ fontSize: 12, color: "#516268", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{body}</div>}
-          <div style={{ fontSize: 10, color: "#9aabae", marginTop: 6 }}>剛剛 · 點擊查看</div>
+      {/* v468：客戶點開通知後看到的完整內容（與 LINE / Email 同一份） */}
+      <div style={{ background: "#fff", borderRadius: 11, overflow: "hidden", boxShadow: "0 5px 18px rgba(0,0,0,.22)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", borderBottom: "1px solid #eef2f2" }}>
+          <span style={{ fontSize: 22 }}>{cur.icon || "📬"}</span>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0a2027", lineHeight: 1.35 }}>{title}</div>
+        </div>
+        <div style={{ padding: "14px 15px 6px", color: "#0a2027" }}>
+          {sub && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 11 }}>{sub}</div>}
+          {EXTRA_LINES[cur.key] && (
+            <ul style={{ marginBottom: 11, paddingLeft: 18, fontSize: 12, color: "#516268", lineHeight: 1.7 }}>
+              {EXTRA_LINES[cur.key].map((line, i) => <li key={i}>{line}</li>)}
+            </ul>
+          )}
+          {SHOW_DATA[cur.key] && (
+            <div style={{ background: "#f4f9f8", border: "1px solid #e2efed", borderRadius: 9, padding: "11px 13px", marginBottom: 12 }}>
+              <DataRow k="客戶姓名" v={SAMPLE.客戶名} />
+              <DataRow k="預約場次" v={SAMPLE.場次} />
+              <DataRow k="出發時間" v={SAMPLE.日期} />
+              {SHOW_AMOUNT[cur.key] && <DataRow k="應繳金額" v={SAMPLE.金額} />}
+            </div>
+          )}
+          {btn && (
+            <span style={{ display: "inline-block", background: "#13b5a6", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
+              {btn} →
+            </span>
+          )}
+        </div>
+        <div style={{ padding: "10px 15px", borderTop: "1px solid #eef2f2", fontSize: 10, color: "#9aabae" }}>
+          🔔 客戶在 LIFF 個人中心「訊息通知」收到，點開即看到上面完整內容
         </div>
       </div>
       <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 6, textAlign: "center" }}>
-        ※ 會出現在客戶的 LIFF 個人中心「訊息通知」與紅點未讀數。
+        ※ 內容與 LINE / Email 一致；列表先顯示標題，點擊展開完整內容＋紅點未讀數。
       </p>
 
       <button

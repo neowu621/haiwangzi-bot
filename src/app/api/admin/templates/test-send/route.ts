@@ -98,6 +98,33 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
   },
 };
 
+// v468：模板的「實際 Flex 內容」常數 — LINE / Email / 站內通知三通道共用，確保內容一致
+const HERO_EMOJI: Record<string, string> = {
+  welcome: "🌊", booking_confirm: "✅", deposit_notice: "💰", deposit_confirm: "✅",
+  final_reminder: "⏰", trip_guide: "📘", d1_reminder: "🤿", weather_cancel: "🌊",
+  overcap_alert: "⚠️", admin_weekly: "📊",
+};
+const EXTRA_LINES: Record<string, string[]> = {
+  welcome: [
+    "📅 日潛預約：選日期 → 選場次 → 一鍵搞定",
+    "✈️ 旅遊潛水：蘭嶼 / 綠島 / 墾丁 多日團",
+    "💳 上傳轉帳截圖，教練即時核對",
+    "🔔 行前一天自動提醒，海況即時推播",
+  ],
+  trip_guide: [
+    "🎒 攜帶：證照、防寒衣、防曬",
+    "📍 集合地點 / 交通方式：依場次說明",
+    "📞 緊急聯絡：教練電話於行前通知",
+  ],
+  weather_cancel: [
+    "🅰️ 退現金 100%",
+    "🅱️ 轉抵用金 110%（推薦，多 10% 優惠）",
+  ],
+};
+const EXTRA_FOOTER: Record<string, string> = {
+  welcome: "安全．專業．陪你看見海",
+};
+
 // v467：把模板的動態樣本資料組成可讀內文，讓「模擬發送」呈現實際內容
 //   （特別是內部通訊：超賣警示、Admin 週報，內容主要是數字）
 function buildSampleBody(key: string, p: Record<string, string>): string {
@@ -174,10 +201,17 @@ export async function POST(req: NextRequest) {
     const override = await prisma.messageTemplate.findUnique({ where: { key } });
     const title = override?.title ?? label;
     const p = params as Record<string, string>;
-    // v467：試送放「實際內容」——把該模板的動態樣本資料組成可讀內文（尤其內部通訊：超賣/週報靠數字）
-    const sampleBody = buildSampleBody(key, p);
-    const baseBody = override?.bodyText ?? "";
-    const body = [baseBody, sampleBody].filter(Boolean).join("\n\n")
+    // v468：站內通知內容 = 與 LINE / Email 同一份完整內容（副標 + 內文 + 功能清單 + 樣本動態資料 + footer）
+    const parts: string[] = [];
+    if (override?.subtitle) parts.push(override.subtitle);
+    if (override?.bodyText) parts.push(override.bodyText);
+    const extraLines = EXTRA_LINES[key] ?? [];
+    if (extraLines.length) parts.push(extraLines.join("\n"));
+    const sampleBody = buildSampleBody(key, p); // 動態樣本（超賣/週報數字、場次金額等）
+    if (sampleBody) parts.push(sampleBody);
+    const footer = EXTRA_FOOTER[key] ?? "";
+    if (footer) parts.push(footer);
+    const body = parts.join("\n\n")
       || "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
     const linkUrl = p.liffUrl ?? p.url ?? null;
     const icon = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META]?.icon ?? null;
@@ -232,31 +266,6 @@ export async function POST(req: NextRequest) {
   })();
 
   // v235：與 /admin/templates 預覽一致的內容
-  const HERO_EMOJI: Record<string, string> = {
-    welcome: "🌊", booking_confirm: "✅", deposit_notice: "💰", deposit_confirm: "✅",
-    final_reminder: "⏰", trip_guide: "📘", d1_reminder: "🤿", weather_cancel: "🌊",
-    overcap_alert: "⚠️", admin_weekly: "📊",
-  };
-  const EXTRA_LINES: Record<string, string[]> = {
-    welcome: [
-      "📅 日潛預約：選日期 → 選場次 → 一鍵搞定",
-      "✈️ 旅遊潛水：蘭嶼 / 綠島 / 墾丁 多日團",
-      "💳 上傳轉帳截圖，教練即時核對",
-      "🔔 行前一天自動提醒，海況即時推播",
-    ],
-    trip_guide: [
-      "🎒 攜帶：證照、防寒衣、防曬",
-      "📍 集合地點 / 交通方式：依場次說明",
-      "📞 緊急聯絡：教練電話於行前通知",
-    ],
-    weather_cancel: [
-      "🅰️ 退現金 100%",
-      "🅱️ 轉抵用金 110%（推薦，多 10% 優惠）",
-    ],
-  };
-  const EXTRA_FOOTER: Record<string, string> = {
-    welcome: "安全．專業．陪你看見海",
-  };
 
   const heroEmoji = HERO_EMOJI[key] ?? "📩";
   const extraLines = EXTRA_LINES[key] ?? [];
