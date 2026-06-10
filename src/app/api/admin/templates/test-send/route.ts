@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
-import { buildFlexByKeyAsync, FLEX_TEMPLATES, FLEX_TEMPLATE_LABELS } from "@/lib/flex";
+import { buildFlexByKeyAsync, FLEX_TEMPLATES, FLEX_TEMPLATE_LABELS, FLEX_TEMPLATE_META } from "@/lib/flex";
 import { getLineClient } from "@/lib/line";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
   key: z.string(),
-  channel: z.enum(["line", "email"]).default("line"),
+  channel: z.enum(["line", "email", "inApp"]).default("line"),
 });
 
 const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
@@ -130,6 +130,36 @@ export async function POST(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await client.pushMessage({ to: auth.user.lineUserId, messages: [msg as any] });
       return NextResponse.json({ ok: true, channel: "line", sentTo: auth.user.lineUserId });
+    } catch (e) {
+      return NextResponse.json(
+        { ok: false, error: e instanceof Error ? e.message : String(e) },
+        { status: 500 },
+      );
+    }
+  }
+
+  // ─── 站內通知（第三通道）─────────────────────────────────────────
+  if (channel === "inApp") {
+    const override = await prisma.messageTemplate.findUnique({ where: { key } });
+    const title = override?.title ?? label;
+    const body =
+      override?.bodyText ??
+      "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
+    const p = params as Record<string, string>;
+    const linkUrl = p.liffUrl ?? p.url ?? null;
+    const icon = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META]?.icon ?? null;
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: auth.user.lineUserId,
+          templateKey: key,
+          title: `（測試）${title}`,
+          body,
+          linkUrl,
+          icon,
+        },
+      });
+      return NextResponse.json({ ok: true, channel: "inApp", sentTo: auth.user.lineUserId });
     } catch (e) {
       return NextResponse.json(
         { ok: false, error: e instanceof Error ? e.message : String(e) },

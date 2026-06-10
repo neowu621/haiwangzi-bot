@@ -100,7 +100,7 @@ export default function AdminTemplatesPage() {
   const [curIdx, setCurIdx] = useState(0);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [sending, setSending] = useState<"line" | "email" | null>(null);
+  const [sending, setSending] = useState<"line" | "email" | "inApp" | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -192,10 +192,11 @@ export default function AdminTemplatesPage() {
     }
   }
 
-  async function testSend(ch: "line" | "email") {
+  async function testSend(ch: "line" | "email" | "inApp") {
     if (!cur) return;
     if (ch === "line" && !cur.lineEnabled) return;
     if (ch === "email" && !cur.emailEnabled) return;
+    if (ch === "inApp" && !cur.inAppEnabled) return;
     setSending(ch);
     setErr(null);
     try {
@@ -203,7 +204,8 @@ export default function AdminTemplatesPage() {
         method: "POST",
         body: JSON.stringify({ key: cur.key, channel: ch }),
       });
-      showToast(`已將「${cur.label}」${ch === "line" ? "LINE" : "Email"} 試送到您自己 ✓`);
+      const chLabel = ch === "line" ? "LINE" : ch === "email" ? "Email" : "站內通知";
+      showToast(`已將「${cur.label}」${chLabel} 試送到您自己 ✓${ch === "inApp" ? "（到 LIFF 個人中心查看）" : ""}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setErr(msg);
@@ -430,13 +432,14 @@ export default function AdminTemplatesPage() {
             <div style={paneHeadStyle}>
               <span style={paneNumStyle}>3</span>
               <b style={{ fontSize: 13.5 }}>發送預覽</b>
-              <span style={paneSubStyle}>LINE / Email 分開</span>
+              <span style={paneSubStyle}>LINE / Email / 站內</span>
             </div>
             <div style={{ ...paneBodyStyle, background: "linear-gradient(180deg,#0a2d36,#06262e)" }}>
               {cur && (
                 <>
                   <LinePreview cur={cur} val={val} sending={sending === "line"} onTest={() => testSend("line")} />
                   <EmailPreview cur={cur} val={val} sending={sending === "email"} onTest={() => testSend("email")} />
+                  <InAppPreview cur={cur} val={val} sending={sending === "inApp"} onTest={() => testSend("inApp")} />
                 </>
               )}
             </div>
@@ -735,6 +738,57 @@ function EmailPreview({ cur, val, sending, onTest }: {
         }}
       >
         📨 {sending ? "送出中..." : "試送 Email 到我"}
+      </button>
+    </div>
+  );
+}
+
+// v464：站內通知預覽 + 試送（與 LINE/Email 共用同一份內容，只多一顆發送鈕）
+function InAppPreview({ cur, val, sending, onTest }: {
+  cur: TemplateInfo; val: (k: string) => string; sending: boolean; onTest: () => void;
+}) {
+  const title = val("title");
+  const body = val("bodyText") || val("subtitle");
+  return (
+    <div style={{ margin: "8px 8px 22px", opacity: cur.inAppEnabled ? 1 : 0.4, filter: cur.inAppEnabled ? undefined : "grayscale(.55)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 2px 10px" }}>
+        <span style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#9fd6cf", fontWeight: 800 }}>
+          📬 站內通知
+        </span>
+        {!cur.inAppEnabled && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#ffb3aa", background: "rgba(255,107,94,.16)", padding: "1px 8px", borderRadius: 20 }}>
+            未啟用
+          </span>
+        )}
+        <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,.1)" }} />
+      </div>
+
+      {/* LIFF 個人中心通知列卡片樣式 */}
+      <div style={{ background: "#fff", borderRadius: 11, overflow: "hidden", boxShadow: "0 5px 18px rgba(0,0,0,.22)", padding: "13px 14px", display: "flex", gap: 11 }}>
+        <span style={{ fontSize: 22, lineHeight: 1.1, flexShrink: 0 }}>{cur.icon || "📬"}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0a2027", lineHeight: 1.35, marginBottom: 3 }}>{title}</div>
+          {body && <div style={{ fontSize: 12, color: "#516268", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{body}</div>}
+          <div style={{ fontSize: 10, color: "#9aabae", marginTop: 6 }}>剛剛 · 點擊查看</div>
+        </div>
+      </div>
+      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 6, textAlign: "center" }}>
+        ※ 會出現在客戶的 LIFF 個人中心「訊息通知」與紅點未讀數。
+      </p>
+
+      <button
+        onClick={onTest}
+        disabled={!cur.inAppEnabled || sending}
+        style={{
+          width: "100%", marginTop: 6, border: "none", borderRadius: 9, padding: 10,
+          fontSize: 12.5, fontWeight: 700, fontFamily: "inherit",
+          cursor: cur.inAppEnabled && !sending ? "pointer" : "not-allowed",
+          background: cur.inAppEnabled ? "linear-gradient(120deg,#13b5a6,#1ed4c2)" : "#3a5a60",
+          color: cur.inAppEnabled ? "#04323a" : "#9fc6c2",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+        }}
+      >
+        📬 {sending ? "送出中..." : "試送站內通知到我"}
       </button>
     </div>
   );
