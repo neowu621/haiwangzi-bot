@@ -323,7 +323,32 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         if (init?.body && !headers.has("content-type")) {
           headers.set("content-type", "application/json");
         }
-        const res = await fetch(url, { ...init, headers });
+        // v465：LINE WebView 沒有「Ctrl+F5」，卡住的請求若不自動逾時+重試，使用者只能關 App 重開。
+        //   no-store 避免 WebView 沿用過期快取/半死連線；逾時自動中止；
+        //   唯讀 GET（無 body、無外部 signal）逾時或連線層錯誤時，用全新連線自動重試一次。
+        const canRetry = !init?.signal && !init?.body;
+        const doFetch = async (timeoutMs: number) => {
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), timeoutMs);
+          try {
+            return await fetch(url, { ...init, headers, cache: "no-store", signal: init?.signal ?? ac.signal });
+          } finally {
+            clearTimeout(timer);
+          }
+        };
+        let res: Response;
+        try {
+          res = await doFetch(12_000);
+        } catch (e) {
+          const transient = (e instanceof DOMException && e.name === "AbortError") || e instanceof TypeError;
+          if (canRetry && transient) {
+            res = await doFetch(25_000); // 全新連線再試一次（把「關App重開」自動化）
+          } else if (e instanceof DOMException && e.name === "AbortError") {
+            throw new Error("連線逾時，請重試（網路較慢，稍後再開一次）");
+          } else {
+            throw e;
+          }
+        }
         if (!res.ok) {
           const text = await res.text();
           // v351：idToken 過期 → LINE getIDToken() 不會自動刷新，唯一辦法是重新登入。
