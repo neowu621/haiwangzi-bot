@@ -44,6 +44,7 @@ export default function NotificationsPage() {
   const [hydrated, setHydrated] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [selected, setSelected] = useState<NotificationItem | null>(null); // v467：點開看完整內容
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const readMarkedRef = useRef(false); // 確保「進頁標已讀」只打一次
 
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
         {hydrated && !loading && items.length === 0 && <EmptyState />}
 
         {items.map((n) => (
-          <NotificationCard key={n.id} n={n} />
+          <NotificationCard key={n.id} n={n} onOpen={() => setSelected(n)} />
         ))}
 
         {/* 無限載入 sentinel */}
@@ -160,17 +161,65 @@ export default function NotificationsPage() {
           <div className="py-3 text-center text-xs text-[var(--muted-foreground)]">載入更多⋯</div>
         )}
       </div>
+      {selected && <NotificationModal n={selected} onClose={() => setSelected(null)} />}
     </LiffShell>
   );
 }
 
-function NotificationCard({ n }: { n: NotificationItem }) {
-  const inner = (
+// v467：點通知 → 彈窗顯示完整內容；有連結 → 一顆「前往」鈕點了才跳轉（確認後才執行）
+function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [onClose]);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-[var(--card)] border border-[var(--border)] max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-2.5 p-4 border-b border-[var(--border)]">
+          <span className="text-2xl leading-none flex-shrink-0">{n.icon ?? "🔔"}</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-base font-bold leading-snug">{n.title}</div>
+            <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">{relativeTime(n.createdAt)}</div>
+          </div>
+          <button onClick={onClose} aria-label="關閉" className="flex-shrink-0 text-[var(--muted-foreground)] text-xl leading-none px-1">✕</button>
+        </div>
+        <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--foreground)]">
+          {n.body}
+        </div>
+        {n.linkUrl && (
+          <div className="p-4 pt-0">
+            <a
+              href={n.linkUrl}
+              className="block w-full rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
+            >
+              前往查看 →
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NotificationCard({ n, onOpen }: { n: NotificationItem; onOpen: () => void }) {
+  // v467：整張卡點擊 → 開詳情視窗看完整內容（不再直接跳轉，改在視窗內按鈕確認後才前往）
+  return (
     <Card
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       className={cn(
-        "relative p-3 transition-colors",
+        "relative p-3 transition-colors cursor-pointer hover:bg-[var(--muted)]/30",
         !n.isRead && "bg-[var(--color-coral)]/[0.04]",
-        n.linkUrl && "cursor-pointer hover:bg-[var(--muted)]/30",
       )}
     >
       {/* 未讀左側 coral 點 */}
@@ -194,20 +243,11 @@ function NotificationCard({ n }: { n: NotificationItem }) {
           <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted-foreground)] line-clamp-2">
             {n.body}
           </p>
+          <span className="mt-1 inline-block text-[10px] text-[var(--color-coral)]">點擊看完整內容{n.linkUrl ? " · 含連結" : ""} →</span>
         </div>
       </div>
     </Card>
   );
-
-  if (n.linkUrl) {
-    // linkUrl 多為 LIFF 完整網址；用一般 a 導頁（站內 / 外站皆可）
-    return (
-      <a href={n.linkUrl} className="block">
-        {inner}
-      </a>
-    );
-  }
-  return inner;
 }
 
 function EmptyState() {

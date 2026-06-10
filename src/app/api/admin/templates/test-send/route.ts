@@ -98,6 +98,37 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
   },
 };
 
+// v467：把模板的動態樣本資料組成可讀內文，讓「模擬發送」呈現實際內容
+//   （特別是內部通訊：超賣警示、Admin 週報，內容主要是數字）
+function buildSampleBody(key: string, p: Record<string, string>): string {
+  switch (key) {
+    case "overcap_alert":
+      return [
+        `⚠️ 場次超賣提醒`,
+        `場次：${p.tripDate ?? ""} ${p.tripTime ?? ""}・${p.site ?? ""}`,
+        `客戶：${p.customerName ?? ""} 想預約 ${p.requestedCount ?? ""} 人`,
+        `目前：已訂 ${p.currentBooked ?? ""} / 上限 ${p.capacity ?? ""} 人`,
+      ].join("\n");
+    case "admin_weekly":
+      return [
+        `📊 本週營運摘要（${p.weekRange ?? ""}）`,
+        `・新增預約：${p.bookings ?? ""} 筆`,
+        `・完成出團：${p.completed ?? ""} 筆`,
+        `・取消：${p.cancellations ?? ""} 筆`,
+        `・營收：NT$ ${p.revenue ?? ""}`,
+        `・最熱門潛點：${p.topSite ?? ""}`,
+      ].join("\n");
+    case "booking_confirm":
+      return `預約場次：${p.site ?? ""}\n出發時間：${p.date ?? ""} ${p.time ?? ""}\n金額：NT$ ${p.total ?? ""}`;
+    case "weather_cancel":
+      return `取消場次：${p.date ?? ""} ${p.time ?? ""}・${p.site ?? ""}\n原因：${p.reason ?? ""}`;
+    case "d1_reminder":
+      return `明日場次：${p.date ?? ""} ${p.time ?? ""}・${p.site ?? ""}\n天氣 ${p.weather ?? ""}・浪 ${p.wave ?? ""}・水溫 ${p.water ?? ""}`;
+    default:
+      return "";
+  }
+}
+
 // POST /api/admin/templates/test-send - 預覽（推給 admin 自己）
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
@@ -142,10 +173,12 @@ export async function POST(req: NextRequest) {
   if (channel === "inApp") {
     const override = await prisma.messageTemplate.findUnique({ where: { key } });
     const title = override?.title ?? label;
-    const body =
-      override?.bodyText ??
-      "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
     const p = params as Record<string, string>;
+    // v467：試送放「實際內容」——把該模板的動態樣本資料組成可讀內文（尤其內部通訊：超賣/週報靠數字）
+    const sampleBody = buildSampleBody(key, p);
+    const baseBody = override?.bodyText ?? "";
+    const body = [baseBody, sampleBody].filter(Boolean).join("\n\n")
+      || "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
     const linkUrl = p.liffUrl ?? p.url ?? null;
     const icon = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META]?.icon ?? null;
     try {
