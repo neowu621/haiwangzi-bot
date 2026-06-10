@@ -911,7 +911,7 @@ export default function AdminTripsPage() {
     });
     const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? id;
     const baseUrl =
-      typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
+      typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
     // v383：小編 LINE 群組連結（如需更換改這裡）
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];

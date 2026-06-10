@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         },
         select: { lineUserId: true },
       });
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app";
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
       const text = `📝 客戶回覆願望單\n\n${auth.user.realName ?? auth.user.displayName}：\n「${parsed.data.text.slice(0, 200)}${parsed.data.text.length > 200 ? "..." : ""}」\n\n👉 ${baseUrl}/admin/dive-wishes/${id}`;
       for (const a of admins) {
         try { await lc.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text }] }); } catch (e) { console.error(e); }

@@ -498,7 +498,7 @@ async function notifyCoachesOvercap(args: {
       url:
         process.env.NEXT_PUBLIC_BASE_URL
           ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/coach/today`
-          : "https://haiwangzi.zeabur.app/liff/coach/today",
+          : "https://haiwangzi.xyz/liff/coach/today",
     },
     `${args.tripDate} ${args.tripTime} 超賣警示`,
   );

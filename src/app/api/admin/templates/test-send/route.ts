@@ -21,7 +21,7 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
     time: "08:00",
     site: "鶯歌石",
     total: 2700,
-    url: "https://haiwangzi.zeabur.app/liff/my",
+    url: "https://haiwangzi.xyz/liff/my",
   },
   d1_reminder: {
     date: "2026-05-14",
@@ -39,7 +39,7 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
     deadline: "2026-09-01",
     bankAccount: "484540139251",
     holder: "汪教練",
-    url: "https://haiwangzi.zeabur.app/liff/my",
+    url: "https://haiwangzi.xyz/liff/my",
   },
   deposit_confirm: {
     tourTitle: "蘭嶼四天三夜",
@@ -53,7 +53,7 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
     deadline: "2026-09-15",
     daysLeft: 3,
     bankAccount: "484540139251",
-    url: "https://haiwangzi.zeabur.app/liff/my",
+    url: "https://haiwangzi.xyz/liff/my",
   },
   trip_guide: {
     tourTitle: "蘭嶼四天三夜",
@@ -69,7 +69,7 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
     site: "鶯歌石",
     reason: "（測試）今日北風 6 級",
     options: "1. 改期 2. 全額退費",
-    url: "https://haiwangzi.zeabur.app/liff/my",
+    url: "https://haiwangzi.xyz/liff/my",
   },
   admin_weekly: {
     weekRange: "2026-05-06 ~ 2026-05-12",
@@ -87,7 +87,7 @@ const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
     requestedCount: 2,
     currentBooked: 8,
     capacity: 8,
-    url: "https://haiwangzi.zeabur.app/liff/coach/today",
+    url: "https://haiwangzi.xyz/liff/coach/today",
   },
   welcome: {
     // v233：動態從 env 讀，避免寫死舊 LIFF ID
@@ -262,7 +262,7 @@ export async function POST(req: NextRequest) {
     if (p.liffUrl) return p.liffUrl;
     if (p.url) return p.url;
     const id = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
-    return id ? `https://liff.line.me/${id}` : "https://haiwangzi.zeabur.app";
+    return id ? `https://liff.line.me/${id}` : "https://haiwangzi.xyz";
   })();
 
   // v235：與 /admin/templates 預覽一致的內容

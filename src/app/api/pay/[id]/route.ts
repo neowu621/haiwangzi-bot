@@ -332,7 +332,7 @@ export async function POST(
         });
         const customerName = booking.code;
         const methodLabel = { bank: "🏦 轉帳", linepay: "💚 LINE Pay", other: "📝 其他" }[data.paymentMethod];
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app";
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
         const text = `💰 待確認付款（公開連結）\n\n訂單 ${customerName}\n方式：${methodLabel}\n金額：NT$ ${data.amount.toLocaleString()}\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${baseUrl}/admin/bookings?status=awaiting_verify`;
         for (const a of admins) {
           try {

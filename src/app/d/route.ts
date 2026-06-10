@@ -1,4 +1,4 @@
-// v377：超短報名連結。haiwangzi.zeabur.app/d → 302 轉到 LIFF 報名流程
+// v377：超短報名連結。haiwangzi.xyz/d → 302 轉到 LIFF 報名流程
 //   （主頁先登入 → 自動轉日潛頁）。給 LINE 訊息貼短連結用，取代又長又雜的 liff.line.me/...?next=...
 //   /d 本身只做 302、不渲染任何 LIFF 頁，故不會有登入迴圈；最終落點是正規 LIFF URL。
 import { NextRequest, NextResponse } from "next/server";

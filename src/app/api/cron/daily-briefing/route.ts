@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
     }
     lines.push(`📈 本月：${monthAdded} 筆訂單 / 入帳 NT$ ${(monthRevenue._sum.paidAmount ?? 0).toLocaleString()}`);
     lines.push("");
-    lines.push(`👉 ${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin`);
+    lines.push(`👉 ${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin`);
     return lines.join("\n");
   }
 
@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
   const bossEmailHtml = `
     <h2 style="font-family:sans-serif">🌊 海王子日報｜${fmtDate(now)}</h2>
     <pre style="font-family:'PingFang TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:8px">${bossText.replace(/</g, "&lt;")}</pre>
-    <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin">👉 進入後台</a></p>
+    <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin">👉 進入後台</a></p>
   `;
 
   let lineSent = 0;

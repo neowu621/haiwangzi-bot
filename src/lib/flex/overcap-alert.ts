@@ -139,7 +139,7 @@ export function overcapAlert(
           action: {
             type: "uri",
             label: "處理此預約",
-            uri: asString(params.url, "https://haiwangzi.zeabur.app/liff/coach/today"),
+            uri: asString(params.url, "https://haiwangzi.xyz/liff/coach/today"),
           },
         },
       ],

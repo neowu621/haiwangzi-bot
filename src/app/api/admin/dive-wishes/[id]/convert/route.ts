@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     let convertedTripId: string | undefined;
     let convertedTourId: string | undefined;
     let bookUrl: string;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
 
     if (data.asType === "daily") {
       const code = await genTripCode();

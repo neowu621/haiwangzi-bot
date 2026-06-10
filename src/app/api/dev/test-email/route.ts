@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 //   專用測試端點：以 CRON_SECRET 認證，只寄給 body 指定的單一收件人
 //   用途：deploy 後驗證 Gmail SMTP 帳密設定（不需 LIFF idToken）
 //
-// curl -X POST https://haiwangzi.zeabur.app/api/cron/test-email \
+// curl -X POST https://haiwangzi.xyz/api/cron/test-email \
 //   -H "Authorization: Bearer $CRON_SECRET" \
 //   -H "Content-Type: application/json" \
 //   -d '{"to":"neowu@msi.com"}'

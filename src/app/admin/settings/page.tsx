@@ -1958,7 +1958,7 @@ function UploadTestPanel() {
               <li>貼下面 JSON 再儲存：</li>
             </ol>
             <pre className="rounded bg-white/60 px-2 py-1 text-[10px] leading-relaxed">{`[{
-  "AllowedOrigins": ["https://haiwangzi.zeabur.app"],
+  "AllowedOrigins": ["https://haiwangzi.xyz"],
   "AllowedMethods": ["GET","PUT"],
   "AllowedHeaders": ["*"],
   "MaxAgeSeconds": 3000

@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 //     5. 都成功 → 清理測試檔
 //     6. 任何步驟失敗 → 回報哪裡卡住
 //
-// curl -X POST https://haiwangzi.zeabur.app/api/cron/test-r2 \
+// curl -X POST https://haiwangzi.xyz/api/cron/test-r2 \
 //   -H "Authorization: Bearer $CRON_SECRET"
 export async function POST(req: NextRequest) {
   const secret = process.env.CRON_SECRET;

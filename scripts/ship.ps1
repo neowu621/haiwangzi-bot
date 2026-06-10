@@ -27,7 +27,7 @@ param(
 $ErrorActionPreference = "Stop"
 $SERVICE_ID = "6a022340dd502f86055afac5"
 $PROJECT_ID = "6a01ded58e8e49b9247928c8"
-$HEALTH_URL = "https://haiwangzi.zeabur.app/api/healthz"
+$HEALTH_URL = "https://haiwangzi.xyz/api/healthz"
 
 # -- read target version --
 $versionFile = Join-Path $PSScriptRoot "..\src\lib\version.ts"

@@ -11,7 +11,7 @@ export function buildPayLinkUrl(bookingId: string, token: string): string {
   const base =
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.NEXT_PUBLIC_BASE_URL ??
-    "https://haiwangzi.zeabur.app";
+    "https://haiwangzi.xyz";
   return `${base.replace(/\/$/, "")}/pay/${bookingId}?t=${token}`;
 }
 

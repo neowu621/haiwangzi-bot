@@ -417,7 +417,7 @@ export default function ToursPage() {
     }
     if (t.extraNote) { lines.push(""); lines.push(t.extraNote); }
     lines.push("");
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.zeabur.app";
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
     lines.push(`🔗 報名：${baseUrl}/t/${t.id}`); // v386：潛旅短連結
     return lines.join("\n");
   }

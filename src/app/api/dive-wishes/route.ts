@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
           select: { lineUserId: true },
         });
         const typeLabel = { boat: "🚤 船潛", shore: "🏖 岸潛", night: "🌙 夜潛", tour: "✈️ 潛水團" }[data.type];
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app";
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
         const text = `📝 新願望單\n\n${auth.user.realName ?? auth.user.displayName} 提出：\n${typeLabel} × ${data.participants} 人\n📅 ${data.preferredDate}\n📍 ${[...data.diveSiteIds, data.otherSites ?? ""].filter(Boolean).join("、")}\n\n👉 進後台審核：${baseUrl}/admin/dive-wishes`;
         for (const a of admins) {
           try { await lc.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text }] }); }

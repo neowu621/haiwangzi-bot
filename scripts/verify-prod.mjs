@@ -17,7 +17,7 @@
  * 任一紅燈 → process.exit(1)，可接進 CI / 部署後把關。
  */
 
-const BASE = process.env.HAIWANGZI_BASE_URL || "https://haiwangzi.zeabur.app";
+const BASE = process.env.HAIWANGZI_BASE_URL || "https://haiwangzi.xyz";
 const expectedVersion = process.argv[2] || null;
 const UA = { "User-Agent": "verify-prod/1.0" };
 

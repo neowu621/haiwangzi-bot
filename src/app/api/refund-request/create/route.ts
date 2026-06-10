@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       }
       const customerName = booking.user.realName ?? booking.user.displayName;
       const methodLabel = data.method === "credit" ? "🎁 抵用金" : "💵 現金";
-      const text = `📨 客戶退款申請\n\n客戶 ${customerName} 申請退款：\n\n訂單：${bookingTitle}\n退款方式：${methodLabel}\n退款金額：NT$ ${data.amount.toLocaleString()}\n已付金額：NT$ ${booking.paidAmount.toLocaleString()}\n\n原因：${data.reason}\n\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.zeabur.app"}/admin/bookings`;
+      const text = `📨 客戶退款申請\n\n客戶 ${customerName} 申請退款：\n\n訂單：${bookingTitle}\n退款方式：${methodLabel}\n退款金額：NT$ ${data.amount.toLocaleString()}\n已付金額：NT$ ${booking.paidAmount.toLocaleString()}\n\n原因：${data.reason}\n\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin/bookings`;
       for (const a of admins) {
         try {
           await lineClient.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text }] });
