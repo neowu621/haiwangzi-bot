@@ -316,7 +316,7 @@
 .hw .foot-tag .zh{font-family:var(--serif);font-size:1.05rem;letter-spacing:.3em;color:var(--glow-soft)}
 .hw .foot-tag .en{font-family:var(--en);letter-spacing:.5em;font-size:.7rem;color:var(--mist);margin-top:8px;text-transform:uppercase}
 .hw .foot-grid{display:grid;gap:30px;grid-template-columns:1fr;margin-bottom:34px}
-@media(min-width:760px){.hw .foot-grid{grid-template-columns:1.4fr 1fr 1fr}}
+@media(min-width:760px){.hw .foot-grid{grid-template-columns:1.4fr 1fr 1fr 1fr}}
 .hw .foot-col h5{font-family:var(--en);letter-spacing:.25em;font-size:.78rem;color:var(--glow);margin-bottom:16px;text-transform:uppercase}
 .hw .foot-col a{display:block;color:var(--mist);padding:5px 0;font-size:.92rem;transition:color .2s}
 .hw .foot-col a:hover{color:var(--foam)}

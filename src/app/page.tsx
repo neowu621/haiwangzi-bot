@@ -15,13 +15,13 @@ import NewsVideos from "./_home/NewsVideos";
 import {
   LINE_BOOK_URL, YT_CHANNEL, IG_URL, FB_URL, NAV,
   COURSES, SPOTS, TRIPS, LVL_CLASS,
-  BUILTIN_REVIEWS, DEFAULT_REVIEWS_NOTE, FAQ, LineIcon,
+  BUILTIN_REVIEWS, FAQ, LineIcon,
 } from "./_home/data";
 
 export default function HomePage() {
-  // v414：學員怎麼說改為內建固定內容（後台編輯已取消）+ 總結語
+  // v414：學員怎麼說改為內建固定內容（後台編輯已取消）
+  // v461：總結語移除（標題區 intro 已有「安心」結論，重複）
   const reviews = BUILTIN_REVIEWS;
-  const reviewsNote = DEFAULT_REVIEWS_NOTE;
 
   return (
     <div className="hw">
@@ -205,7 +205,6 @@ export default function HomePage() {
               );
             })}
           </div>
-          {reviewsNote ? <p className="rev-conclusion reveal"><b>學員，同一個結論：</b><br />{reviewsNote}</p> : null}
         </div>
       </section>
 
@@ -252,7 +251,9 @@ export default function HomePage() {
                 <a href={FB_URL} target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z" /></svg></a>
               </div>
             </div>
-            <div className="foot-col"><h5>探索</h5>{NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</div>
+            {/* v461：探索拆兩欄（各 4 個連結），視覺平衡 */}
+            <div className="foot-col"><h5>探索</h5>{NAV.slice(0, 4).map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</div>
+            <div className="foot-col"><h5 aria-hidden="true">&nbsp;</h5>{NAV.slice(4).map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</div>
             <div className="foot-col"><h5>預約</h5><a href={LINE_BOOK_URL} target="_blank" rel="noopener">LINE 預約潛水</a></div>
           </div>
           <div className="foot-bottom">© {new Date().getFullYear()} 東北角海王子 Northeast Coast Ocean Prince · 探索海洋 · 安全潛水 · 專業教學</div>
