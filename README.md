@@ -4,7 +4,7 @@
 > 教練水邊單手核對收款，Admin 遠端管理排班、群發 Flex Message，
 > 後端排程自動推 D-1 行前提醒、訂金/尾款催繳。
 
-**Production**: https://haiwangzi.zeabur.app  
+**Production**: https://haiwangzi.xyz  
 **LIFF Entry**: https://liff.line.me/2010006458-fyokMnVv  
 **當前版本**: `20260513_03`
 
@@ -390,8 +390,8 @@ haiwangzi-bot/
 
 ### LINE LIFF + Messaging API
 
-- **LIFF App** (Channel `2010006458`)：endpoint `https://haiwangzi.zeabur.app/liff/welcome`，Size = Full，Scopes = `openid` + `profile`
-- **Messaging Channel**：webhook `https://haiwangzi.zeabur.app/api/webhook`（HMAC 驗章）
+- **LIFF App** (Channel `2010006458`)：endpoint `https://haiwangzi.xyz/liff/welcome`，Size = Full，Scopes = `openid` + `profile`
+- **Messaging Channel**：webhook `https://haiwangzi.xyz/api/webhook`（HMAC 驗章）
 - **idToken** 由 `@line/liff` SDK 取，後端 `jose.jwtVerify()` 用 LINE 公開 JWKS 驗章
 
 ### Cloudflare R2 (雙 bucket)
@@ -404,7 +404,7 @@ haiwangzi-bot/
 **CORS 設定**（兩個 bucket）：
 ```json
 {
-  "AllowedOrigins": ["https://haiwangzi.zeabur.app", "https://liff.line.me", "http://localhost:3000"],
+  "AllowedOrigins": ["https://haiwangzi.xyz", "https://liff.line.me", "http://localhost:3000"],
   "AllowedMethods": ["GET", "PUT", "HEAD"],
   "AllowedHeaders": ["Content-Type", "Content-Length", "Content-Disposition", "x-amz-acl"],
   "ExposeHeaders": ["ETag"],
@@ -440,7 +440,7 @@ Web UI: https://neowu-cron-hub.zeabur.app
 | `R2_ENDPOINT` | R2 endpoint | `https://<account>.r2.cloudflarestorage.com` |
 | `R2_PUBLIC_URL` | 公開 bucket URL base | `https://pub-xxx.r2.dev` |
 | `BANK_NAME` / `BANK_BRANCH` / `BANK_ACCOUNT` / `BANK_HOLDER` | 匯款資訊（顯示於 Flex） | 中國信託 822 / 484540139251 / 汪教練 |
-| `NEXT_PUBLIC_BASE_URL` | 用於 Flex 內 deep link | `https://haiwangzi.zeabur.app` |
+| `NEXT_PUBLIC_BASE_URL` | 用於 Flex 內 deep link | `https://haiwangzi.xyz` |
 | `NEXT_PUBLIC_LIFF_MOCK` | 桌面測試開關 | `1`=mock, `0`=真實 LIFF |
 
 ---
@@ -544,7 +544,7 @@ curl -fsS -X POST \
 | Role-gating | `requireRole(user, ["admin"])` middleware on admin/coach endpoints |
 | R2 直傳 | Presigned PUT URL，5 分鐘 TTL |
 | Private 圖片 | Presigned GET URL 才能存取 |
-| CORS | 限定 `https://haiwangzi.zeabur.app`, `https://liff.line.me`, `http://localhost:3000` |
+| CORS | 限定 `https://haiwangzi.xyz`, `https://liff.line.me`, `http://localhost:3000` |
 | 環境變數 | Zeabur dashboard 管理，不入 git |
 
 ---

@@ -128,7 +128,7 @@ R2（選用）：
 | `CRON_SECRET` | 排程 API 認證金鑰（32 字元以上亂數） | `openssl rand -hex 32` 產生 |
 | **`ADMIN_WEB_SECRET`** | **後台登入「管理密碼」共用門禁** | 自訂強密碼如 `Brand@2026-Adm!n` |
 | `NEXT_PUBLIC_APP_NAME` | **品牌名稱**（顯示於後台、LIFF、錯誤訊息） | `東北角海王子潛水團` |
-| `NEXT_PUBLIC_BASE_URL` | 部署網址（含 https://） | `https://haiwangzi.zeabur.app` |
+| `NEXT_PUBLIC_BASE_URL` | 部署網址（含 https://） | `https://haiwangzi.xyz` |
 | `NEXT_PUBLIC_LINE_OA_ID` | LINE OA 帳號 ID（顯示於首頁） | `@106cqtpd` |
 | `NEXT_PUBLIC_LINE_ADD_FRIEND_URL` | LINE 加好友連結 | `https://line.me/R/ti/p/@106cqtpd` |
 | `NEXT_PUBLIC_APP_TAGLINE` | 首頁標語 | `安全．專業．陪你看見海` |

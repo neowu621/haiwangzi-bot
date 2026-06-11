@@ -66,7 +66,7 @@
 
 ### D. 🎉 真實 D-1 Flex 推播
 
-`POST https://haiwangzi.zeabur.app/api/cron/reminders` 回傳：
+`POST https://haiwangzi.xyz/api/cron/reminders` 回傳：
 ```json
 {
   "ok": true,

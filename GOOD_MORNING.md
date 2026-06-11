@@ -40,10 +40,10 @@
    > - `BANK_NAME` / `BANK_BRANCH` / `BANK_ACCOUNT` / `BANK_HOLDER`（您的銀行帳號）
    >
    > **R2 keys 不填也能跑** — 付款上傳會 fallback 走 base64 存 DB，待您拿到 keys 再回來填即可
-3. **網路 → 自訂網域 → `haiwangzi.zeabur.app`**
+3. **網路 → 自訂網域 → `haiwangzi.xyz`**
 4. **Cron** → 兩個排程（09:00 + 18:00）打 `/api/cron/reminders?token=...`
 5. **LINE Developers Console** → LIFF Endpoint URL + Webhook URL 都改成 Zeabur 網域
-6. **Seed 資料**：`curl -X POST "https://haiwangzi.zeabur.app/api/admin/seed?secret=<LINE_CHANNEL_SECRET>"`
+6. **Seed 資料**：`curl -X POST "https://haiwangzi.xyz/api/admin/seed?secret=<LINE_CHANNEL_SECRET>"`
 7. **手機 LIFF 第一次開** → 自動建 User row → SQL 把自己 role 改 admin
 8. **驗證** /api/healthz + /api/dbcheck + 手機完整跑一遍
 
@@ -86,7 +86,7 @@ haiwangzi-bot/
 主要可能踩到的：
 1. **DATABASE_URL 沒設或設錯** → 看 service logs，重設 env vars
 2. **LINE_CHANNEL_ACCESS_TOKEN 過期** → LINE Console 重發 token
-3. **LIFF Endpoint URL 對不到** → 確認完整 URL `https://haiwangzi.zeabur.app/liff/welcome`
+3. **LIFF Endpoint URL 對不到** → 確認完整 URL `https://haiwangzi.xyz/liff/welcome`
 
 如果還有疑問可以叫我，我會立刻回應。
 

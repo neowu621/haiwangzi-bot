@@ -18,4 +18,4 @@ jobs:
             -H "Content-Type: application/json" \
             -w "\nHTTP %{http_code}\n" \
             --fail-with-body \
-            https://haiwangzi.zeabur.app/api/cron/daily-orders-email
+            https://haiwangzi.xyz/api/cron/daily-orders-email

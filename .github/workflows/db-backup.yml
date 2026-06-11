@@ -20,4 +20,4 @@ jobs:
             -w "\nHTTP %{http_code}\n" \
             --fail-with-body \
             --max-time 540 \
-            https://haiwangzi.zeabur.app/api/cron/backup-db
+            https://haiwangzi.xyz/api/cron/backup-db

@@ -207,7 +207,7 @@ curl -fsS -X POST \
 - **Schedule**: `*/5 * * * *`（每 5 分鐘）
 - **Command**:
   ```bash
-  curl -sS -o /dev/null -w "%{http_code} %{time_total}s\n" https://haiwangzi.zeabur.app/api/healthz
+  curl -sS -o /dev/null -w "%{http_code} %{time_total}s\n" https://haiwangzi.xyz/api/healthz
   ```
 - 不需要 CRON_SECRET（healthz 是公開端點）
 
@@ -245,7 +245,7 @@ CRON_SECRET=<上一步的值>
 
 ```
 HAIWANGZI_CRON_SECRET=<同樣的值>
-HAIWANGZI_BASE_URL=https://haiwangzi.zeabur.app
+HAIWANGZI_BASE_URL=https://haiwangzi.xyz
 ```
 
 > 兩邊值**必須一致**，否則 endpoint 會回 401。
@@ -290,7 +290,7 @@ Cronicle UI → 該 event → **Run Now** → 看 Log。
 # Production
 curl -X POST \
   -H "Authorization: Bearer 8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS" \
-  "https://haiwangzi.zeabur.app/api/cron/reminders?pollWindowMinutes=30"
+  "https://haiwangzi.xyz/api/cron/reminders?pollWindowMinutes=30"
 
 # Local dev
 curl -X POST \

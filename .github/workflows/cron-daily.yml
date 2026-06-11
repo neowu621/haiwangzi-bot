@@ -20,7 +20,7 @@ jobs:
             -H "Content-Type: application/json" \
             -w "\nHTTP %{http_code}\n" \
             --fail-with-body \
-            https://haiwangzi.zeabur.app/api/cron/lv1-prepay-reminder
+            https://haiwangzi.xyz/api/cron/lv1-prepay-reminder
 
       - name: 清理 30 天前付款憑證
         if: always()
@@ -31,7 +31,7 @@ jobs:
             -H "Content-Type: application/json" \
             -w "\nHTTP %{http_code}\n" \
             --fail-with-body \
-            https://haiwangzi.zeabur.app/api/cron/cleanup-old-payment-proofs
+            https://haiwangzi.xyz/api/cron/cleanup-old-payment-proofs
 
       - name: 待結算訂單提醒（推 LINE 給 admin）
         if: always()
@@ -42,4 +42,4 @@ jobs:
             -H "Content-Type: application/json" \
             -w "\nHTTP %{http_code}\n" \
             --fail-with-body \
-            https://haiwangzi.zeabur.app/api/cron/daily-settlement-reminder
+            https://haiwangzi.xyz/api/cron/daily-settlement-reminder

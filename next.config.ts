@@ -61,7 +61,7 @@ const nextConfig: NextConfig = {
 
   // LIFF deep-link path-append 修補
   //
-  // LINE LIFF 的 endpoint URL 設成 https://haiwangzi.zeabur.app/liff/welcome；
+  // LINE LIFF 的 endpoint URL 設成 https://haiwangzi.xyz/liff/welcome；
   // 打開 liff.line.me/<LIFF_ID>/calendar 時 LINE 會把 path append 上去變成
   //   /liff/welcome/calendar → 404
   // 這條 redirect 把 /liff/welcome/<anything> 轉到 /liff/<anything>

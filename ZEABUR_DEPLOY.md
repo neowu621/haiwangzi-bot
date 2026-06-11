@@ -1,7 +1,7 @@
 # Zeabur 部署 Checklist
 
 **已準備好**：GitHub repo 推送完成 → https://github.com/neowu621/haiwangzi-bot
-**目標**：部署到 `haiwangzi.zeabur.app`
+**目標**：部署到 `haiwangzi.xyz`
 
 ---
 
@@ -52,7 +52,7 @@ BANK_HOLDER=⚠️_TODO_戶名
 NODE_ENV=production
 PORT=3000
 NEXT_PUBLIC_APP_NAME=東北角海王子潛水團
-NEXT_PUBLIC_BASE_URL=https://haiwangzi.zeabur.app
+NEXT_PUBLIC_BASE_URL=https://haiwangzi.xyz
 NEXT_PUBLIC_LIFF_MOCK=0
 NEXT_TELEMETRY_DISABLED=1
 ```
@@ -62,7 +62,7 @@ NEXT_TELEMETRY_DISABLED=1
 
 ### 3. 綁定網域
 
-進 service → **「網路」** tab → **「自訂網域」** → 輸入 `haiwangzi.zeabur.app` → 儲存。
+進 service → **「網路」** tab → **「自訂網域」** → 輸入 `haiwangzi.xyz` → 儲存。
 
 > Zeabur `.zeabur.app` 子網域是免費且自動配 HTTPS。
 
@@ -72,8 +72,8 @@ NEXT_TELEMETRY_DISABLED=1
 
 | 名稱 | Cron 表達式 | URL |
 | --- | --- | --- |
-| 早提醒 | `0 1 * * *` (UTC 01:00 = 台北 09:00) | `https://haiwangzi.zeabur.app/api/cron/reminders?token=8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS` |
-| 晚提醒 | `0 10 * * *` (UTC 10:00 = 台北 18:00) | `https://haiwangzi.zeabur.app/api/cron/reminders?token=8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS` |
+| 早提醒 | `0 1 * * *` (UTC 01:00 = 台北 09:00) | `https://haiwangzi.xyz/api/cron/reminders?token=8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS` |
+| 晚提醒 | `0 10 * * *` (UTC 10:00 = 台北 18:00) | `https://haiwangzi.xyz/api/cron/reminders?token=8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS` |
 
 > 如果 Zeabur 沒有原生 cron 介面，可用免費 cron-job.org 或 GitHub Actions schedule 觸發同一個 URL。
 
@@ -82,13 +82,13 @@ NEXT_TELEMETRY_DISABLED=1
 開 https://developers.line.biz/console/ → 選您的 channel → LIFF App `2010006458-fyokMnVv` → **Endpoint URL** 改成：
 
 ```
-https://haiwangzi.zeabur.app/liff/welcome
+https://haiwangzi.xyz/liff/welcome
 ```
 
 接著到同 channel → Messaging API 設定 → **Webhook URL** 改成：
 
 ```
-https://haiwangzi.zeabur.app/api/webhook
+https://haiwangzi.xyz/api/webhook
 ```
 
 → 開啟「Use webhook」、關閉「Auto-reply messages」。
@@ -98,7 +98,7 @@ https://haiwangzi.zeabur.app/api/webhook
 Zeabur DB 剛建好是空的，需要灌入潛點、教練、近期場次。最簡單用 API：
 
 ```bash
-curl -X POST "https://haiwangzi.zeabur.app/api/admin/seed?secret=1681a22e00d6ba64b5c5780ab66fb54b"
+curl -X POST "https://haiwangzi.xyz/api/admin/seed?secret=1681a22e00d6ba64b5c5780ab66fb54b"
 ```
 
 （secret 用 `LINE_CHANNEL_SECRET` 的值）
@@ -118,8 +118,8 @@ UPDATE users SET role = 'admin' WHERE display_name LIKE '%您的_LINE_顯示名%
 ### 8. 驗證
 
 開瀏覽器：
-- `https://haiwangzi.zeabur.app/api/healthz` → 應回 `{ ok:true, version:"20260512_01" }`
-- `https://haiwangzi.zeabur.app/api/dbcheck` → 應回 DB 連線正常 + 7 trips 等統計
+- `https://haiwangzi.xyz/api/healthz` → 應回 `{ ok:true, version:"20260512_01" }`
+- `https://haiwangzi.xyz/api/dbcheck` → 應回 DB 連線正常 + 7 trips 等統計
 
 手機 LINE：
 - 開 `https://liff.line.me/2010006458-fyokMnVv` → 應載入 welcome 頁（**無**金色 Mock 橫條 = 真實 LIFF 模式）
@@ -144,7 +144,7 @@ R2 keys 申請方式：
 [
   {
     "AllowedOrigins": [
-      "https://haiwangzi.zeabur.app",
+      "https://haiwangzi.xyz",
       "https://liff.line.me"
     ],
     "AllowedMethods": ["GET", "PUT", "HEAD"],
@@ -172,7 +172,7 @@ Zeabur 應該會用 Dockerfile build，Dockerfile 裡有 `RUN npx prisma generat
 
 ### LIFF 「Invalid endpoint URL」
 LINE LIFF endpoint 必須是 HTTPS 且能載入頁面。確認：
-1. `https://haiwangzi.zeabur.app/liff/welcome` 直接從瀏覽器能開 200
+1. `https://haiwangzi.xyz/liff/welcome` 直接從瀏覽器能開 200
 2. LIFF console 的 Endpoint URL 完全一致（含 https://、/liff/welcome 結尾）
 
 ### Flex Message 沒收到
@@ -191,6 +191,6 @@ LINE LIFF endpoint 必須是 HTTPS 且能載入頁面。確認：
 
 ## ✅ 完成後
 
-Zeabur 上線網址：**https://haiwangzi.zeabur.app**
+Zeabur 上線網址：**https://haiwangzi.xyz**
 
 請在手機 LINE 完整跑一輪預約流程，覺得 OK 就可以準備上正式營運。
