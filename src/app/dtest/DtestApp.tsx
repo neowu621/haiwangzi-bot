@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SignaturePad } from "@/components/ui/SignaturePad";
+import { APP_VERSION } from "@/lib/version";
 
 // ─── 型別 ──────────────────────────────────────────────────────────
 interface Member {
@@ -368,6 +369,9 @@ function LoginScreen({ error }: { error: string | null }) {
         </a>
         <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: C.mute }}>
           已經是會員了？<a href={LOGIN_URL} style={{ color: C.deep, fontWeight: 800 }}>直接登入</a>
+        </div>
+        <div style={{ textAlign: "center", marginTop: 14, fontSize: 11, color: "#aab8bf", letterSpacing: 0.5 }}>
+          東北角海王子潛水 ‧ v{APP_VERSION}
         </div>
       </div>
     </div>
@@ -1020,7 +1024,7 @@ function Footer() {
   return (
     <footer style={{ background: C.deep, color: "#9fb3c4", textAlign: "center", padding: "26px 20px", fontSize: 12 }}>
       東北角海王子潛水 ‧ 安全．專業，陪你看見海<br />
-      <span style={{ fontSize: 11, opacity: 0.7 }}>桌面版會員預約（測試中）</span>
+      <span style={{ fontSize: 11, opacity: 0.7 }}>桌面版會員預約（測試中） ‧ v{APP_VERSION}</span>
     </footer>
   );
 }
