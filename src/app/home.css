@@ -36,7 +36,7 @@
 .hw header.nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 22px;transition:background .35s,padding .35s}
 .hw header.nav.scrolled{background:rgba(2,21,42,.85);backdrop-filter:blur(14px);padding:11px 22px;border-bottom:1px solid rgba(102,216,246,.14)}
 .hw .brand{display:flex;align-items:center;gap:12px}
-.hw .brand .crest img,.hw .brand .crest svg{height:42px;width:auto;display:block;filter:drop-shadow(0 0 9px rgba(102,216,246,.55))}
+.hw .brand .crest img,.hw .brand .crest svg{height:40px;width:auto;display:block;border-radius:9px}
 .hw .brand .name b{font-family:var(--serif);font-size:1.12rem;letter-spacing:.14em;display:block;line-height:1.1}
 .hw .brand .name span{font-family:var(--en);font-weight:400;font-size:.56rem;letter-spacing:.42em;color:var(--glow);text-transform:uppercase}
 .hw .nav-links{display:none;gap:30px;align-items:center;font-size:.95rem}
