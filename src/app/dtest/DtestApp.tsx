@@ -297,8 +297,9 @@ function LoginScreen({ error }: { error: string | null }) {
       <div style={{ width: "100%", maxWidth: 620, background: "#fff", borderRadius: 26, padding: "clamp(28px,5vw,46px)", boxShadow: "0 30px 80px rgba(0,0,0,.35)" }}>
         {/* 品牌 */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 26 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 15, background: `linear-gradient(150deg,${C.phosphor},${C.surface})`, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 6px 16px rgba(10,35,66,.18)" }}>
-            <TridentIcon />
+          <div style={{ width: 56, height: 56, borderRadius: 15, background: C.deep, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 6px 16px rgba(10,35,66,.18)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/home/src-11.png" alt="海王子 logo" style={{ width: 36, height: 36, objectFit: "contain" }} />
           </div>
           <div>
             <div style={{ fontSize: 21, fontWeight: 800, color: C.deep, lineHeight: 1.2 }}>東北角海王子潛水</div>
@@ -378,18 +379,6 @@ function LoginScreen({ error }: { error: string | null }) {
   );
 }
 
-// 海神三叉戟（三叉魚槍）：橫桿 + 三尖齒（中齒較高、各帶箭尖）+ 桿身 + 握把橫桿
-function TridentIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6 10h12" />
-      <path d="M6 10V6.5M12 10V4M18 10V6.5" />
-      <path d="M4.6 7.9 6 6.4l1.4 1.5M10.4 5.7 12 3.9l1.6 1.8M16.6 7.9 18 6.4l1.4 1.5" />
-      <path d="M12 10v11" />
-      <path d="M9.6 18h4.8" />
-    </svg>
-  );
-}
 function LineGlyph() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden>
