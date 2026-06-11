@@ -370,7 +370,7 @@ function LoginScreen({ error }: { error: string | null }) {
         <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: C.mute }}>
           已經是會員了？<a href={LOGIN_URL} style={{ color: C.deep, fontWeight: 800 }}>直接登入</a>
         </div>
-        <div style={{ textAlign: "center", marginTop: 14, fontSize: 11, color: "#aab8bf", letterSpacing: 0.5 }}>
+        <div style={{ textAlign: "center", marginTop: 16, paddingTop: 14, borderTop: "1px solid #e6edf0", fontSize: 12, color: "#6b7b85", letterSpacing: 0.3 }}>
           東北角海王子潛水 ‧ v{APP_VERSION}
         </div>
       </div>
