@@ -27,12 +27,23 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
   const auth = req.headers.get("authorization");
   if (auth?.startsWith("Bearer ")) {
     const token = auth.slice(7);
-    if (looksLikeAdminWebJwt(token)) {
+    const iss = decodeIssuer(token);
+    if (iss === "haiwangzi-admin-web") {
       // admin web token：直接驗，不 fallthrough 到 LINE JWKS
       return await tryVerifyAdminWebJwt(token);
     }
+    if (iss === MEMBER_WEB_ISSUER) {
+      // v481：瀏覽器會員 web session（LINE Login 換來的 JWT）
+      return await tryVerifyMemberWebJwt(token);
+    }
     // 其餘視為 LINE idToken
     return await verifyIdToken(token);
+  }
+
+  // v481：瀏覽器會員 — httpOnly cookie session（/dtest 等瀏覽器頁面用）
+  const memberCookie = req.cookies.get(MEMBER_WEB_COOKIE)?.value;
+  if (memberCookie) {
+    return await tryVerifyMemberWebJwt(memberCookie);
   }
 
   // dev fallback：只在「真的非 production」才開啟。
@@ -50,20 +61,24 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
   return { ok: false, status: 401, message: "missing idToken" };
 }
 
+// v481：瀏覽器會員 web session 常數
+export const MEMBER_WEB_ISSUER = "haiwangzi-member-web";
+export const MEMBER_WEB_COOKIE = "hwz_member";
+
 /**
- * 用不驗簽的方式 decode JWT payload，檢查 iss 是否為 admin web token。
- * 避免 admin token 被誤送進 LINE JWKS 驗證。
+ * 用不驗簽的方式 decode JWT 的 iss（只看 issuer，不信任內容）。
+ * 用來分流：admin web / member web / LINE idToken 各走不同驗證路徑。
  */
-function looksLikeAdminWebJwt(token: string): boolean {
+function decodeIssuer(token: string): string | null {
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) return false;
+    if (parts.length !== 3) return null;
     const payload = JSON.parse(
       Buffer.from(parts[1], "base64url").toString("utf-8"),
     );
-    return payload?.iss === "haiwangzi-admin-web";
+    return typeof payload?.iss === "string" ? payload.iss : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -119,6 +134,44 @@ export async function createAdminWebJwt(lineUserId: string): Promise<string> {
     .sign(key);
 }
 
+// v481：瀏覽器會員 web session JWT（LINE Login 驗證成功後簽發；放 httpOnly cookie，30 天）
+export async function createMemberWebJwt(lineUserId: string): Promise<string> {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET not configured");
+  const key = new TextEncoder().encode(secret);
+  return await new SignJWT({})
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(lineUserId)
+    .setIssuer(MEMBER_WEB_ISSUER)
+    .setExpirationTime("30d")
+    .sign(key);
+}
+
+async function tryVerifyMemberWebJwt(token: string): Promise<AuthResult> {
+  const secret = process.env.JWT_SECRET;
+  if (!secret)
+    return { ok: false, status: 500, message: "JWT_SECRET not configured" };
+  let lineUserId: string | undefined;
+  try {
+    const key = new TextEncoder().encode(secret);
+    const { payload } = await jwtVerify(token, key, { issuer: MEMBER_WEB_ISSUER });
+    lineUserId = payload.sub;
+  } catch {
+    return { ok: false, status: 401, message: "session expired, please log in again" };
+  }
+  if (!lineUserId)
+    return { ok: false, status: 401, message: "invalid member token (no sub)" };
+  const user = await prisma.user.findUnique({ where: { lineUserId } });
+  if (!user) return { ok: false, status: 401, message: "member not found" };
+  if (user.deletedAt)
+    return { ok: false, status: 403, message: "user_deleted: 此帳號已被停用" };
+  await prisma.user.update({
+    where: { lineUserId },
+    data: { lastActiveAt: new Date() },
+  });
+  return { ok: true, user, lineUserId };
+}
+
 async function verifyIdToken(idToken: string): Promise<AuthResult> {
   // v293：production 強制要求 audience 環境變數，避免「未設定 = 跳過 audience 驗證」
   // 任何 LINE channel 簽出的 idToken 都能登入此系統的漏洞
@@ -152,6 +205,42 @@ async function verifyIdToken(idToken: string): Promise<AuthResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "verify failed";
     return { ok: false, status: 401, message: `idToken invalid: ${msg}` };
+  }
+}
+
+/**
+ * v481：驗證 LINE Login（瀏覽器 OAuth）回傳的 id_token。
+ *   與 LIFF idToken 同樣用 LINE JWKS 驗簽，但 audience 是「LINE Login channel id」。
+ *   nonce 由呼叫端（callback）比對。
+ *   驗成功 → upsert user（getOrCreateUser，含新會員紅包）→ 回 lineUserId + displayName + email。
+ */
+export async function verifyLineLoginIdToken(
+  idToken: string,
+  audience: string,
+  expectedNonce?: string,
+): Promise<
+  | { ok: true; lineUserId: string; displayName: string; email: string | null }
+  | { ok: false; message: string }
+> {
+  try {
+    const { payload } = await jwtVerify(idToken, JWKS, {
+      issuer: "https://access.line.me",
+      audience,
+      clockTolerance: 120,
+    });
+    if (expectedNonce && payload.nonce !== expectedNonce) {
+      return { ok: false, message: "nonce mismatch" };
+    }
+    const lineUserId = payload.sub;
+    if (!lineUserId) return { ok: false, message: "no sub in id_token" };
+    const displayName =
+      (payload.name as string | undefined) ?? `User ${String(lineUserId).slice(0, 8)}`;
+    const email = (payload.email as string | undefined) ?? null;
+    await getOrCreateUser(String(lineUserId), displayName);
+    return { ok: true, lineUserId: String(lineUserId), displayName, email };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "verify failed";
+    return { ok: false, message: `id_token invalid: ${msg}` };
   }
 }
 

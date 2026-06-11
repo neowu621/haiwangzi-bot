@@ -2,6 +2,16 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260611_481 — 2026-06-11 (瀏覽器會員下單 /dtest — 真 LINE Login web OAuth)
+
+- **架構**：瀏覽器（桌面）會員登入走 LINE Login web OAuth，與手機 LIFF 同一 Provider → 同一個 lineUserId = 同一會員。驗證後簽會員 web JWT 放 httpOnly cookie（30 天）。
+- **auth.ts**：新增 `createMemberWebJwt` / `tryVerifyMemberWebJwt` + `authFromRequest` 加 member-web 分支與 cookie fallback；`verifyLineLoginIdToken`（LINE Login audience + nonce）。`getOrCreateUser` 改 export。
+- **OAuth 路由**：`/api/auth/line/login`（state+nonce cookie 防 CSRF）、`/api/auth/line/callback`（驗 state→換 token→驗 id_token→簽 cookie→導回）、`/api/auth/line/logout`。未設定 channel 時優雅回 503。
+- **/dtest 桌面下單介面**：登入閘（LINE 登入）、Email 驗證 banner、瀏覽日潛/潛旅、**完整下單表單（日潛 + 潛旅）**重用既有 `/api/bookings/daily`、`/api/bookings/tour`、下單後導向 `/pay/[id]`、我的訂單、會員中心。所有 API 走 cookie session。
+- **首頁**：右上加「會員登入」入口（手機選單也加），導向 /dtest。
+- **env**：新增 `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET` / `LINE_LOGIN_CALLBACK_URL`（.env.example 含設定說明）。
+- ⚠ 需老闆在 LINE Console 同 Provider 下建 LINE Login channel + 設 2 個環境變數 + callback 白名單，登入才會通。
+
 ## 20260611_480 — 2026-06-11 (訊息模板「填什麼發什麼」全面統一)
 
 - **單一組稿來源** `src/lib/message-content.ts`：欄位預設值 / 動態主體 / Email 外殼 / 樣本參數 — 後台填寫、預覽、試送、正式發送(LINE/Email/站內) 全走同一份
