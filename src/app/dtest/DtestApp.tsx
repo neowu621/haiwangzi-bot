@@ -378,13 +378,15 @@ function LoginScreen({ error }: { error: string | null }) {
   );
 }
 
+// 海神三叉戟（三叉魚槍）：橫桿 + 三尖齒（中齒較高、各帶箭尖）+ 桿身 + 握把橫桿
 function TridentIcon() {
   return (
-    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3v18" />
-      <path d="M6 7c0 3 2.5 4 6 4s6-1 6-4" />
-      <path d="M6 7V4M18 7V4M12 5V3" />
-      <path d="M9.5 19.5h5" />
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 10h12" />
+      <path d="M6 10V6.5M12 10V4M18 10V6.5" />
+      <path d="M4.6 7.9 6 6.4l1.4 1.5M10.4 5.7 12 3.9l1.6 1.8M16.6 7.9 18 6.4l1.4 1.5" />
+      <path d="M12 10v11" />
+      <path d="M9.6 18h4.8" />
     </svg>
   );
 }
