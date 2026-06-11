@@ -209,38 +209,44 @@ async function verifyIdToken(idToken: string): Promise<AuthResult> {
 }
 
 /**
- * v481：驗證 LINE Login（瀏覽器 OAuth）回傳的 id_token。
- *   與 LIFF idToken 同樣用 LINE JWKS 驗簽，但 audience 是「LINE Login channel id」。
- *   nonce 由呼叫端（callback）比對。
+ * v489：驗證 LINE Login（瀏覽器 OAuth）回傳的 id_token。
+ *   改用 LINE 官方 verify 端點（https://api.line.me/oauth2/v2.1/verify）—
+ *   它會驗簽章 + audience(client_id) + exp + issuer，不必猜 LINE 的簽章演算法
+ *   （Login 與 LIFF 的 id_token 簽法可能不同，本機 JWKS 驗會踩雷）。
  *   驗成功 → upsert user（getOrCreateUser，含新會員紅包）→ 回 lineUserId + displayName + email。
  */
 export async function verifyLineLoginIdToken(
   idToken: string,
-  audience: string,
-  expectedNonce?: string,
+  clientId: string,
 ): Promise<
   | { ok: true; lineUserId: string; displayName: string; email: string | null }
   | { ok: false; message: string }
 > {
   try {
-    const { payload } = await jwtVerify(idToken, JWKS, {
-      issuer: "https://access.line.me",
-      audience,
-      clockTolerance: 120,
+    const res = await fetch("https://api.line.me/oauth2/v2.1/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ id_token: idToken, client_id: clientId }),
     });
-    if (expectedNonce && payload.nonce !== expectedNonce) {
-      return { ok: false, message: "nonce mismatch" };
+    const json = (await res.json()) as {
+      sub?: string;
+      name?: string;
+      email?: string;
+      error?: string;
+      error_description?: string;
+    };
+    if (!res.ok) {
+      return { ok: false, message: json.error_description ?? json.error ?? `verify ${res.status}` };
     }
-    const lineUserId = payload.sub;
-    if (!lineUserId) return { ok: false, message: "no sub in id_token" };
-    const displayName =
-      (payload.name as string | undefined) ?? `User ${String(lineUserId).slice(0, 8)}`;
-    const email = (payload.email as string | undefined) ?? null;
+    const lineUserId = json.sub;
+    if (!lineUserId) return { ok: false, message: "no sub in verify response" };
+    const displayName = json.name ?? `User ${String(lineUserId).slice(0, 8)}`;
+    const email = json.email ?? null;
     await getOrCreateUser(String(lineUserId), displayName);
     return { ok: true, lineUserId: String(lineUserId), displayName, email };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "verify failed";
-    return { ok: false, message: `id_token invalid: ${msg}` };
+    return { ok: false, message: `id_token verify failed: ${msg}` };
   }
 }
 

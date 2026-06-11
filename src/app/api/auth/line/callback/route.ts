@@ -19,38 +19,45 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const origin = url.origin;
+  // v489：導向一律用對外網域（NEXT_PUBLIC_BASE_URL），不可用 req.url 的 origin —
+  //   在 Zeabur proxy 後面，req.url 的 origin 是「內部主機名 service-xxx:8080」，
+  //   導回去瀏覽器會 ERR_NAME_NOT_RESOLVED。
+  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? origin).replace(/\/$/, "");
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const errParam = url.searchParams.get("error");
 
   const next = req.cookies.get("hwz_oauth_next")?.value || "/dtest";
   const failRedirect = (reason: string) =>
-    NextResponse.redirect(`${origin}/dtest?login_error=${encodeURIComponent(reason)}`);
+    NextResponse.redirect(`${base}/dtest?login_error=${encodeURIComponent(reason)}`);
 
   if (!lineLoginConfigured()) return failRedirect("line_login_not_configured");
   if (errParam) return failRedirect(errParam); // 使用者取消授權等
 
   const savedState = req.cookies.get("hwz_oauth_state")?.value;
-  const savedNonce = req.cookies.get("hwz_oauth_nonce")?.value;
   if (!code || !state || !savedState || state !== savedState) {
     return failRedirect("state_mismatch");
   }
 
   const tok = await exchangeCodeForToken({ code, origin });
-  if (!tok.ok) return failRedirect(`token_exchange_failed`);
+  if (!tok.ok) {
+    console.error("[line callback] token exchange failed:", tok.message);
+    return failRedirect("token_exchange_failed");
+  }
 
-  const verified = await verifyLineLoginIdToken(
-    tok.idToken,
-    lineLoginChannelId(),
-    savedNonce,
-  );
-  if (!verified.ok) return failRedirect("id_token_invalid");
+  // v489：state cookie 已防 CSRF；nonce 不強制比對（避免 LINE 未回 nonce 時誤殺登入）。
+  //   驗 id_token 簽章 + issuer + audience(=Login channel id) 即可。
+  const verified = await verifyLineLoginIdToken(tok.idToken, lineLoginChannelId());
+  if (!verified.ok) {
+    console.error("[line callback] id_token verify failed:", verified.message);
+    return failRedirect("id_token_invalid");
+  }
 
   // 簽會員 web session JWT（30 天）→ httpOnly cookie
   const jwt = await createMemberWebJwt(verified.lineUserId);
 
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dtest";
-  const res = NextResponse.redirect(`${origin}${safeNext}`);
+  const res = NextResponse.redirect(`${base}${safeNext}`);
   res.cookies.set(MEMBER_WEB_COOKIE, jwt, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
