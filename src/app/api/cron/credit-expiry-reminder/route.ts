@@ -66,13 +66,11 @@ async function run(req: NextRequest) {
     preview.push({ userId: `${tx.userId.slice(0, 6)}…`, balance, expireDate });
     if (!dryRun) {
       const { notifyCustomer } = await import("@/lib/notify-template");
-      const { creditExpiryEmail } = await import("@/lib/email/templates");
+      // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
       notifyCustomer({
         userId: tx.userId,
         templateKey: "credit_expiry",
         params: { amount: balance, expireDate, liffUrl },
-        altText: "抵用金即將到期",
-        email: (name) => creditExpiryEmail({ name, amount: balance, expireDate, liffUrl }),
       });
       notified++;
     }

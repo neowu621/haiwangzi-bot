@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import type { WebhookEvent } from "@line/bot-sdk";
 import { getLineClient, verifyLineSignature } from "@/lib/line";
 import { prisma } from "@/lib/prisma";
-import { buildFlexByKey } from "@/lib/flex";
+import { buildFlexByKeyAsync } from "@/lib/flex";
+import { notifyCustomer } from "@/lib/notify-template";
 import { genMemberCode } from "@/lib/code-gen";
 
 export const runtime = "nodejs";
@@ -94,7 +95,8 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
   const liffUrl = liffId
     ? `https://liff.line.me/${liffId}`
     : process.env.NEXT_PUBLIC_BASE_URL ?? "https://liff.line.me";
-  const welcomeMsg = buildFlexByKey(
+  // v480：改 async 版 — 套後台 override（標題/副標/說明/按鈕/通知列文字）
+  const welcomeMsg = await buildFlexByKeyAsync(
     "welcome",
     { liffUrl, displayName },
     `歡迎加入${process.env.NEXT_PUBLIC_APP_NAME ?? ""}`,
@@ -103,6 +105,13 @@ async function handleFollow(userId: string, replyToken: string): Promise<void> {
     replyToken,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     messages: [welcomeMsg as any],
+  });
+  // v480：LINE 已用 reply 發送 → 補 Email/站內通知（模板組稿，skipLine 避免重發）
+  notifyCustomer({
+    userId,
+    templateKey: "welcome",
+    params: { liffUrl, displayName },
+    skipLine: true,
   });
 }
 

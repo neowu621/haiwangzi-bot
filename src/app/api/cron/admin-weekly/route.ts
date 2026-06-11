@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
-import { buildFlexByKey } from "@/lib/flex";
+import { buildFlexByKeyAsync } from "@/lib/flex";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,7 +112,8 @@ async function handle(req: NextRequest) {
 
   if (process.env.LINE_CHANNEL_ACCESS_TOKEN && admins.length > 0) {
     const client = getLineClient();
-    const msg = buildFlexByKey(
+    // v480：改 async 版 — 套後台 override（標題/副標/通知列文字）
+    const msg = await buildFlexByKeyAsync(
       "admin_weekly",
       {
         weekRange: `${lastMonday.toISOString().slice(0, 10)} ~ ${new Date(thisMonday.getTime() - 86400000).toISOString().slice(0, 10)}`,

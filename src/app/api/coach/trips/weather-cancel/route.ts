@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
   const { notifyCustomer } = await import("@/lib/notify-template");
-  const { weatherCancelEmail } = await import("@/lib/email/templates");
   for (const b of bookings) {
+    // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
     notifyCustomer({
       userId: b.userId,
       templateKey: "weather_cancel",
@@ -62,16 +62,6 @@ export async function POST(req: NextRequest) {
         reason: data.reason,
         url: liffUrl,
       },
-      altText: `場次取消通知 ${dateStr} ${trip.startTime}`,
-      email: (name) =>
-        weatherCancelEmail({
-          name,
-          date: dateStr,
-          time: trip.startTime,
-          site: siteName,
-          reason: data.reason,
-          url: liffUrl,
-        }),
     });
   }
 

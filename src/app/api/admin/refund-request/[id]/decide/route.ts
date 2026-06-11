@@ -159,13 +159,11 @@ export async function POST(
     const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
     const method: "cash" | "credit" = finalMethod === "credit" ? "credit" : "cash";
     const { notifyCustomer } = await import("@/lib/notify-template");
-    const { refundCompleteEmail } = await import("@/lib/email/templates");
+    // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
     notifyCustomer({
       userId: rr.booking.userId,
       templateKey: "refund_complete",
       params: { bookingTitle, amount: finalAmount, method, liffUrl },
-      altText: "退款已完成",
-      email: (name) => refundCompleteEmail({ name, bookingTitle, amount: finalAmount, method }),
     });
   }
 

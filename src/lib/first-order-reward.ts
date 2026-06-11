@@ -17,9 +17,7 @@
  */
 import { prisma } from "./prisma";
 import { grantCredit } from "./credit";
-import { getLineClient } from "./line";
-import { buildFlexByKeyAsync } from "./flex";
-import { sendEmail } from "./email/send";
+import { notifyCustomer } from "./notify-template";
 
 const LIFF_BASE = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
@@ -114,8 +112,7 @@ export async function maybeGrantFirstOrderReward(
       `[first-order-reward] granted ${amount} to ${userId} for booking ${triggerBookingId}`,
     );
 
-    // ── 推播通知（LINE + Email）── fire-and-forget
-    const displayName = user.realName ?? user.displayName ?? "潛友";
+    // ── 推播通知 ── v480：改走 notifyCustomer — LINE/Email/站內 全由模板組稿（後台填什麼發什麼）
     const expiryStr = expiresAt ? expiresAt.toISOString().slice(0, 10) : "";
     // 組 booking title
     let bookingTitle = `預約 #${triggerBookingId.slice(0, 8)}`;
@@ -129,66 +126,17 @@ export async function maybeGrantFirstOrderReward(
       }
     } catch { /* ignore */ }
 
-    // LINE Flex
-    if (user.notifyByLine ?? true) {
-      void (async () => {
-        try {
-          const lineClient = getLineClient();
-          if (!lineClient) return;
-          const flex = await buildFlexByKeyAsync(
-            "first_order_reward_grant",
-            {
-              amount,
-              balance: newBalance,
-              expiresAt: expiryStr,
-              bookingTitle,
-              liffUrl: LIFF_BASE,
-            },
-            `首單獎勵 NT$${amount} 已入帳`,
-          );
-          await lineClient.pushMessage({ to: userId, messages: [flex] });
-        } catch (e) {
-          console.error("[first-order-reward LINE]", e);
-        }
-      })();
-    }
-
-    // Email
-    if ((user.notifyByEmail ?? true) && user.email) {
-      void (async () => {
-        try {
-          const subject = `🎁 首單獎勵 NT$${amount} 已入帳 — 海王子潛水`;
-          const text = `Hi ${displayName}，
-
-感謝您完成首次潛水！為了感謝您的支持，我們已將首單抵用金存入您的帳戶：
-
-  💰 抵用金 NT$ ${amount}
-  📅 有效期至 ${expiryStr || "永久"}
-  📌 目前餘額 NT$ ${newBalance}
-  🐠 首單訂單 ${bookingTitle}
-
-下次預約時可直接折抵 ✨
-
-— 東北角海王子潛水`;
-          const html = `<!doctype html><html><body style="font-family:'Noto Sans TC',sans-serif;color:#0A2342;">
-            <h2>🎁 首單獎勵入帳</h2>
-            <p>Hi ${displayName.replace(/</g, "&lt;")}，</p>
-            <p>感謝您完成首次潛水！我們已將首單抵用金存入您的帳戶：</p>
-            <table style="border-collapse:collapse;margin:16px 0;">
-              <tr><td style="padding:4px 12px;color:#5A6B7D;">💰 抵用金</td><td style="padding:4px 12px;font-weight:bold;color:#00D9CB;">NT$ ${amount}</td></tr>
-              <tr><td style="padding:4px 12px;color:#5A6B7D;">📅 有效期至</td><td style="padding:4px 12px;">${expiryStr || "永久"}</td></tr>
-              <tr><td style="padding:4px 12px;color:#5A6B7D;">📌 目前餘額</td><td style="padding:4px 12px;font-weight:bold;">NT$ ${newBalance}</td></tr>
-              <tr><td style="padding:4px 12px;color:#5A6B7D;">🐠 首單訂單</td><td style="padding:4px 12px;">${bookingTitle.replace(/</g, "&lt;")}</td></tr>
-            </table>
-            <p>下次預約時可直接折抵 ✨</p>
-            <p style="color:#5A6B7D;font-size:12px;margin-top:24px;">— 東北角海王子潛水</p>
-          </body></html>`;
-          await sendEmail({ to: user.email!, subject, text, html });
-        } catch (e) {
-          console.error("[first-order-reward Email]", e);
-        }
-      })();
-    }
+    notifyCustomer({
+      userId,
+      templateKey: "first_order_reward_grant",
+      params: {
+        amount,
+        balance: newBalance,
+        expiresAt: expiryStr,
+        bookingTitle,
+        liffUrl: LIFF_BASE,
+      },
+    });
 
     return { granted: true, amount, creditTxId: tx.id };
   } catch (e) {

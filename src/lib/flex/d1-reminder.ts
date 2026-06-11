@@ -38,6 +38,28 @@ export function d1Reminder(
         { type: "text", text: asString(params.gather, "—"), weight: "bold", wrap: true },
       ],
     },
+    // v480：有連結時加按鈕（buttonLabel 接後台欄位）
+    ...(params.url || params.liffUrl
+      ? {
+          footer: {
+            type: "box",
+            layout: "vertical",
+            paddingAll: "12px",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                color: COLORS.phosphor,
+                action: {
+                  type: "uri",
+                  label: ovr(override, "buttonLabel", "查看詳情"),
+                  uri: asString(params.url ?? params.liffUrl),
+                },
+              },
+            ],
+          },
+        }
+      : {}),
   });
 }
 

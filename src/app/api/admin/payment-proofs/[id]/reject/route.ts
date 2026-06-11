@@ -84,15 +84,13 @@ export async function POST(
     // v420：通知客戶改用 payment_reject flex 模板（可後台編輯 + email）
     {
       const { notifyCustomer } = await import("@/lib/notify-template");
-      const { paymentRejectEmail } = await import("@/lib/email/templates");
       const bookingTitle = proof.booking.code ?? proof.booking.id.slice(0, 8);
       const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+      // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
       notifyCustomer({
         userId: proof.booking.userId,
         templateKey: "payment_reject",
         params: { bookingTitle, reason: parsed.data.reason, liffUrl },
-        altText: "付款證明需重傳",
-        email: (name) => paymentRejectEmail({ name, bookingTitle, reason: parsed.data.reason, liffUrl }),
       });
     }
     return NextResponse.json({ ok: true, rejected: true });

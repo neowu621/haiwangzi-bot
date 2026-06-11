@@ -92,6 +92,18 @@ export async function buildFlexByKeyAsync(
   return builder(params, finalAlt, override ?? undefined);
 }
 
+/** v480：呼叫端已查好 override 時用（notifyCustomer 單次查詢、不重複打 DB） */
+export function buildFlexWithOverride(
+  key: FlexTemplateKey,
+  params: Record<string, unknown>,
+  altText: string,
+  override?: TemplateOverride | null,
+): FlexMessage {
+  const builder = FLEX_TEMPLATES[key];
+  if (!builder) throw new Error(`unknown flex template: ${key}`);
+  return builder(params, altText, override ?? undefined);
+}
+
 export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   booking_confirm: "預約確認",
   d1_reminder: "D-1 行前提醒",
@@ -126,7 +138,8 @@ export const FLEX_TEMPLATE_META: Record<
   deposit_confirm: { group: "收款",          icon: "✅", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   final_reminder:  { group: "收款",          icon: "🛟", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   trip_guide:      { group: "行前",          icon: "📘", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
-  d1_reminder:     { group: "行前",          icon: "🐡", defaultLine: true,  defaultEmail: false, defaultInApp: true  },
+  // v480：D-1 email 原本走 tripGuideEmail；改模板組稿後預設開啟以保留行為
+  d1_reminder:     { group: "行前",          icon: "🐡", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   weather_cancel:  { group: "異常",          icon: "🌧️", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   overcap_alert:   { group: "管理者（內部）", icon: "⚠️", defaultLine: true,  defaultEmail: true,  defaultInApp: false },
   admin_weekly:    { group: "管理者（內部）", icon: "📊", defaultLine: false, defaultEmail: true,  defaultInApp: false },
@@ -143,121 +156,8 @@ export const FLEX_TEMPLATE_META: Record<
 
 /**
  * 每個 template 可編輯的欄位 + 預設值
- * 給 /liff/admin/templates 顯示用
+ * v480：搬到 @/lib/message-content（單一來源，後台顯示的預設＝實際發送 fallback）
+ * 這裡 re-export 維持既有 import 相容
  */
-export const FLEX_EDITABLE_FIELDS: Record<
-  FlexTemplateKey,
-  Array<{ key: keyof TemplateOverride; label: string; defaultValue: string }>
-> = {
-  booking_confirm: [
-    { key: "title", label: "標題", defaultValue: "✅ 預約成功" },
-    { key: "subtitle", label: "副標", defaultValue: "您的日潛預約已確認" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的預約" },
-    { key: "altText", label: "通知列文字", defaultValue: "預約已確認" },
-  ],
-  d1_reminder: [
-    { key: "title", label: "標題", defaultValue: "🤿 明日行前提醒" },
-    { key: "subtitle", label: "副標", defaultValue: "海況穩定，記得帶裝備" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看詳情" },
-    { key: "altText", label: "通知列文字", defaultValue: "明日行前提醒" },
-  ],
-  deposit_notice: [
-    { key: "title", label: "標題", defaultValue: "💰 訂金繳費通知" },
-    { key: "bodyText", label: "說明文字", defaultValue: "請於截止日前完成訂金匯款" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "上傳轉帳截圖" },
-    { key: "altText", label: "通知列文字", defaultValue: "請繳訂金" },
-  ],
-  deposit_confirm: [
-    { key: "title", label: "標題", defaultValue: "✅ 訂金已收到" },
-    { key: "subtitle", label: "副標", defaultValue: "謝謝您的繳費" },
-    { key: "altText", label: "通知列文字", defaultValue: "訂金已收" },
-  ],
-  final_reminder: [
-    { key: "title", label: "標題", defaultValue: "⏰ 尾款繳費提醒" },
-    { key: "bodyText", label: "說明文字", defaultValue: "出發前請完成尾款" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "上傳轉帳截圖" },
-    { key: "altText", label: "通知列文字", defaultValue: "尾款提醒" },
-  ],
-  trip_guide: [
-    { key: "title", label: "標題", defaultValue: "📘 行前手冊" },
-    { key: "bodyText", label: "注意事項", defaultValue: "請攜帶證照、防寒衣、防曬等" },
-    { key: "altText", label: "通知列文字", defaultValue: "行前手冊" },
-  ],
-  weather_cancel: [
-    { key: "title", label: "標題", defaultValue: "🌊 場次取消通知" },
-    { key: "bodyText", label: "說明", defaultValue: "因海況不適合下水，本場次取消" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "聯繫教練改期" },
-    { key: "altText", label: "通知列文字", defaultValue: "場次取消" },
-  ],
-  admin_weekly: [
-    { key: "title", label: "標題", defaultValue: "📊 上週營運摘要" },
-    { key: "subtitle", label: "副標", defaultValue: "本週統計報表" },
-    { key: "altText", label: "通知列文字", defaultValue: "週報" },
-  ],
-  overcap_alert: [
-    { key: "title", label: "標題", defaultValue: "⚠️ 超賣警示" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "處理此預約" },
-    { key: "altText", label: "通知列文字", defaultValue: "超賣警示" },
-  ],
-  welcome: [
-    { key: "title", label: "歡迎標語", defaultValue: "歡迎潛入" },
-    { key: "subtitle", label: "副標", defaultValue: "東北角海王子潛水" },
-    { key: "bodyText", label: "說明", defaultValue: "安全．專業．陪你看見海" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "開啟預約 App" },
-    { key: "altText", label: "通知列文字", defaultValue: "歡迎加入" },
-  ],
-  attendance_confirmed: [
-    { key: "title", label: "標題", defaultValue: "已記錄您的到場" },
-    { key: "bodyText", label: "說明文字", defaultValue: "感謝您今日的參與，期待下次海上見！" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的紀錄" },
-    { key: "altText", label: "通知列文字", defaultValue: "已記錄到場" },
-  ],
-  first_order_reward_grant: [
-    { key: "title", label: "標題", defaultValue: "首單獎勵入帳" },
-    { key: "bodyText", label: "說明文字", defaultValue: "感謝您完成首次潛水！為了感謝您的支持，我們已將首單抵用金存入您的帳戶。" },
-    { key: "footerHint", label: "底部提示", defaultValue: "下次預約時可直接折抵 ✨" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的抵用金" },
-    { key: "altText", label: "通知列文字", defaultValue: "首單獎勵已入帳" },
-  ],
-  refund_request: [
-    { key: "title", label: "標題", defaultValue: "退款申請待您確認" },
-    { key: "bodyText", label: "說明文字", defaultValue: "請點下方按鈕確認接受，或選擇有疑問與店家聯絡。" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看詳情並確認" },
-    { key: "altText", label: "通知列文字", defaultValue: "退款申請待確認" },
-  ],
-  payment_reject: [
-    { key: "title", label: "標題", defaultValue: "付款證明需要重傳" },
-    { key: "bodyText", label: "說明文字", defaultValue: "您上傳的轉帳證明未能核對通過，請依正確金額重新上傳轉帳截圖。如有疑問歡迎 LINE 聯繫我們。" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "重新上傳截圖" },
-    { key: "altText", label: "通知列文字", defaultValue: "付款證明需重傳" },
-  ],
-  booking_cancel: [
-    { key: "title", label: "標題", defaultValue: "您的預約已取消" },
-    { key: "bodyText", label: "說明文字", defaultValue: "您的這筆預約已取消。若有任何疑問，歡迎直接 LINE 與我們聯繫。" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的預約" },
-    { key: "altText", label: "通知列文字", defaultValue: "預約已取消" },
-  ],
-  refund_complete: [
-    { key: "title", label: "標題", defaultValue: "退款已完成" },
-    { key: "bodyText", label: "說明文字", defaultValue: "您的退款已處理完成，感謝您的耐心。" },
-    { key: "altText", label: "通知列文字", defaultValue: "退款已完成" },
-  ],
-  vip_upgrade: [
-    { key: "title", label: "標題", defaultValue: "恭喜升等" },
-    { key: "bodyText", label: "說明文字", defaultValue: "謝謝你一直跟著海王子潛水，已為你升級會員等級，享有更多專屬優惠。" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的會員" },
-    { key: "altText", label: "通知列文字", defaultValue: "會員升等通知" },
-  ],
-  birthday_credit: [
-    { key: "title", label: "標題", defaultValue: "生日快樂！🎂" },
-    { key: "bodyText", label: "說明文字", defaultValue: "祝你生日快樂！我們準備了一份生日禮金給你，已存入你的帳戶。" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "立即使用禮金" },
-    { key: "altText", label: "通知列文字", defaultValue: "生日禮金到帳" },
-  ],
-  credit_expiry: [
-    { key: "title", label: "標題", defaultValue: "抵用金即將到期" },
-    { key: "bodyText", label: "說明文字", defaultValue: "提醒你，帳戶內的抵用金即將到期，記得在期限前預約使用，別讓優惠過期囉！" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "立即預約使用" },
-    { key: "altText", label: "通知列文字", defaultValue: "抵用金即將到期" },
-  ],
-};
+export { MSG_EDITABLE_FIELDS as FLEX_EDITABLE_FIELDS } from "@/lib/message-content";
+

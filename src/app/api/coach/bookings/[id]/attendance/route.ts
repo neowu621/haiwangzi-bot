@@ -118,15 +118,13 @@ export async function POST(
             const tier = tiers.find((t) => t.level === newLevel);
             if (tier) {
               const { notifyCustomer } = await import("@/lib/notify-template");
-              const { vipUpgradeEmail } = await import("@/lib/email/templates");
               const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
               const benefits = (tier.benefits ?? []).join("\n");
+              // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
               notifyCustomer({
                 userId: booking.userId,
                 templateKey: "vip_upgrade",
                 params: { tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl },
-                altText: `恭喜升等 ${tier.name}`,
-                email: (name) => vipUpgradeEmail({ name, tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl }),
               });
             }
           }
@@ -181,35 +179,30 @@ export async function POST(
       });
       void (async () => {
         try {
-          if (updatedUser?.notifyByLine ?? true) {
-            const { getLineClient } = await import("@/lib/line");
-            const { buildFlexByKeyAsync } = await import("@/lib/flex");
-            const lineClient = getLineClient();
-            if (!lineClient) return;
-            // 組 booking title
-            let bookingTitle = `預約 #${id.slice(0, 8)}`;
-            if (booking.type === "daily") {
-              const trip = await prisma.divingTrip.findUnique({ where: { id: booking.refId } });
-              if (trip) bookingTitle = `日潛 ${trip.date.toISOString().slice(0, 10)} ${trip.startTime}`;
-            } else {
-              const tour = await prisma.tourPackage.findUnique({ where: { id: booking.refId } });
-              if (tour) bookingTitle = tour.title;
-            }
-            const flex = await buildFlexByKeyAsync(
-              "attendance_confirmed",
-              {
-                bookingTitle,
-                addLogs,
-                totalLogs: updatedUser?.haiwangziLogCount ?? 0,
-                vipLevel: updatedUser?.vipLevel ?? 1,
-                liffUrl: process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm",
-              },
-              `已記錄您今日到場 (+${addLogs} 潛)`,
-            );
-            await lineClient.pushMessage({ to: booking.userId, messages: [flex] });
+          // 組 booking title
+          let bookingTitle = `預約 #${id.slice(0, 8)}`;
+          if (booking.type === "daily") {
+            const trip = await prisma.divingTrip.findUnique({ where: { id: booking.refId } });
+            if (trip) bookingTitle = `日潛 ${trip.date.toISOString().slice(0, 10)} ${trip.startTime}`;
+          } else {
+            const tour = await prisma.tourPackage.findUnique({ where: { id: booking.refId } });
+            if (tour) bookingTitle = tour.title;
           }
+          // v480：改走 notifyCustomer — LINE/Email/站內 全由模板組稿 + 記入發送紀錄
+          const { notifyCustomer } = await import("@/lib/notify-template");
+          notifyCustomer({
+            userId: booking.userId,
+            templateKey: "attendance_confirmed",
+            params: {
+              bookingTitle,
+              addLogs,
+              totalLogs: updatedUser?.haiwangziLogCount ?? 0,
+              vipLevel: updatedUser?.vipLevel ?? 1,
+              liffUrl: process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm",
+            },
+          });
         } catch (e) {
-          console.error("[attendance LINE]", e);
+          console.error("[attendance notify]", e);
         }
       })();
 

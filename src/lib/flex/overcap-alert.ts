@@ -1,8 +1,9 @@
-import { COLORS, asString, asNumber, flex, type TemplateOverride } from "./_common";
+import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 /**
  * 超賣警示 Flex — 推給教練
+ * v480：接上後台 override（title / buttonLabel）
  *
  * params: {
  *   tripDate, tripTime, site,
@@ -14,8 +15,7 @@ import type { FlexMessage } from "./index";
 export function overcapAlert(
   params: Record<string, unknown>,
   altText: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _override?: TemplateOverride,
+  override?: TemplateOverride,
 ): FlexMessage {
   const requested = asNumber(params.requestedCount, 1);
   const booked = asNumber(params.currentBooked, 0);
@@ -31,7 +31,7 @@ export function overcapAlert(
       contents: [
         {
           type: "text",
-          text: "⚠️ 超賣警示",
+          text: ovr(override, "title", "⚠️ 超賣警示"),
           color: "#ffffff",
           weight: "bold",
           size: "md",
@@ -138,7 +138,7 @@ export function overcapAlert(
           color: COLORS.phosphor,
           action: {
             type: "uri",
-            label: "處理此預約",
+            label: ovr(override, "buttonLabel", "處理此預約"),
             uri: asString(params.url, "https://haiwangzi.xyz/liff/coach/today"),
           },
         },

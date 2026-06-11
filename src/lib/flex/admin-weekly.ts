@@ -1,13 +1,13 @@
-import { COLORS, asString, asNumber, flex, type TemplateOverride } from "./_common";
+import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // Admin 週報摘要
 // params: { weekRange, revenue, bookings, newMembers, pending }
+// v480：接上後台 override（title / subtitle）
 export function adminWeekly(
   params: Record<string, unknown>,
   altText: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _override?: TemplateOverride,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -17,7 +17,8 @@ export function adminWeekly(
       backgroundColor: COLORS.oceanDeep,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "📊 本週營運摘要", color: COLORS.phosphor, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "📊 上週營運摘要"), color: COLORS.phosphor, weight: "bold", size: "md" },
+        ...(override?.subtitle ? [{ type: "text" as const, text: override.subtitle, color: "#cfe8e5", size: "xs", margin: "xs" }] : []),
         { type: "text", text: asString(params.weekRange), color: "#ffffff", size: "sm", margin: "xs" },
       ],
     },

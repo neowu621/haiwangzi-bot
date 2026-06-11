@@ -2,6 +2,16 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260611_480 — 2026-06-11 (訊息模板「填什麼發什麼」全面統一)
+
+- **單一組稿來源** `src/lib/message-content.ts`：欄位預設值 / 動態主體 / Email 外殼 / 樣本參數 — 後台填寫、預覽、試送、正式發送(LINE/Email/站內) 全走同一份
+- **notifyCustomer v2**：三通道內容全由模板組稿；尊重模板層 LINE/Email/站內開關 + 會員 opt-in；通知列文字(altText)＝後台欄位；Email 不再用寫死模板
+- **6 個 flex builder 接上 override**（deposit_notice / deposit_confirm / final_reminder / trip_guide / overcap_alert / admin_weekly 之前完全忽略後台設定）+ booking_confirm 移除過時「當日現場收費」+ d1 加按鈕 + weather_cancel bodyText
+- **真實發送點改模板驅動**：booking_confirm(原只發email→三通道)、deposit_confirm(原無發送點→訂金核可時發)、welcome(webhook reply 改吃 override+補站內)、d1/訂金催繳/尾款×2(cron)、weather-check、attendance、首單獎勵、退款申請、超賣、週報、broadcast(sync→async)
+- **footerHint 真正可存**（DB 缺 footer_hint 欄位，存了會掉）：schema + migrate-safety + API + 表單
+- **後台模板頁**：區塊2新增「內容主體（動態資料）」唯讀區；三預覽改用真組稿（副標/說明分離、動態主體真實化、站內按鈕標示「前往查看/關閉通知」）
+- 站內通知詳情視窗「關閉通知」按鈕改珊瑚橘（與「前往查看」同色，易辨識）
+
 ## 20260608_399 — 2026-06-08 (後台前端效能：快取 + 去重 + SWR)
 
 ## 20260608_406 — 2026-06-08 (首頁最新動態進階：精選置頂/數量/排除/長片濾鏡)

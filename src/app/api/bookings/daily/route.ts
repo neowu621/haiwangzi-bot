@@ -3,9 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
-import { buildFlexByKey } from "@/lib/flex";
-import { sendEmail } from "@/lib/email/send";
-import { bookingConfirmEmail } from "@/lib/email/templates";
+import { buildFlexByKeyAsync } from "@/lib/flex";
+import { notifyCustomer } from "@/lib/notify-template";
 import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
@@ -399,11 +398,11 @@ export async function POST(req: NextRequest) {
     }).catch((e) => console.error("[overcap notify]", e));
   }
 
-  // 寄預約確認 email（fire-and-forget；失敗不影響預約建立）
-  void sendBookingConfirmEmail({
+  // v480：預約確認改走 notifyCustomer — LINE flex + Email + 站內通知 全由 booking_confirm 模板組稿
+  void sendBookingConfirmNotify({
     bookingId: booking.id,
     userId: auth.user.lineUserId,
-  }).catch((e) => console.error("[booking confirm email]", e));
+  }).catch((e) => console.error("[booking confirm notify]", e));
 
   // v270：首單獎勵改在 attendance=completed 時觸發，不在這裡
 
@@ -421,7 +420,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, booking, overCapacity });
 }
 
-async function sendBookingConfirmEmail(args: {
+async function sendBookingConfirmNotify(args: {
   bookingId: string;
   userId: string;
 }) {
@@ -430,7 +429,6 @@ async function sendBookingConfirmEmail(args: {
     include: { user: true },
   });
   if (!booking) return;
-  if (!booking.user.notifyByEmail || !booking.user.email) return;
 
   const trip = await prisma.divingTrip.findUnique({
     where: { id: booking.refId },
@@ -441,25 +439,23 @@ async function sendBookingConfirmEmail(args: {
     where: { id: { in: trip.diveSiteIds } },
   });
 
-  const tpl = bookingConfirmEmail({
-    name: booking.user.realName ?? booking.user.displayName,
-    type: "daily",
-    date: trip.date.toISOString().slice(0, 10),
-    startTime: trip.startTime,
-    sites: sites.map((s) => s.name),
-    participants: booking.participants,
-    totalAmount: booking.totalAmount,
-    paidAmount: booking.paidAmount,
-    bookingId: booking.id,
-    meetingPoint: trip.meetingPoint,
-    notes: trip.notes,
-  });
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz";
+  const url = booking.payLinkToken
+    ? `${base}/pay/${booking.id}?t=${booking.payLinkToken}`
+    : `${base}/liff/my`;
 
-  await sendEmail({
-    to: booking.user.email,
-    subject: tpl.subject,
-    text: tpl.text,
-    html: tpl.html,
+  // v480：LINE flex + Email + 站內通知 全由 booking_confirm 模板組稿（後台填什麼發什麼）
+  notifyCustomer({
+    userId: args.userId,
+    templateKey: "booking_confirm",
+    params: {
+      name: booking.user.realName ?? booking.user.displayName,
+      date: trip.date.toISOString().slice(0, 10),
+      time: trip.startTime,
+      site: sites.map((s) => s.name).join("、") || "東北角",
+      total: booking.totalAmount,
+      url,
+    },
   });
 }
 
@@ -484,7 +480,8 @@ async function notifyCoachesOvercap(args: {
   });
   const siteName = sites.map((s) => s.name).join(" · ") || "東北角";
 
-  const msg = buildFlexByKey(
+  // v480：改 async 版 — 套後台 override（標題/按鈕/通知列文字）
+  const msg = await buildFlexByKeyAsync(
     "overcap_alert",
     {
       tripDate: args.tripDate,

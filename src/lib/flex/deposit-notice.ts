@@ -1,13 +1,13 @@
-import { COLORS, asString, asNumber, flex, type TemplateOverride } from "./_common";
+import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 訂金繳費通知
 // params: { tourTitle, deposit, deadline, bankName, bankAccount, holder, refCode, url }
+// v480：接上後台 override（title / bodyText / buttonLabel）— fallback 與 /admin/templates 顯示的預設一致
 export function depositNotice(
   params: Record<string, unknown>,
   altText: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _override?: TemplateOverride,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -17,7 +17,7 @@ export function depositNotice(
       backgroundColor: COLORS.gold,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "💳 請繳訂金", color: COLORS.oceanDeep, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "💰 訂金繳費通知"), color: COLORS.oceanDeep, weight: "bold", size: "md" },
         { type: "text", text: asString(params.tourTitle, "潛水團"), color: COLORS.oceanDeep, size: "lg", weight: "bold", margin: "xs", wrap: true },
       ],
     },
@@ -27,6 +27,7 @@ export function depositNotice(
       spacing: "sm",
       paddingAll: "16px",
       contents: [
+        { type: "text", text: ovr(override, "bodyText", "請於截止日前完成訂金匯款"), color: COLORS.mute, size: "sm", wrap: true },
         kv("訂金", `NT$ ${asNumber(params.deposit).toLocaleString()}`),
         kv("繳費截止", asString(params.deadline)),
         { type: "separator", margin: "md" },
@@ -48,7 +49,7 @@ export function depositNotice(
           color: COLORS.phosphor,
           action: {
             type: "uri",
-            label: "上傳轉帳截圖",
+            label: ovr(override, "buttonLabel", "上傳轉帳截圖"),
             uri: asString(params.url, "https://line.me/"),
           },
         },

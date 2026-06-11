@@ -1,13 +1,21 @@
 "use client";
 /**
  * v196：訊息模板管理 — 三欄式 layout（左：流程清單 / 中：填寫資料 / 右：發送預覽）
- * 依據 notify-template-manager.html mockup 重寫
+ * v480：預覽 / 試送 / 正式發送 全部走 @/lib/message-content 單一組稿來源 —
+ *       「填寫資料」區所見＝「實際發出」的內容（含每模板專屬的動態主體）。
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import {
+  MSG_SAMPLE_PARAMS,
+  buildDynamicBody,
+  EXTRA_LINES,
+  EXTRA_FOOTER,
+  HERO_EMOJI,
+} from "@/lib/message-content";
 
-type FieldKey = "title" | "subtitle" | "bodyText" | "buttonLabel" | "altText";
+type FieldKey = "title" | "subtitle" | "bodyText" | "buttonLabel" | "altText" | "footerHint";
 
 interface EditableField {
   key: FieldKey;
@@ -27,28 +35,6 @@ interface TemplateInfo {
   override: Partial<Record<FieldKey, string | null>> | null;
 }
 
-const SAMPLE = {
-  客戶名: "王小明",
-  日期: "6/14 (六) 08:30",
-  場次: "龍洞灣 體驗潛水",
-  金額: "NT$ 2,400",
-};
-// 哪些 template 在預覽時要顯示動態資料 block
-const SHOW_DATA: Record<string, boolean> = {
-  booking_confirm: true,
-  d1_reminder: true,
-  deposit_notice: true,
-  deposit_confirm: true,
-  final_reminder: true,
-  trip_guide: true,
-  weather_cancel: true,
-  overcap_alert: true,
-};
-const SHOW_AMOUNT: Record<string, boolean> = {
-  deposit_notice: true,
-  final_reminder: true,
-};
-
 // v232：實際 Flex 模板顏色（與 src/lib/flex/_common.ts 同步）
 const FLEX_COLORS = {
   oceanDeep: "#0A2342",
@@ -57,42 +43,20 @@ const FLEX_COLORS = {
   coral: "#FF7B5A",
 };
 
-// 每個 template 在實際 Flex hero 用的大 emoji（與 src/lib/flex/*.ts 一致）
-const HERO_EMOJI: Record<string, string> = {
-  welcome: "🌊",
-  booking_confirm: "✅",
-  deposit_notice: "💰",
-  deposit_confirm: "✅",
-  final_reminder: "⏰",
-  trip_guide: "📘",
-  d1_reminder: "🤿",
-  weather_cancel: "🌊",
-  overcap_alert: "⚠️",
-  admin_weekly: "📊",
-};
-
-// v231：每個 template 的「實際 Flex 額外內容」（給預覽用）
-const EXTRA_LINES: Record<string, string[]> = {
-  welcome: [
-    "📅 日潛預約：選日期 → 選場次 → 一鍵搞定",
-    "✈️ 旅遊潛水：蘭嶼 / 綠島 / 墾丁 多日團",
-    "💳 上傳轉帳截圖，教練即時核對",
-    "🔔 行前一天自動提醒，海況即時推播",
-  ],
-  trip_guide: [
-    "🎒 攜帶：證照、防寒衣、防曬",
-    "📍 集合地點 / 交通方式：依場次說明",
-    "📞 緊急聯絡：教練電話於行前通知",
-  ],
-  weather_cancel: [
-    "🅰️ 退現金 100%",
-    "🅱️ 轉抵用金 110%（推薦，多 10% 優惠）",
-  ],
-};
-
-const EXTRA_FOOTER: Record<string, string> = {
-  welcome: "安全．專業．陪你看見海",
-};
+// v480：每模板「動態主體」樣本 — 與試送/正式發送同一函式產生（單一來源）
+function sampleBody(key: string): string {
+  return buildDynamicBody(key, MSG_SAMPLE_PARAMS[key] ?? {});
+}
+// 把「label：value」行渲染成 k/v 列；非 k/v 行原樣顯示
+function bodyLines(key: string): Array<{ k: string; v: string } | string> {
+  return sampleBody(key)
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const i = line.indexOf("：");
+      return i > 0 && i <= 6 ? { k: line.slice(0, i), v: line.slice(i + 1) } : line;
+    });
+}
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
@@ -448,6 +412,25 @@ export default function AdminTemplatesPage() {
                         )}
                       </div>
                     ))}
+
+                    {/* v480：內容主體（動態資料）— 與發送內容相同的主體，系統自動帶入、不可編輯 */}
+                    {sampleBody(cur.key) && (
+                      <div style={{ margin: "0 4px 14px" }}>
+                        <label style={{ display: "flex", alignItems: "baseline", gap: 7, fontSize: 12, fontWeight: 700, marginBottom: 5 }}>
+                          內容主體（動態資料）
+                          <span style={{ fontSize: 10.5, fontWeight: 400, color: "#94a9ac" }}>
+                            系統自動帶入真實資料，此處為模擬範例（不可編輯）
+                          </span>
+                        </label>
+                        <div style={{
+                          border: "1.5px dashed #cfe0e0", borderRadius: 10, padding: "10px 12px",
+                          background: "#f7fbfa", fontSize: 12.5, lineHeight: 1.8,
+                          color: "#33464e", whiteSpace: "pre-wrap",
+                        }}>
+                          {sampleBody(cur.key)}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{
@@ -564,7 +547,9 @@ function LinePreview({ cur, val, sending, onTest }: {
   cur: TemplateInfo; val: (k: string) => string; sending: boolean; onTest: () => void;
 }) {
   const title = val("title");
-  const sub = val("subtitle") || val("bodyText");
+  const sub = val("subtitle");
+  const body = val("bodyText");
+  const hint = val("footerHint");
   const btn = val("buttonLabel");
   const push = val("altText");
   return (
@@ -617,8 +602,13 @@ function LinePreview({ cur, val, sending, onTest }: {
             )}
           </div>
 
-          {/* BODY：白底 + 列表 / 動態資料 / 標語 */}
+          {/* BODY：白底 + 說明文字 / 列表 / 動態主體（與發送內容同一來源）/ 標語 */}
           <div style={{ padding: "14px 16px 4px", background: "#fff" }}>
+            {body && (
+              <div style={{ fontSize: 12, lineHeight: 1.6, color: "#1A2330", marginBottom: 6, whiteSpace: "pre-wrap" }}>
+                {body}
+              </div>
+            )}
             {EXTRA_LINES[cur.key] && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
                 {cur.key === "welcome" && (
@@ -633,17 +623,23 @@ function LinePreview({ cur, val, sending, onTest }: {
                 ))}
               </div>
             )}
-            {SHOW_DATA[cur.key] && (
+            {sampleBody(cur.key) && (
               <div style={{
                 marginTop: 10, padding: 9, borderRadius: 8,
                 background: "#F4F7FA",
                 fontSize: 11.5, color: "#3A4655",
                 display: "flex", flexDirection: "column", gap: 3,
               }}>
-                <span><b style={{ color: FLEX_COLORS.oceanDeep }}>客戶</b> {SAMPLE.客戶名}</span>
-                <span><b style={{ color: FLEX_COLORS.oceanDeep }}>場次</b> {SAMPLE.場次}</span>
-                <span><b style={{ color: FLEX_COLORS.oceanDeep }}>時間</b> {SAMPLE.日期}</span>
-                {SHOW_AMOUNT[cur.key] && <span><b style={{ color: FLEX_COLORS.oceanDeep }}>金額</b> {SAMPLE.金額}</span>}
+                {bodyLines(cur.key).map((l, i) =>
+                  typeof l === "string"
+                    ? <span key={i}>{l}</span>
+                    : <span key={i}><b style={{ color: FLEX_COLORS.oceanDeep }}>{l.k}</b> {l.v}</span>,
+                )}
+              </div>
+            )}
+            {hint && (
+              <div style={{ marginTop: 10, textAlign: "center", fontSize: 11.5, color: "#0a8f86", fontWeight: 600 }}>
+                {hint}
               </div>
             )}
             {EXTRA_FOOTER[cur.key] && (
@@ -705,7 +701,9 @@ function EmailPreview({ cur, val, sending, onTest }: {
   cur: TemplateInfo; val: (k: string) => string; sending: boolean; onTest: () => void;
 }) {
   const title = val("title");
-  const sub = val("subtitle") || val("bodyText");
+  const sub = val("subtitle");
+  const body = val("bodyText");
+  const hint = val("footerHint");
   const btn = val("buttonLabel");
   return (
     <div style={{ margin: "8px 8px 22px", opacity: cur.emailEnabled ? 1 : 0.4, filter: cur.emailEnabled ? undefined : "grayscale(.55)" }}>
@@ -743,22 +741,25 @@ function EmailPreview({ cur, val, sending, onTest }: {
           </div>
         </div>
         <div style={{ padding: "16px 17px 6px", color: "#0a2027" }}>
-          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 7, lineHeight: 1.35 }}>{title}</div>
-          {sub && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 12 }}>{sub}</div>}
+          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 7, lineHeight: 1.35 }}>{HERO_EMOJI[cur.key] ?? "📩"} {title}</div>
+          {sub && <div style={{ fontSize: 12.5, color: "#0a8f86", fontWeight: 600, lineHeight: 1.7, marginBottom: 8 }}>{sub}</div>}
+          {body && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 12, whiteSpace: "pre-wrap" }}>{body}</div>}
           {/* v231：模板內建列表 */}
           {EXTRA_LINES[cur.key] && (
             <ul style={{ marginBottom: 12, paddingLeft: 18, fontSize: 12, color: "#516268", lineHeight: 1.7 }}>
               {EXTRA_LINES[cur.key].map((line, i) => <li key={i}>{line}</li>)}
             </ul>
           )}
-          {SHOW_DATA[cur.key] && (
+          {sampleBody(cur.key) && (
             <div style={{ background: "#f4f9f8", border: "1px solid #e2efed", borderRadius: 9, padding: "11px 13px", marginBottom: 14 }}>
-              <DataRow k="客戶姓名" v={SAMPLE.客戶名} />
-              <DataRow k="預約場次" v={SAMPLE.場次} />
-              <DataRow k="出發時間" v={SAMPLE.日期} />
-              {SHOW_AMOUNT[cur.key] && <DataRow k="應繳金額" v={SAMPLE.金額} />}
+              {bodyLines(cur.key).map((l, i) =>
+                typeof l === "string"
+                  ? <div key={i} style={{ fontSize: 12, padding: "3px 0", color: "#516268" }}>{l}</div>
+                  : <DataRow key={i} k={l.k} v={l.v} />,
+              )}
             </div>
           )}
+          {hint && <div style={{ textAlign: "center", fontSize: 12, color: "#0a8f86", fontWeight: 600, marginBottom: 12 }}>{hint}</div>}
           {btn && (
             <span style={{
               display: "inline-block", background: "#13b5a6", color: "#fff",
@@ -797,8 +798,9 @@ function InAppPreview({ cur, val, sending, onTest }: {
   cur: TemplateInfo; val: (k: string) => string; sending: boolean; onTest: () => void;
 }) {
   const title = val("title");
-  const sub = val("subtitle") || val("bodyText");
-  const btn = val("buttonLabel");
+  const sub = val("subtitle");
+  const body = val("bodyText");
+  const hint = val("footerHint");
   return (
     <div style={{ margin: "8px 8px 22px", opacity: cur.inAppEnabled ? 1 : 0.4, filter: cur.inAppEnabled ? undefined : "grayscale(.55)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 2px 10px" }}>
@@ -820,25 +822,28 @@ function InAppPreview({ cur, val, sending, onTest }: {
           <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0a2027", lineHeight: 1.35 }}>{title}</div>
         </div>
         <div style={{ padding: "14px 15px 6px", color: "#0a2027" }}>
-          {sub && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 11 }}>{sub}</div>}
+          {sub && <div style={{ fontSize: 12.5, color: "#0a8f86", fontWeight: 600, lineHeight: 1.7, marginBottom: 8 }}>{sub}</div>}
+          {body && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 11, whiteSpace: "pre-wrap" }}>{body}</div>}
           {EXTRA_LINES[cur.key] && (
             <ul style={{ marginBottom: 11, paddingLeft: 18, fontSize: 12, color: "#516268", lineHeight: 1.7 }}>
               {EXTRA_LINES[cur.key].map((line, i) => <li key={i}>{line}</li>)}
             </ul>
           )}
-          {SHOW_DATA[cur.key] && (
+          {sampleBody(cur.key) && (
             <div style={{ background: "#f4f9f8", border: "1px solid #e2efed", borderRadius: 9, padding: "11px 13px", marginBottom: 12 }}>
-              <DataRow k="客戶姓名" v={SAMPLE.客戶名} />
-              <DataRow k="預約場次" v={SAMPLE.場次} />
-              <DataRow k="出發時間" v={SAMPLE.日期} />
-              {SHOW_AMOUNT[cur.key] && <DataRow k="應繳金額" v={SAMPLE.金額} />}
+              {bodyLines(cur.key).map((l, i) =>
+                typeof l === "string"
+                  ? <div key={i} style={{ fontSize: 12, padding: "3px 0", color: "#516268" }}>{l}</div>
+                  : <DataRow key={i} k={l.k} v={l.v} />,
+              )}
             </div>
           )}
-          {btn && (
-            <span style={{ display: "inline-block", background: "#13b5a6", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
-              {btn} →
-            </span>
-          )}
+          {hint && <div style={{ textAlign: "center", fontSize: 12, color: "#0a8f86", fontWeight: 600, marginBottom: 12 }}>{hint}</div>}
+          {/* v480：站內通知詳情視窗底部固定按鈕 — 有連結顯示「前往查看」、無連結顯示「關閉通知」（非按鈕文字欄位） */}
+          <span style={{ display: "inline-block", background: "var(--color-coral, #FF7B5A)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
+            前往查看 →
+          </span>
+          <span style={{ fontSize: 10.5, color: "#9aabae", marginLeft: 8 }}>無連結時顯示「關閉通知」</span>
         </div>
         <div style={{ padding: "10px 15px", borderTop: "1px solid #eef2f2", fontSize: 10, color: "#9aabae" }}>
           🔔 客戶在 LIFF 個人中心「訊息通知」收到，點開即看到上面完整內容

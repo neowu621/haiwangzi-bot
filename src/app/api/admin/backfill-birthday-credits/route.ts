@@ -97,14 +97,12 @@ async function run(req: NextRequest, dryRun: boolean) {
       });
       // v442：比照 cron 通知壽星「生日禮金到帳」（birthday_credit 模板，尊重會員 LINE/Email/站內開關）
       const { notifyCustomer } = await import("@/lib/notify-template");
-      const { birthdayCreditEmail } = await import("@/lib/email/templates");
       const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+      // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
       notifyCustomer({
         userId: u.line_user_id,
         templateKey: "birthday_credit",
         params: { amount, expiryDays, liffUrl },
-        altText: "生日禮金到帳 🎂",
-        email: (name) => birthdayCreditEmail({ name, amount, expiryDays, liffUrl }),
       });
       granted.push(u.line_user_id);
     } catch (e) {

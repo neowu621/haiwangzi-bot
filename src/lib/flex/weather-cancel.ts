@@ -27,7 +27,7 @@ export function weatherCancel(
       spacing: "sm",
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "因海況不適合下水，本場次取消", weight: "bold", size: "md", wrap: true },
+        { type: "text", text: ovr(override, "bodyText", "因海況不適合下水，本場次取消"), weight: "bold", size: "md", wrap: true },
         { type: "text", text: asString(params.reason, "浪高超過 1.5m"), color: COLORS.mute, size: "xs", margin: "sm", wrap: true },
         { type: "separator", margin: "md" },
         { type: "text", text: "您可選擇：", color: COLORS.mute, size: "xs", margin: "md" },

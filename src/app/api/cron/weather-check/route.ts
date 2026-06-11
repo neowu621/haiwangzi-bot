@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
-import { buildFlexByKey } from "@/lib/flex";
-import { sendEmail } from "@/lib/email/send";
-import { weatherCancelEmail } from "@/lib/email/templates";
+import { notifyCustomer } from "@/lib/notify-template";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -290,15 +288,13 @@ async function handle(req: NextRequest) {
           ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/my`
           : "https://line.me/";
 
-        let pushed = 0;
-        let emailed = 0;
-
-        // LINE 推 Flex
-        if (process.env.LINE_CHANNEL_ACCESS_TOKEN && bookings.length > 0) {
-          const client = getLineClient();
-          const msg = buildFlexByKey(
-            "weather_cancel",
-            {
+        // v480：改走 notifyCustomer — LINE/Email/站內 全由 weather_cancel 模板組稿
+        //   （後台填什麼發什麼；各通道結果記入 MessageLog 發送紀錄）
+        for (const b of bookings) {
+          notifyCustomer({
+            userId: b.userId,
+            templateKey: "weather_cancel",
+            params: {
               date: dateStr,
               time: trip.startTime,
               site: siteName,
@@ -306,44 +302,10 @@ async function handle(req: NextRequest) {
               options: "1. 改期至下次同類型場次\n2. 全額退費",
               url: myUrl,
             },
-            `${dateStr} 因海況取消`,
-          );
-          for (const b of bookings) {
-            if (!b.user.notifyByLine) continue;
-            try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await client.pushMessage({
-                to: b.userId,
-                messages: [msg as any],
-              });
-              pushed++;
-            } catch (e) {
-              console.error("[weather push]", b.userId, e);
-            }
-          }
+          });
         }
 
-        // Email 通道
-        for (const b of bookings) {
-          if (!b.user.notifyByEmail || !b.user.email) continue;
-          const tpl = weatherCancelEmail({
-            name: b.user.realName ?? b.user.displayName,
-            date: dateStr,
-            time: trip.startTime,
-            site: siteName,
-            reason: reasonStr,
-            url: myUrl,
-          });
-          const r = await sendEmail({
-            to: b.user.email,
-            subject: tpl.subject,
-            text: tpl.text,
-            html: tpl.html,
-          });
-          if (r.ok) emailed++;
-        }
-
-        cancelled.push({ tripId: trip.id, pushed, emailed });
+        cancelled.push({ tripId: trip.id, pushed: bookings.length, emailed: 0 });
       } else {
         cancelled.push({ tripId: trip.id, pushed: 0 }); // dry run
       }

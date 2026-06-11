@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { sendEmail } from "@/lib/email/send";
 import { paymentReceivedEmail } from "@/lib/email/templates";
+import { notifyCustomer } from "@/lib/notify-template";
 import { computeVipLevel, normalizeVipTiers, VIP_TIERS } from "@/lib/vip-tier";
 import { grantVipUpgradeRewards } from "@/lib/vip-upgrade-rewards";
 
@@ -177,6 +178,28 @@ async function sendPaymentReceivedEmail(args: {
     include: { user: true },
   });
   if (!booking) return;
+
+  // v480：旅遊團「訂金」核可 → 走 deposit_confirm 模板（LINE/Email/站內 由後台模板組稿）
+  //   其餘（尾款/全額/日潛收款）維持通用收款確認信
+  if (args.type === "deposit" && booking.type === "tour") {
+    const tour = await prisma.tourPackage.findUnique({ where: { id: booking.refId } });
+    if (tour) {
+      notifyCustomer({
+        userId: booking.userId,
+        templateKey: "deposit_confirm",
+        params: {
+          tourTitle: tour.title,
+          paid: args.newPaid,
+          remaining: Math.max(0, args.totalAmount - args.newPaid),
+          finalDeadline: tour.finalDeadline
+            ? tour.finalDeadline.toISOString().slice(0, 10)
+            : "—",
+        },
+      });
+      return;
+    }
+  }
+
   if (!booking.user.notifyByEmail || !booking.user.email) return;
 
   // 取 booking 對應的 title（trip date 或 tour title）

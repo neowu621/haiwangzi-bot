@@ -351,6 +351,8 @@ const PATCHES = [
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN`,
   // 站內訊息通知（第三通道）模板層開關（null = 用 template 預設 defaultInApp）
   `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS in_app_enabled BOOLEAN`,
+  // v480: footer hint field (first_order_reward_grant etc.)
+  `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS footer_hint TEXT`,
 
   // ── v186 tour_packages 行銷欄位 ─────────────────────────────────────
   `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS subtitle TEXT`,

@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
             bodyText: o.bodyText,
             buttonLabel: o.buttonLabel,
             altText: o.altText,
+            footerHint: o.footerHint, // v480
             updatedAt: o.updatedAt,
             updatedBy: o.updatedBy,
           }
@@ -63,6 +64,7 @@ const PatchSchema = z.object({
   bodyText: z.string().nullable().optional(),
   buttonLabel: z.string().nullable().optional(),
   altText: z.string().nullable().optional(),
+  footerHint: z.string().nullable().optional(), // v480：first_order_reward_grant 底部提示
   lineEnabled: z.boolean().nullable().optional(),
   emailEnabled: z.boolean().nullable().optional(),
   inAppEnabled: z.boolean().nullable().optional(),
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest) {
     bodyText: string | null;
     buttonLabel: string | null;
     altText: string | null;
+    footerHint: string | null;
     lineEnabled?: boolean | null;
     emailEnabled?: boolean | null;
     inAppEnabled?: boolean | null;
@@ -99,6 +102,7 @@ export async function POST(req: NextRequest) {
     bodyText: data.bodyText ?? null,
     buttonLabel: data.buttonLabel ?? null,
     altText: data.altText ?? null,
+    footerHint: data.footerHint ?? null, // v480
     updatedBy: auth.user.lineUserId,
   };
   if (data.lineEnabled !== undefined) patch.lineEnabled = data.lineEnabled;

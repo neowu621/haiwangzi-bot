@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getLineClient } from "@/lib/line";
-import { buildFlexByKey } from "@/lib/flex";
-import { sendEmail } from "@/lib/email/send";
-import { tripGuideEmail, finalReminderEmail, depositReminderEmail } from "@/lib/email/templates";
+import { notifyCustomer } from "@/lib/notify-template";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,23 +10,20 @@ export const maxDuration = 120;
 // /api/cron/reminders
 // ─────────────────────────────────────────────────────────────
 //
-// 由 Cronicle (https://neowu-cron-hub.zeabur.app) 觸發。
-// 推薦頻率：每 15~30 分鐘一次（dedup 透過 ReminderLog 表保證不重發）。
+// 由 Cronicle 觸發。推薦頻率：每 15~30 分鐘一次（dedup 透過 ReminderLog 表保證不重發）。
 //
 // 認證：Authorization: Bearer <CRON_SECRET>  (header)
-//   - CRON_SECRET 設在 Zeabur haiwangzi-bot 環境變數
-//   - Cronicle 端設環境變數 HAIWANGZI_CRON_SECRET 並在 curl --header 帶入
 //
-// 參數：?pollWindowMinutes=30  (選填，預設 30)
-//   - 紀錄用，方便 log 對齊 cron 頻率
-//   - 真實 dedup 由 ReminderLog 表負責 (一筆 booking + type 只發一次)
+// v480：四種提醒全部改走 notifyCustomer —
+//   LINE / Email / 站內通知 內容由 /admin/templates 模板組稿（後台填什麼發什麼），
+//   各通道結果記入 MessageLog（發送紀錄頁可查）。
+//   ReminderLog 僅作「同一 booking + type 只發一次」去重（channel=all；舊資料 line/email 也算已發）。
 //
 // 邏輯：
-//   1. D-1 日潛行前提醒：明日所有 open 的 daily trip 之 confirmed bookings
-//   2. 潛水團尾款提醒：3 天後出發、deposit_paid 但尾款未清的 booking
-//   3. (未來可擴充：D-1 行前手冊、D-3 訂金到期...)
-//
-// 支援 GET (瀏覽器手動測試) 與 POST (Cronicle 標準呼叫)。
+//   1. D-1 日潛行前提醒（d1_reminder）
+//   2. 潛水團訂金催繳（deposit_notice）— 下訂後第 dueDays-2 天
+//   3. 潛水團尾款預告（final_reminder）— 出發前 33 天
+//   4. 潛水團尾款提醒（final_reminder）— 依各團 finalReminderDays
 //
 export async function POST(req: NextRequest) {
   return handle(req);
@@ -62,7 +56,7 @@ async function handle(req: NextRequest) {
   );
   const startedAt = new Date();
 
-  // ── 3. LINE client (dry-run if not configured) ──────────────
+  // ── 3. LINE 未設定 → dry-run ─────────────────────────────────
   if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
     return NextResponse.json({
       ok: true,
@@ -74,9 +68,17 @@ async function handle(req: NextRequest) {
     });
   }
 
-  const client = getLineClient();
   const sent: Array<{ type: string; userId: string; bookingId: string }> = [];
-  const errors: Array<{ type: string; bookingId: string; error: string }> = [];
+
+  // 去重 helper：同一 booking + type 任一通道發過就跳過（相容舊 channel=line/email 紀錄）
+  async function alreadySent(bookingId: string, type: string): Promise<boolean> {
+    const dup = await prisma.reminderLog.findFirst({ where: { bookingId, type } });
+    return !!dup;
+  }
+  async function markSent(bookingId: string, type: string): Promise<void> {
+    // channel 用 enum 預設值（line）；去重查詢不分 channel，僅作「此 booking+type 已發」標記
+    await prisma.reminderLog.create({ data: { bookingId, type } });
+  }
 
   // ── 4. 計算明日 00:00 與 24:00 ───────────────────────────────
   const tomorrow = new Date();
@@ -84,7 +86,7 @@ async function handle(req: NextRequest) {
   tomorrow.setHours(0, 0, 0, 0);
   const dayAfter = new Date(tomorrow.getTime() + 86400000);
 
-  // ── 5. D-1 日潛行前提醒 ─────────────────────────────────────
+  // ── 5. D-1 日潛行前提醒（d1_reminder）───────────────────────
   const dailyTrips = await prisma.divingTrip.findMany({
     where: {
       date: { gte: tomorrow, lt: dayAfter },
@@ -93,107 +95,40 @@ async function handle(req: NextRequest) {
   });
   for (const trip of dailyTrips) {
     const bookings = await prisma.booking.findMany({
-      where: {
-        refId: trip.id,
-        type: "daily",
-        status: "confirmed",
-      },
-      include: { user: true },
+      where: { refId: trip.id, type: "daily", status: "confirmed" },
     });
+    const sites = trip.diveSiteIds.length
+      ? await prisma.diveSite.findMany({
+          where: { id: { in: trip.diveSiteIds } },
+          select: { name: true },
+        })
+      : [];
+    const siteName =
+      sites.map((s) => s.name).join("、") || process.env.APP_DEFAULT_REGION || "東北角";
+    const dateStr = trip.date.toISOString().slice(0, 10);
+    const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+
     for (const b of bookings) {
-      const dateStr = trip.date.toISOString().slice(0, 10);
-      const siteName = process.env.APP_DEFAULT_REGION ?? "";
-
-      // ── LINE 通道 ────────────────────────
-      // 每個 channel 自己用 reminderLog dedupe，所以兩通道可獨立送
-      const dupLine = await prisma.reminderLog.findFirst({
-        where: { bookingId: b.id, type: "d1_reminder", channel: "line" },
+      if (await alreadySent(b.id, "d1_reminder")) continue;
+      notifyCustomer({
+        userId: b.userId,
+        templateKey: "d1_reminder",
+        params: {
+          date: dateStr,
+          time: trip.startTime,
+          site: siteName,
+          gather: [trip.meetingPoint, trip.startTime].filter(Boolean).join(" ") || `集合時間：${trip.startTime}`,
+          liffUrl,
+        },
       });
-      if (!dupLine && b.user.notifyByLine) {
-        try {
-          const msg = buildFlexByKey(
-            "d1_reminder",
-            {
-              date: dateStr,
-              time: trip.startTime,
-              site: siteName,
-              weather: "晴",
-              wave: "1m",
-              water: "24°C",
-              vis: "8-12m",
-              gather: "集合時間：" + trip.startTime,
-            },
-            `明日 ${trip.startTime} 行前提醒`,
-          );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await client.pushMessage({ to: b.userId, messages: [msg as any] });
-          await prisma.reminderLog.create({
-            data: { bookingId: b.id, type: "d1_reminder", channel: "line" },
-          });
-          sent.push({ type: "d1_reminder", userId: b.userId, bookingId: b.id });
-        } catch (e) {
-          const errMsg = e instanceof Error ? e.message : String(e);
-          await prisma.reminderLog.create({
-            data: {
-              bookingId: b.id,
-              type: "d1_reminder",
-              channel: "line",
-              error: errMsg,
-            },
-          });
-          errors.push({ type: "d1_reminder", bookingId: b.id, error: errMsg });
-        }
-      }
-
-      // ── Email 通道 ────────────────────────
-      if (b.user.notifyByEmail && b.user.email) {
-        const dupEmail = await prisma.reminderLog.findFirst({
-          where: {
-            bookingId: b.id,
-            type: "d1_reminder",
-            channel: "email",
-          },
-        });
-        if (!dupEmail) {
-          const tpl = tripGuideEmail({
-            name: b.user.realName ?? b.user.displayName,
-            date: dateStr,
-            time: trip.startTime,
-            site: siteName,
-            // 同時帶 description + URL，讓 template 自由組合（向下相容舊資料）
-            meetingPoint: [trip.meetingPoint, trip.meetingPointUrl].filter(Boolean).join(" "),
-            notes: trip.notes,
-            daysLeft: 1,
-          });
-          const r = await sendEmail({
-            to: b.user.email,
-            subject: tpl.subject,
-            text: tpl.text,
-            html: tpl.html,
-          });
-          await prisma.reminderLog.create({
-            data: {
-              bookingId: b.id,
-              type: "d1_reminder",
-              channel: "email",
-              error: r.ok ? null : r.error ?? r.reason ?? null,
-            },
-          });
-          if (r.ok) {
-            sent.push({
-              type: "d1_reminder_email",
-              userId: b.userId,
-              bookingId: b.id,
-            });
-          }
-        }
-      }
+      await markSent(b.id, "d1_reminder");
+      sent.push({ type: "d1_reminder", userId: b.userId, bookingId: b.id });
     }
   }
 
-  // ── 5b. v348/A：潛水團「訂金催繳」 ──────────────────────────────
+  // ── 5b. 潛水團「訂金催繳」（deposit_notice）──────────────────
   // 規則：每位客人下訂後 depositDueDays(預設7) 天內繳訂金；
-  //       於「截止前 2 天」(＝下訂後第5天) 催繳一次（ReminderLog 去重，僅一次）
+  //       於「截止前 2 天」(＝下訂後第5天) 催繳一次
   {
     const DEPOSIT_REMIND_BEFORE = 2;
     const dStart = new Date();
@@ -214,7 +149,6 @@ async function handle(req: NextRequest) {
           ],
         },
       },
-      include: { user: true },
     });
     for (const b of pend) {
       const tour = await prisma.tourPackage.findUnique({ where: { id: b.refId } });
@@ -224,6 +158,7 @@ async function handle(req: NextRequest) {
       remindDay.setHours(0, 0, 0, 0);
       remindDay.setDate(remindDay.getDate() + Math.max(1, dueDays - DEPOSIT_REMIND_BEFORE));
       if (!(remindDay >= dStart && remindDay < dEnd)) continue;
+      if (await alreadySent(b.id, "deposit_reminder")) continue;
 
       const depositAmt = b.depositAmount > 0 ? b.depositAmount : tour.deposit;
       const dueDate = new Date(b.createdAt);
@@ -235,73 +170,26 @@ async function handle(req: NextRequest) {
             : `${process.env.NEXT_PUBLIC_BASE_URL}/liff/payment/${b.id}?type=deposit`)
         : "https://line.me/";
 
-      // LINE
-      if (b.user.notifyByLine) {
-        const dup = await prisma.reminderLog.findFirst({
-          where: { bookingId: b.id, type: "deposit_reminder", channel: "line" },
-        });
-        if (!dup) {
-          try {
-            const msg = buildFlexByKey(
-              "deposit_notice",
-              {
-                tourTitle: tour.title,
-                deposit: depositAmt,
-                deadline: deadlineStr,
-                bankName: process.env.BANK_NAME ?? "—",
-                holder: process.env.BANK_HOLDER ?? "—",
-                bankAccount: process.env.BANK_ACCOUNT ?? "—",
-                refCode: b.code ?? "",
-                url: payUrl,
-              },
-              `${tour.title} 訂金催繳`,
-            );
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await client.pushMessage({ to: b.userId, messages: [msg as any] });
-            await prisma.reminderLog.create({
-              data: { bookingId: b.id, type: "deposit_reminder", channel: "line" },
-            });
-            sent.push({ type: "deposit_reminder", userId: b.userId, bookingId: b.id });
-          } catch (e) {
-            const em = e instanceof Error ? e.message : String(e);
-            await prisma.reminderLog.create({
-              data: { bookingId: b.id, type: "deposit_reminder", channel: "line", error: em },
-            });
-            errors.push({ type: "deposit_reminder", bookingId: b.id, error: em });
-          }
-        }
-      }
-      // Email
-      if (b.user.notifyByEmail && b.user.email) {
-        const dup = await prisma.reminderLog.findFirst({
-          where: { bookingId: b.id, type: "deposit_reminder", channel: "email" },
-        });
-        if (!dup) {
-          const tpl = depositReminderEmail({
-            name: b.user.realName ?? b.user.displayName,
-            tourTitle: tour.title,
-            deposit: depositAmt,
-            deadline: deadlineStr,
-            bankAccount: process.env.BANK_ACCOUNT ?? "—",
-            bookingUrl: payUrl,
-          });
-          const r = await sendEmail({ to: b.user.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
-          await prisma.reminderLog.create({
-            data: {
-              bookingId: b.id,
-              type: "deposit_reminder",
-              channel: "email",
-              error: r.ok ? null : r.error ?? r.reason ?? null,
-            },
-          });
-          if (r.ok) sent.push({ type: "deposit_reminder_email", userId: b.userId, bookingId: b.id });
-        }
-      }
+      notifyCustomer({
+        userId: b.userId,
+        templateKey: "deposit_notice",
+        params: {
+          tourTitle: tour.title,
+          deposit: depositAmt,
+          deadline: deadlineStr,
+          bankName: process.env.BANK_NAME ?? "—",
+          holder: process.env.BANK_HOLDER ?? "—",
+          bankAccount: process.env.BANK_ACCOUNT ?? "—",
+          refCode: b.code ?? "",
+          url: payUrl,
+        },
+      });
+      await markSent(b.id, "deposit_reminder");
+      sent.push({ type: "deposit_reminder", userId: b.userId, bookingId: b.id });
     }
   }
 
-  // ── 6a. v348/A：潛水團「尾款預告」（尾款截止前3天 ＝ 出發前33天） ──────
-  // 既有的「6. 尾款提醒」保留作為截止當天(出發前30天)那段；此段為提前 3 天的預告
+  // ── 6a. 潛水團「尾款預告」（出發前 33 天）────────────────────
   {
     const FINAL_EARLY_OFFSET = 33;
     const dStart = new Date();
@@ -317,11 +205,11 @@ async function handle(req: NextRequest) {
     for (const tour of earlyTours) {
       const bookings = await prisma.booking.findMany({
         where: { refId: tour.id, type: "tour", status: "confirmed", paymentStatus: "deposit_paid" },
-        include: { user: true },
       });
       for (const b of bookings) {
         const remaining = b.totalAmount - b.paidAmount;
         if (remaining <= 0) continue;
+        if (await alreadySent(b.id, "final_reminder_early")) continue;
         const payUrl = process.env.NEXT_PUBLIC_BASE_URL
           ? (b.payLinkToken
               ? `${process.env.NEXT_PUBLIC_BASE_URL}/pay/${b.id}?t=${b.payLinkToken}`
@@ -331,73 +219,25 @@ async function handle(req: NextRequest) {
           ? tour.finalDeadline.toISOString().slice(0, 10)
           : (() => { const d = new Date(tour.dateStart); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); })();
 
-        // LINE
-        if (b.user.notifyByLine) {
-          const dup = await prisma.reminderLog.findFirst({
-            where: { bookingId: b.id, type: "final_reminder_early", channel: "line" },
-          });
-          if (!dup) {
-            try {
-              const msg = buildFlexByKey(
-                "final_reminder",
-                {
-                  tourTitle: tour.title,
-                  remaining,
-                  deadline,
-                  daysLeft: 3,
-                  bankAccount: process.env.BANK_ACCOUNT ?? "—",
-                  url: payUrl,
-                },
-                `${tour.title} 尾款預告`,
-              );
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await client.pushMessage({ to: b.userId, messages: [msg as any] });
-              await prisma.reminderLog.create({
-                data: { bookingId: b.id, type: "final_reminder_early", channel: "line" },
-              });
-              sent.push({ type: "final_reminder_early", userId: b.userId, bookingId: b.id });
-            } catch (e) {
-              const em = e instanceof Error ? e.message : String(e);
-              await prisma.reminderLog.create({
-                data: { bookingId: b.id, type: "final_reminder_early", channel: "line", error: em },
-              });
-              errors.push({ type: "final_reminder_early", bookingId: b.id, error: em });
-            }
-          }
-        }
-        // Email
-        if (b.user.notifyByEmail && b.user.email) {
-          const dup = await prisma.reminderLog.findFirst({
-            where: { bookingId: b.id, type: "final_reminder_early", channel: "email" },
-          });
-          if (!dup) {
-            const tpl = finalReminderEmail({
-              name: b.user.realName ?? b.user.displayName,
-              tourTitle: tour.title,
-              remaining,
-              deadline,
-              daysLeft: 3,
-              bankAccount: process.env.BANK_ACCOUNT ?? "—",
-              bookingUrl: payUrl,
-            });
-            const r = await sendEmail({ to: b.user.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
-            await prisma.reminderLog.create({
-              data: {
-                bookingId: b.id,
-                type: "final_reminder_early",
-                channel: "email",
-                error: r.ok ? null : r.error ?? r.reason ?? null,
-              },
-            });
-            if (r.ok) sent.push({ type: "final_reminder_early_email", userId: b.userId, bookingId: b.id });
-          }
-        }
+        notifyCustomer({
+          userId: b.userId,
+          templateKey: "final_reminder",
+          params: {
+            tourTitle: tour.title,
+            remaining,
+            deadline,
+            daysLeft: 3,
+            bankAccount: process.env.BANK_ACCOUNT ?? "—",
+            url: payUrl,
+          },
+        });
+        await markSent(b.id, "final_reminder_early");
+        sent.push({ type: "final_reminder_early", userId: b.userId, bookingId: b.id });
       }
     }
   }
 
-  // ── 6. 潛水團尾款提醒（依各團 finalReminderDays 動態決定 D-N） ─────
-  // 把所有未過期的潛水團拿出來，根據 finalReminderDays 計算它應該在「今天」推
+  // ── 6. 潛水團尾款提醒（依各團 finalReminderDays 動態決定 D-N）─
   const allTours = await prisma.tourPackage.findMany({
     where: { dateStart: { gte: tomorrow } },
   });
@@ -419,11 +259,11 @@ async function handle(req: NextRequest) {
         status: "confirmed",
         paymentStatus: "deposit_paid",
       },
-      include: { user: true },
     });
     for (const b of bookings) {
       const remaining = b.totalAmount - b.paidAmount;
       if (remaining <= 0) continue;
+      if (await alreadySent(b.id, "final_reminder")) continue;
       // v296：優先用公開付款連結（無需 LINE 登入）
       const bookingUrl = process.env.NEXT_PUBLIC_BASE_URL
         ? (b.payLinkToken
@@ -435,102 +275,20 @@ async function handle(req: NextRequest) {
         ? tour.finalDeadline.toISOString().slice(0, 10)
         : "—";
 
-      // ── LINE 通道 ────────────────────────
-      if (b.user.notifyByLine) {
-        const dupLine = await prisma.reminderLog.findFirst({
-          where: { bookingId: b.id, type: "final_reminder", channel: "line" },
-        });
-        if (!dupLine) {
-          try {
-            const msg = buildFlexByKey(
-              "final_reminder",
-              {
-                tourTitle: tour.title,
-                remaining,
-                deadline,
-                daysLeft,
-                bankAccount: process.env.BANK_ACCOUNT ?? "—",
-                url: bookingUrl,
-              },
-              `${tour.title} 尾款提醒`,
-            );
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await client.pushMessage({ to: b.userId, messages: [msg as any] });
-            await prisma.reminderLog.create({
-              data: {
-                bookingId: b.id,
-                type: "final_reminder",
-                channel: "line",
-              },
-            });
-            sent.push({
-              type: "final_reminder",
-              userId: b.userId,
-              bookingId: b.id,
-            });
-          } catch (e) {
-            const errMsg = e instanceof Error ? e.message : String(e);
-            await prisma.reminderLog.create({
-              data: {
-                bookingId: b.id,
-                type: "final_reminder",
-                channel: "line",
-                error: errMsg,
-              },
-            });
-            errors.push({
-              type: "final_reminder",
-              bookingId: b.id,
-              error: errMsg,
-            });
-          }
-        }
-      }
-
-      // ── Email 通道 ────────────────────────
-      if (b.user.notifyByEmail && b.user.email) {
-        const dupEmail = await prisma.reminderLog.findFirst({
-          where: {
-            bookingId: b.id,
-            type: "final_reminder",
-            channel: "email",
-          },
-        });
-        if (!dupEmail) {
-          const tpl = finalReminderEmail({
-            name: b.user.realName ?? b.user.displayName,
-            tourTitle: tour.title,
-            remaining,
-            deadline: tour.finalDeadline
-              ? tour.finalDeadline.toISOString().slice(0, 10)
-              : null,
-            daysLeft,
-            bankAccount: process.env.BANK_ACCOUNT ?? "—",
-            bookingUrl,
-          });
-          const r = await sendEmail({
-            to: b.user.email,
-            subject: tpl.subject,
-            text: tpl.text,
-            html: tpl.html,
-          });
-          await prisma.reminderLog.create({
-            data: {
-              bookingId: b.id,
-              type: "final_reminder",
-              channel: "email",
-              error: r.ok ? null : r.error ?? r.reason ?? null,
-            },
-          });
-          if (r.ok) {
-            sent.push({
-              type: "final_reminder_email",
-              userId: b.userId,
-              bookingId: b.id,
-            });
-          }
-        }
-      }
+      notifyCustomer({
+        userId: b.userId,
+        templateKey: "final_reminder",
+        params: {
+          tourTitle: tour.title,
+          remaining,
+          deadline,
+          daysLeft,
+          bankAccount: process.env.BANK_ACCOUNT ?? "—",
+          url: bookingUrl,
+        },
+      });
+      await markSent(b.id, "final_reminder");
+      sent.push({ type: "final_reminder", userId: b.userId, bookingId: b.id });
     }
   }
 
@@ -538,8 +296,8 @@ async function handle(req: NextRequest) {
     ok: true,
     pollWindowMinutes,
     sent,
-    errors,
-    counts: { sent: sent.length, errors: errors.length },
+    counts: { sent: sent.length },
+    note: "各通道發送結果見 MessageLog（後台發送紀錄）",
     tookMs: Date.now() - startedAt.getTime(),
   });
 }

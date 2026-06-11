@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { prisma } from "@/lib/prisma";
-import { buildFlexByKey, type FlexTemplateKey } from "@/lib/flex";
+import { buildFlexByKeyAsync, type FlexTemplateKey } from "@/lib/flex";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { broadcastEmail } from "@/lib/email/templates";
 import { logAudit } from "@/lib/audit";
@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
     if (data.template === "text") {
       messages = [{ type: "text" as const, text: data.text ?? data.altText }];
     } else {
-      const flex = buildFlexByKey(
+      // v480：改 async 版 — 套後台 override（標題/說明/按鈕/通知列文字）
+      const flex = await buildFlexByKeyAsync(
         data.template as FlexTemplateKey,
         data.params as Record<string, unknown>,
         data.altText,

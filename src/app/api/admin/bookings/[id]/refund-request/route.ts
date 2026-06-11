@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
-import { getLineClient } from "@/lib/line";
-import { buildFlexByKeyAsync } from "@/lib/flex";
-import { sendEmail } from "@/lib/email/send";
+import { notifyCustomer } from "@/lib/notify-template";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
@@ -94,60 +92,19 @@ export async function POST(
   const liffBase = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
   const refundUrl = `${liffBase}/refund/${rr.id}`;
 
-  // 推 LINE Flex
-  if (booking.user.notifyByLine ?? true) {
-    void (async () => {
-      try {
-        const lineClient = getLineClient();
-        if (!lineClient) return;
-        const flex = await buildFlexByKeyAsync(
-          "refund_request",
-          {
-            bookingTitle,
-            amount: data.amount,
-            method: data.method,
-            creditBonus: data.creditBonusPct ?? 0,
-            reason: data.reason ?? "",
-            liffUrl: refundUrl,
-          },
-          `退款申請 NT$${data.amount} 待您確認`,
-        );
-        await lineClient.pushMessage({ to: booking.userId, messages: [flex] });
-      } catch (e) {
-        console.error("[refund-request LINE]", e);
-      }
-    })();
-  }
-
-  // 推 Email
-  if ((booking.user.notifyByEmail ?? true) && booking.user.email) {
-    void (async () => {
-      try {
-        const methodLabel = data.method === "credit"
-          ? `🎁 抵用金 NT$ ${data.amount}${(data.creditBonusPct ?? 0) > 0 ? `（額外 +${data.creditBonusPct}% 加成）` : ""}`
-          : `💵 現金退費 NT$ ${data.amount}`;
-        const text = `Hi ${booking.user.realName ?? booking.user.displayName}，
-
-您有一筆退款申請待確認：
-
-  訂單：${bookingTitle}
-  退款方式：${methodLabel}
-  退款金額：NT$ ${data.amount}
-${data.reason ? `  原因：${data.reason}\n` : ""}
-請至 LINE 預約 App 點擊「查看詳情並確認」回應。
-或直接開啟：${refundUrl}
-
-— 海王子潛水`;
-        await sendEmail({
-          to: booking.user.email!,
-          subject: `退款申請待您確認 NT$${data.amount} — 海王子潛水`,
-          text,
-        });
-      } catch (e) {
-        console.error("[refund-request Email]", e);
-      }
-    })();
-  }
+  // v480：改走 notifyCustomer — LINE/Email/站內 全由模板組稿（後台填什麼發什麼）+ 記入發送紀錄
+  notifyCustomer({
+    userId: booking.userId,
+    templateKey: "refund_request",
+    params: {
+      bookingTitle,
+      amount: data.amount,
+      method: data.method,
+      creditBonus: data.creditBonusPct ?? 0,
+      reason: data.reason ?? "",
+      liffUrl: refundUrl,
+    },
+  });
 
   await logAudit({
     actorId: auth.user.lineUserId,

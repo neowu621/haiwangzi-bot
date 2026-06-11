@@ -184,14 +184,12 @@ export async function DELETE(
           if (t) bookingTitle = t.title;
         }
         const { notifyCustomer } = await import("@/lib/notify-template");
-        const { bookingCancelEmail } = await import("@/lib/email/templates");
         const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+        // v480：LINE/Email/站內 內容全由模板組稿（後台填什麼發什麼）
         notifyCustomer({
           userId: booking.userId,
           templateKey: "booking_cancel",
           params: { bookingTitle, reason: "", liffUrl },
-          altText: "預約已取消",
-          email: (name) => bookingCancelEmail({ name, bookingTitle, reason: "", liffUrl }),
         });
       } catch (e) {
         console.error("[booking cancel notify]", e);

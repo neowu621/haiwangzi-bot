@@ -1,13 +1,13 @@
-import { COLORS, asString, flex, type TemplateOverride } from "./_common";
+import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 行前手冊 (潛水團 D-1)
 // params: { tourTitle, gather, transport, hotel, leader, phone }
+// v480：接上後台 override（title / bodyText）— fallback 與 /admin/templates 顯示的預設一致
 export function tripGuide(
   params: Record<string, unknown>,
   altText: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _override?: TemplateOverride,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -17,7 +17,7 @@ export function tripGuide(
       backgroundColor: COLORS.oceanDeep,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "🧳 行前手冊", color: COLORS.phosphor, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "📘 行前手冊"), color: COLORS.phosphor, weight: "bold", size: "md" },
         { type: "text", text: asString(params.tourTitle), color: "#ffffff", size: "lg", weight: "bold", margin: "xs", wrap: true },
       ],
     },
@@ -27,6 +27,7 @@ export function tripGuide(
       spacing: "sm",
       paddingAll: "16px",
       contents: [
+        { type: "text", text: ovr(override, "bodyText", "請攜帶證照、防寒衣、防曬等"), color: COLORS.mute, size: "sm", wrap: true },
         kv("集合", asString(params.gather)),
         kv("交通", asString(params.transport)),
         kv("住宿", asString(params.hotel)),

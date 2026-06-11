@@ -1,13 +1,13 @@
-import { COLORS, asString, asNumber, flex, type TemplateOverride } from "./_common";
+import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 // 訂金確認
 // params: { tourTitle, paid, remaining, finalDeadline }
+// v480：接上後台 override（title / subtitle）— fallback 與 /admin/templates 顯示的預設一致
 export function depositConfirm(
   params: Record<string, unknown>,
   altText: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _override?: TemplateOverride,
+  override?: TemplateOverride,
 ): FlexMessage {
   return flex(altText, {
     type: "bubble",
@@ -17,7 +17,7 @@ export function depositConfirm(
       backgroundColor: COLORS.phosphor,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "✓ 訂金已確認", color: COLORS.oceanDeep, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "✅ 訂金已收到"), color: COLORS.oceanDeep, weight: "bold", size: "md" },
         { type: "text", text: asString(params.tourTitle), color: COLORS.oceanDeep, size: "lg", weight: "bold", margin: "xs", wrap: true },
       ],
     },
@@ -27,7 +27,7 @@ export function depositConfirm(
       spacing: "sm",
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "您的位置已保留 🎉", weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "subtitle", "謝謝您的繳費，位置已保留 🎉"), weight: "bold", size: "md", wrap: true },
         { type: "separator", margin: "md" },
         kv("已繳訂金", `NT$ ${asNumber(params.paid).toLocaleString()}`),
         kv("尾款餘額", `NT$ ${asNumber(params.remaining).toLocaleString()}`),

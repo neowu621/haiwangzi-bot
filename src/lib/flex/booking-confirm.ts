@@ -16,8 +16,8 @@ export function bookingConfirm(
       backgroundColor: COLORS.oceanDeep,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: ovr(override, "title", "✓ 預約成功"), color: COLORS.phosphor, weight: "bold", size: "md" },
-        { type: "text", text: ovr(override, "subtitle", "海王子潛水團"), color: "#ffffff", weight: "bold", size: "xl", margin: "sm" },
+        { type: "text", text: ovr(override, "title", "✅ 預約成功"), color: COLORS.phosphor, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "subtitle", "您的日潛預約已確認"), color: "#ffffff", weight: "bold", size: "xl", margin: "sm", wrap: true },
       ],
     },
     body: {
@@ -32,7 +32,6 @@ export function bookingConfirm(
         kv("時間", asString(params.time)),
         kv("潛點", asString(params.site)),
         kv("金額", `NT$ ${asNumber(params.total).toLocaleString()}`),
-        { type: "text", text: "（當日現場收費）", size: "xs", color: COLORS.mute, margin: "md" },
       ],
     },
     footer: {
