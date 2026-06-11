@@ -18,7 +18,7 @@ const TEXT_PATCHES: Array<[string, string]> = [
   ["message_templates", "subtitle"],
   ["message_templates", "body_text"],
   ["message_templates", "button_label"],
-  ["message_templates", "button_url"],
+  ["message_templates", "alt_text"],
   ["site_config", "hero_title"],
   ["site_config", "hero_subtitle"],
   ["site_config", "safety_policy"],
