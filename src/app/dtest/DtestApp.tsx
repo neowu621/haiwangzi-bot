@@ -168,12 +168,16 @@ export function DtestApp() {
     reloadMe();
   }, [reloadMe]);
 
+  // 未登入 → 獨立全螢幕登入頁（海洋漸層 + Email 使用說明 + 同意條款）
+  if (authState === "out") {
+    return <LoginScreen error={loginError} />;
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: C.pearl, color: C.ink, fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" }}>
       <TopBar member={member} authState={authState} view={view} setView={setView} />
       <main style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 20px 64px" }}>
         {authState === "loading" && <Loading />}
-        {authState === "out" && <LoginGate error={loginError} />}
         {authState === "in" && member && (
           <>
             {!member.emailVerifiedAt && <EmailVerifyBanner member={member} onSent={reloadMe} />}
@@ -263,8 +267,9 @@ function Loading() {
   );
 }
 
-// ─── 登入閘 ────────────────────────────────────────────────────────
-function LoginGate({ error }: { error: string | null }) {
+// ─── 登入頁（全螢幕海洋漸層 + Email 使用說明 + 同意條款）──────────────
+function LoginScreen({ error }: { error: string | null }) {
+  const [agreed, setAgreed] = useState(false);
   const errMsg: Record<string, string> = {
     line_login_not_configured: "LINE 登入尚未設定完成（請聯絡管理員）",
     state_mismatch: "登入逾時或來源不符，請重新登入",
@@ -272,29 +277,118 @@ function LoginGate({ error }: { error: string | null }) {
     id_token_invalid: "LINE 身分驗證失敗，請重試",
     access_denied: "你取消了授權",
   };
+  const LOGIN_URL = "/api/auth/line/login?next=/dtest";
+
+  const emailUses = [
+    "寄送課程預約確認與報名結果通知",
+    "開課提醒、課程時間異動或取消通知",
+    "潛點活動、揪團出團等重要資訊通知",
+    "會員帳號安全與重要服務通知",
+  ];
+
   return (
-    <div style={{ maxWidth: 520, margin: "40px auto", background: "#fff", borderRadius: 18, border: `1px solid ${C.line}`, padding: "40px 34px", textAlign: "center", boxShadow: "0 10px 40px rgba(10,35,66,.07)" }}>
-      <div style={{ fontSize: 44 }}>🤿</div>
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: C.deep, margin: "12px 0 6px" }}>會員預約</h1>
-      <p style={{ fontSize: 14, color: C.mute, lineHeight: 1.7, marginBottom: 24 }}>
-        用 LINE 登入即可線上預約日潛場次與潛旅行程。<br />
-        與手機 LINE App 是<b style={{ color: C.deep }}>同一個會員帳號</b>，訂單、抵用金通用。
-      </p>
-      {error && (
-        <div style={{ background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 18 }}>
-          {errMsg[error] ?? `登入失敗：${error}`}
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "32px 18px",
+      background: `radial-gradient(120% 90% at 28% 18%, #1d5a6b 0%, #103a4d 42%, #0a2733 100%)`,
+      fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif",
+    }}>
+      <div style={{ width: "100%", maxWidth: 620, background: "#fff", borderRadius: 26, padding: "clamp(28px,5vw,46px)", boxShadow: "0 30px 80px rgba(0,0,0,.35)" }}>
+        {/* 品牌 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 26 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 15, background: `linear-gradient(150deg,${C.phosphor},${C.surface})`, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 6px 16px rgba(10,35,66,.18)" }}>
+            <TridentIcon />
+          </div>
+          <div>
+            <div style={{ fontSize: 21, fontWeight: 800, color: C.deep, lineHeight: 1.2 }}>東北角海王子潛水</div>
+            <div style={{ fontSize: 11.5, letterSpacing: 3, color: "#0a8f86", fontWeight: 700, marginTop: 2 }}>SEA PRINCE DIVING</div>
+          </div>
         </div>
-      )}
-      <a
-        href="/api/auth/line/login?next=/dtest"
-        style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#06C755", color: "#fff", fontWeight: 800, fontSize: 16, padding: "14px 30px", borderRadius: 12, textDecoration: "none" }}
-      >
-        <span style={{ fontSize: 20 }}>💬</span> 使用 LINE 登入
-      </a>
-      <p style={{ fontSize: 11.5, color: "#9aabae", marginTop: 20 }}>
-        登入即表示同意我們的服務條款與隱私權政策
-      </p>
+
+        <h1 style={{ fontSize: 27, fontWeight: 800, color: C.deep, margin: "0 0 10px" }}>加入海王子會員</h1>
+        <p style={{ fontSize: 14.5, color: C.mute, lineHeight: 1.75, margin: "0 0 22px" }}>
+          使用 LINE 帳號完成註冊，即可預約課程、查詢報名狀態，並接收開課與潛點活動通知。
+        </p>
+
+        {error && (
+          <div style={{ background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 11, padding: "11px 15px", fontSize: 13.5, marginBottom: 18 }}>
+            {errMsg[error] ?? `登入失敗：${error}`}
+          </div>
+        )}
+
+        {/* Email 使用說明卡 */}
+        <div style={{ border: `1px solid #cfe6e3`, borderLeft: `4px solid ${C.phosphor}`, background: "#f5fbfa", borderRadius: 14, padding: "18px 20px", marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800, color: "#0a6b63", marginBottom: 10 }}>
+            <span>✉️</span> 關於電子郵件地址的使用
+          </div>
+          <p style={{ fontSize: 13.5, color: "#3d5560", lineHeight: 1.7, margin: "0 0 12px" }}>
+            為提供完整的會員與課程服務，我們會在您註冊時，向您取得電子郵件地址，用途包括：
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 }}>
+            {emailUses.map((u) => (
+              <div key={u} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: C.ink }}>
+                <span style={{ width: 20, height: 20, borderRadius: "50%", background: C.phosphor, color: "#fff", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 900, flex: "none" }}>✓</span>
+                {u}
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: "1px dashed #bcd9d4", paddingTop: 12 }}>
+            <p style={{ fontSize: 12.5, color: "#7c9296", lineHeight: 1.7, margin: 0 }}>
+              我們僅將電子郵件用於上述用途，不會提供給第三方，亦不會用於未經您同意的行銷訊息。您可隨時於會員設定中調整通知偏好。
+            </p>
+          </div>
+        </div>
+
+        {/* 同意條款 */}
+        <label style={{ display: "flex", gap: 11, alignItems: "flex-start", fontSize: 13.5, color: C.ink, lineHeight: 1.7, cursor: "pointer", marginBottom: 18 }}>
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ width: 18, height: 18, marginTop: 2, accentColor: C.phosphor, flex: "none" }} />
+          <span>
+            我已閱讀並同意海王子潛水的
+            <a href="/privacy" target="_blank" rel="noopener" style={{ color: "#0a8f86", fontWeight: 700 }}>《隱私權政策》</a>
+            與
+            <a href="/terms" target="_blank" rel="noopener" style={{ color: "#0a8f86", fontWeight: 700 }}>《服務條款》</a>
+            ，並同意提供電子郵件地址作為前述會員服務之用。
+          </span>
+        </label>
+
+        {/* LINE 註冊／登入按鈕（需先勾選同意） */}
+        <a
+          href={agreed ? LOGIN_URL : undefined}
+          onClick={(e) => { if (!agreed) e.preventDefault(); }}
+          aria-disabled={!agreed}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 11,
+            background: agreed ? "linear-gradient(180deg,#07d160,#06b54e)" : "#cdd9d9",
+            color: "#fff", fontWeight: 800, fontSize: 17, padding: "16px", borderRadius: 14,
+            textDecoration: "none", cursor: agreed ? "pointer" : "not-allowed",
+            boxShadow: agreed ? "0 10px 24px rgba(6,199,85,.32)" : "none", transition: "all .2s",
+          }}
+        >
+          <LineGlyph /> 使用 LINE 帳號註冊／登入
+        </a>
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: C.mute }}>
+          已經是會員了？<a href={LOGIN_URL} style={{ color: C.deep, fontWeight: 800 }}>直接登入</a>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function TridentIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3v18" />
+      <path d="M6 7c0 3 2.5 4 6 4s6-1 6-4" />
+      <path d="M6 7V4M18 7V4M12 5V3" />
+      <path d="M9.5 19.5h5" />
+    </svg>
+  );
+}
+function LineGlyph() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden>
+      <path d="M12 2C6.48 2 2 5.69 2 10.23c0 4.07 3.56 7.48 8.37 8.12.33.07.77.22.88.5.1.26.07.66.03.92l-.14.85c-.04.26-.2.99.87.54s5.77-3.4 7.87-5.82C21.2 13.7 22 12.04 22 10.23 22 5.69 17.52 2 12 2z" />
+    </svg>
   );
 }
 

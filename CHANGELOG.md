@@ -2,6 +2,12 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260611_482 — 2026-06-11 (/dtest 登入頁改版 + 隱私權/服務條款)
+
+- **登入頁改版**：未登入走全螢幕海洋漸層的「加入海王子會員」頁 — 品牌 crest、Email 使用說明卡（4 用途 + 不外洩聲明）、同意條款 checkbox（勾選後才能按 LINE 註冊/登入）、「已經是會員了？直接登入」。
+- **新增 `/privacy`（隱私權政策）+ `/terms`（服務條款）**：品牌化標準範本（老闆可再修文字），登入頁條款連結指向這兩頁。
+- 驗證：未勾選同意 → LINE 按鈕停用無連結；勾選後啟用導向 OAuth；兩法律頁皆 200。
+
 ## 20260611_481 — 2026-06-11 (瀏覽器會員下單 /dtest — 真 LINE Login web OAuth)
 
 - **架構**：瀏覽器（桌面）會員登入走 LINE Login web OAuth，與手機 LIFF 同一 Provider → 同一個 lineUserId = 同一會員。驗證後簽會員 web JWT 放 httpOnly cookie（30 天）。
