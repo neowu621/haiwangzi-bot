@@ -210,7 +210,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
               className="block w-full rounded-xl border border-[var(--border)] py-3 text-center text-sm font-bold text-[var(--muted-foreground)]"
               style={{ background: "var(--background)" }}
             >
-              關閉
+              關閉通知
             </button>
           )}
         </div>

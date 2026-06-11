@@ -315,6 +315,13 @@ export default function AdminTemplatesPage() {
               {navGroups.map((g) => (
                 <div key={g.group}>
                   <div style={navGroupStyle}>{g.group}</div>
+                  {/* v474：付款流程歸屬說明 — 訂金/尾款只用於旅遊潛水；一日潛水一次付清 */}
+                  {g.group.includes("收款") && (
+                    <div style={{ fontSize: 10.5, color: "#8a9aa0", lineHeight: 1.5, padding: "0 4px 6px" }}>
+                      💡 <b style={{ color: "#0e7c8a" }}>旅遊潛水</b>：訂金 → 訂金確認 → 尾款（兩段式）<br />
+                      🤿 <b style={{ color: "#0e7c8a" }}>一日潛水</b>：一次付清，只用「預約確認」，不走訂金/尾款
+                    </div>
+                  )}
                   {g.items.map(({ idx, t, step }) => {
                     const active = idx === curIdx;
                     const off = !(t.lineEnabled || t.emailEnabled || t.inAppEnabled);

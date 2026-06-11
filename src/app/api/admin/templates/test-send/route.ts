@@ -5,6 +5,7 @@ import { authFromRequest, requireRole } from "@/lib/auth";
 import { buildFlexByKeyAsync, FLEX_TEMPLATES, FLEX_TEMPLATE_LABELS, FLEX_TEMPLATE_META } from "@/lib/flex";
 import { getLineClient } from "@/lib/line";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
+import { logMessage } from "@/lib/message-log"; // v474：試送也記入發送紀錄
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,88 +15,34 @@ const BodySchema = z.object({
   channel: z.enum(["line", "email", "inApp"]).default("line"),
 });
 
+// v474：LIFF 深連結（動態從 env 讀）
+const LIFF_URL = (() => {
+  const id = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
+  return id ? `https://liff.line.me/${id}` : "https://liff.line.me";
+})();
+const APP_BASE = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz";
+
+// v474：全部 19 個模板都有完整真實樣本參數，讓 LINE / Email / 站內試送都呈現真實內容
 const SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
-  booking_confirm: {
-    name: "（測試）吳俊謀",
-    date: "2026-05-13",
-    time: "08:00",
-    site: "鶯歌石",
-    total: 2700,
-    url: "https://haiwangzi.xyz/liff/my",
-  },
-  d1_reminder: {
-    date: "2026-05-14",
-    time: "08:00",
-    site: "深奧",
-    weather: "晴",
-    wave: "1m",
-    water: "24°C",
-    vis: "8-12m",
-    gather: "深奧漁港停車場 07:30",
-  },
-  deposit_notice: {
-    tourTitle: "蘭嶼四天三夜潛旅 (中秋)",
-    deposit: 8000,
-    deadline: "2026-09-01",
-    bankAccount: "484540139251",
-    holder: "汪教練",
-    url: "https://haiwangzi.xyz/liff/my",
-  },
-  deposit_confirm: {
-    tourTitle: "蘭嶼四天三夜",
-    paid: 8000,
-    remaining: 9000,
-    finalDeadline: "2026-09-15",
-  },
-  final_reminder: {
-    tourTitle: "蘭嶼四天三夜",
-    remaining: 9000,
-    deadline: "2026-09-15",
-    daysLeft: 3,
-    bankAccount: "484540139251",
-    url: "https://haiwangzi.xyz/liff/my",
-  },
-  trip_guide: {
-    tourTitle: "蘭嶼四天三夜",
-    gather: "高雄港 07:00",
-    transport: "中興2號",
-    hotel: "蘭嶼背包客棧",
-    leader: "汪教練",
-    phone: "0988346634",
-  },
-  weather_cancel: {
-    date: "2026-05-13",
-    time: "08:00",
-    site: "鶯歌石",
-    reason: "（測試）今日北風 6 級",
-    options: "1. 改期 2. 全額退費",
-    url: "https://haiwangzi.xyz/liff/my",
-  },
-  admin_weekly: {
-    weekRange: "2026-05-06 ~ 2026-05-12",
-    bookings: 12,
-    revenue: 38000,
-    cancellations: 1,
-    completed: 8,
-    topSite: "鶯歌石",
-  },
-  overcap_alert: {
-    tripDate: "2026-05-13",
-    tripTime: "08:00",
-    site: "鶯歌石",
-    customerName: "（測試）王小明",
-    requestedCount: 2,
-    currentBooked: 8,
-    capacity: 8,
-    url: "https://haiwangzi.xyz/liff/coach/today",
-  },
-  welcome: {
-    // v233：動態從 env 讀，避免寫死舊 LIFF ID
-    liffUrl: (() => {
-      const id = process.env.LINE_LIFF_ID ?? process.env.NEXT_PUBLIC_LIFF_ID ?? "";
-      return id ? `https://liff.line.me/${id}` : "https://liff.line.me";
-    })(),
-  },
+  booking_confirm: { name: "王小明", date: "2026-06-14", time: "08:30", site: "龍洞灣 體驗潛水", total: 2400, url: `${APP_BASE}/liff/my` },
+  d1_reminder: { date: "2026-06-14", time: "08:30", site: "深澳", weather: "晴時多雲", wave: "0.5 m", water: "27°C", vis: "8-12 m", gather: "深澳漁港停車場 07:50" },
+  deposit_notice: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", deposit: 8000, deadline: "2026-09-01", bankName: "玉山銀行（808）", bankAccount: "0163-979-251023", holder: "汪○○", refCode: "HW-2409", url: `${APP_BASE}/liff/my` },
+  deposit_confirm: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", paid: 8000, remaining: 9000, finalDeadline: "2026-09-15" },
+  final_reminder: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", remaining: 9000, deadline: "2026-09-15", daysLeft: 3, bankAccount: "0163-979-251023", url: `${APP_BASE}/liff/my` },
+  trip_guide: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", gather: "後壁湖碼頭 07:00", transport: "藍鯨號客輪", hotel: "蘭嶼海景民宿", leader: "汪教練", phone: "0988-346-634" },
+  weather_cancel: { date: "2026-06-14", time: "08:30", site: "鶯歌石", reason: "今日東北風 6 級、浪高 1.8 m，海況不適合下水", options: "🅰️ 改期 🅱️ 全額退費 / 轉抵用金 +10%", url: `${APP_BASE}/liff/my` },
+  admin_weekly: { weekRange: "2026-06-02 ~ 06-08", revenue: 86400, bookings: 23, newMembers: 6, pending: 3 },
+  overcap_alert: { tripDate: "2026-06-14", tripTime: "08:30", site: "鶯歌石", customerName: "王小明", requestedCount: 2, currentBooked: 8, capacity: 8, url: `${APP_BASE}/liff/coach/today` },
+  welcome: { liffUrl: LIFF_URL },
+  attendance_confirmed: { bookingTitle: "6/14 龍洞灣 體驗潛水", addLogs: 2, totalLogs: 38, vipLevel: "LV2 小丑魚", liffUrl: LIFF_URL },
+  first_order_reward_grant: { amount: 100, balance: 100, expiresAt: "2027-06-14", bookingTitle: "6/14 龍洞灣 體驗潛水", liffUrl: LIFF_URL },
+  refund_request: { bookingTitle: "6/14 龍洞灣 體驗潛水", amount: 2400, method: "credit", creditBonus: 10, reason: "臨時有事無法參加", liffUrl: LIFF_URL },
+  payment_reject: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "轉帳金額與應繳不符（少 200 元），請確認後重新上傳", liffUrl: LIFF_URL },
+  booking_cancel: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "因人數不足取消，造成不便敬請見諒", liffUrl: LIFF_URL },
+  refund_complete: { bookingTitle: "6/14 龍洞灣 體驗潛水", amount: 2640, method: "credit", liffUrl: LIFF_URL },
+  vip_upgrade: { tierName: "LV3 海龜", tierEmoji: "🐢", benefits: "每筆訂單 95 折・生日禮金 200・優先候補", liffUrl: LIFF_URL },
+  birthday_credit: { amount: 200, expiryDays: 90, liffUrl: LIFF_URL },
+  credit_expiry: { amount: 300, expireDate: "2026/06/30", liffUrl: LIFF_URL },
 };
 
 // v468：模板的「實際 Flex 內容」常數 — LINE / Email / 站內通知三通道共用，確保內容一致
@@ -125,32 +72,51 @@ const EXTRA_FOOTER: Record<string, string> = {
   welcome: "安全．專業．陪你看見海",
 };
 
-// v467：把模板的動態樣本資料組成可讀內文，讓「模擬發送」呈現實際內容
-//   （特別是內部通訊：超賣警示、Admin 週報，內容主要是數字）
+// v474：把模板動態樣本資料組成可讀內文，讓「模擬發送」每個模板都呈現真實內容
+const methodZh = (m?: string) => (m === "credit" ? "轉抵用金" : m === "cash" ? "退現金" : m ?? "");
 function buildSampleBody(key: string, p: Record<string, string>): string {
   switch (key) {
-    case "overcap_alert":
-      return [
-        `⚠️ 場次超賣提醒`,
-        `場次：${p.tripDate ?? ""} ${p.tripTime ?? ""}・${p.site ?? ""}`,
-        `客戶：${p.customerName ?? ""} 想預約 ${p.requestedCount ?? ""} 人`,
-        `目前：已訂 ${p.currentBooked ?? ""} / 上限 ${p.capacity ?? ""} 人`,
-      ].join("\n");
-    case "admin_weekly":
-      return [
-        `📊 本週營運摘要（${p.weekRange ?? ""}）`,
-        `・新增預約：${p.bookings ?? ""} 筆`,
-        `・完成出團：${p.completed ?? ""} 筆`,
-        `・取消：${p.cancellations ?? ""} 筆`,
-        `・營收：NT$ ${p.revenue ?? ""}`,
-        `・最熱門潛點：${p.topSite ?? ""}`,
-      ].join("\n");
+    // ── 一日潛水（一次付清）/ 預約 ──
     case "booking_confirm":
-      return `預約場次：${p.site ?? ""}\n出發時間：${p.date ?? ""} ${p.time ?? ""}\n金額：NT$ ${p.total ?? ""}`;
-    case "weather_cancel":
-      return `取消場次：${p.date ?? ""} ${p.time ?? ""}・${p.site ?? ""}\n原因：${p.reason ?? ""}`;
+      return `預約場次：${p.site ?? ""}\n出發時間：${p.date ?? ""} ${p.time ?? ""}\n應付金額：NT$ ${p.total ?? ""}（一次付清）`;
     case "d1_reminder":
-      return `明日場次：${p.date ?? ""} ${p.time ?? ""}・${p.site ?? ""}\n天氣 ${p.weather ?? ""}・浪 ${p.wave ?? ""}・水溫 ${p.water ?? ""}`;
+      return `明日場次：${p.date ?? ""} ${p.time ?? ""}・${p.site ?? ""}\n天氣 ${p.weather ?? ""}・浪高 ${p.wave ?? ""}・水溫 ${p.water ?? ""}・能見度 ${p.vis ?? ""}\n集合：${p.gather ?? ""}`;
+    case "attendance_confirmed":
+      return `${p.bookingTitle ?? ""}\n本次 +${p.addLogs ?? ""} 潛・海王子累積 ${p.totalLogs ?? ""} 潛\n會員等級：${p.vipLevel ?? ""}`;
+    // ── 旅遊潛水（訂金 + 尾款）──
+    case "deposit_notice":
+      return `旅遊團：${p.tourTitle ?? ""}\n應繳訂金：NT$ ${p.deposit ?? ""}\n繳費截止：${p.deadline ?? ""}\n匯款：${p.bankName ?? ""} ${p.bankAccount ?? ""}（戶名 ${p.holder ?? ""}）\n備註碼：${p.refCode ?? ""}`;
+    case "deposit_confirm":
+      return `旅遊團：${p.tourTitle ?? ""}\n已收訂金：NT$ ${p.paid ?? ""}\n尾款餘額：NT$ ${p.remaining ?? ""}\n尾款截止：${p.finalDeadline ?? ""}`;
+    case "final_reminder":
+      return `旅遊團：${p.tourTitle ?? ""}\n應繳尾款：NT$ ${p.remaining ?? ""}\n繳清截止：${p.deadline ?? ""}（剩 ${p.daysLeft ?? ""} 天）\n匯款帳號：${p.bankAccount ?? ""}`;
+    case "trip_guide":
+      return `旅遊團：${p.tourTitle ?? ""}\n集合：${p.gather ?? ""}\n交通：${p.transport ?? ""}・住宿：${p.hotel ?? ""}\n領隊：${p.leader ?? ""}（${p.phone ?? ""}）`;
+    // ── 異常 / 退款 ──
+    case "weather_cancel":
+      return `取消場次：${p.date ?? ""} ${p.time ?? ""}・${p.site ?? ""}\n原因：${p.reason ?? ""}\n選項：${p.options ?? ""}`;
+    case "payment_reject":
+      return `訂單：${p.bookingTitle ?? ""}\n駁回原因：${p.reason ?? ""}\n請依正確金額重新上傳付款證明。`;
+    case "booking_cancel":
+      return `訂單：${p.bookingTitle ?? ""}\n取消原因：${p.reason ?? ""}`;
+    case "refund_request":
+      return `訂單：${p.bookingTitle ?? ""}\n退款方式：${methodZh(p.method)}${p.creditBonus ? `（加成 +${p.creditBonus}%）` : ""}\n退款金額：NT$ ${p.amount ?? ""}\n原因：${p.reason ?? ""}\n請進 App 確認此退款。`;
+    case "refund_complete":
+      return `訂單：${p.bookingTitle ?? ""}\n退款方式：${methodZh(p.method)}\n退款金額：NT$ ${p.amount ?? ""}（已完成）`;
+    // ── 會員權益 ──
+    case "first_order_reward_grant":
+      return `恭喜完成首次潛水：${p.bookingTitle ?? ""}\n獲得抵用金 NT$ ${p.amount ?? ""}\n目前餘額：NT$ ${p.balance ?? ""}\n有效期限：${p.expiresAt ?? ""}`;
+    case "vip_upgrade":
+      return `恭喜升等為 ${p.tierEmoji ?? ""} ${p.tierName ?? ""}！\n專屬權益：${p.benefits ?? ""}`;
+    case "birthday_credit":
+      return `生日快樂！🎂\n送你生日禮金 NT$ ${p.amount ?? ""}\n${p.expiryDays && p.expiryDays !== "0" ? `有效 ${p.expiryDays} 天` : "永久有效"}`;
+    case "credit_expiry":
+      return `提醒：你有抵用金 NT$ ${p.amount ?? ""} 即將到期\n到期日：${p.expireDate ?? ""}\n記得在到期前預約使用喔！`;
+    // ── 內部 ──
+    case "overcap_alert":
+      return `⚠️ 場次超賣提醒\n場次：${p.tripDate ?? ""} ${p.tripTime ?? ""}・${p.site ?? ""}\n客戶：${p.customerName ?? ""} 想預約 ${p.requestedCount ?? ""} 人\n目前：已訂 ${p.currentBooked ?? ""} / 上限 ${p.capacity ?? ""} 人`;
+    case "admin_weekly":
+      return `📊 本週營運摘要（${p.weekRange ?? ""}）\n・營收：NT$ ${p.revenue ?? ""}\n・新增預約：${p.bookings ?? ""} 筆\n・新會員：${p.newMembers ?? ""} 位\n・待處理：${p.pending ?? ""} 筆`;
     default:
       return "";
   }
@@ -187,8 +153,10 @@ export async function POST(req: NextRequest) {
       const client = getLineClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await client.pushMessage({ to: auth.user.lineUserId, messages: [msg as any] });
+      logMessage({ channel: "line", templateKey: key, recipientId: auth.user.lineUserId, recipient: "（試送到我）", title: `（測試）${label}`, status: "sent", source: "test" });
       return NextResponse.json({ ok: true, channel: "line", sentTo: auth.user.lineUserId });
     } catch (e) {
+      logMessage({ channel: "line", templateKey: key, recipientId: auth.user.lineUserId, recipient: "（試送到我）", title: `（測試）${label}`, status: "failed", error: e instanceof Error ? e.message : String(e), source: "test" });
       return NextResponse.json(
         { ok: false, error: e instanceof Error ? e.message : String(e) },
         { status: 500 },
@@ -213,21 +181,16 @@ export async function POST(req: NextRequest) {
     if (footer) parts.push(footer);
     const body = parts.join("\n\n")
       || "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
-    const linkUrl = p.liffUrl ?? p.url ?? null;
+    // v474：試送不掛連結（測試到自己、無需導頁）→ 客戶端詳情視窗底部顯示「關閉通知」而非「前往查看」
     const icon = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META]?.icon ?? null;
     try {
       await prisma.notification.create({
-        data: {
-          userId: auth.user.lineUserId,
-          templateKey: key,
-          title: `（測試）${title}`,
-          body,
-          linkUrl,
-          icon,
-        },
+        data: { userId: auth.user.lineUserId, templateKey: key, title: `（測試）${title}`, body, linkUrl: null, icon },
       });
+      logMessage({ channel: "inapp", templateKey: key, recipientId: auth.user.lineUserId, recipient: "（試送到我）", title: `（測試）${title}`, status: "sent", source: "test" });
       return NextResponse.json({ ok: true, channel: "inApp", sentTo: auth.user.lineUserId });
     } catch (e) {
+      logMessage({ channel: "inapp", templateKey: key, recipientId: auth.user.lineUserId, recipient: "（試送到我）", title: `（測試）${title}`, status: "failed", error: e instanceof Error ? e.message : String(e), source: "test" });
       return NextResponse.json(
         { ok: false, error: e instanceof Error ? e.message : String(e) },
         { status: 500 },
@@ -339,14 +302,14 @@ export async function POST(req: NextRequest) {
 </html>`;
 
   try {
-    await sendEmail({
-      to: me.email,
-      subject,
-      text: `${subject}\n\n${bodyText}`,
-      html,
-    });
+    const r = await sendEmail({ to: me.email, subject, text: `${subject}\n\n${bodyText}`, html });
+    logMessage({ channel: "email", templateKey: key, recipientId: auth.user.lineUserId, recipient: me.email, title: subject, status: r.ok ? "sent" : r.skipped ? "skipped" : "failed", error: r.error ?? null, source: "test" });
+    if (!r.ok && !r.skipped) {
+      return NextResponse.json({ ok: false, error: r.error ?? "send failed" }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, channel: "email", sentTo: me.email });
   } catch (e) {
+    logMessage({ channel: "email", templateKey: key, recipientId: auth.user.lineUserId, recipient: me.email, title: subject, status: "failed", error: e instanceof Error ? e.message : String(e), source: "test" });
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : String(e) },
       { status: 500 },
