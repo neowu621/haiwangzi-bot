@@ -558,17 +558,85 @@ function Tag({ children }: { children: React.ReactNode }) {
 interface CommonForm {
   realName: string; phone: string; cert: string; certNumber: string; logCount: string;
   ecName: string; ecPhone: string; ecRel: string;
-  notes: string; agreed: boolean; signature: string | null;
+  notes: string;
+  cancelRead: boolean; safetyRead: boolean; // v491：取消 + 安全 兩政策（需點開看才能勾）
+  signature: string | null;
+  creditUsed: number; // v491：使用抵用金折抵
 }
 function useCommonForm(member: Member): [CommonForm, (patch: Partial<CommonForm>) => void] {
   const [f, setF] = useState<CommonForm>({
     realName: member.realName ?? "", phone: member.phone ?? "",
     cert: member.cert ?? "", certNumber: member.certNumber ?? "", logCount: String(member.logCount ?? ""),
     ecName: member.emergencyContact?.name ?? "", ecPhone: member.emergencyContact?.phone ?? "", ecRel: member.emergencyContact?.relationship ?? "",
-    notes: "", agreed: false, signature: null,
+    notes: "", cancelRead: false, safetyRead: false, signature: null, creditUsed: 0,
   });
   const patch = (p: Partial<CommonForm>) => setF((prev) => ({ ...prev, ...p }));
   return [f, patch];
+}
+
+interface Policies { cancellation: string; safety: string }
+
+// v491：政策閘 — 兩個政策各需「查看」彈窗看過才能勾；簽名需兩個都勾才解鎖
+function PolicyGate({ f, patch, policies }: { f: CommonForm; patch: (p: Partial<CommonForm>) => void; policies: Policies }) {
+  const [open, setOpen] = useState<null | "cancel" | "safety">(null);
+  const bothRead = f.cancelRead && f.safetyRead;
+  const row = (key: "cancel" | "safety", label: string, read: boolean) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${read ? C.phosphor : C.line}`, borderRadius: 10, padding: "11px 13px", marginBottom: 8, background: read ? "#f0fbfa" : "#fff" }}>
+      <input type="checkbox" checked={read} disabled={!read} readOnly style={{ width: 17, height: 17, accentColor: C.phosphor }} />
+      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{label}</span>
+      <button type="button" onClick={() => setOpen(key)} style={{ background: read ? C.line : C.deep, color: read ? C.mute : "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        {read ? "已閱讀 ✓" : "查看並同意 ›"}
+      </button>
+    </div>
+  );
+  return (
+    <>
+      {row("cancel", "📋 取消政策", f.cancelRead)}
+      {row("safety", "🛡️ 安全政策", f.safetyRead)}
+      <div style={{ fontSize: 12, color: bothRead ? "#0a8f86" : C.mute, marginBottom: 12 }}>
+        {bothRead ? "✓ 兩項政策皆已閱讀，請於下方簽名" : "請分別點開兩項政策閱讀並同意後，才能簽名送出"}
+      </div>
+      <div style={{ opacity: bothRead ? 1 : 0.45, pointerEvents: bothRead ? "auto" : "none" }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.deep, marginBottom: 6 }}>✍️ 手寫簽名（法律有效電子簽署）</div>
+        <SignaturePad height={170} onChange={(dataUrl, hasInk) => patch({ signature: hasInk ? dataUrl : null })} />
+      </div>
+
+      {open && (
+        <div onClick={() => setOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, maxWidth: 560, width: "100%", maxHeight: "82vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.line}`, fontSize: 16, fontWeight: 800, color: C.deep }}>
+              {open === "cancel" ? "📋 取消政策" : "🛡️ 安全政策"}
+            </div>
+            <div style={{ padding: "16px 20px", overflowY: "auto", fontSize: 13.5, lineHeight: 1.8, color: C.ink, whiteSpace: "pre-wrap" }}>
+              {(open === "cancel" ? policies.cancellation : policies.safety) || "（管理員尚未設定此政策）"}
+            </div>
+            <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.line}` }}>
+              <button type="button" onClick={() => { patch(open === "cancel" ? { cancelRead: true } : { safetyRead: true }); setOpen(null); }} style={{ ...primaryBtn(), background: C.coral, color: "#fff" }}>
+                我已閱讀，關閉並同意
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// v491：使用抵用金折抵
+function CreditBox({ balance, used, max, onChange }: { balance: number; used: number; max: number; onChange: (n: number) => void }) {
+  if (balance <= 0) return null;
+  const cap = Math.min(balance, max);
+  return (
+    <>
+      <SectionTitle>🎁 使用抵用金折抵</SectionTitle>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "#fff8ec", border: "1px solid #f3d8a0", borderRadius: 10, padding: "11px 14px" }}>
+        <span style={{ fontSize: 13, color: "#9a6a18" }}>餘額 <b>{ntd(balance)}</b></span>
+        <input type="number" min={0} max={cap} value={used || ""} onChange={(e) => onChange(Math.max(0, Math.min(cap, Number(e.target.value) || 0)))} placeholder="0" style={{ ...inp, width: 110 }} />
+        <button type="button" onClick={() => onChange(cap)} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>全部用</button>
+        {used > 0 && <span style={{ fontSize: 13, color: "#0a8f86", fontWeight: 700 }}>折抵 {ntd(used)}</span>}
+      </div>
+    </>
+  );
 }
 function field(label: string, node: React.ReactNode, required?: boolean) {
   return (
@@ -582,7 +650,7 @@ function field(label: string, node: React.ReactNode, required?: boolean) {
 }
 const inp: React.CSSProperties = { width: "100%", border: `1.5px solid ${C.line}`, borderRadius: 9, padding: "9px 12px", fontSize: 14, fontFamily: "inherit", boxSizing: "border-box" };
 
-function CommonFields({ f, patch }: { f: CommonForm; patch: (p: Partial<CommonForm>) => void }) {
+function CommonFields({ f, patch, policies }: { f: CommonForm; patch: (p: Partial<CommonForm>) => void; policies: Policies }) {
   return (
     <>
       <SectionTitle>聯絡資料</SectionTitle>
@@ -609,11 +677,7 @@ function CommonFields({ f, patch }: { f: CommonForm; patch: (p: Partial<CommonFo
       {field("備註（特殊需求）", <textarea style={{ ...inp, minHeight: 56, resize: "vertical" }} value={f.notes} onChange={(e) => patch({ notes: e.target.value })} />)}
 
       <SectionTitle>同意聲明與簽名</SectionTitle>
-      <label style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 13, color: C.ink, marginBottom: 12, cursor: "pointer" }}>
-        <input type="checkbox" checked={f.agreed} onChange={(e) => patch({ agreed: e.target.checked })} style={{ marginTop: 3 }} />
-        <span>我已閱讀並同意 <a href="/#faq" target="_blank" style={{ color: C.coral }}>潛水安全注意事項與退款政策</a>，並確認以上資料正確。</span>
-      </label>
-      <SignaturePad height={180} onChange={(dataUrl, hasInk) => patch({ signature: hasInk ? dataUrl : null })} />
+      <PolicyGate f={f} patch={patch} policies={policies} />
     </>
   );
 }
@@ -629,7 +693,22 @@ function commonBody(f: CommonForm) {
     agreedToTerms: true as const,
     signatureDataUrl: f.signature ?? undefined,
     emergencyContact: ec,
+    creditUsed: f.creditUsed > 0 ? f.creditUsed : undefined,
   };
+}
+
+// v491：載入政策（取消 + 安全）— /api/config
+function usePolicies(): Policies {
+  const [p, setP] = useState<Policies>({ cancellation: "", safety: "" });
+  useEffect(() => {
+    api<{ cancellationPolicy?: string; safetyPolicy?: string; config?: { cancellationPolicy?: string; safetyPolicy?: string } }>("/api/config")
+      .then((d) => setP({
+        cancellation: d.cancellationPolicy ?? d.config?.cancellationPolicy ?? "",
+        safety: d.safetyPolicy ?? d.config?.safetyPolicy ?? "",
+      }))
+      .catch(() => {});
+  }, []);
+  return p;
 }
 function BackBtn({ onBack }: { onBack: () => void }) {
   return <button onClick={onBack} style={{ background: "none", border: "none", color: C.mute, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 0, marginBottom: 14 }}>← 返回</button>;
@@ -639,14 +718,27 @@ function formCard(): React.CSSProperties {
 }
 
 // ─── 日潛下單表單 ──────────────────────────────────────────────────
+interface Companion { name: string; cert: string; certNumber: string; phone: string; relationship: string }
 function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member; onBack: () => void }) {
   const [f, patch] = useCommonForm(member);
+  const policies = usePolicies();
   const [participants, setParticipants] = useState(1);
   const [tankCount, setTankCount] = useState(trip.tankCount);
   const [gear, setGear] = useState<Record<string, number>>({}); // type -> qty
   const [gearPrice, setGearPrice] = useState<Record<string, number>>({});
+  const [companions, setCompanions] = useState<Companion[]>([]); // v491：多人潛伴（第2人起）
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // 人數變動 → 同步潛伴欄位數（participants-1 位）
+  useEffect(() => {
+    setCompanions((prev) => {
+      const need = Math.max(0, participants - 1);
+      const next = prev.slice(0, need);
+      while (next.length < need) next.push({ name: "", cert: "", certNumber: "", phone: "", relationship: "" });
+      return next;
+    });
+  }, [participants]);
 
   useEffect(() => {
     api<{ gearRentalPrices?: Record<string, number>; config?: { gearRentalPrices?: Record<string, number> } }>("/api/site-config")
@@ -670,14 +762,23 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
   if (trip.isNightDive) extraAmount += trip.pricing.nightDive;
   if (trip.isScooter) extraAmount += trip.pricing.scooterRental;
   const gearAmount = member.gearDiscountPct < 100 ? Math.round((gearAmountRaw * member.gearDiscountPct) / 100) : gearAmountRaw;
-  const total = divesAmount + extraAmount + gearAmount;
+  const subtotal = divesAmount + extraAmount + gearAmount;
+  const total = Math.max(0, subtotal - f.creditUsed);
+  const tankDiscPerTank = member.tankPromo?.active ? Math.min(member.tankPromo.discount ?? 0, trip.pricing.extraTank) : 0;
+  const gearSaved = gearAmountRaw - gearAmount;
 
   async function submit() {
     setErr(null);
     if (!f.realName || !f.phone) { setErr("請填寫姓名與電話"); return; }
-    if (!f.agreed) { setErr("請勾選同意聲明"); return; }
+    if (!f.cancelRead || !f.safetyRead) { setErr("請先點開「取消政策」與「安全政策」閱讀並同意"); return; }
+    if (!f.signature) { setErr("請手寫簽名"); return; }
+    if (companions.some((c) => !c.name || !c.cert)) { setErr("多人預約：請填寫每位潛伴的姓名與證照等級"); return; }
     setSubmitting(true);
     try {
+      const participantDetails = [
+        { name: f.realName, phone: f.phone, cert: f.cert || undefined, certNumber: f.certNumber || undefined, logCount: f.logCount ? Number(f.logCount) : 0, relationship: "本人", isSelf: true },
+        ...companions.map((c) => ({ name: c.name, phone: c.phone, cert: c.cert || undefined, certNumber: c.certNumber, logCount: 0, relationship: c.relationship, isSelf: false })),
+      ];
       const body = {
         ...commonBody(f),
         tripId: trip.id,
@@ -689,6 +790,7 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
         rentalGear: GEAR.filter((g) => (gear[g.type] ?? 0) > 0).map((g) => ({
           itemType: g.type as "BCD", price: gearPrice[g.type] ?? g.defPrice, qty: gear[g.type],
         })),
+        participantDetails,
       };
       const res = await api<{ booking: { id: string; payLinkToken: string | null } }>("/api/bookings/daily", {
         method: "POST", body: JSON.stringify(body),
@@ -718,7 +820,7 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
             {field(`潛次（最多 ${trip.tankCount}）`, <Stepper value={tankCount} min={1} max={trip.tankCount} onChange={setTankCount} />)}
           </div>
 
-          <SectionTitle>裝備租借（每人）</SectionTitle>
+          <SectionTitle>裝備租借（每人）{member.gearDiscountPct < 100 && <span style={{ fontSize: 11, color: "#0a8f86", fontWeight: 600, marginLeft: 6 }}>🎖 VIP{member.vipLevel} 享 {100 - member.gearDiscountPct}% off</span>}</SectionTitle>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {GEAR.map((g) => {
               const qty = gear[g.type] ?? 0;
@@ -732,15 +834,41 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
             })}
           </div>
 
-          <CommonFields f={f} patch={patch} />
+          {companions.length > 0 && (
+            <>
+              <SectionTitle>潛伴資料（{companions.length} 位）</SectionTitle>
+              {companions.map((c, i) => (
+                <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.deep, marginBottom: 8 }}>潛伴 {i + 2}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
+                    <input style={inp} placeholder="姓名 *" value={c.name} onChange={(e) => setCompanions((p) => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                    <select style={inp} value={c.cert} onChange={(e) => setCompanions((p) => p.map((x, j) => j === i ? { ...x, cert: e.target.value } : x))}>
+                      <option value="">證照等級 *</option>
+                      {["OW", "AOW", "Rescue", "DM", "Instructor"].map((cc) => <option key={cc} value={cc}>{cc}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <input style={inp} placeholder="電話（選填）" value={c.phone} onChange={(e) => setCompanions((p) => p.map((x, j) => j === i ? { ...x, phone: e.target.value } : x))} />
+                    <input style={inp} placeholder="關係（選填，例：朋友）" value={c.relationship} onChange={(e) => setCompanions((p) => p.map((x, j) => j === i ? { ...x, relationship: e.target.value } : x))} />
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          <CreditBox balance={member.creditBalance} used={f.creditUsed} max={subtotal} onChange={(n) => patch({ creditUsed: n })} />
+
+          <CommonFields f={f} patch={patch} policies={policies} />
           {err && <div style={{ background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginTop: 14 }}>{err}</div>}
         </div>
 
         <SummaryPanel
           rows={[
             ["潛水費", ntd(divesAmount), `${tankFee} × ${tankCount}潛 × ${participants}人`],
+            ...(tankDiscPerTank > 0 ? [["🔥 氣瓶折扣", `−${ntd(tankDiscPerTank * tankCount * participants)}`, `每支 −${tankDiscPerTank}`] as [string, string, string]] : []),
             ...(extraAmount > 0 ? [["基本/附加費", ntd(extraAmount), ""] as [string, string, string]] : []),
-            ...(gearAmount > 0 ? [["裝備租借", ntd(gearAmount), member.gearDiscountPct < 100 ? `VIP ${member.gearDiscountPct}折後` : ""] as [string, string, string]] : []),
+            ...(gearAmount > 0 ? [["裝備租借", ntd(gearAmount), gearSaved > 0 ? `VIP 省 ${ntd(gearSaved)}` : ""] as [string, string, string]] : []),
+            ...(f.creditUsed > 0 ? [["🎁 抵用金折抵", `−${ntd(f.creditUsed)}`, ""] as [string, string, string]] : []),
           ]}
           total={total}
           note="一日潛水一次付清。下單後導向付款頁上傳轉帳。"
@@ -757,6 +885,7 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
 function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: Member; onBack: () => void }) {
   const [tour, setTour] = useState<TourDetail | null>(null);
   const [f, patch] = useCommonForm(member);
+  const policies = usePolicies();
   const [participants, setParticipants] = useState(1);
   const [addons, setAddons] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -770,14 +899,16 @@ function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: M
 
   const addonList = tour.addons ?? [];
   const addonAmount = addonList.filter((a) => addons.includes(a.id)).reduce((s, a) => s + a.price, 0);
-  const total = tour.basePrice * participants + addonAmount * participants;
+  const grossTotal = tour.basePrice * participants + addonAmount * participants;
+  const total = Math.max(0, grossTotal - f.creditUsed);
   const depositTotal = tour.deposit * participants;
 
   async function submit() {
     setErr(null);
     if (!f.realName || !f.phone) { setErr("請填寫姓名與電話"); return; }
     if (!f.ecName || !f.ecPhone) { setErr("潛旅需填寫緊急聯絡人姓名與電話"); return; }
-    if (!f.agreed) { setErr("請勾選同意聲明"); return; }
+    if (!f.cancelRead || !f.safetyRead) { setErr("請先點開「取消政策」與「安全政策」閱讀並同意"); return; }
+    if (!f.signature) { setErr("請手寫簽名"); return; }
     setSubmitting(true);
     try {
       const body = {
@@ -787,6 +918,7 @@ function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: M
         notes: f.notes || undefined,
         agreedToTerms: true as const,
         signatureDataUrl: f.signature ?? undefined,
+        creditUsed: f.creditUsed > 0 ? f.creditUsed : undefined,
         realName: f.realName,
         phone: f.phone,
         certNumber: f.certNumber || undefined,
@@ -833,7 +965,9 @@ function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: M
             </>
           )}
 
-          <CommonFields f={f} patch={patch} />
+          <CreditBox balance={member.creditBalance} used={f.creditUsed} max={grossTotal} onChange={(n) => patch({ creditUsed: n })} />
+
+          <CommonFields f={f} patch={patch} policies={policies} />
           {err && <div style={{ background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginTop: 14 }}>{err}</div>}
         </div>
 
@@ -841,6 +975,7 @@ function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: M
           rows={[
             ["團費", ntd(tour.basePrice * participants), `${ntd(tour.basePrice)} × ${participants}人`],
             ...(addonAmount > 0 ? [["加購", ntd(addonAmount * participants), ""] as [string, string, string]] : []),
+            ...(f.creditUsed > 0 ? [["🎁 抵用金折抵", `−${ntd(f.creditUsed)}`, ""] as [string, string, string]] : []),
           ]}
           total={total}
           extraRow={["應繳訂金", ntd(depositTotal)]}
