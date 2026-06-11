@@ -8,8 +8,8 @@ interface Contract { id: string; category: string; title: string; content: strin
 interface Order {
   id: string; code: string | null; customer: string; memberCode: string | null;
   itemName: string | null; category: string | null; amount: number; paidAmount: number;
-  status: string; paymentStatus: string; signed: boolean; contractPdfKey: string | null;
-  payLink: string | null; createdAt: string;
+  status: string; paymentStatus: string; signed: boolean;
+  payLink: string | null; contractLink: string | null; createdAt: string;
 }
 
 export default function CustomOrdersPage() {
@@ -153,9 +153,14 @@ export default function CustomOrdersPage() {
                       <span style={badge(o.signed ? "#0a8f6a" : "#9aa")}>{o.signed ? "已簽署" : "未簽署"}</span>
                     </div>
                   </div>
-                  {o.payLink && (
-                    <button onClick={() => { navigator.clipboard?.writeText(o.payLink!); showToast("已複製付款連結"); }} style={smallBtn}>複製連結</button>
-                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {o.payLink && (
+                      <button onClick={() => { navigator.clipboard?.writeText(o.payLink!); showToast("已複製付款連結"); }} style={smallBtn}>複製付款連結</button>
+                    )}
+                    {o.contractLink && (
+                      <a href={o.contractLink} target="_blank" rel="noopener" style={{ ...smallBtn, textAlign: "center", textDecoration: "none", color: "#0e4c5a" }}>📄 合約 PDF</a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

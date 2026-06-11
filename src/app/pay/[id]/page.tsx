@@ -1,6 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { SignaturePad } from "@/components/ui/SignaturePad";
 
 interface BookingPublic {
   id: string;
@@ -24,6 +25,7 @@ interface BookingPublic {
 interface PayApiOK {
   state: "active" | "verified";
   booking: BookingPublic;
+  contract?: { title: string; content: string; refUrl: string | null; signed: boolean } | null;
   bank?: { name: string; branch: string; account: string; holder: string };
   linepay?: { qrUrl: string; liteId: string };
   proofs?: Array<{
@@ -225,11 +227,24 @@ export default function PublicPayPage({
   const proofs = data.proofs ?? [];
   const hasPending = proofs.some((p) => !p.verifiedAt && !p.rejectedAt);
 
+  // v476：客製訂單 — 未簽署則只顯示合約簽署，簽完才出現付款
+  const needSign = !!data.contract && !data.contract.signed;
+
   // 一般待付款狀態
   return (
     <Shell>
       <BookingSummary booking={data.booking} />
 
+      {data.contract && (
+        <ContractSection contract={data.contract} bookingId={id} token={token} />
+      )}
+
+      {needSign ? (
+        <section className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          ✍️ 請先閱讀並簽署上方合約，簽署後即可進行付款。
+        </section>
+      ) : (
+      <>
       {/* v297：付款證明列表（有的話）*/}
       {proofs.length > 0 && (
         <ProofListSection proofs={proofs} onDelete={deleteProof} />
@@ -368,9 +383,75 @@ export default function PublicPayPage({
           </button>
         </section>
       )}
+      </>
+      )}
 
       <Footer />
     </Shell>
+  );
+}
+
+// v476：客製訂單合約簽署區（簽署前先閱讀，簽完即解鎖付款）
+function ContractSection({
+  contract, bookingId, token,
+}: {
+  contract: { title: string; content: string; refUrl: string | null; signed: boolean };
+  bookingId: string; token: string;
+}) {
+  const [agree, setAgree] = useState(false);
+  const [sig, setSig] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (contract.signed) {
+    return (
+      <section className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm">
+        <div className="font-semibold text-emerald-800">✅ 已完成合約簽署</div>
+        <a href={`/contract/${bookingId}?t=${encodeURIComponent(token)}`} target="_blank" rel="noopener" className="mt-1 inline-block text-emerald-700 underline">
+          查看 / 下載合約（PDF）→
+        </a>
+      </section>
+    );
+  }
+
+  async function sign() {
+    if (!agree) { setErr("請先勾選「我已閱讀並同意合約內容」"); return; }
+    if (!sig) { setErr("請在下方簽名"); return; }
+    setBusy(true); setErr(null);
+    try {
+      const r = await fetch(`/api/pay/${bookingId}/sign`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, signatureDataUrl: sig }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setErr(j.error ?? "簽署失敗"); return; }
+      window.location.reload();
+    } catch { setErr("網路錯誤，請重試"); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="text-sm font-bold text-cyan-900 mb-2">📑 {contract.title} — 合約簽署</div>
+      {contract.refUrl && (
+        <a href={contract.refUrl} target="_blank" rel="noopener" className="text-xs text-cyan-700 underline">📄 課程內容說明 →</a>
+      )}
+      <div className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-700">
+        {contract.content || "（本合約條款由海王子提供）"}
+      </div>
+      <label className="mt-3 flex items-start gap-2 text-sm">
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5" />
+        <span>我已詳細閱讀並同意以上合約內容。</span>
+      </label>
+      <div className="mt-2 text-xs text-gray-500">請在下方簽名：</div>
+      <div className="mt-1 rounded-md border border-gray-300">
+        <SignaturePad height={180} onChange={(dataUrl, hasInk) => setSig(hasInk ? dataUrl : null)} />
+      </div>
+      {err && <div className="mt-2 rounded-md bg-rose-50 p-2 text-sm text-rose-700">{err}</div>}
+      <button type="button" onClick={sign} disabled={busy} className="mt-3 w-full rounded-md bg-cyan-700 px-4 py-3 text-white font-bold text-sm disabled:opacity-50">
+        {busy ? "簽署中⋯" : "✍️ 簽署合約並繼續付款"}
+      </button>
+    </section>
   );
 }
 

@@ -183,6 +183,17 @@ export async function GET(
     }),
   );
 
+  // v476：客製訂單的合約資訊（簽署前客戶要先閱讀並簽名）
+  let contract: { title: string; content: string; refUrl: string | null; signed: boolean } | null = null;
+  if (booking.type === "custom" && booking.customCategory) {
+    const tpl = await prisma.contractTemplate.findUnique({ where: { category: booking.customCategory } });
+    if (tpl) {
+      contract = { title: tpl.title, content: tpl.content, refUrl: booking.customRefUrl ?? tpl.refUrl, signed: !!booking.signedAt };
+    } else {
+      contract = { title: "客製訂單合約", content: "", refUrl: booking.customRefUrl, signed: !!booking.signedAt };
+    }
+  }
+
   return NextResponse.json({
     state: "active",
     booking: {
@@ -198,7 +209,9 @@ export async function GET(
       paymentMethod: booking.paymentMethod,
       ref: refDetail,
       createdAt: booking.createdAt,
+      signed: !!booking.signedAt,
     },
+    contract,
     bank,
     linepay,
     proofs,

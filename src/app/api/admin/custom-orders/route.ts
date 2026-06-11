@@ -39,8 +39,11 @@ export async function GET(req: NextRequest) {
       status: b.status,
       paymentStatus: b.paymentStatus,
       signed: !!b.signedAt,
-      contractPdfKey: b.contractPdfKey,
       payLink: b.payLinkToken && !b.payLinkVerifiedAt ? buildPayLinkUrl(b.id, b.payLinkToken) : null,
+      // 已簽署 → 合約檢視/下載連結（即使付款已驗證，payLinkToken 仍保留）
+      contractLink: b.signedAt && b.payLinkToken
+        ? buildPayLinkUrl(b.id, b.payLinkToken).replace("/pay/", "/contract/")
+        : null,
       createdAt: b.createdAt.toISOString(),
     })),
   });
