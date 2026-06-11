@@ -50,6 +50,8 @@ export function buildAuthorizeUrl(opts: {
     state: opts.state,
     scope: emailScope ? "openid profile email" : "openid profile",
     nonce: opts.nonce,
+    // v485：讓 LINE 授權頁盡量以繁體中文顯示（實際語言 LINE 仍會參考使用者帳號語言）
+    ui_locales: "zh-TW",
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
