@@ -62,6 +62,7 @@ enum CancelReason {
 enum BookingType {
   daily
   tour
+  custom // v475：老闆客製開單（課程 / 1對1 / 體驗等，無對應 trip）
 }
 
 enum PaymentStatus {
@@ -232,6 +233,21 @@ model MessageLog {
   @@map("message_logs")
 }
 
+// v475：合約範本 — 客製訂單的合約類別（OW / AOW / 1對1 / 體驗 / 其他），條款由老闆自行編輯
+model ContractTemplate {
+  id        String   @id @default(cuid())
+  category  String   @unique @db.VarChar(32) // key：ow / aow / oneonone / discover / other
+  title     String   @db.VarChar(128)        // 顯示名（OW 開放水域潛水員課程）
+  content   String   @db.Text                // 合約條款全文（老闆填，簽署 PDF 會用）
+  refUrl    String?  @map("ref_url")         // 課程內容說明連結
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0) @map("sort_order")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy String?  @map("updated_by") @db.VarChar(64)
+
+  @@map("contract_templates")
+}
+
 // v256：Email 驗證 token
 //   驗證信寄出時建一筆，使用者點 link 後標 usedAt + 寫 User.emailVerifiedAt
 //   7 天過期。同一 user 可重發（同一 email 共存的 token 都還能用，但只認最後一個）
@@ -392,8 +408,14 @@ model Booking {
   code                String?        @unique @map("code") @db.VarChar(12)
   userId              String         @map("user_id") @db.VarChar(64)
   type                BookingType
+  // v475：custom（客製開單）沒有對應 trip/tour；refId 改填隨機 UUID（指向不存在的 trip），維持非空避免全專案型別波及
   refId               String         @map("ref_id") @db.Uuid
   participants        Int            @default(1)
+  // v475：客製訂單欄位（type=custom 時使用）
+  customItemName      String?        @map("custom_item_name") @db.VarChar(128) // 品項名（OW課程 / 1對1輔導…）
+  customCategory      String?        @map("custom_category") @db.VarChar(32)   // 合約類別 key（對應 ContractTemplate）
+  customRefUrl        String?        @map("custom_ref_url")  // 參考連結（課程內容說明）
+  contractPdfKey      String?        @map("contract_pdf_key") @db.VarChar(256) // 簽署後合約 PDF（R2 private）
   // 本次參加者明細：[{ name, phone, cert, certNumber, logCount, relationship, isSelf }]
   participantDetails  Json           @default("[]") @map("participant_details")
   selectedAddons      String[]       @default([]) @map("selected_addons")

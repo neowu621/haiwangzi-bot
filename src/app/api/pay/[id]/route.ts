@@ -132,6 +132,9 @@ export async function GET(
         sites: tour.diveSiteIds.map((sid) => siteMap.get(sid) ?? sid),
       };
     }
+  } else if (booking.type === "custom") {
+    // v475：客製訂單 — 顯示品項名稱（無對應 trip）
+    refDetail = { custom: true, title: booking.customItemName ?? "客製訂單" };
   }
 
   // 取付款方式設定

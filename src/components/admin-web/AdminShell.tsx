@@ -38,6 +38,7 @@ const NAV_GROUPS = [
     label: "訂單 / 客戶",
     items: [
       { href: "/admin/bookings", icon: BookOpen, label: "訂單管理" },
+      { href: "/admin/custom-orders", icon: BookOpen, label: "🧾 客製開單" },
       { href: "/admin/dive-wishes", icon: BookOpen, label: "📝 願望單" },
       { href: "/admin/users", icon: Users, label: "會員管理" },
       { href: "/admin/credits", icon: Star, label: "抵用金管理" },

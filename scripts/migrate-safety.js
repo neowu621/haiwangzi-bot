@@ -69,6 +69,25 @@ const PATCHES = [
   `CREATE INDEX IF NOT EXISTS message_logs_channel_idx ON message_logs(channel, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS message_logs_status_idx ON message_logs(status, created_at DESC)`,
 
+  // v475: 客製化訂單 — BookingType 加 custom、Booking 加客製欄位（refId 維持非空，custom 填隨機 UUID）
+  `ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'custom'`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS custom_item_name VARCHAR(128)`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS custom_category VARCHAR(32)`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS custom_ref_url TEXT`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS contract_pdf_key VARCHAR(256)`,
+  // v475: 合約範本表
+  `CREATE TABLE IF NOT EXISTS contract_templates (
+     id TEXT PRIMARY KEY,
+     category VARCHAR(32) NOT NULL UNIQUE,
+     title VARCHAR(128) NOT NULL,
+     content TEXT NOT NULL,
+     ref_url TEXT,
+     active BOOLEAN NOT NULL DEFAULT TRUE,
+     sort_order INT NOT NULL DEFAULT 0,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_by VARCHAR(64)
+   )`,
+
   // v264: 每日天氣自動回報設定
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_weather_report_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,

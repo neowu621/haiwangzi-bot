@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 interface BookingPublic {
   id: string;
   code: string;
-  type: "daily" | "tour";
+  type: "daily" | "tour" | "custom";
   participants: number;
   totalAmount: number;
   depositAmount: number;
@@ -16,6 +16,7 @@ interface BookingPublic {
   ref:
     | { date: string; startTime: string; sites: string[] }
     | { title: string; dateStart: string; dateEnd: string; sites: string[] }
+    | { custom: true; title: string }
     | null;
   createdAt: string;
 }
@@ -395,7 +396,7 @@ function BookingSummary({ booking }: { booking: BookingPublic }) {
         <div className="text-gray-500">訂單編號</div>
         <div className="font-mono font-semibold">{booking.code}</div>
         <div className="text-gray-500">項目</div>
-        <div>{booking.type === "daily" ? "日潛" : "旅遊潛水"} ×{booking.participants} 人</div>
+        <div>{booking.type === "daily" ? "日潛" : booking.type === "custom" ? "客製訂單" : "旅遊潛水"} ×{booking.participants} 人</div>
         {booking.ref && "date" in booking.ref && (
           <>
             <div className="text-gray-500">場次</div>
@@ -408,12 +409,18 @@ function BookingSummary({ booking }: { booking: BookingPublic }) {
             )}
           </>
         )}
-        {booking.ref && "title" in booking.ref && (
+        {booking.ref && "dateStart" in booking.ref && (
           <>
             <div className="text-gray-500">標題</div>
             <div className="font-semibold">{booking.ref.title}</div>
             <div className="text-gray-500">日期</div>
             <div>{booking.ref.dateStart} → {booking.ref.dateEnd}</div>
+          </>
+        )}
+        {booking.ref && "custom" in booking.ref && (
+          <>
+            <div className="text-gray-500">品項</div>
+            <div className="font-semibold">{booking.ref.title}</div>
           </>
         )}
       </div>
@@ -440,7 +447,7 @@ function VerifiedView({ booking, reason }: { booking: BookingPublic; reason: str
         <div className="text-gray-500">訂單編號</div>
         <div className="font-mono">{booking.code}</div>
         <div className="text-gray-500">項目</div>
-        <div>{booking.type === "daily" ? "日潛" : "旅遊潛水"} ×{booking.participants} 人</div>
+        <div>{booking.type === "daily" ? "日潛" : booking.type === "custom" ? "客製訂單" : "旅遊潛水"} ×{booking.participants} 人</div>
         <div className="text-gray-500">金額</div>
         <div>NT$ {booking.totalAmount.toLocaleString()}</div>
         <div className="text-gray-500">狀態</div>
