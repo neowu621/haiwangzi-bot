@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { APP_VERSION } from "@/lib/version";
 import { LogOut, Monitor } from "lucide-react";
+import { BrandMark } from "@/components/brand/MantaTrident";
 
 export function MobileAdminShell({ children }: { children: ReactNode }) {
   const { ready, logout, adminUser } = useAdminAuth();
@@ -42,14 +43,8 @@ export function MobileAdminShell({ children }: { children: ReactNode }) {
           borderColor: "rgba(255,255,255,0.1)",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo.png"
-          alt={process.env.NEXT_PUBLIC_APP_NAME ?? "Logo"}
-          width={30}
-          height={30}
-          style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-        />
+        {/* v490：鬼蝠魟三叉戟標誌 */}
+        <BrandMark size={30} badge />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-bold" style={{ color: "var(--color-phosphor)" }}>

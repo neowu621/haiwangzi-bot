@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SignaturePad } from "@/components/ui/SignaturePad";
 import { APP_VERSION } from "@/lib/version";
+import { BrandMark, MantaTridentMark } from "@/components/brand/MantaTrident";
 
 // ─── 型別 ──────────────────────────────────────────────────────────
 interface Member {
@@ -226,7 +227,7 @@ function TopBar({ member, authState, view, setView }: {
     <header style={{ background: C.deep, color: "#fff", position: "sticky", top: 0, zIndex: 20, boxShadow: "0 2px 12px rgba(10,35,66,.25)" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px", height: 60, display: "flex", alignItems: "center", gap: 22 }}>
         <a href="/" style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: 9 }}>
-          <span style={{ fontSize: 20 }}>🌊</span>
+          <MantaTridentMark size={24} color={C.phosphor} title="海王子" />
           <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: 0.5 }}>東北角海王子潛水</span>
         </a>
         {authState === "in" && (
@@ -297,10 +298,8 @@ function LoginScreen({ error }: { error: string | null }) {
       <div style={{ width: "100%", maxWidth: 620, background: "#fff", borderRadius: 26, padding: "clamp(28px,5vw,46px)", boxShadow: "0 30px 80px rgba(0,0,0,.35)" }}>
         {/* 品牌 */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 26 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 15, background: C.deep, display: "grid", placeItems: "center", flex: "none", boxShadow: "0 6px 16px rgba(10,35,66,.18)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/home/src-11.png" alt="海王子 logo" style={{ width: 36, height: 36, objectFit: "contain" }} />
-          </div>
+          {/* v490：鬼蝠魟三叉戟標誌（深海藍方塊 + 白圖案） */}
+          <BrandMark size={56} badge radius={15} style={{ boxShadow: "0 6px 16px rgba(10,35,66,.18)" }} />
           <div>
             <div style={{ fontSize: 21, fontWeight: 800, color: C.deep, lineHeight: 1.2 }}>東北角海王子潛水</div>
             <div style={{ fontSize: 11.5, letterSpacing: 3, color: "#0a8f86", fontWeight: 700, marginTop: 2 }}>SEA PRINCE DIVING</div>

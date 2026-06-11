@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
 import { ConnDiag } from "@/components/admin-web/ConnDiag";
 import { roleLabel } from "@/lib/labels";
+import { BrandMark } from "@/components/brand/MantaTrident";
 import {
   Menu,
   LogOut,
@@ -138,10 +139,9 @@ export function AdminShell({
     >
       {/* Logo + User Info */}
       <div className="px-4 py-4">
-        {/* Brand row */}
+        {/* Brand row — v490：鬼蝠魟三叉戟標誌 */}
         <div className="flex items-center gap-2.5 mb-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt={process.env.NEXT_PUBLIC_APP_NAME ?? "Logo"} width={36} height={36} style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+          <BrandMark size={36} badge />
           <div>
             <div
               className="text-sm font-bold leading-tight"

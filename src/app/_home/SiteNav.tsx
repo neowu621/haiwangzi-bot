@@ -4,6 +4,7 @@
 //   v408 的「目前裝置」badge（純裝飾）一併留在這裡。
 import { useEffect, useState } from "react";
 import { NAV, LINE_BOOK_URL, LineIcon } from "./data";
+import { MantaTridentMark } from "@/components/brand/MantaTrident";
 
 // v408：目前裝置示意 icon（依視窗寬度判斷 手機 / 平板 / 桌面）
 type Device = "mobile" | "tablet" | "desktop";
@@ -53,8 +54,8 @@ export default function SiteNav() {
     <>
       <header className={`nav${scrolled ? " scrolled" : ""}`} id="nav">
         <a href="#top" className="brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <span className="crest"><img src="/home/src-11.png" alt="東北角海王子 logo" /></span>
+          {/* v490：鬼蝠魟三叉戟標誌（深色 header → 白圖案透明底） */}
+          <span className="crest"><MantaTridentMark size={42} color="#ffffff" title="東北角海王子" /></span>
           <span className="name"><b>東北角海王子</b><span>Northeast Coast Ocean Prince</span></span>
         </a>
         <nav className="nav-links">{NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}</nav>
