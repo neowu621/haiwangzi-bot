@@ -224,6 +224,8 @@ export default function ToursPage() {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];
+    lines.push(baseUrl); // v513：第一行＝首頁網址
+    lines.push("");
     lines.push("⛴️ 海王子潛水旅行 行程表");
     lines.push("");
     if (open.length === 0) {
