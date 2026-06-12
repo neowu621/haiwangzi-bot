@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { COURSES, LINE_BOOK_URL } from "../_home/data";
 import { SeoShell, Card } from "../_seo/SeoShell";
+
+// 課程 → 報名/流程說明頁 slug
+const guideSlug = (title: string) =>
+  title.includes("體驗") ? "discover" : title.includes("AOW") || title.includes("進階") ? "aow" : title.includes("OW") ? "ow" : "private";
 
 export const metadata: Metadata = {
   title: "潛水課程 ‧ 體驗潛水/OW/AOW/Fun Dive ‧ 東北角海王子潛水",
@@ -56,9 +61,14 @@ export default function CoursePage() {
                   </li>
                 ))}
               </ul>
-              <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 7, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "10px 20px", borderRadius: 999 }}>
-                LINE 報名・諮詢「{c.title}」
-              </a>
+              <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "10px 20px", borderRadius: 999 }}>
+                  LINE 報名・諮詢
+                </a>
+                <Link href={`/guide/${guideSlug(c.title)}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid #0a8f86", color: "#0a8f86", textDecoration: "none", fontWeight: 700, fontSize: 13.5, padding: "9px 16px", borderRadius: 999 }}>
+                  📋 報名與流程說明 →
+                </Link>
+              </div>
             </Card>
           );
         })}
