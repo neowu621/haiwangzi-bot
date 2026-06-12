@@ -5,7 +5,9 @@ import Script from "next/script";
 //   老闆到 analytics.google.com 開一個 GA4 資源後，把「評估 ID（G-XXXXXXXXXX）」設成
 //   Zeabur 環境變數 NEXT_PUBLIC_GA_ID 即可生效。
 export function Analytics() {
-  const id = process.env.NEXT_PUBLIC_GA_ID;
+  // GA4 評估 ID（measurement ID 本就公開、會出現在網頁原始碼）。預設用老闆提供的 ID，
+  //   仍可用環境變數 NEXT_PUBLIC_GA_ID 覆寫。
+  const id = process.env.NEXT_PUBLIC_GA_ID || "G-FVNW0RYLBR";
   if (!id) return null;
   return (
     <>

@@ -228,6 +228,7 @@ export default function DesktopHome() {
           <div className="foot-tag"><div className="zh">守護海洋 · 敬畏自然 · 探索深藍</div><div className="en">Protect · Respect · Explore</div></div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 30 }}>
             {[
+              { href: "/schedule", label: "本月場次" },
               { href: "/course", label: "潛水課程" },
               { href: "/pricing", label: "費用價目" },
               { href: "/northsea-diving", label: "東北角潛點" },

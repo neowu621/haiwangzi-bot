@@ -5,6 +5,7 @@ import { LINE_BOOK_URL, LineIcon } from "../_home/data";
 // 用於 /course /northsea-diving /comment /haiwangzi —— 讓 Google 收錄、彼此互連提升爬取。
 
 export const SEO_PAGES = [
+  { href: "/schedule", label: "本月場次", icon: "🗓️" },
   { href: "/course", label: "潛水課程", icon: "🎓" },
   { href: "/pricing", label: "費用價目", icon: "💰" },
   { href: "/northsea-diving", label: "東北角潛點", icon: "🗺️" },

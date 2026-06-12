@@ -177,7 +177,7 @@ export default function MobileHome() {
           <a href={FB_URL} target="_blank" rel="noopener" aria-label="Facebook"><FbIcon s={30} /></a>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", fontSize: 12 }}>
-          {[["/course", "課程"], ["/pricing", "費用"], ["/northsea-diving", "潛點"], ["/comment", "評價"], ["/faq", "FAQ"], ["/safety", "安全"], ["/haiwangzi", "關於汪汪"]].map(([h, t]) => (
+          {[["/schedule", "本月場次"], ["/course", "課程"], ["/pricing", "費用"], ["/northsea-diving", "潛點"], ["/comment", "評價"], ["/faq", "FAQ"], ["/safety", "安全"], ["/haiwangzi", "關於汪汪"]].map(([h, t]) => (
             <a key={h} href={h} style={{ color: "#9bb6cc", textDecoration: "none" }}>{t}</a>
           ))}
         </div>
@@ -186,7 +186,7 @@ export default function MobileHome() {
 
       {/* 底部固定列（App 感）：本月場次 + LINE 預約 */}
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 10, boxSizing: "border-box" }}>
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 14px", borderRadius: 12, fontWeight: 800, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 本月場次</a>
+        <a href="/schedule" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 14px", borderRadius: 12, fontWeight: 800, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 本月場次</a>
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: 1, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 15.5, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 7 }}>
           <LineIcon s={19} />LINE 立即預約
         </a>

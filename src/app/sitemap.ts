@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz").replace(/\/$/, "");
   return [
     { url: `${base}/`, changeFrequency: "weekly", priority: 1 },
+    { url: `${base}/schedule`, changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/course`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/pricing`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/northsea-diving`, changeFrequency: "monthly", priority: 0.9 },
