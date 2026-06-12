@@ -17,14 +17,19 @@ import {
   COURSES, SPOTS, TRIPS, LVL_CLASS,
   BUILTIN_REVIEWS, FAQ, LineIcon, FbIcon, YtIcon, IgIcon,
 } from "./_home/data";
+import { localBusinessJsonLd } from "@/lib/business-info";
 
 export default function HomePage() {
+  // v497：LocalBusiness 結構化資料 — Google 商家卡 / 地圖 / 在地搜尋
+  const bizJsonLd = localBusinessJsonLd();
   // v414：學員怎麼說改為內建固定內容（後台編輯已取消）
   // v461：總結語移除（標題區 intro 已有「安心」結論，重複）
   const reviews = BUILTIN_REVIEWS;
 
   return (
     <div className="hw">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bizJsonLd) }} />
       {/* v422：字體改用 layout 的 next/font 自架，移除 render-blocking 的 Google Fonts <link>（LINE webview 加速） */}
       {/* v429：nav + 手機選單 + dotnav scroll-spy 是 client island */}
       <SiteNav />
@@ -245,6 +250,7 @@ export default function HomePage() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 30 }}>
             {[
               { href: "/course", label: "潛水課程" },
+              { href: "/pricing", label: "費用價目" },
               { href: "/northsea-diving", label: "東北角潛點" },
               { href: "/comment", label: "學員評價" },
               { href: "/haiwangzi", label: "關於汪汪教練" },

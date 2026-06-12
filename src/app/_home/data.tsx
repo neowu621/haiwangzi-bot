@@ -125,12 +125,12 @@ export const COURSES = [
 ];
 
 export const SPOTS = [
-  { n: "01", bg: "bg-reeffish", zh: "潮境公園", en: "Chaojing", level: "初級", d: "基隆望海巷海洋保育區，灣澳地形浪況穩定、魚群親人，獨立礁布滿海扇與軟珊瑚，浮潛、深潛與微距皆宜。", tags: ["深度 約 25m", "新手 · Fun Dive", "適合練功"] },
-  { n: "02", bg: "bg-coraldiver", zh: "82.8K", en: "Coastal KM 82.8", level: "挑戰", d: "以濱海公路里程牌命名的東北角「微距天堂」，岬角延伸地形、水攝生物極豐；易起急流、上下需攀爬陡梯，屬進階潛點。", tags: ["深度 25m+（可達 40m）", "進階"] },
-  { n: "03", bg: "bg-blue", zh: "水晶宮", en: "Crystal Palace", level: "進階", d: "東北角船潛經典點之一，水質清澈、岩礁交錯，能見度好時光線穿透宛如水晶宮殿，畫面夢幻。", tags: ["船潛 · 約 15–25m", "Fun Dive · 進階"] },
-  { n: "04", bg: "bg-macro", zh: "深澳", en: "Shen'ao", level: "初級", d: "以海上地標「象鼻岩」聞名的東北角秘境，水下約 5–13 米、岩縫與通道地形有趣，可見藍雀鯛、小丑魚等魚群與軟珊瑚，深度親民、輕鬆又好拍。", tags: ["深度 約 5–13m", "新手 · Fun Dive", "適合練功"] },
-  { n: "05", bg: "bg-coral", zh: "萊萊鶯歌石", en: "Lailai Yingge Rock", level: "挑戰", d: "位於三貂角／馬崗一帶，海蝕平台發達、太平洋暖流經過，魚類繁盛；石洞常藏龍蝦，並有海蛇、章魚與大型魚群。", tags: ["普遍不深 · 無強流", "Fun Dive"] },
-  { n: "06", bg: "bg-boat", zh: "船潛", en: "Boat Dive", level: "進階", d: "搭船前往岸潛到不了的潛點——基隆嶼彩虹礁、象鼻岩、玫瑰花園、鋼鐵礁、沈船、花牆等，地形開闊、有機會遇大型魚群與壯觀礁盤。", tags: ["深度 約 15–25m", "Fun Dive · 進階"] },
+  { n: "01", slug: "chaojing", bg: "bg-reeffish", zh: "潮境公園", en: "Chaojing", level: "初級", d: "基隆望海巷海洋保育區，灣澳地形浪況穩定、魚群親人，獨立礁布滿海扇與軟珊瑚，浮潛、深潛與微距皆宜。", tags: ["深度 約 25m", "新手 · Fun Dive", "適合練功"] },
+  { n: "02", slug: "km82", bg: "bg-coraldiver", zh: "82.8K", en: "Coastal KM 82.8", level: "挑戰", d: "以濱海公路里程牌命名的東北角「微距天堂」，岬角延伸地形、水攝生物極豐；易起急流、上下需攀爬陡梯，屬進階潛點。", tags: ["深度 25m+（可達 40m）", "進階"] },
+  { n: "03", slug: "crystal-palace", bg: "bg-blue", zh: "水晶宮", en: "Crystal Palace", level: "進階", d: "東北角船潛經典點之一，水質清澈、岩礁交錯，能見度好時光線穿透宛如水晶宮殿，畫面夢幻。", tags: ["船潛 · 約 15–25m", "Fun Dive · 進階"] },
+  { n: "04", slug: "shenao", bg: "bg-macro", zh: "深澳", en: "Shen'ao", level: "初級", d: "以海上地標「象鼻岩」聞名的東北角秘境，水下約 5–13 米、岩縫與通道地形有趣，可見藍雀鯛、小丑魚等魚群與軟珊瑚，深度親民、輕鬆又好拍。", tags: ["深度 約 5–13m", "新手 · Fun Dive", "適合練功"] },
+  { n: "05", slug: "lailai", bg: "bg-coral", zh: "萊萊鶯歌石", en: "Lailai Yingge Rock", level: "挑戰", d: "位於三貂角／馬崗一帶，海蝕平台發達、太平洋暖流經過，魚類繁盛；石洞常藏龍蝦，並有海蛇、章魚與大型魚群。", tags: ["普遍不深 · 無強流", "Fun Dive"] },
+  { n: "06", slug: "boat-dive", bg: "bg-boat", zh: "船潛", en: "Boat Dive", level: "進階", d: "搭船前往岸潛到不了的潛點——基隆嶼彩虹礁、象鼻岩、玫瑰花園、鋼鐵礁、沈船、花牆等，地形開闊、有機會遇大型魚群與壯觀礁盤。", tags: ["深度 約 15–25m", "Fun Dive · 進階"] },
 ];
 
 export const TRIPS = [

@@ -19,9 +19,16 @@ const outfit = Outfit({
   display: "swap",
 });
 
+// v497：metadataBase 讓各頁 canonical / OG 相對網址解析成絕對網址；補預設 OG 分享圖
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"),
   title: process.env.NEXT_PUBLIC_APP_NAME ?? "潛水預約系統",
   description: "日潛預約 · 旅遊潛水 · LIFF App",
+  openGraph: {
+    type: "website",
+    siteName: "東北角海王子潛水",
+    images: ["/home/src-hero.webp"],
+  },
 };
 
 export const viewport: Viewport = {

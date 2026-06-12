@@ -6,6 +6,7 @@ import { LINE_BOOK_URL, LineIcon } from "../_home/data";
 
 export const SEO_PAGES = [
   { href: "/course", label: "潛水課程", icon: "🎓" },
+  { href: "/pricing", label: "費用價目", icon: "💰" },
   { href: "/northsea-diving", label: "東北角潛點", icon: "🗺️" },
   { href: "/comment", label: "學員評價", icon: "💬" },
   { href: "/haiwangzi", label: "關於汪汪教練", icon: "⚜️" },

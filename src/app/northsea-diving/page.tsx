@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SPOTS, TRIPS } from "../_home/data";
 import { SeoShell, Card, LevelPill } from "../_seo/SeoShell";
 
@@ -40,10 +41,11 @@ export default function NorthseaDivingPage() {
               <LevelPill level={s.level} />
             </div>
             <p style={{ fontSize: 14.5, lineHeight: 1.85, color: "#33464e", margin: "0 0 12px" }}>{s.d}</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
               {s.tags.map((t) => (
                 <span key={t} style={{ background: "#eef3f6", color: "#456", fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 6 }}>{t}</span>
               ))}
+              <Link href={`/dive/${s.slug}`} style={{ marginLeft: "auto", color: "#0a8f86", fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>看 {s.zh} 詳情 →</Link>
             </div>
           </Card>
         ))}
