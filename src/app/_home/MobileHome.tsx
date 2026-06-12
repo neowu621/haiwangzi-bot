@@ -26,8 +26,11 @@ export default function MobileHome() {
       {/* 頂部 App Bar（sticky）*/}
       <header style={{ position: "sticky", top: 0, zIndex: 20, background: C.navy, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 18 }}>🌊</span>
-          <span style={{ fontWeight: 800, fontSize: 15 }}>東北角海王子潛水</span>
+          <span style={{ fontSize: 19 }}>🌊</span>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <span style={{ fontWeight: 800, fontSize: 14.5 }}>東北角海王子潛水</span>
+            <span style={{ fontSize: 9.5, color: "#7fbfb6", letterSpacing: 1 }}>萊萊鶯歌石 · 安心潛水</span>
+          </div>
         </div>
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" aria-label="加 LINE" style={{ background: "#06c755", color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 12.5, fontWeight: 800, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
           <LineIcon s={14} />LINE
@@ -36,7 +39,7 @@ export default function MobileHome() {
 
       {/* Hero（精簡）*/}
       <section style={{ position: "relative", color: "#fff", overflow: "hidden" }}>
-        <Image src="/home/src-hero.webp" alt="東北角海王子潛水教練 汪汪" width={520} height={560} priority sizes="(max-width:520px) 100vw, 520px" style={{ width: "100%", height: "auto", display: "block" }} />
+        <Image src="/home/src-hero.webp" alt="東北角海王子潛水教練 汪汪" width={520} height={560} priority sizes="(max-width:520px) 100vw, 520px" style={{ width: "100%", height: "40vh", maxHeight: 360, minHeight: 230, objectFit: "cover", objectPosition: "center 26%", display: "block" }} />
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, rgba(10,35,66,.15) 0%, rgba(10,35,66,.35) 45%, ${C.navy} 100%)` }} />
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 18px 18px" }}>
           <div style={{ fontSize: 11, letterSpacing: 2, color: "#9fd9d2", marginBottom: 6 }}>LAILAI YINGGE ROCK · NORTHEAST COAST</div>
@@ -54,18 +57,20 @@ export default function MobileHome() {
       </div>
 
       {/* 快速入口 chips */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "14px 16px 4px", WebkitOverflowScrolling: "touch" }}>
-        {[
-          { t: "體驗潛水", h: "/course" }, { t: "考證 OW/AOW", h: "/course" },
-          { t: "東北角潛點", h: "/northsea-diving" }, { t: "費用", h: "/pricing" },
-          { t: "學員評價", h: "/comment" }, { t: "常見問題", h: "/faq" },
-        ].map((c) => (
-          <Link key={c.t} href={c.h} style={{ flexShrink: 0, background: C.card, border: `1px solid ${C.line}`, borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 700, color: C.navy, textDecoration: "none" }}>{c.t}</Link>
-        ))}
+      <div style={{ paddingTop: 14 }}>
+        <Scroller gap={8} padX={16}>
+          {[
+            { t: "體驗潛水", h: "/course" }, { t: "考證 OW/AOW", h: "/course" },
+            { t: "東北角潛點", h: "/northsea-diving" }, { t: "費用", h: "/pricing" },
+            { t: "學員評價", h: "/comment" }, { t: "常見問題", h: "/faq" },
+          ].map((c) => (
+            <Link key={c.t} href={c.h} style={{ flexShrink: 0, background: C.card, border: `1px solid ${C.line}`, borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 700, color: C.navy, textDecoration: "none" }}>{c.t}</Link>
+          ))}
+        </Scroller>
       </div>
 
       {/* 第一次潛水 4 步 */}
-      <Section id="start" title="第一次潛水，這樣開始" sub="First Dive">
+      <Section id="start" title="第一次潛水，這樣開始" sub="First Dive" icon="🐠">
         <div style={{ display: "grid", gap: 8 }}>
           {[
             ["1", "LINE 諮詢・預約", "告訴汪汪你的狀況與想潛的日期"],
@@ -85,8 +90,8 @@ export default function MobileHome() {
       </Section>
 
       {/* 課程（橫向滑動，體驗潛水優先）*/}
-      <Section title="潛水課程" sub="Courses" moreHref="/course">
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 0 2px", WebkitOverflowScrolling: "touch" }}>
+      <Section title="潛水課程" sub="Courses" icon="🎓" moreHref="/course">
+        <Scroller gap={12}>
           {COURSES.map((c) => (
             <div key={c.title} style={{ flexShrink: 0, width: 230, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 15px", display: "flex", flexDirection: "column" }}>
               <span style={{ alignSelf: "flex-start", background: C.navy, color: "#7fe3d3", fontSize: 10.5, fontWeight: 800, letterSpacing: .5, padding: "3px 9px", borderRadius: 999, marginBottom: 9 }}>{c.badge}</span>
@@ -96,20 +101,24 @@ export default function MobileHome() {
               <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ marginTop: "auto", background: "#06c755", color: "#fff", textAlign: "center", padding: "9px", borderRadius: 9, fontWeight: 800, fontSize: 13, textDecoration: "none" }}>LINE 報名</a>
             </div>
           ))}
-        </div>
+        </Scroller>
       </Section>
 
       {/* 關於汪汪 + 數據 */}
-      <Section title="嗨，我是汪汪" sub="About">
+      <Section title="嗨，我是汪汪" sub="About" icon="🤿">
         <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden" }}>
           <Image src="/home/src-about.webp" alt="汪汪教練" width={520} height={300} loading="lazy" sizes="(max-width:520px) 100vw, 520px" style={{ width: "100%", height: "auto", display: "block" }} />
           <div style={{ padding: "13px 15px" }}>
             <p style={{ fontSize: 13.5, lineHeight: 1.7, color: C.ink, margin: "0 0 12px" }}>潛水最重要的不是裝備多好，而是帶你下水的人夠不夠專業、細心。我最在意的就是兩個字——「安心」。</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              {[["10+", "年教學"], ["1萬+", "次潛水"], ["1千+", "人帶過"]].map(([n, l]) => (
-                <div key={l} style={{ flex: 1, minWidth: 0, textAlign: "center", background: C.navy, color: "#fff", borderRadius: 10, padding: "11px 4px" }}>
-                  <div style={{ fontSize: 19, fontWeight: 900, color: "#5fe0cf", lineHeight: 1.1 }}>{n}</div>
-                  <div style={{ fontSize: 11, opacity: .85, marginTop: 2 }}>{l}</div>
+            {/* A：成就列 — 一整條橫幅、分隔線（App 感）*/}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", background: C.navy, borderRadius: 12, padding: "13px 6px", color: "#fff" }}>
+              {[["10+", "年教學"], ["1萬+", "次潛水"], ["1千+", "人帶過"]].map(([n, l], i) => (
+                <div key={l} style={{ display: "flex", alignItems: "center" }}>
+                  {i > 0 && <span style={{ width: 1, height: 30, background: "rgba(255,255,255,.18)", marginRight: 6 }} />}
+                  <div style={{ textAlign: "center", padding: "0 8px" }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "#5fe0cf", lineHeight: 1.1 }}>{n}</div>
+                    <div style={{ fontSize: 10.5, opacity: .85, marginTop: 2 }}>{l}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -118,8 +127,8 @@ export default function MobileHome() {
       </Section>
 
       {/* 學員評價（橫向滑動）*/}
-      <Section title="學員怎麼說" sub="Reviews" moreHref="/comment">
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 0 2px", WebkitOverflowScrolling: "touch" }}>
+      <Section title="學員怎麼說" sub="Reviews" icon="💬" moreHref="/comment">
+        <Scroller gap={12}>
           {BUILTIN_REVIEWS.slice(0, 5).map((r, i) => (
             <div key={i} style={{ flexShrink: 0, width: 250, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 15px" }}>
               <div style={{ color: "#f5a623", fontSize: 13, marginBottom: 6 }}>★★★★★</div>
@@ -128,11 +137,11 @@ export default function MobileHome() {
               <div style={{ fontSize: 11.5, fontWeight: 700, color: C.mist }}>— {r.name}</div>
             </div>
           ))}
-        </div>
+        </Scroller>
       </Section>
 
       {/* 東北角潛點（精簡清單）*/}
-      <Section title="東北角潛點" sub="Dive Sites" moreHref="/northsea-diving">
+      <Section title="東北角潛點" sub="Dive Sites" icon="🗺️" moreHref="/northsea-diving">
         <div style={{ display: "grid", gap: 8 }}>
           {SPOTS.map((s) => (
             <Link key={s.slug} href={`/dive/${s.slug}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 14px", textDecoration: "none", color: C.ink }}>
@@ -147,7 +156,7 @@ export default function MobileHome() {
       </Section>
 
       {/* FAQ（原生 details，零 JS）*/}
-      <Section title="常見問題" sub="FAQ" moreHref="/faq">
+      <Section title="常見問題" sub="FAQ" icon="❓" moreHref="/faq">
         <div style={{ display: "grid", gap: 8 }}>
           {FAQ[0].items.slice(0, 4).map((qa) => (
             <details key={qa.q} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 14px" }}>
@@ -175,8 +184,9 @@ export default function MobileHome() {
         <div style={{ fontSize: 10, opacity: .45, marginTop: 16, letterSpacing: .5 }}>© {new Date().getFullYear()} 東北角海王子 · v{APP_VERSION}</div>
       </footer>
 
-      {/* 底部固定預約列（App 感）*/}
+      {/* 底部固定列（App 感）：本月場次 + LINE 預約 */}
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 10, boxSizing: "border-box" }}>
+        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 14px", borderRadius: 12, fontWeight: 800, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 本月場次</a>
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: 1, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 15.5, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 7 }}>
           <LineIcon s={19} />LINE 立即預約
         </a>
@@ -185,17 +195,33 @@ export default function MobileHome() {
   );
 }
 
-function Section({ id, title, sub, moreHref, children }: { id?: string; title: string; sub: string; moreHref?: string; children: React.ReactNode }) {
+function Section({ id, title, sub, icon, moreHref, children }: { id?: string; title: string; sub: string; icon?: string; moreHref?: string; children: React.ReactNode }) {
   return (
     <section id={id} style={{ padding: "18px 16px 4px", scrollMarginTop: 60 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-        <div>
-          <div style={{ fontSize: 10.5, letterSpacing: 2, color: "#9aabae", fontWeight: 700, textTransform: "uppercase" }}>{sub}</div>
-          <h2 style={{ fontSize: 18, fontWeight: 900, color: "#0A2342", margin: "2px 0 0" }}>{title}</h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        {/* C：左側品牌色直線 + 小圖示，辨識度更高 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span style={{ width: 4, height: 30, borderRadius: 2, background: C.teal, flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 10.5, letterSpacing: 2, color: "#9aabae", fontWeight: 700, textTransform: "uppercase" }}>{sub}</div>
+            <h2 style={{ fontSize: 18, fontWeight: 900, color: C.navy, margin: "1px 0 0" }}>{icon ? <span style={{ marginRight: 5 }}>{icon}</span> : null}{title}</h2>
+          </div>
         </div>
         {moreHref ? <Link href={moreHref} style={{ fontSize: 12.5, color: "#0a8f86", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>更多 ›</Link> : null}
       </div>
       {children}
     </section>
+  );
+}
+
+// D：橫向滑動容器 — 右緣漸層淡出 + 箭頭，暗示「往右還有更多」
+function Scroller({ children, gap = 12, padX = 0 }: { children: React.ReactNode; gap?: number; padX?: number }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", gap, overflowX: "auto", padding: `2px ${padX}px`, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>{children}</div>
+      <div aria-hidden style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 36, background: `linear-gradient(90deg, rgba(243,247,250,0), ${C.bg})`, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <span style={{ color: C.teal, fontSize: 18, fontWeight: 900, marginRight: 2 }}>›</span>
+      </div>
+    </div>
   );
 }
