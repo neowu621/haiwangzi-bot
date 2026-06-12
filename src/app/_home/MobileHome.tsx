@@ -5,6 +5,7 @@ import {
   LINE_BOOK_URL, YT_CHANNEL, IG_URL, FB_URL,
   COURSES, SPOTS, BUILTIN_REVIEWS, FAQ, LineIcon, FbIcon, YtIcon, IgIcon,
 } from "./data";
+import { localBusinessJsonLd } from "@/lib/business-info";
 
 // v504：手機專屬首頁（App 化）。同網址內部依裝置渲染，先放 /mobile 預覽。
 // 設計重點（對症老闆痛點）：字級/間距收斂、區塊重排（預約優先）、圖片精簡延遲載入、
@@ -17,7 +18,10 @@ const C = {
 
 export default function MobileHome() {
   return (
-    <div style={{ background: C.bg, color: C.ink, fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif", paddingBottom: 78, maxWidth: 520, margin: "0 auto", minHeight: "100vh" }}>
+    <div style={{ background: C.bg, color: C.ink, fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif", paddingBottom: 78, width: "100%", maxWidth: 520, margin: "0 auto", minHeight: "100vh", overflowX: "hidden", boxSizing: "border-box" }}>
+      {/* v505：LocalBusiness 結構化資料（手機版也帶，配合 Google 行動優先索引）*/}
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd()) }} />
 
       {/* 頂部 App Bar（sticky）*/}
       <header style={{ position: "sticky", top: 0, zIndex: 20, background: C.navy, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 16px" }}>
@@ -82,7 +86,7 @@ export default function MobileHome() {
 
       {/* 課程（橫向滑動，體驗潛水優先）*/}
       <Section title="潛水課程" sub="Courses" moreHref="/course">
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 16px", margin: "0 -16px", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 0 2px", WebkitOverflowScrolling: "touch" }}>
           {COURSES.map((c) => (
             <div key={c.title} style={{ flexShrink: 0, width: 230, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 15px", display: "flex", flexDirection: "column" }}>
               <span style={{ alignSelf: "flex-start", background: C.navy, color: "#7fe3d3", fontSize: 10.5, fontWeight: 800, letterSpacing: .5, padding: "3px 9px", borderRadius: 999, marginBottom: 9 }}>{c.badge}</span>
@@ -102,10 +106,10 @@ export default function MobileHome() {
           <div style={{ padding: "13px 15px" }}>
             <p style={{ fontSize: 13.5, lineHeight: 1.7, color: C.ink, margin: "0 0 12px" }}>潛水最重要的不是裝備多好，而是帶你下水的人夠不夠專業、細心。我最在意的就是兩個字——「安心」。</p>
             <div style={{ display: "flex", gap: 8 }}>
-              {[["10+", "教學年資"], ["萬+", "潛水次數"], ["千+", "帶過人數"]].map(([n, l]) => (
-                <div key={l} style={{ flex: 1, textAlign: "center", background: C.navy, color: "#fff", borderRadius: 10, padding: "10px 4px" }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: "#5fe0cf" }}>{n}</div>
-                  <div style={{ fontSize: 10.5, opacity: .85 }}>{l}</div>
+              {[["10+", "年教學"], ["1萬+", "次潛水"], ["1千+", "人帶過"]].map(([n, l]) => (
+                <div key={l} style={{ flex: 1, minWidth: 0, textAlign: "center", background: C.navy, color: "#fff", borderRadius: 10, padding: "11px 4px" }}>
+                  <div style={{ fontSize: 19, fontWeight: 900, color: "#5fe0cf", lineHeight: 1.1 }}>{n}</div>
+                  <div style={{ fontSize: 11, opacity: .85, marginTop: 2 }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -115,7 +119,7 @@ export default function MobileHome() {
 
       {/* 學員評價（橫向滑動）*/}
       <Section title="學員怎麼說" sub="Reviews" moreHref="/comment">
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 16px", margin: "0 -16px", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: "2px 0 2px", WebkitOverflowScrolling: "touch" }}>
           {BUILTIN_REVIEWS.slice(0, 5).map((r, i) => (
             <div key={i} style={{ flexShrink: 0, width: 250, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 15px" }}>
               <div style={{ color: "#f5a623", fontSize: 13, marginBottom: 6 }}>★★★★★</div>
@@ -172,7 +176,7 @@ export default function MobileHome() {
       </footer>
 
       {/* 底部固定預約列（App 感）*/}
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 10 }}>
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 10, boxSizing: "border-box" }}>
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: 1, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 15.5, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 7 }}>
           <LineIcon s={19} />LINE 立即預約
         </a>
