@@ -6,6 +6,7 @@
 //     Bubbles（hero 泡泡）、NewsVideos（影片牆 + lightbox）。
 //   - FAQ 改用原生 <details><summary> 在 server 渲染，達成零 JS 開合。
 //   - .reveal 進場動畫已是純 CSS（animation:hw-reveal both），不再需要 JS observer。
+import type { Metadata } from "next";
 import Image from "next/image";
 import "./home.css";
 import { APP_VERSION } from "@/lib/version";
@@ -18,6 +19,18 @@ import {
   BUILTIN_REVIEWS, FAQ, LineIcon, FbIcon, YtIcon, IgIcon,
 } from "./_home/data";
 import { localBusinessJsonLd } from "@/lib/business-info";
+
+// v499：首頁專屬 SEO metadata（取代 layout 的通用「潛水預約系統」）+ 自我 canonical 指向正規網址
+export const metadata: Metadata = {
+  title: "東北角海王子潛水 ‧ 萊萊鶯歌石潛水基地 ‧ 汪汪教練",
+  description: "東北角潛水首選——汪汪教練帶你安心探索水下世界。免證照體驗潛水、OW/AOW 考證、Fun Dive 練功、東北角潛點與國內外潛旅，新手也能安心下水。",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "東北角海王子潛水 ‧ 汪汪教練帶你安心潛水",
+    description: "體驗潛水・OW/AOW 考證・Fun Dive 練功・東北角潛點與潛旅。新手也能安心下水。",
+    url: "/",
+  },
+};
 
 export default function HomePage() {
   // v497：LocalBusiness 結構化資料 — Google 商家卡 / 地圖 / 在地搜尋
