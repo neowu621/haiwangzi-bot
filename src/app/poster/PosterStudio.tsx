@@ -44,7 +44,7 @@ function loadScript(src: string) {
 function fmtMD(iso: string) { const [, m, d] = iso.split("-"); return `${+m}/${+d}`; }
 function wd(iso: string) { const [y, m, d] = iso.split("-").map(Number); return WD[new Date(y, m - 1, d).getDay()]; }
 
-export default function PosterStudio() {
+export default function PosterStudio({ embedded = false }: { embedded?: boolean }) {
   const now = new Date();
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() }); // m: 0-based
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -161,10 +161,12 @@ export default function PosterStudio() {
   const small = format === "square";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0e1620", color: "#e7eef4", fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif", padding: "20px 16px 60px" }}>
+    <div style={embedded
+      ? { background: "#0e1620", color: "#e7eef4", fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif", padding: 16, borderRadius: 14 }
+      : { minHeight: "100vh", background: "#0e1620", color: "#e7eef4", fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif", padding: "20px 16px 60px" }}>
       <div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 4px" }}>🪸 潛水行程海報產生器</h1>
-        <p style={{ fontSize: 13, color: "#90a4b4", margin: "0 0 18px" }}>自動抓你後台真實場次 → 選格式/配色/標題/背景 → 下載高解析 PNG 直接發 IG・LINE・FB</p>
+        {!embedded && <h1 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 4px" }}>🪸 潛水行程海報產生器</h1>}
+        <p style={{ fontSize: 13, color: "#90a4b4", margin: "0 0 18px" }}>自動抓你後台真實場次 → 選格式 / 配色 / 標題 / 背景 → 下載高解析 PNG 直接發 IG・LINE・FB</p>
 
         {/* ---- 控制列 ---- */}
         <div style={{ display: "grid", gap: 12, background: "#16212e", border: "1px solid #243443", borderRadius: 14, padding: 16, marginBottom: 18 }}>
