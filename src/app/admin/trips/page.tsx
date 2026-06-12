@@ -915,7 +915,8 @@ export default function AdminTripsPage() {
     // v383：小編 LINE 群組連結（如需更換改這裡）
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];
-    lines.push(baseUrl); // v513：第一行＝首頁網址
+    lines.push("🌊 東北角海王子官網"); // v515：第一行品牌標籤 + 首頁網址
+    lines.push(baseUrl);
     lines.push("");
     // v391：開啟「Dump 優惠開頭」時，先帶出系統設定的優惠文案 + 分隔線
     if (dumpPromo.enabled && dumpPromo.text.trim()) {
