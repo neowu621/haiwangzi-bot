@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import DesktopHome from "./_home/DesktopHome";
 import MobileHome from "./_home/MobileHome";
+import { isMobileUA } from "@/lib/ua";
 
 // v505：首頁同網址依「裝置」渲染 —— 手機 → MobileHome（App 化）；桌機 / 平板 → DesktopHome。
 //   不轉址、維持單一網址 haiwangzi.xyz（SEO 最佳），用 user-agent 判斷在 server 端決定。
@@ -19,14 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
-// 手機判斷：平板（iPad / Android 平板）排除 → 走桌機版
-export function isMobileUA(ua: string): boolean {
-  if (!ua) return false;
-  const s = ua.toLowerCase();
-  if (/ipad|tablet|playbook|silk/.test(s) && !/mobile/.test(s)) return false;
-  return /iphone|ipod|windows phone|iemobile|blackberry|bb10|opera mini|(android.*mobile)|mobile.*firefox/.test(s);
-}
-
+// 桌機/平板 → DesktopHome。手機真人已由 proxy.ts 在 / 轉向 /mobile；
+// 會走到這裡的手機 UA 多半是爬蟲（如 Googlebot 行動版），仍渲染 MobileHome 配合行動優先索引。
 export default async function HomePage() {
   const ua = (await headers()).get("user-agent") ?? "";
   return isMobileUA(ua) ? <MobileHome /> : <DesktopHome />;
