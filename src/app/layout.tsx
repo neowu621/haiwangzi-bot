@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_TC, Outfit } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@/components/Analytics";
 
 // v428：載入優化 — 移除「Noto Serif TC（CJK 明體，render-blocking 字體 CSS 大宗）」與
 //   全站未使用的 Inter；Noto Sans TC 字重 6→4（砍 300/600，faux 合成可接受）。
@@ -51,6 +52,8 @@ export default function RootLayout({
       <body>
         {/* v423：LiffProvider 已下放到 src/app/liff/layout.tsx，公開頁不再背 LIFF client JS */}
         {children}
+        {/* v503：GA4（只有設了 NEXT_PUBLIC_GA_ID 才載入）*/}
+        <Analytics />
       </body>
     </html>
   );
