@@ -13,22 +13,27 @@ export const BUSINESS = {
   description: "東北角萊萊鶯歌石潛水基地，汪汪教練帶你安心探索水下世界——體驗潛水、OW/AOW 考證、Fun Dive 練功、東北角潛點與國內外潛旅。",
   priceRange: "$$", // 大致價位等級（$ 便宜 ~ $$$$ 高），不放實際金額
   areaServed: ["東北角", "基隆", "新北", "貢寮", "瑞芳"],
+  // 聯絡方式：老闆指定「只用 LINE」（官方帳號 @894bpmew），不公開電話/地址
+  lineUrl: "https://line.me/R/ti/p/@894bpmew",
   sameAs: [
+    "https://line.me/R/ti/p/@894bpmew",
     "https://www.youtube.com/@haiwangzi-northeast-coast",
     "https://www.instagram.com/chengruwang/",
     "https://www.facebook.com/profile.php?id=100064926510785",
   ],
 
-  // ── TODO 老闆補：填了才送 Google ───────────────────
-  telephone: "", // TODO 公開聯絡電話，例「+886-912-345-678」（國碼 +886、去掉開頭 0）
-  streetAddress: "", // TODO 集合地點/基地地址，例「新北市貢寮區福連街…」
-  addressLocality: "", // TODO 鄉鎮市區，例「貢寮區」
-  addressRegion: "新北市", // 縣市（已預填，可改）
-  postalCode: "", // TODO 郵遞區號（可留空）
-  latitude: "", // TODO 緯度（Google 地圖右鍵「這是哪裡」可查），例「25.0123」
-  longitude: "", // TODO 經度，例「121.9456」
-  // 營業時間：留空陣列 = 不送。例：[{ days:["Sa","Su"], open:"07:00", close:"17:00" }]
-  openingHours: [] as { days: string[]; open: string; close: string }[],
+  // 聯絡電話/地址/座標：老闆決定只走 LINE，不公開（留空 = 不送 Google，不放假資料）
+  telephone: "",
+  streetAddress: "",
+  addressLocality: "",
+  addressRegion: "新北市",
+  postalCode: "",
+  latitude: "",
+  longitude: "",
+  // 營業時間：每天 07:00–17:00（老闆提供）
+  openingHours: [
+    { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], open: "07:00", close: "17:00" },
+  ] as { days: string[]; open: string; close: string }[],
 } as const;
 
 // 產生 LocalBusiness JSON-LD（只放有值的欄位，避免送出空/假資料）

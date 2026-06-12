@@ -66,13 +66,13 @@ type GearItemType =
 interface GearOption { itemType: GearItemType; label: string; price: number; }
 
 const GEAR_OPTIONS_DEFAULT: GearOption[] = [
-  { itemType: "BCD", label: "BCD", price: 200 },
-  { itemType: "regulator", label: "調節器", price: 200 },
-  { itemType: "wetsuit", label: "防寒衣", price: 300 },
+  { itemType: "BCD", label: "BCD", price: 350 },
+  { itemType: "regulator", label: "調節器", price: 350 },
+  { itemType: "wetsuit", label: "防寒衣", price: 150 },
   { itemType: "fins", label: "蛙鞋", price: 100 },
   { itemType: "mask", label: "面鏡", price: 100 },
-  { itemType: "computer", label: "潛水電腦錶", price: 300 },
-  { itemType: "full_set", label: "整套優惠", price: 800 },
+  { itemType: "computer", label: "潛水電腦錶", price: 100 },
+  { itemType: "full_set", label: "整套優惠", price: 1000 },
 ];
 
 const GEAR_LABELS: Record<GearItemType, string> = {

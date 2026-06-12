@@ -12,26 +12,30 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pricing" },
 };
 
-// 後台未設定時的參考預設（與 LIFF 預約頁一致）
-const TRIP_DEFAULT = { baseTrip: 1200, extraTank: 500, nightDive: 300, scooterRental: 500 };
+// 日潛 Fun Dive 每支氣瓶（含空氣）依潛點（老闆提供）
+const DIVE_FEES: { site: string; price: number }[] = [
+  { site: "東北角各潛點", price: 650 },
+  { site: "宜蘭 萊萊鶯歌石", price: 750 },
+];
+
+// 裝備租借：後台未設定時的 fallback（與後台 SiteConfig 同步）
 const GEAR_DEFAULT: { key: string; label: string; price: number }[] = [
-  { key: "BCD", label: "BCD 浮力背心", price: 200 },
-  { key: "regulator", label: "調節器", price: 200 },
-  { key: "wetsuit", label: "防寒衣", price: 300 },
+  { key: "BCD", label: "BCD 浮力背心", price: 350 },
+  { key: "regulator", label: "調節器", price: 350 },
+  { key: "wetsuit", label: "防寒衣", price: 150 },
   { key: "fins", label: "蛙鞋", price: 100 },
   { key: "mask", label: "面鏡", price: 100 },
-  { key: "computer", label: "潛水電腦錶", price: 300 },
-  { key: "full_set", label: "整套優惠", price: 800 },
+  { key: "computer", label: "潛水電腦錶", price: 100 },
+  { key: "full_set", label: "整套優惠", price: 1000 },
 ];
 
 const nt = (n: number) => `NT$ ${n.toLocaleString()}`;
 
 export default async function PricingPage() {
   const cfg = await prisma.siteConfig
-    .findUnique({ where: { id: "default" }, select: { defaultTripPricing: true, gearRentalPrices: true } })
+    .findUnique({ where: { id: "default" }, select: { gearRentalPrices: true } })
     .catch(() => null);
 
-  const tp = { ...TRIP_DEFAULT, ...((cfg?.defaultTripPricing as Record<string, number>) ?? {}) };
   const gearOverride = (cfg?.gearRentalPrices as Record<string, number>) ?? {};
   const gear = GEAR_DEFAULT.map((g) => ({ ...g, price: gearOverride[g.key] ?? g.price }));
 
@@ -59,16 +63,16 @@ export default async function PricingPage() {
         {/* 日潛 Fun Dive */}
         <Card>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0A2342", margin: "0 0 4px" }}>🤿 日潛 Fun Dive（持證）</h2>
-          <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>基本費為整單分攤的船費／場地費；每支氣瓶含空氣，依潛數與人數計。</p>
+          <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含空氣）」計，依潛點不同；一天通常 2 支氣瓶。裝備租借另計（見下表）。</p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={th}>項目</th><th style={th}>參考價</th></tr></thead>
+            <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含空氣）</th></tr></thead>
             <tbody>
-              <tr><td style={td}>基本費（整單分攤）</td><td style={tdP}>{nt(tp.baseTrip)}</td></tr>
-              <tr><td style={td}>每支氣瓶（含空氣，每潛）</td><td style={tdP}>{nt(tp.extraTank)}</td></tr>
-              <tr><td style={td}>夜潛加價</td><td style={tdP}>+ {nt(tp.nightDive)}</td></tr>
-              <tr><td style={td}>水中推進器 DPV</td><td style={tdP}>+ {nt(tp.scooterRental)}</td></tr>
+              {DIVE_FEES.map((d) => (
+                <tr key={d.site}><td style={td}>{d.site}</td><td style={tdP}>{nt(d.price)}</td></tr>
+              ))}
             </tbody>
           </table>
+          <p style={{ fontSize: 12.5, color: "#9aabae", margin: "12px 0 0" }}>※ 夜潛、船潛、水中推進器等特殊行程費用另計，歡迎 LINE 詢問。</p>
         </Card>
 
         {/* 課程 */}
@@ -86,7 +90,7 @@ export default async function PricingPage() {
               ))}
             </tbody>
           </table>
-          <p style={{ fontSize: 12.5, color: "#9aabae", margin: "12px 0 0" }}>※ 課程時間可彈性安排，詳細內容請見 <a href="/course" style={{ color: "#0a8f86" }}>潛水課程頁</a>。</p>
+          <p style={{ fontSize: 12.5, color: "#9aabae", margin: "12px 0 0" }}>※ 一對一加強／持證精進 Fun Dive 依需求討論報價。課程時間可彈性安排，詳細內容請見 <a href="/course" style={{ color: "#0a8f86" }}>潛水課程頁</a>。</p>
         </Card>
 
         {/* 裝備租借 */}
