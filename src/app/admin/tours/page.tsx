@@ -207,10 +207,55 @@ export default function ToursPage() {
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  // v512：Dump 潛旅成可貼 LINE 的文字
+  const [dumpOpen, setDumpOpen] = useState(false);
+  const [dumpCopied, setDumpCopied] = useState(false);
 
   function showToast(msg: string, isErr = false) {
     setToast({ msg, err: isErr });
     setTimeout(() => setToast(null), 2600);
+  }
+
+  // v512：把開放中的潛旅整理成可貼 LINE 筆記本的文字
+  function computeTourDumpText(): string {
+    const fmtMD = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
+    const open = tours.filter((t) => t.status !== "cancelled");
+    open.sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
+    const supportLine = "https://line.me/R/ti/p/@894bpmew";
+    const lines: string[] = [];
+    lines.push("⛴️ 海王子潛水旅行 行程表");
+    lines.push("");
+    if (open.length === 0) {
+      lines.push("（目前尚無開放中的潛旅）");
+    } else {
+      for (const t of open) {
+        const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10) ? fmtMD(t.dateStart) : `${fmtMD(t.dateStart)}–${fmtMD(t.dateEnd)}`;
+        const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
+        const remain = t.capacity == null ? "" : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
+        lines.push(`${range} ${t.title}${dur}${remain}`);
+        const sub: string[] = [];
+        if (t.deposit) sub.push(`訂金 $${t.deposit.toLocaleString()}/人`);
+        if (t.basePrice) sub.push(`團費 $${t.basePrice.toLocaleString()}/人`);
+        if (sub.length) lines.push(`　${sub.join("・")}`);
+      }
+    }
+    lines.push("");
+    lines.push("🔗 詳情與報名請洽小編");
+    lines.push(supportLine);
+    lines.push(`官網本月場次 ${baseUrl}/schedule`);
+    return lines.join("\n");
+  }
+  async function copyTourDump() {
+    const text = computeTourDumpText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setDumpCopied(true);
+      setTimeout(() => setDumpCopied(false), 2000);
+    } catch {
+      const ta = document.getElementById("tour-dump-textarea") as HTMLTextAreaElement | null;
+      if (ta) { ta.select(); document.execCommand("copy"); setDumpCopied(true); setTimeout(() => setDumpCopied(false), 2000); }
+    }
   }
 
   async function load() {
@@ -622,7 +667,8 @@ export default function ToursPage() {
             <h1 style={{ fontSize: 16, fontWeight: 900 }}>潛水旅行團</h1>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            {/* v342：移除 範本 / 匯出 Excel / 匯入 Excel */}
+            {/* v512：Dump 潛旅成可貼 LINE 的文字 */}
+            <TopBtn onClick={() => setDumpOpen(true)}><FileText size={14} style={{ marginRight: 4, display: "inline", verticalAlign: "-2px" }} />Dump 潛旅</TopBtn>
             <TopBtn primary onClick={newTrip}>＋ 新增行程</TopBtn>
           </div>
         </div>
@@ -1106,6 +1152,30 @@ export default function ToursPage() {
           boxShadow: "0 16px 40px -12px rgba(0,0,0,.3)",
         }}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* v512：Dump 潛旅 modal */}
+      {dumpOpen && (
+        <div onClick={() => setDumpOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(10,20,30,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, padding: 20, boxShadow: "0 24px 60px -16px rgba(0,0,0,.4)" }}>
+            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 4 }}>📋 Dump 潛旅（給 LINE 筆記本）</div>
+            <div style={{ fontSize: 12.5, color: "#6b7e8e", marginBottom: 12 }}>把開放中的潛旅整理成文字，複製貼到 LINE 群組／筆記本。</div>
+            <textarea
+              id="tour-dump-textarea"
+              readOnly
+              value={computeTourDumpText()}
+              rows={Math.min(20, Math.max(8, computeTourDumpText().split("\n").length + 1))}
+              style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${LINE}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.6, fontFamily: "monospace", resize: "vertical" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+              <span style={{ fontSize: 12, color: dumpCopied ? "#0a8f86" : "#9aabae" }}>{dumpCopied ? "✓ 已複製到剪貼簿" : "點右側按鈕複製、或直接拖選文字"}</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <TopBtn onClick={() => setDumpOpen(false)}>關閉</TopBtn>
+                <TopBtn primary onClick={copyTourDump}><Copy size={14} style={{ marginRight: 4, display: "inline", verticalAlign: "-2px" }} />{dumpCopied ? "已複製" : "一鍵複製"}</TopBtn>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </AdminShell>
