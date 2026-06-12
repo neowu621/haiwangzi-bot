@@ -10,7 +10,7 @@ export const BUSINESS = {
   url: "https://haiwangzi.xyz",
   image: "https://haiwangzi.xyz/home/src-hero.webp",
   logo: "https://haiwangzi.xyz/brand-icons/hwz-deepblue.png",
-  description: "東北角萊萊鶯歌石潛水基地，汪汪教練帶你安心探索水下世界——體驗潛水、OW/AOW 考證、Fun Dive 練功、東北角潛點與國內外潛旅。",
+  description: "東北角萊萊鶯歌石水肺潛水（scuba）基地，汪汪教練帶你安心探索水下世界——免證照體驗潛水、OW/AOW 考證、Fun Dive 練功，龍洞、潮境等東北角潛點與國內外潛旅。",
   priceRange: "$$", // 大致價位等級（$ 便宜 ~ $$$$ 高），不放實際金額
   areaServed: ["東北角", "基隆", "新北", "貢寮", "瑞芳"],
   // 聯絡方式：老闆指定「只用 LINE」（官方帳號 @894bpmew），不公開電話/地址

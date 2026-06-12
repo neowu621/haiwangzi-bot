@@ -10,12 +10,13 @@ import { isMobileUA } from "@/lib/ua";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "東北角海王子潛水 ‧ 萊萊鶯歌石潛水基地 ‧ 汪汪教練",
-  description: "東北角潛水首選——汪汪教練帶你安心探索水下世界。免證照體驗潛水、OW/AOW 考證、Fun Dive 練功、東北角潛點與國內外潛旅，新手也能安心下水。",
+  title: "東北角海王子潛水 ‧ 萊萊鶯歌石水肺潛水基地 ‧ 汪汪教練",
+  description: "東北角水肺潛水（scuba）首選——汪汪教練帶你安心探索水下世界。免證照體驗潛水、OW/AOW 考證、Fun Dive 練功，龍洞、潮境等東北角潛點與國內外潛旅，新手也能安心下水。",
+  keywords: ["東北角潛水", "水肺潛水", "scuba", "龍洞潛水", "潮境潛水", "體驗潛水", "OW 考照", "東北角 潛水教練"],
   alternates: { canonical: "/" },
   openGraph: {
     title: "東北角海王子潛水 ‧ 汪汪教練帶你安心潛水",
-    description: "體驗潛水・OW/AOW 考證・Fun Dive 練功・東北角潛點與潛旅。新手也能安心下水。",
+    description: "水肺潛水 scuba・體驗潛水・OW/AOW 考證・Fun Dive 練功・龍洞潮境等東北角潛點與潛旅。新手也能安心下水。",
     url: "/",
   },
 };

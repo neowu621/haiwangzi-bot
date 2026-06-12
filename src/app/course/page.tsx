@@ -4,7 +4,7 @@ import { SeoShell, Card } from "../_seo/SeoShell";
 
 export const metadata: Metadata = {
   title: "潛水課程 ‧ 體驗潛水/OW/AOW/Fun Dive ‧ 東北角海王子潛水",
-  description: "東北角海王子潛水課程：免證照體驗潛水 NT$2,500、開放水域 OW 保證班 NT$14,500、進階 AOW NT$14,500、持證精進 Fun Dive 一對一練功。汪汪教練親自帶班，時間彈性。",
+  description: "東北角水肺潛水（scuba）課程：免證照體驗潛水 NT$2,500、開放水域 OW 保證班 NT$14,500、進階 AOW NT$14,500、持證精進 Fun Dive 一對一練功。汪汪教練親自帶班，龍洞、東北角海洋實習，時間彈性。",
   alternates: { canonical: "/course" },
 };
 

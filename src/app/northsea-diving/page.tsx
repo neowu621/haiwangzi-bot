@@ -5,7 +5,7 @@ import { SeoShell, Card, LevelPill } from "../_seo/SeoShell";
 
 export const metadata: Metadata = {
   title: "東北角潛點介紹 ‧ 潮境/深澳/萊萊/船潛 ‧ 東北角海王子潛水",
-  description: "東北角熱門潛點懶人包：潮境公園、深澳象鼻岩、水晶宮、萊萊鶯歌石、82.8K 微距天堂、基隆嶼船潛。地形、深度、生態與適合程度一次看，汪汪教練帶你安心探索。",
+  description: "東北角水肺潛水（scuba）熱門潛點懶人包：龍洞、潮境公園、深澳象鼻岩、水晶宮、萊萊鶯歌石、82.8K 微距天堂、基隆嶼船潛。地形、深度、生態與適合程度一次看，汪汪教練帶你安心探索。",
   alternates: { canonical: "/northsea-diving" },
 };
 

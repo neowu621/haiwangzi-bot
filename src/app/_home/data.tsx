@@ -131,6 +131,7 @@ export const SPOTS = [
   { n: "04", slug: "shenao", bg: "bg-macro", zh: "深澳", en: "Shen'ao", level: "初級", d: "以海上地標「象鼻岩」聞名的東北角秘境，水下約 5–13 米、岩縫與通道地形有趣，可見藍雀鯛、小丑魚等魚群與軟珊瑚，深度親民、輕鬆又好拍。", tags: ["深度 約 5–13m", "新手 · Fun Dive", "適合練功"] },
   { n: "05", slug: "lailai", bg: "bg-coral", zh: "萊萊鶯歌石", en: "Lailai Yingge Rock", level: "挑戰", d: "位於三貂角／馬崗一帶，海蝕平台發達、太平洋暖流經過，魚類繁盛；石洞常藏龍蝦，並有海蛇、章魚與大型魚群。", tags: ["普遍不深 · 無強流", "Fun Dive"] },
   { n: "06", slug: "boat-dive", bg: "bg-boat", zh: "船潛", en: "Boat Dive", level: "進階", d: "搭船前往岸潛到不了的潛點——基隆嶼彩虹礁、象鼻岩、玫瑰花園、鋼鐵礁、沈船、花牆等，地形開闊、有機會遇大型魚群與壯觀礁盤。", tags: ["深度 約 15–25m", "Fun Dive · 進階"] },
+  { n: "07", slug: "longdong", bg: "bg-blue", zh: "龍洞", en: "Long Dong", level: "初級", d: "東北角最具代表性的水肺潛水（scuba）潛點之一，四稜砂岩海蝕峭壁地形壯觀，灣內浪況相對穩定、能見度佳，珊瑚與熱帶魚豐富。和美、龍洞灣等多處入水點，從免證照體驗潛水到 Fun Dive、OW/AOW 考證海洋實習都很適合，是新手與考證的熱門地點。", tags: ["深度 約 5–18m", "新手～進階", "體驗 · 考證熱點"] },
 ];
 
 export const TRIPS = [
