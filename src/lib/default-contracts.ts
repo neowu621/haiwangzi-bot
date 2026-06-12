@@ -12,6 +12,17 @@ const COURSE_DESC: Record<Cat, string> = {
   other: "本合約適用於雙方另行約定之客製潛水課程或活動，實際內容、天數與費用以雙方確認之內容為準。",
 };
 
+// 各合約類別 → 對應的課程「報名與流程說明」頁 slug（放進合約範本的「參考連結」refUrl）
+const REF_SLUG: Record<Cat, string | null> = { ow: "ow", aow: "aow", oneonone: "private", discover: "discover", other: null };
+
+export function buildContractRefUrl(category: string): string {
+  const cat = (["ow", "aow", "oneonone", "discover", "other"].includes(category) ? category : "other") as Cat;
+  const slug = REF_SLUG[cat];
+  if (!slug) return "";
+  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz").replace(/\/$/, "");
+  return `${base}/guide/${slug}`;
+}
+
 export function buildContractDefault(category: string, title: string): string {
   const cat = (["ow", "aow", "oneonone", "discover", "other"].includes(category) ? category : "other") as Cat;
   return `${title} 服務契約

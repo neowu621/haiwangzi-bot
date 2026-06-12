@@ -51,6 +51,12 @@ export default function CustomOrdersPage() {
   }, []);
   useEffect(() => { reload(); }, [reload]);
 
+  // v513：選了合約類別 → 自動帶入該類別範本的「參考連結」(/guide/...)，老闆仍可手動改
+  useEffect(() => {
+    const c = contracts.find((x) => x.category === category);
+    setRefUrl(c?.refUrl ?? "");
+  }, [category, contracts]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
