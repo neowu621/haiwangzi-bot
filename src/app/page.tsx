@@ -241,6 +241,19 @@ export default function HomePage() {
       <footer>
         <div className="wrap">
           <div className="foot-tag"><div className="zh">守護海洋 · 敬畏自然 · 探索深藍</div><div className="en">Protect · Respect · Explore</div></div>
+          {/* v496：深入了解 — 連到獨立可索引頁（內部連結幫助 Google 爬取與收錄） */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 30 }}>
+            {[
+              { href: "/course", label: "潛水課程" },
+              { href: "/northsea-diving", label: "東北角潛點" },
+              { href: "/comment", label: "學員評價" },
+              { href: "/haiwangzi", label: "關於汪汪教練" },
+              { href: "/faq", label: "常見問題" },
+              { href: "/safety", label: "潛水安全" },
+            ].map((p) => (
+              <a key={p.href} href={p.href} style={{ border: "1px solid rgba(255,255,255,.22)", borderRadius: 999, padding: "7px 15px", fontSize: ".86rem", color: "var(--mist)", textDecoration: "none" }}>{p.label}</a>
+            ))}
+          </div>
           <div className="foot-grid">
             <div className="foot-col">
               <h5>東北角海王子</h5>
