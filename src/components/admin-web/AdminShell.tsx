@@ -1,8 +1,8 @@
 "use client";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAdminAuth } from "@/lib/admin-web-auth";
+import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
 import { ConnDiag } from "@/components/admin-web/ConnDiag";
@@ -88,12 +88,14 @@ function NavLink({
   icon: Icon,
   label,
   active,
+  badge,
   onClick,
 }: {
   href: string;
   icon: typeof BookOpen;
   label: string;
   active: boolean;
+  badge?: number;
   onClick?: () => void;
 }) {
   return (
@@ -108,7 +110,16 @@ function NavLink({
       )}
     >
       <Icon className="h-4 w-4 flex-shrink-0" />
-      {label}
+      <span className="flex-1 truncate">{label}</span>
+      {/* v508：待處理數量徽章 */}
+      {badge && badge > 0 ? (
+        <span
+          className="flex-shrink-0 inline-flex items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
+          style={{ minWidth: 18, height: 18, background: "var(--color-coral)", color: "#fff" }}
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -123,6 +134,23 @@ export function AdminShell({
   const { ready, logout, adminUser } = useAdminAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // v508：側欄待處理數量徽章（老闆結帳 / 訂單管理 / 願望單）
+  const [counts, setCounts] = useState({ tonight: 0, bookings: 0, wishes: 0 });
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    adminFetch<{ tonight: { proofs: number; attendance: number }; pendingProofs: number; pendingWishes: number }>(
+      "/api/admin/stats/lite",
+    )
+      .then((d) => {
+        if (alive) setCounts({ tonight: (d.tonight?.proofs ?? 0) + (d.tonight?.attendance ?? 0), bookings: d.pendingProofs ?? 0, wishes: d.pendingWishes ?? 0 });
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [ready, pathname]);
+  const badgeFor = (href: string) =>
+    href === "/admin/tonight" ? counts.tonight : href === "/admin/bookings" ? counts.bookings : href === "/admin/dive-wishes" ? counts.wishes : 0;
 
   if (!ready) {
     return (
@@ -219,6 +247,7 @@ export function AdminShell({
                   href={item.href}
                   icon={item.icon}
                   label={item.label}
+                  badge={badgeFor(item.href)}
                   active={
                     "exact" in item && item.exact
                       ? pathname === item.href
