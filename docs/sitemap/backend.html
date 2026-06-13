@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>海王子官網地圖 — 後端</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#eef1f5;color:#0f1b2d}
+.wrap{width:1100px;margin:0 auto;padding:36px 40px}
+h1{margin:0;font-size:26px;color:#0A2342;font-weight:700}
+.sub{margin:7px 0 0;color:#5b6b7e;font-size:14px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-top:20px;overflow:hidden}
+.hd{padding:12px 18px;font-size:16px;font-weight:700;color:#fff;letter-spacing:.3px}
+.bd{padding:12px 18px}
+.row{display:flex;gap:12px;align-items:baseline;padding:5px 0;border-top:1px solid #f1f4f8}
+.row:first-child{border-top:none}
+.cat{flex:0 0 92px;color:#0A2342;font-weight:700;font-size:13px}
+code{font-family:"Cascadia Code","Consolas",monospace;color:#1f3a5f;font-size:13.5px;line-height:1.55;word-break:break-word}
+.ft{margin-top:18px;color:#8595a6;font-size:12px;display:flex;justify-content:space-between}
+.legend{color:#fff;background:#0A2342;border-radius:7px;padding:2px 9px;font-size:12px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>東北角海王子官網 — 後端地圖（管理 / 系統端）</h1>
+<p class="sub">老闆/員工登入操作，與沒有畫面的自動化。流程：B 的訂單進 C 後台結帳 → D 系統自動發通知/備份。</p>
+
+<div class="card">
+<div class="hd" style="background:#d97706">C · Admin 後台　需登入（/admin）</div>
+<div class="bd">
+<div class="row"><div class="cat">主控</div><code>/admin 儀表板　·　/admin/login 登入</code></div>
+<div class="row"><div class="cat">訂單場次</div><code>/bookings　·　/custom-orders　·　/trips　·　/tours　·　/tonight（老闆結帳）</code></div>
+<div class="row"><div class="cat">客戶</div><code>/users　·　/customer-activity　·　/dive-wishes　·　/credits　·　/vip-tiers</code></div>
+<div class="row"><div class="cat">資源</div><code>/coaches　·　/sites 潛點　·　/templates 範本　·　/guide 合約</code></div>
+<div class="row"><div class="cat">行銷通知</div><code>/broadcast　·　/media-posts　·　/message-log　·　/promotion 海報</code></div>
+<div class="row"><div class="cat">其他</div><code>/reports　·　/audit-logs　·　/settings　·　手機後台 /admin/m/*</code></div>
+</div>
+</div>
+
+<div class="card">
+<div class="hd" style="background:#475569">D · 系統 / 自動化（無畫面）</div>
+<div class="bd">
+<div class="row"><div class="cat">API ×145</div><code>/api/*　（auth · bookings · admin · coach · config · uploads …）</code></div>
+<div class="row"><div class="cat">排程 ×18</div><code>/api/cron/*　（每日訂單信 · 結帳提醒 · 天氣報告 · 生日點數 · 備份 …）</code></div>
+<div class="row"><div class="cat">公開檔</div><code>/sitemap.xml　·　/robots.txt　·　/api/healthz 版本探針</code></div>
+</div>
+</div>
+
+<div class="ft">
+<span>東北角海王子官網 · 後端（管理 / 系統）· 約 30 個後台頁 + 145 API + 18 排程</span>
+<span class="legend">v20260613_516 · 2026-06-13</span>
+</div>
+</div>
+</body>
+</html>

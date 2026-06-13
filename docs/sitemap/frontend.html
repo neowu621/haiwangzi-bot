@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>海王子官網地圖 — 前端</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#eef1f5;color:#0f1b2d}
+.wrap{width:1100px;margin:0 auto;padding:36px 40px}
+h1{margin:0;font-size:26px;color:#0A2342;font-weight:700}
+.sub{margin:7px 0 0;color:#5b6b7e;font-size:14px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-top:20px;overflow:hidden}
+.hd{padding:12px 18px;font-size:16px;font-weight:700;color:#fff;letter-spacing:.3px}
+.bd{padding:12px 18px}
+.row{display:flex;gap:12px;align-items:baseline;padding:5px 0;border-top:1px solid #f1f4f8}
+.row:first-child{border-top:none}
+.cat{flex:0 0 92px;color:#0A2342;font-weight:700;font-size:13px}
+code{font-family:"Cascadia Code","Consolas",monospace;color:#1f3a5f;font-size:13.5px;line-height:1.55;word-break:break-word}
+.ft{margin-top:18px;color:#8595a6;font-size:12px;display:flex;justify-content:space-between}
+.legend{color:#fff;background:#0A2342;border-radius:7px;padding:2px 9px;font-size:12px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>東北角海王子官網 — 前端地圖（對外 / 使用者端）</h1>
+<p class="sub">客戶看得到、會操作的頁面。流程：A 公開頁吸引 → 點 LINE → 進 B LIFF 下單付款。</p>
+
+<div class="card">
+<div class="hd" style="background:#0d9488">A · 公開行銷頁　Google 可索引（列入 sitemap.xml）</div>
+<div class="bd">
+<div class="row"><div class="cat">首頁 /</div><code>/  →  手機 MobileHome ／ 桌機 DesktopHome（同網址依裝置分流）</code></div>
+<div class="row"><div class="cat">主要頁</div><code>/schedule 本月場次　·　/course 課程　·　/pricing 價目　·　/faq 常見問題</code></div>
+<div class="row"><div class="cat">課程 SOP</div><code>/guide/discover　·　/guide/ow　·　/guide/aow　·　/guide/private</code></div>
+<div class="row"><div class="cat">潛點 ×7</div><code>/dive/ chaojing · km82 · crystal-palace · shenao · lailai · boat-dive · longdong</code></div>
+<div class="row"><div class="cat">其他</div><code>/northsea-diving　·　/haiwangzi 商家　·　/comment 評價　·　/safety　·　/welcome</code></div>
+<div class="row"><div class="cat">法務</div><code>/privacy 隱私權　·　/terms 服務條款</code></div>
+</div>
+</div>
+
+<div class="card">
+<div class="hd" style="background:#16a34a">B · LIFF　LINE 內開（會員端 ＋ 教練端）</div>
+<div class="bd">
+<div class="row"><div class="cat">會員 · 帳</div><code>/liff 主選單　·　/my　·　/profile　·　/calendar　·　/community　·　/media　·　/notifications</code></div>
+<div class="row"><div class="cat">會員 · 訂</div><code>/tour(+/[id])　·　/dive/date　·　/dive/trip　·　/payment　·　/refund　·　/wishes(+new)</code></div>
+<div class="row"><div class="cat">會員 · 其他</div><code>/faq　·　/go　·　/welcome　·　/add-friend</code></div>
+<div class="row"><div class="cat">教練端</div><code>/liff/coach　·　/today　·　/schedule　·　/media　·　/payment</code></div>
+</div>
+</div>
+
+<div class="ft">
+<span>東北角海王子官網 · 前端（對外 / 使用者）· 約 30 個前端頁面</span>
+<span class="legend">v20260613_516 · 2026-06-13</span>
+</div>
+</div>
+</body>
+</html>

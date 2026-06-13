@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東北角海王子官網 — 全站地圖</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#eef1f5;color:#0f1b2d}
+.wrap{max-width:1100px;margin:0 auto;padding:32px 40px}
+h1{margin:0;font-size:25px;color:#0A2342;font-weight:700}
+.sub{margin:7px 0 0;color:#5b6b7e;font-size:14px;min-height:20px}
+.tabs{display:flex;gap:8px;margin-top:20px;border-bottom:2px solid #dbe2ea;flex-wrap:wrap}
+.tab{appearance:none;border:none;background:none;cursor:pointer;font:inherit;font-size:15px;font-weight:700;color:#7c8a9a;padding:11px 20px;border-radius:10px 10px 0 0;position:relative;top:2px}
+.tab .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+.tab[aria-selected="true"]{color:#0A2342;background:#fff;border:2px solid #dbe2ea;border-bottom-color:#fff}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-top:20px;overflow:hidden}
+.hd{padding:12px 18px;font-size:16px;font-weight:700;color:#fff;letter-spacing:.3px}
+.bd{padding:12px 18px}
+.row{display:flex;gap:12px;align-items:baseline;padding:6px 0;border-top:1px solid #f1f4f8}
+.row:first-child{border-top:none}
+.cat{flex:0 0 94px;color:#0A2342;font-weight:700;font-size:13px}
+code{font-family:"Cascadia Code","Consolas",monospace;color:#1f3a5f;font-size:13.5px;line-height:1.55;word-break:break-word}
+.mind{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-top:20px;padding:8px}
+.mind svg{width:100%;height:auto;display:block}
+.flow{margin-top:18px;background:#0A2342;color:#dbe7f5;border-radius:12px;padding:13px 18px;font-size:13.5px;line-height:1.6}
+.flow b{color:#5ee0d6}
+.ft{margin-top:16px;color:#8595a6;font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.legend{color:#fff;background:#0A2342;border-radius:7px;padding:2px 9px;font-size:12px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>東北角海王子官網 — 全站頁面地圖</h1>
+<p class="sub" id="sub">客戶看得到、會操作的頁面。流程：A 公開頁吸引 → 點 LINE → 進 B LIFF 下單付款。</p>
+
+<div class="tabs" role="tablist">
+<button class="tab" role="tab" id="t-fe" aria-selected="true" onclick="pick('fe')"><span class="dot" style="background:#0d9488"></span>前端 · 對外 / 使用者</button>
+<button class="tab" role="tab" id="t-be" aria-selected="false" onclick="pick('be')"><span class="dot" style="background:#d97706"></span>後端 · 管理 / 系統</button>
+<button class="tab" role="tab" id="t-mind" aria-selected="false" onclick="pick('mind')"><span class="dot" style="background:#0A2342"></span>心智圖 · 脈絡</button>
+</div>
+
+<section class="panel on" id="p-fe" role="tabpanel">
+<div class="card">
+<div class="hd" style="background:#0d9488">A · 公開行銷頁　Google 可索引（列入 sitemap.xml）</div>
+<div class="bd">
+<div class="row"><div class="cat">首頁 /</div><code>/  →  手機 MobileHome ／ 桌機 DesktopHome（同網址依裝置分流）</code></div>
+<div class="row"><div class="cat">主要頁</div><code>/schedule 本月場次　·　/course 課程　·　/pricing 價目　·　/faq 常見問題</code></div>
+<div class="row"><div class="cat">課程 SOP</div><code>/guide/discover　·　/guide/ow　·　/guide/aow　·　/guide/private</code></div>
+<div class="row"><div class="cat">潛點 ×7</div><code>/dive/ chaojing · km82 · crystal-palace · shenao · lailai · boat-dive · longdong</code></div>
+<div class="row"><div class="cat">其他</div><code>/northsea-diving　·　/haiwangzi 商家　·　/comment 評價　·　/safety　·　/welcome</code></div>
+<div class="row"><div class="cat">法務</div><code>/privacy 隱私權　·　/terms 服務條款</code></div>
+</div>
+</div>
+<div class="card">
+<div class="hd" style="background:#16a34a">B · LIFF　LINE 內開（會員端 ＋ 教練端）</div>
+<div class="bd">
+<div class="row"><div class="cat">會員 · 帳</div><code>/liff 主選單　·　/my　·　/profile　·　/calendar　·　/community　·　/media　·　/notifications</code></div>
+<div class="row"><div class="cat">會員 · 訂</div><code>/tour(+/[id])　·　/dive/date　·　/dive/trip　·　/payment　·　/refund　·　/wishes(+new)</code></div>
+<div class="row"><div class="cat">會員 · 其他</div><code>/faq　·　/go　·　/welcome　·　/add-friend</code></div>
+<div class="row"><div class="cat">教練端</div><code>/liff/coach　·　/today　·　/schedule　·　/media　·　/payment</code></div>
+</div>
+</div>
+</section>
+
+<section class="panel" id="p-be" role="tabpanel">
+<div class="card">
+<div class="hd" style="background:#d97706">C · Admin 後台　需登入（/admin）</div>
+<div class="bd">
+<div class="row"><div class="cat">主控</div><code>/admin 儀表板　·　/admin/login 登入</code></div>
+<div class="row"><div class="cat">訂單場次</div><code>/bookings　·　/custom-orders　·　/trips　·　/tours　·　/tonight（老闆結帳）</code></div>
+<div class="row"><div class="cat">客戶</div><code>/users　·　/customer-activity　·　/dive-wishes　·　/credits　·　/vip-tiers</code></div>
+<div class="row"><div class="cat">資源</div><code>/coaches　·　/sites 潛點　·　/templates 範本　·　/guide 合約</code></div>
+<div class="row"><div class="cat">行銷通知</div><code>/broadcast　·　/media-posts　·　/message-log　·　/promotion 海報</code></div>
+<div class="row"><div class="cat">其他</div><code>/reports　·　/audit-logs　·　/settings　·　手機後台 /admin/m/*</code></div>
+</div>
+</div>
+<div class="card">
+<div class="hd" style="background:#475569">D · 系統 / 自動化（無畫面）</div>
+<div class="bd">
+<div class="row"><div class="cat">API ×145</div><code>/api/*　（auth · bookings · admin · coach · config · uploads …）</code></div>
+<div class="row"><div class="cat">排程 ×18</div><code>/api/cron/*　（每日訂單信 · 結帳提醒 · 天氣報告 · 生日點數 · 備份 …）</code></div>
+<div class="row"><div class="cat">公開檔</div><code>/sitemap.xml　·　/robots.txt　·　/api/healthz 版本探針</code></div>
+</div>
+</div>
+</section>
+
+<section class="panel" id="p-mind" role="tabpanel">
+<div class="mind">
+<svg viewBox="0 0 1060 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="海王子官網心智圖">
+<rect x="232" y="46" width="804" height="312" rx="16" fill="#ecfdf9" stroke="#cfeee8"/>
+<rect x="232" y="374" width="804" height="300" rx="16" fill="#fdf6ec" stroke="#f0e1c4"/>
+<text x="1020" y="70" text-anchor="end" font-size="13" font-weight="700" fill="#0d9488">前端 · 對外 / 使用者</text>
+<text x="1020" y="398" text-anchor="end" font-size="13" font-weight="700" fill="#b45309">後端 · 管理 / 系統</text>
+
+<path d="M210,371 C230,371 226,132 246,132" fill="none" stroke="#0d9488" stroke-width="2.5"/>
+<path d="M210,371 C230,371 226,281 246,281" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+<path d="M210,371 C230,371 226,464 246,464" fill="none" stroke="#d97706" stroke-width="2.5"/>
+<path d="M210,371 C230,371 226,610 246,610" fill="none" stroke="#475569" stroke-width="2.5"/>
+
+<g stroke="#0d9488" stroke-width="1.4" fill="none" opacity="0.55">
+<path d="M414,132 C444,132 440,68 462,68"/>
+<path d="M414,132 C444,132 440,98 462,98"/>
+<path d="M414,132 C444,132 440,128 462,128"/>
+<path d="M414,132 C444,132 440,158 462,158"/>
+<path d="M414,132 C444,132 440,188 462,188"/>
+</g>
+<g stroke="#16a34a" stroke-width="1.4" fill="none" opacity="0.55">
+<path d="M414,281 C444,281 440,232 462,232"/>
+<path d="M414,281 C444,281 440,262 462,262"/>
+<path d="M414,281 C444,281 440,292 462,292"/>
+<path d="M414,281 C444,281 440,322 462,322"/>
+</g>
+<g stroke="#d97706" stroke-width="1.4" fill="none" opacity="0.55">
+<path d="M414,464 C444,464 440,400 462,400"/>
+<path d="M414,464 C444,464 440,430 462,430"/>
+<path d="M414,464 C444,464 440,460 462,460"/>
+<path d="M414,464 C444,464 440,490 462,490"/>
+<path d="M414,464 C444,464 440,520 462,520"/>
+</g>
+<g stroke="#475569" stroke-width="1.4" fill="none" opacity="0.55">
+<path d="M414,610 C444,610 440,576 462,576"/>
+<path d="M414,610 C444,610 440,606 462,606"/>
+<path d="M414,610 C444,610 440,636 462,636"/>
+</g>
+
+<rect x="40" y="336" width="170" height="70" rx="14" fill="#0A2342"/>
+<text x="125" y="368" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">東北角海王子官網</text>
+<text x="125" y="389" text-anchor="middle" font-size="12" fill="#9fc0e0">haiwangzi.xyz</text>
+
+<rect x="246" y="105" width="168" height="54" rx="12" fill="#0d9488"/>
+<text x="330" y="129" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">公開行銷頁</text>
+<text x="330" y="147" text-anchor="middle" font-size="11" fill="#d7f5f0">對外 · SEO 可索引</text>
+<rect x="246" y="254" width="168" height="54" rx="12" fill="#16a34a"/>
+<text x="330" y="278" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">LIFF · LINE 內</text>
+<text x="330" y="296" text-anchor="middle" font-size="11" fill="#d6f3df">會員 ＋ 教練端</text>
+<rect x="246" y="437" width="168" height="54" rx="12" fill="#d97706"/>
+<text x="330" y="461" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Admin 後台</text>
+<text x="330" y="479" text-anchor="middle" font-size="11" fill="#fbe8cf">需登入 /admin</text>
+<rect x="246" y="583" width="168" height="54" rx="12" fill="#475569"/>
+<text x="330" y="607" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">系統 / 自動化</text>
+<text x="330" y="625" text-anchor="middle" font-size="11" fill="#d4dae1">無畫面 · API</text>
+
+<g font-size="13.5" fill="#0f766e"><text x="470" y="72">首頁 /　手機 · 桌機分流</text>
+<text x="470" y="102">場次 · 課程 · 價目 · FAQ</text>
+<text x="470" y="132">4 課程報名 SOP　/guide</text>
+<text x="470" y="162">7 潛點　/dive（含龍洞）</text>
+<text x="470" y="192">商家 · 評價 · 安全 · 法務</text></g>
+<g font-size="13.5" fill="#15803d"><text x="470" y="236">會員帳號 · 主選單 · 月曆</text>
+<text x="470" y="266">預約 · 付款 · 退費</text>
+<text x="470" y="296">願望單 wishes · 社群動態</text>
+<text x="470" y="326">教練端：今日 · 排班 · 收款</text></g>
+<g font-size="13.5" fill="#b45309"><text x="470" y="404">訂單 · 場次 · 老闆結帳</text>
+<text x="470" y="434">客戶 · 點數 · VIP 分級</text>
+<text x="470" y="464">教練 · 潛點 · 範本 · 合約</text>
+<text x="470" y="494">行銷 · 廣播 · 通知 · 海報</text>
+<text x="470" y="524">報表 · 稽核 · 設定</text></g>
+<g font-size="13.5" fill="#475569"><text x="470" y="580">145 支 API　/api/*</text>
+<text x="470" y="610">18 支排程 cron（自動通知 · 備份）</text>
+<text x="470" y="640">sitemap · robots · healthz</text></g>
+</svg>
+</div>
+</section>
+
+<div class="flow">金流貫穿前後端：<b>A 公開頁</b> 吸引陌生客 → 點 LINE 進 <b>B LIFF</b> 下單付款 → 訂單進 <b>C 後台</b> 給老闆結帳 → <b>D 系統</b> 自動發通知 / 備份。</div>
+
+<div class="ft">
+<span id="ftnote">前端：約 30 個對外 / 使用者頁面</span>
+<span class="legend">v20260613_516 · 2026-06-13 · 全站 76 頁 + 145 API</span>
+</div>
+</div>
+
+<script>
+var SUB={
+ fe:"客戶看得到、會操作的頁面。流程：A 公開頁吸引 → 點 LINE → 進 B LIFF 下單付款。",
+ be:"老闆 / 員工登入操作，與沒有畫面的自動化。訂單進 C 後台結帳 → D 系統自動發通知 / 備份。",
+ mind:"從官網主幹長出前端（對外吸客）與後端（管理 / 系統）兩大脈絡，枝葉為各功能群組。"
+};
+var FT={
+ fe:"前端：約 30 個對外 / 使用者頁面",
+ be:"後端：約 30 個後台頁 + 145 支 API + 18 支排程",
+ mind:"全站 76 頁 + 145 API + 18 排程 · 依存取對象分前端 / 後端"
+};
+function pick(k){
+ ["fe","be","mind"].forEach(function(x){
+  document.getElementById("p-"+x).classList.toggle("on",x===k);
+  document.getElementById("t-"+x).setAttribute("aria-selected",x===k);
+ });
+ document.getElementById("sub").textContent=SUB[k];
+ document.getElementById("ftnote").textContent=FT[k];
+}
+</script>
+</body>
+</html>
