@@ -15,6 +15,14 @@ export function Analytics() {
       <Script id="ga4-init" strategy="afterInteractive">
         {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${id}');`}
       </Script>
+      {/* v516：LINE 預約轉換追蹤 — 用事件委派監聽全站點擊，凡點到連去 LINE
+            （line.me / lin.ee / liff.line）的連結就送一個 line_click event。
+            這樣 server 元件（含零 client JS 的 MobileHome）一行都不用改，
+            首頁/導覽/footer/課程/潛點/場次的 LINE 按鈕全部一次涵蓋。
+            可在 GA4 把 line_click 標記為轉換，量哪一頁真的帶來預約。 */}
+      <Script id="ga4-line-tracker" strategy="afterInteractive">
+        {`document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a');if(!a||!a.href)return;if(!/line\\.me|lin\\.ee|liff\\.line/.test(a.href))return;var t=((a.innerText||a.textContent||'').trim()).slice(0,60);if(typeof window.gtag==='function'){window.gtag('event','line_click',{link_url:a.href,link_text:t,page_path:location.pathname});}},true);`}
+      </Script>
     </>
   );
 }
