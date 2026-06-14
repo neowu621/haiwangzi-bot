@@ -75,6 +75,42 @@ const LEAD_DAY_FIELDS: Record<string, { field: string; pre: string; post: string
   credit_expiry:  { field: "creditExpiryLeadDays",    pre: "抵用金到期前", post: "天，提醒客戶把握使用。" },
 };
 
+// v520：每個模板的「適用對象」標籤 — 會員 / 日潛(一次付清) / 旅潛(訂金+尾款) / 內部(發給老闆)
+const SCOPE_TAGS: Record<string, string[]> = {
+  welcome:                  ["會員"],
+  booking_confirm:          ["日潛"],
+  deposit_notice:           ["旅潛"],
+  deposit_confirm:          ["旅潛"],
+  final_reminder:           ["旅潛"],
+  trip_guide:               ["旅潛"],
+  d1_reminder:              ["日潛"],
+  weather_cancel:           ["日潛"],
+  overcap_alert:            ["日潛", "內部"],
+  admin_weekly:             ["內部"],
+  attendance_confirmed:     ["日潛", "旅潛"],
+  first_order_reward_grant: ["會員"],
+  refund_request:           ["日潛", "旅潛"],
+  payment_reject:           ["日潛", "旅潛"],
+  booking_cancel:           ["日潛", "旅潛"],
+  refund_complete:          ["日潛", "旅潛"],
+  vip_upgrade:              ["會員"],
+  birthday_credit:          ["會員"],
+  credit_expiry:            ["會員"],
+};
+const SCOPE_COLORS: Record<string, { bg: string; fg: string }> = {
+  "會員": { bg: "#eef0fb", fg: "#4b54b8" },
+  "日潛": { bg: "#e3f6f3", fg: "#0d8a7e" },
+  "旅潛": { bg: "#fdeede", fg: "#b4791b" },
+  "內部": { bg: "#eef1f3", fg: "#5c6b73" },
+};
+// 特別備註：日潛一次付清、旅潛才有訂金/尾款
+const SCOPE_NOTE: Record<string, string> = {
+  booking_confirm: "日潛一次付清，無訂金 / 尾款流程。",
+  deposit_notice:  "僅旅潛（潛水團）有訂金流程，日潛不適用。",
+  deposit_confirm: "僅旅潛（潛水團）有訂金流程，日潛不適用。",
+  final_reminder:  "僅旅潛（潛水團）有尾款流程，日潛不適用。",
+};
+
 // v480：每模板「動態主體」樣本 — 與試送/正式發送同一函式產生（單一來源）
 function sampleBody(key: string): string {
   return buildDynamicBody(key, MSG_SAMPLE_PARAMS[key] ?? {});
@@ -460,7 +496,7 @@ export default function AdminTemplatesPage() {
                     </div>
                   )}
 
-                  <div style={{ fontSize: 12, color: "#4a6168", lineHeight: 1.6, padding: "0 4px", marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, color: "#4a6168", lineHeight: 1.7, padding: "0 4px", marginBottom: 12 }}>
                     <span style={{
                       display: "inline-block", background: "#e9f6f4", color: "#0e4c5a",
                       border: "1px solid #cdeae5", padding: "1px 8px", borderRadius: 20,
@@ -468,7 +504,25 @@ export default function AdminTemplatesPage() {
                     }}>
                       {cur.group}
                     </span>
+                    {/* v520：適用對象標籤 — 會員 / 日潛 / 旅潛 / 內部 */}
+                    {(SCOPE_TAGS[cur.key] ?? []).map((tag) => {
+                      const c = SCOPE_COLORS[tag] ?? { bg: "#eef1f3", fg: "#5c6b73" };
+                      return (
+                        <span key={tag} style={{
+                          display: "inline-block", background: c.bg, color: c.fg,
+                          padding: "1px 8px", borderRadius: 20,
+                          fontSize: 10.5, fontWeight: 700, marginRight: 5,
+                        }}>
+                          {tag}
+                        </span>
+                      );
+                    })}
                     動態欄位由系統自動代入，下方僅編輯文字。
+                    {SCOPE_NOTE[cur.key] && (
+                      <span style={{ display: "block", marginTop: 4, fontSize: 11, color: "#b4791b", fontWeight: 600 }}>
+                        ⚠️ {SCOPE_NOTE[cur.key]}
+                      </span>
+                    )}
                   </div>
 
                   {/* 管道開關 */}
