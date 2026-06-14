@@ -63,8 +63,18 @@ export async function pollInboundGmail(limit = 30): Promise<PollResult> {
   let scanned = 0, ingested = 0, dedup = 0, skipped = 0;
 
   await client.connect();
-  const lock = await client.getMailboxLock("INBOX");
+  // 掃 INBOX + 垃圾信匣（轉寄信常被 Gmail 判垃圾，不掃 Spam 會漏收客人信）
+  const folders = ["INBOX"];
   try {
+    for (const mb of await client.list()) {
+      if (mb.specialUse === "\\Junk" && !folders.includes(mb.path)) { folders.push(mb.path); break; }
+    }
+  } catch { /* 找不到 Spam 匣就只掃 INBOX */ }
+
+  try {
+   for (const folder of folders) {
+    const lock = await client.getMailboxLock(folder);
+    try {
     // 只撈「To 含本網域」的未讀信 → 完全不碰老闆 Gmail 裡的私人信
     const uids = (await client.search({ seen: false, to: "haiwangzi.xyz" }, { uid: true })) || [];
     const take = uids.slice(0, limit);
@@ -118,8 +128,11 @@ export async function pollInboundGmail(limit = 30): Promise<PollResult> {
         skipped++; // 單封失敗不影響其它（不標已讀，下次重試）
       }
     }
+    } finally {
+      lock.release();
+    }
+   }
   } finally {
-    lock.release();
     await client.logout().catch(() => {});
   }
 
