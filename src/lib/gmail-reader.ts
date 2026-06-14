@@ -65,7 +65,8 @@ export async function pollInboundGmail(limit = 30): Promise<PollResult> {
   await client.connect();
   const lock = await client.getMailboxLock("INBOX");
   try {
-    const uids = (await client.search({ seen: false }, { uid: true })) || [];
+    // 只撈「To 含本網域」的未讀信 → 完全不碰老闆 Gmail 裡的私人信
+    const uids = (await client.search({ seen: false, to: "haiwangzi.xyz" }, { uid: true })) || [];
     const take = uids.slice(0, limit);
     for (const uid of take) {
       scanned++;
@@ -74,14 +75,10 @@ export async function pollInboundGmail(limit = 30): Promise<PollResult> {
         if (!dl?.content) { skipped++; continue; }
         const parsed = await simpleParser(dl.content);
 
+        // 防呆再確認一次；非本網域就「跳過但不標已讀」（不動私人信）
         const toText = (parsed.to ? (Array.isArray(parsed.to) ? parsed.to : [parsed.to]).map((t) => t.text).join(",") : "");
         const deliveredTo = String(parsed.headers.get("delivered-to") ?? parsed.headers.get("x-forwarded-to") ?? "");
-        if (!isForDomain(toText, deliveredTo)) {
-          // 非本網域的私人信 → 標已讀但不入庫，下次不再掃
-          await client.messageFlagsAdd(`${uid}`, ["\\Seen"], { uid: true });
-          skipped++;
-          continue;
-        }
+        if (!isForDomain(toText, deliveredTo)) { skipped++; continue; }
 
         const from = firstAddr(parsed.from);
         const messageId = parsed.messageId || `<gmail-${uid}-${Date.now()}@haiwangzi.xyz>`;
