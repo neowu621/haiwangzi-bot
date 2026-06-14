@@ -479,6 +479,59 @@ const PATCHES = [
    )`,
   `CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS notifications_user_read_idx ON notifications(user_id, is_read)`,
+
+  // ── v521/v522：客服信箱 Console（email console）─────────────────────
+  //   prisma db push 因既有 drift 一直失敗（data-loss），新表/enum 一律靠 migrate-safety 建。
+  //   enum 名稱與 model @@map 須與 Prisma schema 一致：ThreadStatus / Direction / MessageStatus，
+  //   email_threads / email_messages / suppressed_emails。
+  `DO $$ BEGIN CREATE TYPE "ThreadStatus" AS ENUM ('WAITING','PROCESSING','CLOSED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN CREATE TYPE "Direction" AS ENUM ('INBOUND','OUTBOUND'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN CREATE TYPE "MessageStatus" AS ENUM ('RECEIVED','QUEUED','SENT','DELIVERED','BOUNCED','FAILED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE TABLE IF NOT EXISTS email_threads (
+     id TEXT PRIMARY KEY,
+     subject TEXT NOT NULL,
+     customer_email TEXT NOT NULL,
+     customer_name TEXT,
+     status "ThreadStatus" NOT NULL DEFAULT 'WAITING',
+     tags TEXT[] NOT NULL DEFAULT '{}',
+     assignee TEXT,
+     booking_id UUID,
+     last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     CONSTRAINT email_threads_booking_fk FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS email_threads_status_idx ON email_threads(status, last_message_at)`,
+  `CREATE INDEX IF NOT EXISTS email_threads_customer_idx ON email_threads(customer_email)`,
+  `CREATE TABLE IF NOT EXISTS email_messages (
+     id TEXT PRIMARY KEY,
+     thread_id TEXT NOT NULL,
+     direction "Direction" NOT NULL,
+     from_addr TEXT NOT NULL,
+     to_addr TEXT NOT NULL,
+     cc_addr TEXT,
+     subject TEXT NOT NULL,
+     body_text TEXT,
+     body_html TEXT,
+     message_id TEXT NOT NULL,
+     in_reply_to TEXT,
+     "references" TEXT,
+     provider_id TEXT,
+     status "MessageStatus" NOT NULL DEFAULT 'RECEIVED',
+     attachments JSONB,
+     opened_at TIMESTAMPTZ,
+     clicked_at TIMESTAMPTZ,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     CONSTRAINT email_messages_thread_fk FOREIGN KEY (thread_id) REFERENCES email_threads(id) ON DELETE CASCADE
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS email_messages_message_id_key ON email_messages(message_id)`,
+  `CREATE INDEX IF NOT EXISTS email_messages_thread_idx ON email_messages(thread_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS email_messages_provider_idx ON email_messages(provider_id)`,
+  `CREATE TABLE IF NOT EXISTS suppressed_emails (
+     email TEXT PRIMARY KEY,
+     reason TEXT NOT NULL,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
 ];
 
 async function main() {
