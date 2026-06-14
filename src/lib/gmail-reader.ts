@@ -64,11 +64,15 @@ export async function pollInboundGmail(limit = 30): Promise<PollResult> {
 
   await client.connect();
   // 掃 INBOX + 垃圾信匣（轉寄信常被 Gmail 判垃圾，不掃 Spam 會漏收客人信）
+  //   Spam 匣偵測：先 \Junk special-use，退而求其次用路徑 regex（[Gmail]/Spam 等），最穩。
   const folders = ["INBOX"];
   try {
-    for (const mb of await client.list()) {
-      if (mb.specialUse === "\\Junk" && !folders.includes(mb.path)) { folders.push(mb.path); break; }
-    }
+    const boxes = await client.list();
+    const spam =
+      boxes.find((mb) => mb.specialUse === "\\Junk") ??
+      boxes.find((mb) => /(\[Gmail\]|\[Google Mail\])\/Spam$/i.test(mb.path)) ??
+      boxes.find((mb) => /\/(Spam|Junk)$/i.test(mb.path));
+    if (spam && !folders.includes(spam.path)) folders.push(spam.path);
   } catch { /* 找不到 Spam 匣就只掃 INBOX */ }
 
   try {
