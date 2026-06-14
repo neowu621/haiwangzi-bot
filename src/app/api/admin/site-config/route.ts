@@ -86,6 +86,11 @@ const PatchSchema = z.object({
   // v261：首單付款獎勵
   firstOrderRewardAmount: z.number().int().min(0).optional(),
   firstOrderRewardExpiryDays: z.number().int().min(0).max(3650).optional(),
+  // v519：訊息模板「提前幾天通知」全域設定
+  d1ReminderLeadDays: z.number().int().min(0).max(60).optional(),
+  finalEarlyLeadDays: z.number().int().min(1).max(180).optional(),
+  depositRemindBeforeDays: z.number().int().min(0).max(60).optional(),
+  creditExpiryLeadDays: z.number().int().min(1).max(180).optional(),
   // v388：註冊禮金 + VIP5 滿級回饋
   signupRewardAmount: z.number().int().min(0).optional(),
   signupRewardExpiryDays: z.number().int().min(0).max(3650).optional(),
@@ -226,6 +231,11 @@ export async function GET(req: NextRequest) {
       safetyPolicy: row.safetyPolicy ?? "",
       firstOrderRewardAmount: (row as unknown as { firstOrderRewardAmount?: number }).firstOrderRewardAmount ?? 100,
       firstOrderRewardExpiryDays: (row as unknown as { firstOrderRewardExpiryDays?: number }).firstOrderRewardExpiryDays ?? 360,
+      // v519：訊息模板「提前幾天通知」全域設定
+      d1ReminderLeadDays: (row as unknown as { d1ReminderLeadDays?: number }).d1ReminderLeadDays ?? 1,
+      finalEarlyLeadDays: (row as unknown as { finalEarlyLeadDays?: number }).finalEarlyLeadDays ?? 33,
+      depositRemindBeforeDays: (row as unknown as { depositRemindBeforeDays?: number }).depositRemindBeforeDays ?? 2,
+      creditExpiryLeadDays: (row as unknown as { creditExpiryLeadDays?: number }).creditExpiryLeadDays ?? 7,
       // v388 註冊禮金 + VIP5 滿級回饋
       signupRewardAmount: (row as unknown as { signupRewardAmount?: number }).signupRewardAmount ?? 50,
       signupRewardExpiryDays: (row as unknown as { signupRewardExpiryDays?: number }).signupRewardExpiryDays ?? 0,

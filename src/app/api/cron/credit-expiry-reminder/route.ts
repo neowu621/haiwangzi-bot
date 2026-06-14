@@ -31,9 +31,12 @@ async function run(req: NextRequest) {
   const dryRun = req.nextUrl.searchParams.get("dryRun") === "1" || req.nextUrl.searchParams.get("dry") === "1";
 
   const now = new Date();
-  const in7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  // v519：到期前幾天提醒由訊息模板頁可調（site_config.credit_expiry_lead_days），預設 7 天
+  const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
+  const leadDays = (cfg as unknown as { creditExpiryLeadDays?: number })?.creditExpiryLeadDays ?? 7;
+  const in7d = new Date(now.getTime() + leadDays * 24 * 60 * 60 * 1000);
 
-  // 7 天內到期、正數(發放)、尚未提醒過
+  // N 天內到期、正數(發放)、尚未提醒過
   const txs = await prisma.creditTx.findMany({
     where: {
       amount: { gt: 0 },

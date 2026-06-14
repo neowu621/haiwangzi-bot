@@ -84,12 +84,21 @@ async function handle(req: NextRequest) {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
-  const dayAfter = new Date(tomorrow.getTime() + 86400000);
 
-  // ── 5. D-1 日潛行前提醒（d1_reminder）───────────────────────
+  // v519：提前天數設定由訊息模板頁可調（site_config），讀不到時用原本寫死的預設
+  const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
+  const d1LeadDays = (cfg as unknown as { d1ReminderLeadDays?: number })?.d1ReminderLeadDays ?? 1;
+  const finalEarlyLeadDays = (cfg as unknown as { finalEarlyLeadDays?: number })?.finalEarlyLeadDays ?? 33;
+  const depositRemindBeforeDays = (cfg as unknown as { depositRemindBeforeDays?: number })?.depositRemindBeforeDays ?? 2;
+
+  // ── 5. 日潛行前提醒（d1_reminder）— 場次前 d1LeadDays 天 ──────
+  const d1Target = new Date();
+  d1Target.setDate(d1Target.getDate() + d1LeadDays);
+  d1Target.setHours(0, 0, 0, 0);
+  const d1TargetEnd = new Date(d1Target.getTime() + 86400000);
   const dailyTrips = await prisma.divingTrip.findMany({
     where: {
-      date: { gte: tomorrow, lt: dayAfter },
+      date: { gte: d1Target, lt: d1TargetEnd },
       status: "open",
     },
   });
@@ -130,7 +139,7 @@ async function handle(req: NextRequest) {
   // 規則：每位客人下訂後 depositDueDays(預設7) 天內繳訂金；
   //       於「截止前 2 天」(＝下訂後第5天) 催繳一次
   {
-    const DEPOSIT_REMIND_BEFORE = 2;
+    const DEPOSIT_REMIND_BEFORE = depositRemindBeforeDays;
     const dStart = new Date();
     dStart.setHours(0, 0, 0, 0);
     const dEnd = new Date(dStart.getTime() + 86400000);
@@ -189,9 +198,9 @@ async function handle(req: NextRequest) {
     }
   }
 
-  // ── 6a. 潛水團「尾款預告」（出發前 33 天）────────────────────
+  // ── 6a. 潛水團「尾款預告」（出發前 finalEarlyLeadDays 天，預設 33）──
   {
-    const FINAL_EARLY_OFFSET = 33;
+    const FINAL_EARLY_OFFSET = finalEarlyLeadDays;
     const dStart = new Date();
     dStart.setHours(0, 0, 0, 0);
     const dEnd = new Date(dStart.getTime() + 86400000);

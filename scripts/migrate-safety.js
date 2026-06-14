@@ -52,6 +52,12 @@ const PATCHES = [
   // v470: Email 發送路徑（gmail / zsend / fallback）
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS email_provider VARCHAR(16) NOT NULL DEFAULT 'gmail'`,
 
+  // v519: 訊息模板「提前幾天通知」全域設定（原本寫死在 cron）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS d1_reminder_lead_days INT NOT NULL DEFAULT 1`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS final_early_lead_days INT NOT NULL DEFAULT 33`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS deposit_remind_before_days INT NOT NULL DEFAULT 2`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS credit_expiry_lead_days INT NOT NULL DEFAULT 7`,
+
   // v473: 訊息發送紀錄表（LINE / Email / 站內通知 每筆發送一列）
   `CREATE TABLE IF NOT EXISTS message_logs (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

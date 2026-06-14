@@ -48,14 +48,14 @@ const FLEX_COLORS = {
 const TRIGGER_TIMING: Record<string, { icon: string; when: string }> = {
   welcome:                  { icon: "🤝", when: "客戶加入 LINE 好友 / 首次進入官方帳號時，自動發送一次。" },
   booking_confirm:          { icon: "🎯", when: "客戶送出預約（日潛場次或潛水旅遊）成功的當下，立即發送。" },
-  deposit_notice:           { icon: "⏰", when: "潛水旅遊下訂後接近繳費期限時自動催繳訂金（每日排程，繳費期限前約 2 天起）。" },
+  deposit_notice:           { icon: "⏰", when: "潛旅下訂後接近繳費期限時自動催繳訂金（每日排程；提前天數見下方設定）。" },
   deposit_confirm:          { icon: "👤", when: "教練 / 老闆核對並確認收到訂金轉帳後發送。" },
-  final_reminder:           { icon: "⏰", when: "潛水旅遊出發前自動預告與催繳尾款（出發前 33 天預告，及各團設定的尾款日；每日排程）。" },
-  trip_guide:               { icon: "📘", when: "出發 / 上課前提供完整行前須知手冊（行前階段發送）。" },
-  d1_reminder:              { icon: "⏰", when: "日潛場次的前一天（D-1）自動發送行前提醒（每日排程）。" },
+  final_reminder:           { icon: "⏰", when: "潛旅出發前自動預告並催繳尾款（每日排程；提前天數見下方設定，各團另可自訂尾款截止日）。" },
+  trip_guide:               { icon: "📘", when: "潛旅（潛水團）出發前的完整行前須知手冊。⚠️ 目前未接自動排程，由老闆視需要手動發送 / 試送。" },
+  d1_reminder:              { icon: "⏰", when: "日潛場次前自動發送行前提醒（每日排程；提前天數見下方設定）。" },
   weather_cancel:           { icon: "🌧️", when: "教練或系統因天候取消當日場次時發送。" },
-  overcap_alert:            { icon: "⚠️", when: "【內部】某場次報名人數超過名額上限時，通知管理者。" },
-  admin_weekly:             { icon: "📊", when: "【內部】每週定時自動寄給管理者的營運週報（排程）。" },
+  overcap_alert:            { icon: "⚠️", when: "【內部】某場次報名人數超過名額上限時，通知老闆 / 管理者。" },
+  admin_weekly:             { icon: "📊", when: "【內部】每週定時自動寄給老闆 / 管理者的營運週報（排程）。" },
   attendance_confirmed:     { icon: "🐠", when: "客戶當天到場、教練點名「到場」後發送。" },
   first_order_reward_grant: { icon: "🎁", when: "客戶第一筆訂單在「到場完成」後，自動發放首單獎勵金時。" },
   refund_request:           { icon: "👤", when: "老闆發起退款、需要客戶確認退款資訊時發送。" },
@@ -64,7 +64,15 @@ const TRIGGER_TIMING: Record<string, { icon: string; when: string }> = {
   refund_complete:          { icon: "✅", when: "退款流程處理完成、金額退回後發送。" },
   vip_upgrade:              { icon: "🌟", when: "客戶累積消費 / 到場達標、VIP 等級升級時發送。" },
   birthday_credit:          { icon: "🎂", when: "客戶生日當天自動發放生日禮金時（每日排程）。" },
-  credit_expiry:            { icon: "💳", when: "抵用金即將到期前自動提醒客戶使用（每日排程）。" },
+  credit_expiry:            { icon: "💳", when: "抵用金到期前自動提醒客戶使用（每日排程；提前天數見下方設定）。" },
+};
+
+// v519：哪些模板有「提前幾天通知」可調設定 → 對應 site-config 欄位（原本寫死在 cron，現移到此頁可改）
+const LEAD_DAY_FIELDS: Record<string, { field: string; pre: string; post: string }> = {
+  d1_reminder:    { field: "d1ReminderLeadDays",      pre: "日潛場次前", post: "天，自動發行前提醒。" },
+  final_reminder: { field: "finalEarlyLeadDays",      pre: "潛旅出發前", post: "天，預告並催繳尾款。（各團另可自訂尾款截止日）" },
+  deposit_notice: { field: "depositRemindBeforeDays", pre: "繳費截止前", post: "天，催繳潛旅訂金。" },
+  credit_expiry:  { field: "creditExpiryLeadDays",    pre: "抵用金到期前", post: "天，提醒客戶把握使用。" },
 };
 
 // v480：每模板「動態主體」樣本 — 與試送/正式發送同一函式產生（單一來源）
@@ -94,18 +102,42 @@ export default function AdminTemplatesPage() {
   // v470：Email 發送路徑（gmail / zsend / fallback）
   const [emailProvider, setEmailProvider] = useState<string>("gmail");
   const [providerSaving, setProviderSaving] = useState(false);
+  // v519：訊息模板「提前幾天通知」設定（存 site-config）
+  const [leadDays, setLeadDays] = useState<Record<string, number>>({});
+  const [leadSaving, setLeadSaving] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
   }, []);
 
-  // v470：載入目前 Email 發送路徑設定
+  // v470：載入目前 Email 發送路徑設定；v519：一併載入「提前幾天通知」設定
   useEffect(() => {
-    adminFetch<{ config: { emailProvider?: string } }>("/api/admin/site-config")
-      .then((d) => setEmailProvider(d.config?.emailProvider ?? "gmail"))
+    adminFetch<{ config: { emailProvider?: string; d1ReminderLeadDays?: number; finalEarlyLeadDays?: number; depositRemindBeforeDays?: number; creditExpiryLeadDays?: number } }>("/api/admin/site-config")
+      .then((d) => {
+        setEmailProvider(d.config?.emailProvider ?? "gmail");
+        setLeadDays({
+          d1ReminderLeadDays: d.config?.d1ReminderLeadDays ?? 1,
+          finalEarlyLeadDays: d.config?.finalEarlyLeadDays ?? 33,
+          depositRemindBeforeDays: d.config?.depositRemindBeforeDays ?? 2,
+          creditExpiryLeadDays: d.config?.creditExpiryLeadDays ?? 7,
+        });
+      })
       .catch(() => {});
   }, []);
+
+  // v519：把目前輸入的提前天數存回 site-config（onBlur 時呼叫）
+  async function commitLeadDay(field: string) {
+    setLeadSaving(true);
+    try {
+      await adminFetch("/api/admin/site-config", { method: "POST", body: JSON.stringify({ [field]: leadDays[field] }) });
+      showToast(`「提前天數」已更新為 ${leadDays[field]} 天`);
+    } catch (e) {
+      showToast("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setLeadSaving(false);
+    }
+  }
 
   async function saveEmailProvider(v: string) {
     const prev = emailProvider;
@@ -391,6 +423,40 @@ export default function AdminTemplatesPage() {
                         <b style={{ color: "#b4791b", marginRight: 5 }}>觸發時機</b>
                         {TRIGGER_TIMING[cur.key].when}
                       </div>
+                    </div>
+                  )}
+
+                  {/* v519：提前幾天通知 — 只有有「N 天前」需求的模板才出現，改這裡=改實際發送時機 */}
+                  {LEAD_DAY_FIELDS[cur.key] && (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                      margin: "0 4px 12px", padding: "11px 13px",
+                      background: "#eef6f6", border: "1px solid #cfe6e4", borderRadius: 11,
+                    }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#0e4c5a", flex: "none" }}>⏱️ 提前天數設定</span>
+                      <span style={{ fontSize: 12.5, color: "#33464e" }}>{LEAD_DAY_FIELDS[cur.key].pre}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={180}
+                        value={leadDays[LEAD_DAY_FIELDS[cur.key].field] ?? ""}
+                        onChange={(e) => {
+                          const f = LEAD_DAY_FIELDS[cur.key].field;
+                          const v = Math.max(0, Math.min(180, Math.floor(Number(e.target.value) || 0)));
+                          setLeadDays((m) => ({ ...m, [f]: v }));
+                        }}
+                        onBlur={() => commitLeadDay(LEAD_DAY_FIELDS[cur.key].field)}
+                        disabled={leadSaving}
+                        style={{
+                          width: 64, textAlign: "center", fontSize: 14, fontWeight: 700,
+                          border: "1.5px solid #9fcfca", borderRadius: 8, padding: "5px 6px",
+                          color: "#0e4c5a", background: "#fff", fontFamily: "inherit",
+                        }}
+                      />
+                      <span style={{ fontSize: 12.5, color: "#33464e" }}>{LEAD_DAY_FIELDS[cur.key].post}</span>
+                      <span style={{ fontSize: 10.5, color: "#7c9296", flexBasis: "100%" }}>
+                        改完點空白處即儲存，立即套用到下次自動發送（全站共用此設定）。
+                      </span>
                     </div>
                   )}
 

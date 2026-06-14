@@ -731,6 +731,12 @@ model SiteConfig {
   firstOrderRewardAmount     Int @default(100) @map("first_order_reward_amount")
   firstOrderRewardExpiryDays Int @default(360) @map("first_order_reward_expiry_days")
 
+  // v519：訊息模板「提前幾天通知」全域設定 — 由訊息模板頁可調，對應原本寫死在 cron 的常數
+  d1ReminderLeadDays      Int @default(1)  @map("d1_reminder_lead_days")       // 日潛行前提醒：場次前 N 天
+  finalEarlyLeadDays      Int @default(33) @map("final_early_lead_days")       // 潛旅尾款預告：出發前 N 天
+  depositRemindBeforeDays Int @default(2)  @map("deposit_remind_before_days")  // 潛旅訂金催繳：繳費截止前 N 天
+  creditExpiryLeadDays    Int @default(7)  @map("credit_expiry_lead_days")     // 抵用金到期提醒：到期前 N 天
+
   // v388：註冊禮金（Email 驗證通過後發；0 = 停用）
   signupRewardAmount     Int @default(50) @map("signup_reward_amount")
   signupRewardExpiryDays Int @default(0) @map("signup_reward_expiry_days") // 0 = 永不過期
