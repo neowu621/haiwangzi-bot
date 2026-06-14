@@ -43,6 +43,30 @@ const FLEX_COLORS = {
   coral: "#FF7B5A",
 };
 
+// v518：每個訊息模板的「觸發時機」說明 — 對照各模板實際發送的程式位點：
+//   🎯 客戶動作即時觸發 · ⏰ 每日排程自動 · 👤 老闆/教練後台操作 · 🤝 加入時自動 · ⚠️ 內部通知管理者
+const TRIGGER_TIMING: Record<string, { icon: string; when: string }> = {
+  welcome:                  { icon: "🤝", when: "客戶加入 LINE 好友 / 首次進入官方帳號時，自動發送一次。" },
+  booking_confirm:          { icon: "🎯", when: "客戶送出預約（日潛場次或潛水旅遊）成功的當下，立即發送。" },
+  deposit_notice:           { icon: "⏰", when: "潛水旅遊下訂後接近繳費期限時自動催繳訂金（每日排程，繳費期限前約 2 天起）。" },
+  deposit_confirm:          { icon: "👤", when: "教練 / 老闆核對並確認收到訂金轉帳後發送。" },
+  final_reminder:           { icon: "⏰", when: "潛水旅遊出發前自動預告與催繳尾款（出發前 33 天預告，及各團設定的尾款日；每日排程）。" },
+  trip_guide:               { icon: "📘", when: "出發 / 上課前提供完整行前須知手冊（行前階段發送）。" },
+  d1_reminder:              { icon: "⏰", when: "日潛場次的前一天（D-1）自動發送行前提醒（每日排程）。" },
+  weather_cancel:           { icon: "🌧️", when: "教練或系統因天候取消當日場次時發送。" },
+  overcap_alert:            { icon: "⚠️", when: "【內部】某場次報名人數超過名額上限時，通知管理者。" },
+  admin_weekly:             { icon: "📊", when: "【內部】每週定時自動寄給管理者的營運週報（排程）。" },
+  attendance_confirmed:     { icon: "🐠", when: "客戶當天到場、教練點名「到場」後發送。" },
+  first_order_reward_grant: { icon: "🎁", when: "客戶第一筆訂單在「到場完成」後，自動發放首單獎勵金時。" },
+  refund_request:           { icon: "👤", when: "老闆發起退款、需要客戶確認退款資訊時發送。" },
+  payment_reject:           { icon: "🚫", when: "老闆審核客戶上傳的轉帳證明「不通過」時發送。" },
+  booking_cancel:           { icon: "❌", when: "訂單被取消時（老闆於後台取消訂單）發送。" },
+  refund_complete:          { icon: "✅", when: "退款流程處理完成、金額退回後發送。" },
+  vip_upgrade:              { icon: "🌟", when: "客戶累積消費 / 到場達標、VIP 等級升級時發送。" },
+  birthday_credit:          { icon: "🎂", when: "客戶生日當天自動發放生日禮金時（每日排程）。" },
+  credit_expiry:            { icon: "💳", when: "抵用金即將到期前自動提醒客戶使用（每日排程）。" },
+};
+
 // v480：每模板「動態主體」樣本 — 與試送/正式發送同一函式產生（單一來源）
 function sampleBody(key: string): string {
   return buildDynamicBody(key, MSG_SAMPLE_PARAMS[key] ?? {});
@@ -354,6 +378,22 @@ export default function AdminTemplatesPage() {
                       {isOn ? "啟用中" : "已停用"}
                     </span>
                   </div>
+
+                  {/* v518：觸發時機 — 隨選到的模板自動切換，告訴老闆「這封會在什麼時候發出去」 */}
+                  {TRIGGER_TIMING[cur.key] && (
+                    <div style={{
+                      display: "flex", gap: 9, alignItems: "flex-start",
+                      margin: "0 4px 12px", padding: "10px 13px",
+                      background: "#fff8ec", border: "1px solid #f3e2c0", borderRadius: 11,
+                    }}>
+                      <span style={{ fontSize: 16, flex: "none", lineHeight: 1.5 }}>{TRIGGER_TIMING[cur.key].icon}</span>
+                      <div style={{ fontSize: 12, lineHeight: 1.65, color: "#7a5b20" }}>
+                        <b style={{ color: "#b4791b", marginRight: 5 }}>觸發時機</b>
+                        {TRIGGER_TIMING[cur.key].when}
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ fontSize: 12, color: "#4a6168", lineHeight: 1.6, padding: "0 4px", marginBottom: 12 }}>
                     <span style={{
                       display: "inline-block", background: "#e9f6f4", color: "#0e4c5a",
