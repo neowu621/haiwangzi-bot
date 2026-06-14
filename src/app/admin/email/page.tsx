@@ -143,6 +143,23 @@ export default function AdminEmailPage() {
     }
   }
 
+  async function deleteThread() {
+    if (!detail) return;
+    const who = detail.customerName ?? detail.customerEmail;
+    if (!window.confirm(`確定永久刪除與「${who}」的整條對話？\n所有信件與附件都會一併刪除，且無法復原。`)) return;
+    const id = detail.id;
+    try {
+      await adminFetch(`/api/admin/email/threads/${id}`, { method: "DELETE" });
+      setThreads((arr) => arr.filter((t) => t.id !== id));
+      setDetail(null);
+      setSelId(null);
+      showToast("已永久刪除此對話");
+      await loadList();
+    } catch (e) {
+      showToast("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   const counts = useMemo(() => {
     const c = { WAITING: 0, PROCESSING: 0, CLOSED: 0 } as Record<Status, number>;
     threads.forEach((t) => { c[t.status] = (c[t.status] ?? 0) + 1; });
@@ -230,6 +247,7 @@ export default function AdminEmailPage() {
                       <option value="PROCESSING">處理中</option>
                       <option value="CLOSED">已結案</option>
                     </select>
+                    <button onClick={deleteThread} title="永久刪除整條對話" style={delBtn}>🗑 刪除</button>
                   </div>
                 </div>
 
@@ -309,6 +327,7 @@ function chipStatus(s: Status): React.CSSProperties {
   return { fontSize: 10.5, padding: "2px 8px", borderRadius: 6, background: ST[s].bg, color: ST[s].fg, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 };
 }
 const statusSel: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #dce7ea", background: "#fff", color: "#3d5563", fontFamily: "inherit", cursor: "pointer" };
+const delBtn: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #f3c6c6", background: "#fff", color: "#c0432a", fontFamily: "inherit", cursor: "pointer", fontWeight: 600 };
 function bubble(out: boolean): React.CSSProperties {
   return { background: out ? "#fefbfa" : "#fff", border: `1px solid ${out ? "#f3ddd5" : "#e1ebeb"}`, borderRadius: out ? "13px 4px 13px 13px" : "4px 13px 13px 13px", padding: "12px 15px", fontSize: 13.5, lineHeight: 1.7, color: "#0f2430", maxWidth: 620, boxShadow: "0 1px 3px rgba(8,34,47,.05)" };
 }

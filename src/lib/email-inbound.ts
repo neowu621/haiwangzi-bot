@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { findThreadForInbound } from "@/lib/email-threading";
+import { deleteObject } from "@/lib/r2";
 
 /**
  * v521：收信入庫共用邏輯 — Postmark inbound webhook 與 Gmail IMAP 讀信器共用。
@@ -31,6 +32,31 @@ export interface InboundEmail {
 export type IngestResult =
   | { ok: true; dedup: true; threadId?: string }
   | { ok: true; dedup: false; threadId: string };
+
+/**
+ * v529：刪除對話串（含其所有信件 + R2 附件）。手動刪除與自動清除共用。
+ *   EmailMessage 對 thread 是 onDelete:Cascade，刪 thread 會連信一起刪；
+ *   R2 附件物件 DB 不會自動清，這裡先撈出 key 盡力刪除（失敗不影響 DB 刪除）。
+ */
+export async function purgeEmailThreads(ids: string[]): Promise<{ deletedThreads: number; deletedAttachments: number }> {
+  if (!ids.length) return { deletedThreads: 0, deletedAttachments: 0 };
+  let deletedAttachments = 0;
+  const msgs = await prisma.emailMessage.findMany({
+    where: { threadId: { in: ids } },
+    select: { attachments: true },
+  });
+  for (const m of msgs) {
+    const atts = Array.isArray(m.attachments) ? (m.attachments as unknown[]) : [];
+    for (const a of atts) {
+      const key = a && typeof a === "object" ? (a as { key?: string }).key : undefined;
+      if (key) {
+        try { await deleteObject("email", key); deletedAttachments++; } catch { /* 盡力刪，失敗不擋 */ }
+      }
+    }
+  }
+  const res = await prisma.emailThread.deleteMany({ where: { id: { in: ids } } });
+  return { deletedThreads: res.count, deletedAttachments };
+}
 
 export async function ingestInboundEmail(m: InboundEmail): Promise<IngestResult> {
   // 1) 冪等去重（at-least-once，同一封可能進來兩次）

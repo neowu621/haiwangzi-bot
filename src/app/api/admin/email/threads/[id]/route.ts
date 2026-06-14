@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { purgeEmailThreads } from "@/lib/email-inbound";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,4 +61,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const thread = await prisma.emailThread.update({ where: { id }, data });
   return NextResponse.json({ thread });
+}
+
+/**
+ * DELETE /api/admin/email/threads/:id — 永久刪除整條對話（含所有信件 + R2 附件，不可復原）
+ * v529：手動刪除。
+ */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const g = await guard(req);
+  if (g.res) return g.res;
+  const { id } = await params;
+  const r = await purgeEmailThreads([id]);
+  return NextResponse.json({ ok: true, ...r });
 }
