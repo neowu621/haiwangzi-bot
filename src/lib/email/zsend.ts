@@ -2,7 +2,7 @@
 //
 // 必要 env（皆在 Zeabur dashboard 設，金鑰不進 repo）：
 //   ZSEND_API_KEY        ZSend API 金鑰（Bearer）
-//   ZSEND_FROM           寄件人（必須是 ZSend 已驗證網域，例：noreply@send.haiwangzi.xyz）
+//   ZSEND_FROM           寄件人（必須是 ZSend 已驗證網域，例：海王子客服 <service@haiwangzi.xyz>）
 //   ZSEND_API_ENDPOINT   (optional) 預設 https://api.zeabur.com/api/v1/zsend/emails
 //
 // ⚠ 寄件網域必須先在 ZSend / SES 完成 DNS 驗證（TXT/DKIM），否則 API 回 400「domain not verified」。
