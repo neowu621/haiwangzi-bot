@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>後台側欄 — 收合前後對比</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","Segoe UI",system-ui,sans-serif;background:#eef3f5;padding:26px 30px;color:#0f2430}
+h1{font-size:20px;color:#08222F}
+.sub{color:#5b7080;font-size:13px;margin-top:4px}
+.cmp{display:flex;gap:40px;margin-top:20px;align-items:flex-start}
+.col .cap{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.col .cap .tag{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.bad{background:#ffe1da;color:#C8431F}.good{background:#d9f3ea;color:#1c8f63}
+.bar{font-size:11px;color:#8595a6;margin-top:6px}
+.side{width:228px;background:#0A2342;border-radius:14px;padding:12px 9px;color:#cfe0e6}
+.brand{display:flex;align-items:center;gap:8px;padding:4px 6px 10px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:8px}
+.brand .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#19B6B0,#0A6E73);display:grid;place-items:center;font-size:15px}
+.brand .nm{font-size:13px;font-weight:700;color:#00D9CB}
+.brand .v{font-size:8.5px;color:#00D9CB;background:rgba(0,217,203,.18);padding:1px 5px;border-radius:5px;font-family:monospace}
+.gh{display:flex;align-items:center;gap:6px;padding:6px 9px;font-size:10px;font-weight:700;letter-spacing:.5px;color:#00D9CB;border-radius:7px}
+.gh.click{cursor:default}.gh.click:hover{background:rgba(255,255,255,.05)}
+.gh .badge{background:#FF6B4A;color:#fff;font-size:8.5px;font-weight:700;padding:0 6px;border-radius:9px}
+.gh .chev{margin-left:auto;opacity:.55;font-size:10px}
+.it{display:flex;align-items:center;gap:8px;padding:6px 11px;font-size:12.5px;color:#bcd2da;border-radius:8px}
+.it.on{background:rgba(0,217,203,.2);color:#fff}
+.it .ico{width:6px;height:6px;border-radius:2px;background:#5a8294;flex:none}
+.it.on .ico{background:#00D9CB}
+.it .ct{margin-left:auto;font-size:9px;background:#FF6B4A;color:#fff;padding:0 5px;border-radius:8px;font-weight:700}
+.body{padding-left:2px}
+</style>
+</head>
+<body>
+<h1>後台側欄 — 群組可收合（前 / 後對比）</h1>
+<p class="sub">改成 accordion：預設只展開「目前所在頁」的群組，其餘收起；收起的群組若有待處理，標題旁顯示珊瑚色數字。</p>
+
+<div class="cmp">
+  <!-- BEFORE -->
+  <div class="col">
+    <div class="cap">改之前 <span class="tag bad">全部展開 · 很長</span></div>
+    <div class="side">
+      <div class="brand"><div class="m">🔱</div><div><div class="nm">海王子 客服</div></div><span class="v">v520</span></div>
+      <div class="gh">即時營運</div>
+      <div class="body"><div class="it"><span class="ico"></span>總覽</div><div class="it"><span class="ico"></span>老闆結帳<span class="ct">5</span></div></div>
+      <div class="gh">訂單 / 客戶</div>
+      <div class="body"><div class="it"><span class="ico"></span>訂單管理<span class="ct">3</span></div><div class="it"><span class="ico"></span>🧾 客製開單</div><div class="it"><span class="ico"></span>📝 願望單<span class="ct">1</span></div><div class="it"><span class="ico"></span>會員管理</div><div class="it"><span class="ico"></span>抵用金管理</div></div>
+      <div class="gh">商品 / 人員</div>
+      <div class="body"><div class="it"><span class="ico"></span>日潛場次</div><div class="it"><span class="ico"></span>潛水旅行</div><div class="it"><span class="ico"></span>教練管理</div></div>
+      <div class="gh">行銷 / 通知</div>
+      <div class="body"><div class="it on"><span class="ico"></span>訊息模板</div><div class="it"><span class="ico"></span>🎨 業務推廣</div><div class="it"><span class="ico"></span>最新動態</div><div class="it"><span class="ico"></span>群發通知</div><div class="it"><span class="ico"></span>📋 發送紀錄</div></div>
+      <div class="gh">分析</div>
+      <div class="body"><div class="it"><span class="ico"></span>報表</div><div class="it"><span class="ico"></span>📊 前台活動</div></div>
+      <div class="gh">系統</div>
+      <div class="body"><div class="it"><span class="ico"></span>系統設定</div><div class="it"><span class="ico"></span>操作紀錄</div><div class="it"><span class="ico"></span>操作說明</div></div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div class="col">
+    <div class="cap">改之後 <span class="tag good">只展開當前 · 短一截</span></div>
+    <div class="side">
+      <div class="brand"><div class="m">🔱</div><div><div class="nm">海王子 客服</div></div><span class="v">v521</span></div>
+      <div class="gh click">即時營運<span class="badge">5</span><span class="chev">▾</span></div>
+      <div class="gh click">訂單 / 客戶<span class="badge">4</span><span class="chev">▾</span></div>
+      <div class="gh click">商品 / 人員<span class="chev">▾</span></div>
+      <div class="gh click" style="background:rgba(255,255,255,.05)">行銷 / 通知<span class="chev" style="transform:rotate(180deg);display:inline-block">▾</span></div>
+      <div class="body"><div class="it on"><span class="ico"></span>訊息模板</div><div class="it"><span class="ico"></span>🎨 業務推廣</div><div class="it"><span class="ico"></span>最新動態</div><div class="it"><span class="ico"></span>群發通知</div><div class="it"><span class="ico"></span>📋 發送紀錄</div></div>
+      <div class="gh click">分析<span class="chev">▾</span></div>
+      <div class="gh click">系統<span class="chev">▾</span></div>
+    </div>
+    <div class="bar">↑ 收起的「即時營運 5」「訂單/客戶 4」標題旁仍顯示待處理數，不會漏看</div>
+  </div>
+</div>
+</body>
+</html>

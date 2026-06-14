@@ -21,11 +21,15 @@ export interface ZsendParams {
   html?: string;
   text?: string;
   replyTo?: string;
+  /** v521：自訂 RFC 標頭（客服信箱 console threading 用：Message-ID / In-Reply-To / References） */
+  headers?: Record<string, string>;
 }
 
 export interface ZsendResult {
   ok: boolean;
   messageId?: string;
+  /** v521：ZSend 回傳的 provider id（= 回應 body 的 id），用來對應寄送狀態 webhook 的 email.id */
+  providerId?: string;
   error?: string;
 }
 
@@ -45,6 +49,7 @@ export async function sendViaZsend(p: ZsendParams): Promise<ZsendResult> {
   if (p.html) payload.html = p.html;
   if (p.text) payload.text = p.text;
   if (p.replyTo) payload.reply_to = p.replyTo;
+  if (p.headers && Object.keys(p.headers).length) payload.headers = p.headers; // v521
 
   try {
     const res = await fetch(ZSEND_ENDPOINT, {
@@ -63,9 +68,12 @@ export async function sendViaZsend(p: ZsendParams): Promise<ZsendResult> {
       try { detail = (JSON.parse(text) as { error?: string }).error ?? text; } catch { /* keep raw */ }
       return { ok: false, error: `ZSend HTTP ${res.status}: ${detail}` };
     }
-    let messageId: string | undefined;
-    try { messageId = (JSON.parse(text) as { id?: string; messageId?: string }).id ?? (JSON.parse(text) as { messageId?: string }).messageId; } catch { /* ignore */ }
-    return { ok: true, messageId };
+    let providerId: string | undefined;
+    try {
+      const j = JSON.parse(text) as { id?: string; message_id?: string; messageId?: string };
+      providerId = j.id ?? j.message_id ?? j.messageId;
+    } catch { /* ignore */ }
+    return { ok: true, messageId: providerId, providerId };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

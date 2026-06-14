@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>海王子客服信箱 — 寄收信流程</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#eef3f5;color:#0f2430;padding:30px 36px}
+h1{font-size:23px;color:#08222F;font-weight:700}
+.sub{margin-top:6px;color:#5b7080;font-size:14px}
+.wrap{max-width:1180px;margin:0 auto}
+.legend{display:flex;gap:18px;margin:18px 0 6px;flex-wrap:wrap;font-size:13px}
+.lg{display:flex;align-items:center;gap:7px}
+.sw{width:26px;height:8px;border-radius:4px}
+.flow{background:#fff;border:1px solid #d9e4e8;border-radius:18px;padding:30px 28px;margin-top:14px;box-shadow:0 1px 3px rgba(8,34,47,.05)}
+.row{display:flex;align-items:stretch;gap:0}
+.node{flex:1;border-radius:14px;padding:15px 14px;text-align:center;border:1.5px solid;min-height:96px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.node .ic{font-size:24px;line-height:1}
+.node .t{font-weight:700;font-size:14px}
+.node .d{font-size:11.5px;line-height:1.45;color:#5b7080}
+.node .m{font-family:"Cascadia Code","Consolas",monospace;font-size:11.5px;color:#0E7C8A;word-break:break-all}
+.cust{background:#f4f8f9;border-color:#cfdfe4}
+.svc{background:#E6F4F4;border-color:#9fd6d6}
+.gmail{background:#fdeeee;border-color:#f3c6c6}
+.sys{background:#08222F;border-color:#08222F;color:#fff}
+.sys .d{color:#9fc0c8}
+.sys .m{color:#5fd6cf}
+.arrow{flex:0 0 116px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:0 4px}
+.arrow .lbl{font-size:11.5px;font-weight:700;text-align:center;line-height:1.35}
+.arrow .ln{width:100%;height:0;border-top:2.5px solid;position:relative}
+.arrow .ln::after{content:"";position:absolute;right:-2px;top:-6px;border-left:9px solid;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.in .lbl{color:#0E7C8A}.in .ln{border-color:#0E9AA0}.in .ln::after{border-left-color:#0E9AA0}
+.ret{margin-top:22px;background:#FFF3F0;border:1.5px solid #f3c6c6;border-radius:14px;padding:13px 18px;display:flex;align-items:center;gap:14px}
+.ret .back{flex:0 0 44px;text-align:center;font-size:22px;color:#FF6B4A}
+.ret .tx{font-size:13px;line-height:1.6}
+.ret .tx b{color:#C8431F}
+.ret .ln{flex:1;height:0;border-top:2.5px dashed #FF6B4A;position:relative;min-width:60px}
+.ret .ln::after{content:"";position:absolute;left:-2px;top:-6px;border-right:9px solid #FF6B4A;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.note{margin-top:16px;background:#f4f8f9;border:1px solid #dce7ea;border-radius:12px;padding:13px 16px;font-size:12.5px;line-height:1.7;color:#3D5563}
+.note b{color:#08222F}
+.foot{margin-top:14px;color:#8595a6;font-size:11.5px;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>海王子客服信箱 — 寄收信流程</h1>
+<p class="sub">對外永遠是 service@haiwangzi.xyz；收信靠 Gmail 轉進來、發信走 Zeabur Email。</p>
+
+<div class="legend">
+  <span class="lg"><span class="sw" style="background:#0E9AA0"></span>收信（INBOUND）</span>
+  <span class="lg"><span class="sw" style="background:#FF6B4A"></span>回信（OUTBOUND · Zeabur Email）</span>
+</div>
+
+<div class="flow">
+  <!-- INBOUND 上排 -->
+  <div class="row">
+    <div class="node cust"><div class="ic">🧑</div><div class="t">客人</div><div class="d">用自己的信箱寄信</div></div>
+    <div class="arrow in"><div class="lbl">寄信給</div><div class="ln"></div></div>
+    <div class="node svc"><div class="ic">📮</div><div class="t">service@haiwangzi.xyz</div><div class="d">對外唯一客服地址</div></div>
+    <div class="arrow in"><div class="lbl">轉寄 forward<br>(MX / 轉信規則)</div><div class="ln"></div></div>
+    <div class="node gmail"><div class="ic">📩</div><div class="t">Gmail 實際收件</div><div class="m">haiwangzi.northeast.coast@gmail.com</div><div class="d">擁有收 + 發</div></div>
+    <div class="arrow in"><div class="lbl">系統讀取<br>(Gmail API / IMAP)</div><div class="ln"></div></div>
+    <div class="node sys"><div class="ic">🖥️</div><div class="t">海王子後台 Console</div><div class="d">解析 → 開 thread → 存 DB → 顯示在收件匣</div></div>
+  </div>
+
+  <!-- OUTBOUND 回信 -->
+  <div class="ret">
+    <div class="back">↩︎</div>
+    <div class="tx">老闆在 console 按「寄出回覆」 → <b>由 Zeabur Email 發送</b>，寄件人顯示 <b>service@haiwangzi.xyz</b> → 客人收到、接同一串</div>
+    <div class="ln"></div>
+    <div style="flex:0 0 90px;text-align:center;font-size:12px;font-weight:700;color:#C8431F">回到客人</div>
+  </div>
+</div>
+
+<div class="note">
+  <b>為什麼收發分兩家：</b>Zeabur Email 只有「發送」功能；「接收」交給已能收信的 Gmail（haiwangzi.northeast.coast@gmail.com）。
+  把 service@haiwangzi.xyz 設成<b>轉寄到該 Gmail</b>，系統再從 Gmail 把信讀進後台，回信則一律走 Zeabur Email、對外仍掛 service@ 名義。<br>
+  <b>客人全程只看到 service@haiwangzi.xyz</b> 一個地址，看不到後面的 Gmail 與 Zeabur。
+</div>
+
+<div class="foot">海王子客服信箱 · 寄收信流程 · 2026-06-14</div>
+</div>
+</body>
+</html>

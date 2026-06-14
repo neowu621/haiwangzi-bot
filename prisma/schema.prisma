@@ -460,6 +460,7 @@ model Booking {
   reminderLogs   ReminderLog[]
   refundRequests RefundRequest[] // v274
   paymentEntries PaymentEntry[] // v366：付款/折抵逐筆明細帳
+  emailThreads   EmailThread[] // v521：客服信箱 console（email-console bundle）反向 relation
 
   // v355：效能索引（原本完全沒有，所有 admin/coach/cron 查詢都是 seq scan）
   @@index([refId, type, status]) // by-trip / coach-today / reminders
@@ -892,4 +893,92 @@ model PageView {
   @@index([userId, viewedAt(sort: Desc)])
   @@index([refType, refId, viewedAt(sort: Desc)])
   @@map("page_views")
+}
+
+// ─────────────────────────────────────────────────────────────
+// v521：客服信箱 Console（haiwangzi-email-console bundle）
+//   service@haiwangzi.xyz 對外 · Zeabur Email 寄信 · Inbound webhook 收信
+//   來源：prisma/schema.email.prisma（合併進來，未覆蓋原檔）
+//   調整：bookingId 改 @db.Uuid 以對齊 Booking.id 的 @db.Uuid 型別
+// ─────────────────────────────────────────────────────────────
+model EmailThread {
+  id            String         @id @default(cuid())
+  subject       String
+  customerEmail String         @map("customer_email")
+  customerName  String?        @map("customer_name")
+  status        ThreadStatus   @default(WAITING)
+  tags          String[]       @default([])
+  assignee      String? // "汪汪" / "Neo"
+  bookingId     String?        @map("booking_id") @db.Uuid
+  booking       Booking?       @relation(fields: [bookingId], references: [id])
+  lastMessageAt DateTime       @default(now()) @map("last_message_at")
+  messages      EmailMessage[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@index([status, lastMessageAt])
+  @@index([customerEmail])
+  @@map("email_threads")
+}
+
+model EmailMessage {
+  id       String      @id @default(cuid())
+  threadId String      @map("thread_id")
+  thread   EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  direction Direction
+  fromAddr  String  @map("from_addr")
+  toAddr    String  @map("to_addr")
+  ccAddr    String? @map("cc_addr")
+  subject   String
+  bodyText  String? @map("body_text") @db.Text
+  bodyHtml  String? @map("body_html") @db.Text
+
+  // RFC 標頭 — threading 與去重的關鍵
+  messageId  String  @unique @map("message_id")
+  inReplyTo  String? @map("in_reply_to")
+  references String?
+
+  providerId  String?       @map("provider_id") // Zeabur Email / Postmark 回傳的 ID
+  status      MessageStatus @default(RECEIVED)
+  attachments Json? // [{ filename, contentType, size, key, bucket }]
+
+  // v521：engagement 追蹤（Zeabur open/click webhook 寫入）
+  openedAt  DateTime? @map("opened_at")
+  clickedAt DateTime? @map("clicked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([threadId, createdAt])
+  @@index([providerId])
+  @@map("email_messages")
+}
+
+// 被退信/投訴的地址，避免再寄（保護網域信譽）
+model SuppressedEmail {
+  email     String   @id
+  reason    String // "bounce" | "complaint"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("suppressed_emails")
+}
+
+enum ThreadStatus {
+  WAITING // 待回覆
+  PROCESSING // 處理中
+  CLOSED // 已結案
+}
+
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  RECEIVED // 收進來的信
+  QUEUED // 已排入 Zeabur Email
+  SENT // SES 已收下
+  DELIVERED // 對方已收到
+  BOUNCED // 退信
+  FAILED // 拒絕/送不出
 }

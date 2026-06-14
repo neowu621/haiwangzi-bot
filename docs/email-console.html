@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>海王子 · 客服信箱 Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sea-900:#08222F;      /* deepest navy - rails */
+    --sea-800:#0B2A3A;
+    --sea-700:#103848;
+    --teal-500:#0E9AA0;     /* primary accent */
+    --teal-400:#19B6B0;
+    --teal-50:#E6F4F4;
+    --buoy:#FF6B4A;         /* signature coral - unread / send */
+    --buoy-soft:#FFE7E0;
+    --amber:#F5B544;
+    --surface:#F4F8F9;      /* reading pane bg */
+    --card:#FFFFFF;
+    --ink:#0F2430;
+    --ink-2:#3D5563;
+    --muted:#6E8593;
+    --line:#DCE7EA;
+    --line-soft:#EAF1F3;
+    --good:#2BA66B;
+    --warn:#E08A2B;
+    --radius:13px;
+    --shadow:0 1px 2px rgba(8,34,47,.06),0 8px 24px rgba(8,34,47,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter','Noto Sans TC',system-ui,sans-serif;
+    background:var(--surface);color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    height:100vh;overflow:hidden;
+  }
+  .console{display:grid;grid-template-columns:236px 372px 1fr;height:100vh}
+
+  /* ============ LEFT RAIL ============ */
+  .rail{
+    background:linear-gradient(178deg,var(--sea-800),var(--sea-900));
+    color:#CFE0E6;display:flex;flex-direction:column;padding:18px 14px;gap:4px;
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 6px 16px}
+  .brand .mark{
+    width:38px;height:38px;border-radius:11px;flex:none;
+    background:radial-gradient(120% 120% at 30% 20%,var(--teal-400),var(--teal-500) 55%,#0A6E73);
+    display:grid;place-items:center;box-shadow:0 4px 14px rgba(14,154,160,.4);
+  }
+  .brand .mark svg{width:21px;height:21px}
+  .brand .name{font-family:'Space Grotesk';font-weight:600;font-size:15px;color:#fff;letter-spacing:.2px}
+  .brand .sub{font-size:11px;color:#7FA3B0;font-family:'IBM Plex Mono';margin-top:1px}
+
+  .rail-label{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:#5E8493;margin:14px 8px 6px;font-weight:600}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:9px;
+    font-size:13.5px;color:#BCD2DA;cursor:pointer;position:relative;transition:.15s;
+  }
+  .nav-item:hover{background:rgba(255,255,255,.05);color:#EAF4F6}
+  .nav-item.active{background:rgba(14,154,160,.22);color:#fff}
+  .nav-item.active::before{content:"";position:absolute;left:-14px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--buoy)}
+  .nav-item .ico{width:17px;height:17px;flex:none;opacity:.85}
+  .nav-item .ct{margin-left:auto;font-family:'IBM Plex Mono';font-size:11.5px;color:#7FA3B0}
+  .nav-item.active .ct{color:#CFE9EA}
+  .nav-item .ct.hot{color:var(--buoy);font-weight:600}
+
+  .tag-row{display:flex;flex-wrap:wrap;gap:6px;padding:2px 6px}
+  .tag{font-size:11.5px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.06);color:#A9C6CF;cursor:pointer;transition:.15s}
+  .tag:hover{background:rgba(255,255,255,.12);color:#fff}
+  .tag .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+  .rail-foot{margin-top:auto;padding:12px 8px 2px;border-top:1px solid rgba(255,255,255,.08)}
+  .who{display:flex;align-items:center;gap:9px}
+  .who .av{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#1A4A5C,#2B6E7E);display:grid;place-items:center;font-weight:600;font-size:13px;color:#CFE9EA;font-family:'Space Grotesk'}
+  .who .nm{font-size:12.5px;color:#DCEAEE;font-weight:500}
+  .who .rl{font-size:10.5px;color:#6E94A2;font-family:'IBM Plex Mono'}
+
+  /* ============ THREAD LIST ============ */
+  .list{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+  .list-top{padding:16px 18px 12px;border-bottom:1px solid var(--line-soft)}
+  .list-top h1{font-family:'Space Grotesk';font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .list-top .addr{font-family:'IBM Plex Mono';font-size:11.5px;color:var(--teal-500);background:var(--teal-50);padding:2px 7px;border-radius:6px;font-weight:500}
+  .search{margin-top:11px;position:relative}
+  .search input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 11px 8px 32px;font-size:13px;font-family:inherit;color:var(--ink)}
+  .search input:focus{outline:none;border-color:var(--teal-400);background:#fff;box-shadow:0 0 0 3px var(--teal-50)}
+  .search svg{position:absolute;left:10px;top:9px;width:15px;height:15px;color:var(--muted)}
+  .filters{display:flex;gap:6px;margin-top:10px}
+  .pill{font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;font-weight:450}
+  .pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .pill .n{font-family:'IBM Plex Mono';opacity:.7;margin-left:3px}
+
+  .threads{overflow-y:auto;flex:1}
+  .thread{padding:13px 18px;border-bottom:1px solid var(--line-soft);cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:11px;transition:.13s;position:relative}
+  .thread:hover{background:var(--teal-50)}
+  .thread.sel{background:var(--teal-50)}
+  .thread.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal-500)}
+  .t-av{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:600;font-size:14px;color:#fff;font-family:'Space Grotesk';flex:none}
+  .t-main{min-width:0}
+  .t-row1{display:flex;align-items:center;gap:7px}
+  .t-from{font-weight:600;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t-unread{width:8px;height:8px;border-radius:50%;background:var(--buoy);flex:none;box-shadow:0 0 0 3px var(--buoy-soft)}
+  .t-time{margin-left:auto;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono';white-space:nowrap}
+  .t-subj{font-size:13px;color:var(--ink-2);margin-top:2px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t-prev{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t-meta{display:flex;align-items:center;gap:6px;margin-top:7px}
+  .chip{font-size:10.5px;padding:2px 7px;border-radius:6px;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+  .chip.book{background:#EAF1F3;color:var(--ink-2);font-family:'IBM Plex Mono'}
+  .chip.s-wait{background:var(--buoy-soft);color:#C8431F}
+  .chip.s-prog{background:#FCEFD6;color:var(--warn)}
+  .chip.s-done{background:#E1F3E9;color:var(--good)}
+  .chip .dt{width:6px;height:6px;border-radius:50%}
+
+  /* ============ CONVERSATION ============ */
+  .conv{display:flex;flex-direction:column;min-width:0;background:var(--surface)}
+  .conv-head{background:#fff;padding:15px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
+  .conv-head .ch-av{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#1A6E7E,#0E9AA0);display:grid;place-items:center;color:#fff;font-weight:600;font-family:'Space Grotesk';font-size:16px}
+  .ch-info h2{font-family:'Space Grotesk';font-size:16px;font-weight:600}
+  .ch-info .em{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono';margin-top:1px}
+  .ch-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .status-sel{font-size:12.5px;padding:6px 11px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink-2);font-family:inherit;cursor:pointer;font-weight:500}
+  .icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+  .icon-btn:hover{background:var(--teal-50);border-color:var(--teal-400);color:var(--teal-500)}
+
+  .conv-body{flex:1;overflow-y:auto;padding:22px 22px 8px;display:flex;flex-direction:column;gap:4px}
+  /* descent line — the signature: a thread connecting messages like a dive descent line */
+  .msg{position:relative;padding-left:26px;margin-bottom:18px}
+  .msg::before{content:"";position:absolute;left:8px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--teal-500);box-shadow:0 0 0 3px var(--surface),0 0 0 4px var(--line)}
+  .msg.out::before{background:var(--buoy)}
+  .msg::after{content:"";position:absolute;left:12px;top:18px;bottom:-22px;width:1.5px;background:var(--line)}
+  .msg:last-of-type::after{display:none}
+  .m-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .m-name{font-weight:600;font-size:13px}
+  .m-dir{font-size:10.5px;padding:1px 7px;border-radius:5px;font-weight:600;font-family:'IBM Plex Mono'}
+  .m-dir.in{background:var(--teal-50);color:var(--teal-500)}
+  .m-dir.out{background:var(--buoy-soft);color:#C8431F}
+  .m-time{margin-left:auto;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono'}
+  .m-deliv{font-size:11px;color:var(--good);display:flex;align-items:center;gap:3px;font-family:'IBM Plex Mono'}
+  .bubble{background:#fff;border:1px solid var(--line);border-radius:4px 13px 13px 13px;padding:13px 16px;font-size:13.5px;line-height:1.7;color:var(--ink);box-shadow:var(--shadow);max-width:640px}
+  .msg.out .bubble{background:#FEFBFA;border-color:#F3DDD5;border-radius:13px 4px 13px 13px}
+  .bubble p{margin-bottom:9px}.bubble p:last-child{margin-bottom:0}
+  .att{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:6px 11px;background:var(--surface);border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--ink-2)}
+  .att svg{width:14px;height:14px;color:var(--teal-500)}
+
+  /* COMPOSER */
+  .composer{background:#fff;border-top:1px solid var(--line);padding:13px 22px 16px}
+  .comp-tabs{display:flex;gap:8px;margin-bottom:11px;flex-wrap:wrap;align-items:center}
+  .tlabel{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.4px}
+  .tmpl{font-size:12px;padding:5px 11px;border-radius:20px;border:1px dashed var(--teal-400);color:var(--teal-500);background:var(--teal-50);cursor:pointer;font-weight:500}
+  .tmpl:hover{background:var(--teal-500);color:#fff;border-style:solid}
+  .comp-from{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);margin-bottom:9px}
+  .comp-from b{color:var(--ink);font-weight:600}
+  .sysnote{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono';background:var(--surface);padding:2px 8px;border-radius:6px;margin-left:auto;display:flex;align-items:center;gap:5px}
+  .sysnote .led{width:6px;height:6px;border-radius:50%;background:var(--teal-400)}
+  .comp-box{border:1.5px solid var(--line);border-radius:11px;overflow:hidden}
+  .comp-box:focus-within{border-color:var(--teal-400);box-shadow:0 0 0 3px var(--teal-50)}
+  .comp-area{width:100%;border:none;padding:13px 15px;font-family:inherit;font-size:13.5px;line-height:1.7;color:var(--ink);resize:none;min-height:78px}
+  .comp-area:focus{outline:none}
+  .comp-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-top:1px solid var(--line-soft);background:var(--surface)}
+  .cbtn{width:32px;height:32px;border-radius:8px;border:none;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+  .cbtn:hover{background:#fff;color:var(--teal-500)}
+  .send{margin-left:auto;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--buoy),#F5522F);color:#fff;border:none;padding:9px 20px;border-radius:9px;font-family:'Space Grotesk';font-weight:600;font-size:13.5px;cursor:pointer;box-shadow:0 4px 14px rgba(255,107,74,.35)}
+  .send:hover{filter:brightness(1.05)}
+  .send svg{width:16px;height:16px}
+
+  /* ============ CONTEXT PANEL (overlay-ish right inset) ============ */
+  .ctx{position:absolute;right:22px;top:84px;width:262px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .ctx-h{background:linear-gradient(135deg,var(--sea-800),var(--sea-700));padding:13px 15px;color:#fff}
+  .ctx-h .lbl{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:#7FB0BC;font-weight:600}
+  .ctx-h .bid{font-family:'IBM Plex Mono';font-size:14px;font-weight:500;margin-top:3px;display:flex;align-items:center;gap:7px}
+  .ctx-h .live{width:7px;height:7px;border-radius:50%;background:var(--teal-400);box-shadow:0 0 0 3px rgba(25,182,176,.3)}
+  .ctx-body{padding:13px 15px}
+  .ctx-site{font-family:'Space Grotesk';font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:7px}
+  .ctx-site svg{width:16px;height:16px;color:var(--teal-500)}
+  .ctx-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 8px;margin-top:13px}
+  .cg-item .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .cg-item .v{font-size:13px;color:var(--ink);font-weight:500;margin-top:2px}
+  .cg-item .v.mono{font-family:'IBM Plex Mono'}
+  .ctx-div{height:1px;background:var(--line-soft);margin:13px 0}
+  .ctx-cust{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-2)}
+  .ctx-cust b{color:var(--ink)}
+  .ctx-open{display:block;text-align:center;margin-top:13px;padding:8px;border:1px solid var(--teal-400);color:var(--teal-500);border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none}
+  .ctx-open:hover{background:var(--teal-500);color:#fff}
+
+  .threads::-webkit-scrollbar,.conv-body::-webkit-scrollbar{width:8px}
+  .threads::-webkit-scrollbar-thumb,.conv-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+
+  @media (prefers-reduced-motion:no-preference){
+    .thread,.bubble{animation:rise .4s ease both}
+    @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  }
+</style>
+</head>
+<body>
+<div class="console">
+
+  <!-- ========== LEFT RAIL ========== -->
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 17c2 1.5 3.5 1.5 5.5 0 2 1.5 3.5 1.5 5.5 0 2 1.5 3.5 1.5 6 0" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><path d="M12 3l2.2 4.5L19 8l-3.5 3 1 5L12 13.5 7.5 16l1-5L5 8l4.8-.5L12 3z" fill="#fff" opacity=".95"/></svg>
+      </div>
+      <div>
+        <div class="name">海王子 客服</div>
+        <div class="sub">Ocean Prince</div>
+      </div>
+    </div>
+
+    <div class="rail-label">信箱</div>
+    <div class="nav-item active"><svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M3 7l9 6 9-6M3 7v10a1 1 0 001 1h16a1 1 0 001-1V7M3 7a1 1 0 011-1h16a1 1 0 011 1" stroke="currentColor" stroke-width="1.7"/></svg>收件匣<span class="ct hot">3</span></div>
+    <div class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>待回覆<span class="ct hot">4</span></div>
+    <div class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M4 12h6m4 0h6M4 12a2 2 0 104 0 2 2 0 00-4 0zm10 0a2 2 0 104 0 2 2 0 00-4 0z" stroke="currentColor" stroke-width="1.7"/></svg>處理中<span class="ct">2</span></div>
+    <div class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>已結案<span class="ct">128</span></div>
+    <div class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>寄件備份<span class="ct">—</span></div>
+
+    <div class="rail-label">標籤</div>
+    <div class="tag-row">
+      <span class="tag"><span class="dot" style="background:#0E9AA0"></span>訂位詢問</span>
+      <span class="tag"><span class="dot" style="background:#FF6B4A"></span>改期</span>
+      <span class="tag"><span class="dot" style="background:#F5B544"></span>退費</span>
+      <span class="tag"><span class="dot" style="background:#8B7BE8"></span>裝備</span>
+      <span class="tag"><span class="dot" style="background:#5B8DEF"></span>天候</span>
+      <span class="tag"><span class="dot" style="background:#2BA66B"></span>課程</span>
+    </div>
+
+    <div class="rail-foot">
+      <div class="who">
+        <div class="av">汪</div>
+        <div>
+          <div class="nm">汪汪 教練</div>
+          <div class="rl">service@haiwangzi.xyz</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========== THREAD LIST ========== -->
+  <section class="list">
+    <div class="list-top">
+      <h1>客服信箱 <span class="addr">service@haiwangzi.xyz</span></h1>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input placeholder="搜尋寄件人、主旨、訂位單號…">
+      </div>
+      <div class="filters">
+        <span class="pill on">全部<span class="n">9</span></span>
+        <span class="pill">未讀<span class="n">3</span></span>
+        <span class="pill">待回覆<span class="n">4</span></span>
+        <span class="pill">已連動訂位<span class="n">5</span></span>
+      </div>
+    </div>
+
+    <div class="threads">
+      <!-- selected -->
+      <div class="thread sel">
+        <div class="t-av" style="background:linear-gradient(135deg,#0E9AA0,#0A6E73)">林</div>
+        <div class="t-main">
+          <div class="t-row1"><span class="t-from">林小姐</span><span class="t-time">10:24</span></div>
+          <div class="t-subj">6/22 龍洞兩支氣瓶 想改到隔週</div>
+          <div class="t-prev">汪汪教練您好，原本訂 6/22 早上的兩支，想看看 6/29…</div>
+          <div class="t-meta"><span class="chip book">＃OP-2406-018</span><span class="chip s-wait"><span class="dt" style="background:#C8431F"></span>待回覆</span></div>
+        </div>
+      </div>
+
+      <div class="thread">
+        <div class="t-av" style="background:linear-gradient(135deg,#5B8DEF,#3B6FD4)">D</div>
+        <div class="t-main">
+          <div class="t-row1"><span class="t-from">David Chen</span><span class="t-unread"></span><span class="t-time">09:51</span></div>
+          <div class="t-subj">Open Water 課程詢問 / 完全沒經驗</div>
+          <div class="t-prev">Hi, I'm interested in getting certified. I have no diving…</div>
+          <div class="t-meta"><span class="chip s-wait"><span class="dt" style="background:#C8431F"></span>待回覆</span></div>
+        </div>
+      </div>
+
+      <div class="thread">
+        <div class="t-av" style="background:linear-gradient(135deg,#FF6B4A,#F5522F)">美</div>
+        <div class="t-main">
+          <div class="t-row1"><span class="t-from">美玲</span><span class="t-unread"></span><span class="t-time">昨天</span></div>
+          <div class="t-subj">7/5 想包船 6 人 想要報價</div>
+          <div class="t-prev">教練好～我們一團 6 個人都有 AOW，想問 7/5 包船…</div>
+          <div class="t-meta"><span class="chip s-wait"><span class="dt" style="background:#C8431F"></span>待回覆</span></div>
+        </div>
+      </div>
+
+      <div class="thread">
+        <div class="t-av" style="background:linear-gradient(135deg,#8B7BE8,#6E5BD0)">王</div>
+        <div class="t-main">
+          <div class="t-row1"><span class="t-from">王先生</span><span class="t-time">昨天</span></div>
+          <div class="t-subj">裝備租借 BCD 尺寸問題</div>
+          <div class="t-prev">請問 BCD 有 XL 嗎？我體重大概 95 公斤…</div>
+          <div class="t-meta"><span class="chip book">＃OP-2406-011</span><span class="chip s-prog"><span class="dt" style="background:#E08A2B"></span>處理中</span></div>
+        </div>
+      </div>
+
+      <div class="thread">
+        <div class="t-av" style="background:linear-gradient(135deg,#5BB0A6,#3E8E86)">S</div>
+        <div class="t-main">
+          <div class="t-row1"><span class="t-from">Sarah Wu</span><span class="t-time">週四</span></div>
+          <div class="t-subj">Refund — dive cancelled due to typhoon</div>
+          <div class="t-prev">Hi, last week's dive got cancelled because of the typhoon…</div>
+          <div class="t-meta"><span class="chip book">＃OP-2405-093</span><span class="chip s-prog"><span class="dt" style="background:#E08A2B"></span>處理中</span></div>
+        </div>
+      </div>
+
+      <div class="thread">
+        <div class="t-av" style="background:linear-gradient(135deg,#9AA7AE,#7A8890)">陳</div>
+        <div class="t-main">
+          <div class="t-row1"><span class="t-from">陳大哥</span><span class="t-time">週三</span></div>
+          <div class="t-subj">謝謝！潛水照片都收到了 👍</div>
+          <div class="t-prev">教練辛苦了，照片超美的，下次還要找你們！</div>
+          <div class="t-meta"><span class="chip book">＃OP-2405-088</span><span class="chip s-done"><span class="dt" style="background:#2BA66B"></span>已結案</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CONVERSATION ========== -->
+  <section class="conv">
+    <div class="conv-head">
+      <div class="ch-av">林</div>
+      <div class="ch-info">
+        <h2>林小姐</h2>
+        <div class="em">amy.lin@gmail.com</div>
+      </div>
+      <div class="ch-actions">
+        <select class="status-sel">
+          <option>待回覆</option><option>處理中</option><option>已結案</option>
+        </select>
+        <div class="icon-btn" title="加標籤"><svg viewBox="0 0 24 24" fill="none" width="16"><path d="M20.6 13.4L13.4 20.6a2 2 0 01-2.8 0l-7-7A2 2 0 013 12.2V5a2 2 0 012-2h7.2a2 2 0 011.4.6l7 7a2 2 0 010 2.8z" stroke="currentColor" stroke-width="1.7"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"/></svg></div>
+        <div class="icon-btn" title="封存"><svg viewBox="0 0 24 24" fill="none" width="16"><path d="M3 7h18v3H3zM5 10v9a1 1 0 001 1h12a1 1 0 001-1v-9M9 13h6" stroke="currentColor" stroke-width="1.7"/></svg></div>
+      </div>
+    </div>
+
+    <div class="conv-body">
+      <!-- inbound -->
+      <div class="msg in">
+        <div class="m-head">
+          <span class="m-name">林小姐</span>
+          <span class="m-dir in">收信 IN</span>
+          <span class="m-time">今天 10:24</span>
+        </div>
+        <div class="bubble">
+          <p>汪汪教練您好 🙌</p>
+          <p>原本跟你們訂了 6/22（六）早上的龍洞兩支氣瓶（單號 OP-2406-018），但那週末家裡臨時有事，想問問看能不能改到 <b>6/29（六）</b>同樣時段？兩個人都還是要潛。</p>
+          <p>如果可以的話再麻煩您幫我改，謝謝！</p>
+        </div>
+      </div>
+
+      <!-- outbound (delivered) -->
+      <div class="msg out">
+        <div class="m-head">
+          <span class="m-name">海王子客服（汪汪）</span>
+          <span class="m-dir out">回信 OUT</span>
+          <span class="m-deliv">✓ 已送達 10:31</span>
+        </div>
+        <div class="bubble">
+          <p>林小姐午安～沒問題！6/29（六）早上 09:00 龍洞兩支還有位子，已經幫您先暫留 🤿</p>
+          <p>幫您確認一下原本資料：2 位、含氣瓶與配重、教練帶潛。改期不收手續費，原訂金沿用即可。</p>
+          <p>您回覆確認後我就正式幫您改到 6/29，並補一張新的訂位確認信給您。</p>
+        </div>
+      </div>
+
+      <!-- inbound short -->
+      <div class="msg in">
+        <div class="m-head">
+          <span class="m-name">林小姐</span>
+          <span class="m-dir in">收信 IN</span>
+          <span class="m-time">今天 10:38</span>
+        </div>
+        <div class="bubble">
+          <p>太好了！那就確認改 6/29 09:00，麻煩您了 🙏 另外想問一下那天的海況預報大概如何？</p>
+          <div class="att"><svg viewBox="0 0 24 24" fill="none"><path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>身分證影本.jpg · 86 KB</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPOSER -->
+    <div class="composer">
+      <div class="comp-tabs">
+        <span class="tlabel">快速範本</span>
+        <span class="tmpl">改期確認</span>
+        <span class="tmpl">訂位確認</span>
+        <span class="tmpl">海況預報</span>
+        <span class="tmpl">裝備提醒</span>
+        <span class="tmpl">退費說明</span>
+      </div>
+      <div class="comp-from">
+        以 <b>service@haiwangzi.xyz</b> 回覆給 林小姐
+        <span class="sysnote"><span class="led"></span>內部由 Zeabur Email 寄送</span>
+      </div>
+      <div class="comp-box">
+        <textarea class="comp-area" placeholder="輸入回覆內容…">林小姐好，已經幫您正式改到 6/29（六）09:00，新的訂位確認信我同步補寄囉！
+
+當天海況預報：浪高約 0.5–1m、能見度 8–10m，算不錯的條件，記得前一天我們會再發一次天候確認。</textarea>
+        <div class="comp-bar">
+          <button class="cbtn" title="附件"><svg viewBox="0 0 24 24" fill="none" width="17"><path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+          <button class="cbtn" title="插入訂位資訊"><svg viewBox="0 0 24 24" fill="none" width="17"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M8 4v5" stroke="currentColor" stroke-width="1.7"/></svg></button>
+          <button class="cbtn" title="表情"><svg viewBox="0 0 24 24" fill="none" width="17"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+          <button class="send">寄出回覆 <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTEXT PANEL: linked booking -->
+    <div class="ctx">
+      <div class="ctx-h">
+        <div class="lbl">連動訂位</div>
+        <div class="bid"><span class="live"></span>OP-2406-018</div>
+      </div>
+      <div class="ctx-body">
+        <div class="ctx-site"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0c0 5.5-7 11-7 11z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.7"/></svg>龍洞 Long Dong</div>
+        <div class="ctx-grid">
+          <div class="cg-item"><div class="k">日期</div><div class="v mono">06/22 → 06/29</div></div>
+          <div class="cg-item"><div class="k">時段</div><div class="v mono">09:00</div></div>
+          <div class="cg-item"><div class="k">人數</div><div class="v">2 位</div></div>
+          <div class="cg-item"><div class="k">瓶數</div><div class="v">2 支 / 人</div></div>
+          <div class="cg-item"><div class="k">教練</div><div class="v">汪汪</div></div>
+          <div class="cg-item"><div class="k">金額</div><div class="v mono">NT$3,600</div></div>
+        </div>
+        <div class="ctx-div"></div>
+        <div class="ctx-cust"><b>林小姐</b>　·　已完課 OW　·　第 3 次預約</div>
+        <a class="ctx-open">在訂位系統開啟 →</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -48,6 +48,7 @@ export function r2Configured(): boolean {
 export type R2Prefix =
   | "payments"
   | "signatures" // v260: 客戶手寫簽名 (private bucket, 法律證據長期保留)
+  | "email"      // v521: 客服信箱附件 (private bucket, 含客戶個資)
   | "sites"
   | "avatars"
   | "richmenu"
@@ -57,7 +58,7 @@ export type R2Prefix =
 
 /** prefix → bucket 對應 */
 export function bucketFor(prefix: R2Prefix): string {
-  if (prefix === "payments" || prefix === "avatars" || prefix === "signatures")
+  if (prefix === "payments" || prefix === "avatars" || prefix === "signatures" || prefix === "email")
     return R2_PRIVATE_BUCKET;
   return R2_PUBLIC_BUCKET; // sites, richmenu, media, trips, tours
 }

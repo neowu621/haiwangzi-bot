@@ -26,6 +26,7 @@ import {
   Newspaper,
   Image as ImageIcon,
   ChevronDown,
+  Mail,
 } from "lucide-react";
 
 // v350：側欄改「功能分組」由上而下（即時營運 → 訂單客戶 → 商品 → 行銷 → 分析 → 系統）
@@ -58,6 +59,7 @@ const NAV_GROUPS = [
   {
     label: "行銷 / 通知",
     items: [
+      { href: "/admin/email", icon: Mail, label: "📧 客服信箱" },
       { href: "/admin/promotion", icon: ImageIcon, label: "🎨 業務推廣" },
       { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
       { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
