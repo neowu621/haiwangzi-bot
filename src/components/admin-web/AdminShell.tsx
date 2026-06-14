@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
@@ -25,6 +25,7 @@ import {
   HelpCircle,
   Newspaper,
   Image as ImageIcon,
+  ChevronDown,
 } from "lucide-react";
 
 // v350：側欄改「功能分組」由上而下（即時營運 → 訂單客戶 → 商品 → 行銷 → 分析 → 系統）
@@ -152,6 +153,24 @@ export function AdminShell({
   const badgeFor = (href: string) =>
     href === "/admin/tonight" ? counts.tonight : href === "/admin/bookings" ? counts.bookings : href === "/admin/dive-wishes" ? counts.wishes : 0;
 
+  // v521：側欄群組可收合 — 預設只展開「目前所在頁」的群組，其餘收起省 Y 空間
+  const isItemActive = (it: { href: string; exact?: boolean }) =>
+    "exact" in it && it.exact
+      ? pathname === it.href
+      : pathname === it.href || pathname.startsWith(it.href + "/");
+  const activeGroupLabel = useMemo(() => {
+    const g = NAV_GROUPS.find((grp) => grp.items.some((it) => isItemActive(it)));
+    return g?.label ?? NAV_GROUPS[0].label;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ [activeGroupLabel]: true });
+  // 切頁時自動展開新頁所在群組（不主動關閉其它，使用者想多開也行）
+  useEffect(() => {
+    setOpenGroups((s) => (s[activeGroupLabel] ? s : { ...s, [activeGroupLabel]: true }));
+  }, [activeGroupLabel]);
+  const toggleGroup = (label: string) => setOpenGroups((s) => ({ ...s, [label]: !s[label] }));
+  const groupBadge = (items: { href: string }[]) => items.reduce((sum, it) => sum + badgeFor(it.href), 0);
+
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -232,33 +251,50 @@ export function AdminShell({
 
       {/* Nav（v350：功能分組）*/}
       <nav className="flex-1 overflow-y-auto px-2.5 py-1.5">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="mb-1.5">
-            <div
-              className="px-3 pb-0.5 pt-1.5 text-[10px] font-bold tracking-wide"
-              style={{ color: "var(--color-phosphor)" }}
-            >
-              {group.label}
-            </div>
-            <div className="space-y-px">
-              {group.items.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  badge={badgeFor(item.href)}
-                  active={
-                    "exact" in item && item.exact
-                      ? pathname === item.href
-                      : pathname === item.href || pathname.startsWith(item.href + "/")
-                  }
-                  onClick={() => setMobileOpen(false)}
+        {NAV_GROUPS.map((group) => {
+          const open = !!openGroups[group.label];
+          const gb = groupBadge(group.items);
+          return (
+            <div key={group.label} className="mb-1">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label)}
+                className="flex w-full items-center gap-1.5 rounded-lg px-3 pb-0.5 pt-1.5 text-[10px] font-bold tracking-wide transition-colors hover:bg-white/5"
+                style={{ color: "var(--color-phosphor)" }}
+                aria-expanded={open}
+              >
+                <span>{group.label}</span>
+                {!open && gb > 0 && (
+                  <span
+                    className="rounded-full px-1.5 text-[9px] font-bold leading-[1.5]"
+                    style={{ background: "var(--color-coral)", color: "#fff" }}
+                  >
+                    {gb > 99 ? "99+" : gb}
+                  </span>
+                )}
+                <ChevronDown
+                  className="ml-auto h-3 w-3 transition-transform"
+                  style={{ transform: open ? "rotate(180deg)" : "none", opacity: 0.55 }}
                 />
-              ))}
+              </button>
+              {open && (
+                <div className="space-y-px">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      href={item.href}
+                      icon={item.icon}
+                      label={item.label}
+                      badge={badgeFor(item.href)}
+                      active={isItemActive(item)}
+                      onClick={() => setMobileOpen(false)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
     </div>
   );
