@@ -1,5 +1,6 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser, type AddressObject } from "mailparser";
+import { prisma } from "@/lib/prisma";
 import { ingestInboundEmail, type InboundAttachmentMeta } from "@/lib/email-inbound";
 import { r2Configured, makeKey, putBuffer } from "@/lib/r2";
 
@@ -10,13 +11,18 @@ import { r2Configured, makeKey, putBuffer } from "@/lib/r2";
  *   本函式用 IMAP 連這個 Gmail，把「轉進來的 @haiwangzi.xyz 客人信」拉出來、解析、入庫，
  *   出現在後台收件匣。靠 cron 定時呼叫（/api/cron/email-inbound-poll）。
  *
+ * v528 重要修正：不再靠「未讀(\Seen)」判斷 —— 這個 Gmail 老闆本人也會看，一點開信就變已讀，
+ *   cron 還沒跑就被讀掉 → 永遠收不到。改成掃「近 N 天」的信(不管讀沒讀)，
+ *   用 Message-ID 對 DB 去重(已入庫就跳過)，而且完全不碰 Gmail 的讀取狀態。
+ *
  * 必要 env（在 Zeabur 設）：
  *   INBOUND_GMAIL_USER          收信 Gmail（haiwangzi.northeast.coast@gmail.com）
- *   INBOUND_GMAIL_APP_PASSWORD  該 Gmail 的 App Password（需開 2FA 後產生；同一把可開 IMAP）
+ *   INBOUND_GMAIL_APP_PASSWORD  該 Gmail 的 App Password
  *   （未設則 fallback 用 GMAIL_USER / GMAIL_APP_PASSWORD）
  */
 
 const HOST = "imap.gmail.com";
+const LOOKBACK_DAYS = 7; // 掃近 7 天的信，靠 messageId 去重，重掃不會重複入庫
 
 export function inboundImapConfigured(): boolean {
   return Boolean(
@@ -27,10 +33,10 @@ export function inboundImapConfigured(): boolean {
 
 export interface PollResult {
   ok: boolean;
-  scanned: number;
-  ingested: number;
-  dedup: number;
-  skipped: number;
+  scanned: number;  // 近 N 天本網域信總數（envelope 掃描）
+  ingested: number; // 這次新入庫
+  dedup: number;    // 已在 DB、跳過
+  skipped: number;  // 解析/處理失敗
   error?: string;
 }
 
@@ -48,23 +54,22 @@ function joinRefs(refs?: string | string[]): string | null {
 
 /** 收件人/標頭是否含本網域 → 過濾掉 Gmail 裡的私人信，只收轉進來的客服信 */
 function isForDomain(toText: string, deliveredTo: string): boolean {
-  const hay = `${toText} ${deliveredTo}`.toLowerCase();
-  return hay.includes("haiwangzi.xyz");
+  return `${toText} ${deliveredTo}`.toLowerCase().includes("haiwangzi.xyz");
 }
 
-export async function pollInboundGmail(limit = 30): Promise<PollResult> {
+export async function pollInboundGmail(limit = 50): Promise<PollResult> {
   if (!inboundImapConfigured()) {
     return { ok: false, scanned: 0, ingested: 0, dedup: 0, skipped: 0, error: "IMAP 未設定（缺 INBOUND_GMAIL_USER / INBOUND_GMAIL_APP_PASSWORD）" };
   }
   const user = (process.env.INBOUND_GMAIL_USER || process.env.GMAIL_USER)!;
   const pass = (process.env.INBOUND_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD)!.replace(/\s+/g, "");
+  const since = new Date(Date.now() - LOOKBACK_DAYS * 864e5);
 
   const client = new ImapFlow({ host: HOST, port: 993, secure: true, auth: { user, pass }, logger: false });
   let scanned = 0, ingested = 0, dedup = 0, skipped = 0;
 
   await client.connect();
-  // 掃 INBOX + 垃圾信匣（轉寄信常被 Gmail 判垃圾，不掃 Spam 會漏收客人信）
-  //   Spam 匣偵測：先 \Junk special-use，退而求其次用路徑 regex（[Gmail]/Spam 等），最穩。
+  // 掃 INBOX + 垃圾信匣（轉寄信常被 Gmail 判垃圾）。Spam 匣偵測：\Junk → 路徑 regex 兜底。
   const folders = ["INBOX"];
   try {
     const boxes = await client.list();
@@ -73,69 +78,78 @@ export async function pollInboundGmail(limit = 30): Promise<PollResult> {
       boxes.find((mb) => /(\[Gmail\]|\[Google Mail\])\/Spam$/i.test(mb.path)) ??
       boxes.find((mb) => /\/(Spam|Junk)$/i.test(mb.path));
     if (spam && !folders.includes(spam.path)) folders.push(spam.path);
-  } catch { /* 找不到 Spam 匣就只掃 INBOX */ }
+  } catch { /* 只掃 INBOX */ }
 
   try {
-   for (const folder of folders) {
-    const lock = await client.getMailboxLock(folder);
-    try {
-    // 只撈「To 含本網域」的未讀信 → 完全不碰老闆 Gmail 裡的私人信
-    const uids = (await client.search({ seen: false, to: "haiwangzi.xyz" }, { uid: true })) || [];
-    const take = uids.slice(0, limit);
-    for (const uid of take) {
-      scanned++;
+    for (const folder of folders) {
+      const lock = await client.getMailboxLock(folder);
       try {
-        const dl = await client.download(`${uid}`, undefined, { uid: true });
-        if (!dl?.content) { skipped++; continue; }
-        const parsed = await simpleParser(dl.content);
-
-        // 防呆再確認一次；非本網域就「跳過但不標已讀」（不動私人信）
-        const toText = (parsed.to ? (Array.isArray(parsed.to) ? parsed.to : [parsed.to]).map((t) => t.text).join(",") : "");
-        const deliveredTo = String(parsed.headers.get("delivered-to") ?? parsed.headers.get("x-forwarded-to") ?? "");
-        if (!isForDomain(toText, deliveredTo)) { skipped++; continue; }
-
-        const from = firstAddr(parsed.from);
-        const messageId = parsed.messageId || `<gmail-${uid}-${Date.now()}@haiwangzi.xyz>`;
-        if (!from) { await client.messageFlagsAdd(`${uid}`, ["\\Seen"], { uid: true }); skipped++; continue; }
-
-        // 附件 → R2 私密 bucket（含個資）
-        const attachments: InboundAttachmentMeta[] = [];
-        for (const att of parsed.attachments ?? []) {
-          const filename = att.filename || "attachment";
-          const meta: InboundAttachmentMeta = { filename, contentType: att.contentType || "application/octet-stream", size: att.size ?? att.content?.length ?? 0 };
-          if (att.content && r2Configured()) {
-            try {
-              const key = makeKey("email", filename, "inbound");
-              await putBuffer("email", key, att.content, meta.contentType);
-              meta.key = key; meta.bucket = "private";
-            } catch { /* 上傳失敗留 metadata */ }
-          }
-          attachments.push(meta);
+        // 1) 先用 envelope 便宜地撈近 N 天本網域信的 (uid, messageId)
+        const candidates: { uid: number; messageId: string }[] = [];
+        for await (const msg of client.fetch({ to: "haiwangzi.xyz", since }, { uid: true, envelope: true })) {
+          const mid = msg.envelope?.messageId;
+          if (mid) candidates.push({ uid: msg.uid, messageId: mid });
+          if (candidates.length >= limit) break;
         }
+        scanned += candidates.length;
 
-        const r = await ingestInboundEmail({
-          messageId,
-          inReplyTo: parsed.inReplyTo ?? null,
-          references: joinRefs(parsed.references),
-          fromEmail: from.email,
-          fromName: from.name,
-          to: "service@haiwangzi.xyz",
-          subject: parsed.subject ?? "(無主旨)",
-          text: parsed.text ?? null,
-          html: parsed.html || null,
-          attachments,
-        });
-        if (r.dedup) dedup++; else ingested++;
+        // 2) 一次查 DB：哪些 messageId 已入庫 → 跳過，不重複下載
+        const ids = candidates.map((c) => c.messageId);
+        const existing = ids.length
+          ? new Set((await prisma.emailMessage.findMany({ where: { messageId: { in: ids } }, select: { messageId: true } })).map((m) => m.messageId))
+          : new Set<string>();
 
-        await client.messageFlagsAdd(`${uid}`, ["\\Seen"], { uid: true });
-      } catch {
-        skipped++; // 單封失敗不影響其它（不標已讀，下次重試）
+        // 3) 只下載＋解析＋入庫「新的」；完全不改 Gmail 讀取狀態
+        for (const c of candidates) {
+          if (existing.has(c.messageId)) { dedup++; continue; }
+          try {
+            const dl = await client.download(`${c.uid}`, undefined, { uid: true });
+            if (!dl?.content) { skipped++; continue; }
+            const parsed = await simpleParser(dl.content);
+
+            const toText = parsed.to ? (Array.isArray(parsed.to) ? parsed.to : [parsed.to]).map((t) => t.text).join(",") : "";
+            const deliveredTo = String(parsed.headers.get("delivered-to") ?? parsed.headers.get("x-forwarded-to") ?? "");
+            if (!isForDomain(toText, deliveredTo)) { skipped++; continue; }
+
+            const from = firstAddr(parsed.from);
+            if (!from) { skipped++; continue; }
+
+            // 附件 → R2 私密 bucket（含個資）
+            const attachments: InboundAttachmentMeta[] = [];
+            for (const att of parsed.attachments ?? []) {
+              const filename = att.filename || "attachment";
+              const meta: InboundAttachmentMeta = { filename, contentType: att.contentType || "application/octet-stream", size: att.size ?? att.content?.length ?? 0 };
+              if (att.content && r2Configured()) {
+                try {
+                  const key = makeKey("email", filename, "inbound");
+                  await putBuffer("email", key, att.content, meta.contentType);
+                  meta.key = key; meta.bucket = "private";
+                } catch { /* 上傳失敗留 metadata */ }
+              }
+              attachments.push(meta);
+            }
+
+            const r = await ingestInboundEmail({
+              messageId: c.messageId, // 用 envelope 的 Message-ID，與去重一致
+              inReplyTo: parsed.inReplyTo ?? null,
+              references: joinRefs(parsed.references),
+              fromEmail: from.email,
+              fromName: from.name,
+              to: "service@haiwangzi.xyz",
+              subject: parsed.subject ?? "(無主旨)",
+              text: parsed.text ?? null,
+              html: parsed.html || null,
+              attachments,
+            });
+            if (r.dedup) dedup++; else ingested++;
+          } catch {
+            skipped++; // 單封失敗不影響其它
+          }
+        }
+      } finally {
+        lock.release();
       }
     }
-    } finally {
-      lock.release();
-    }
-   }
   } finally {
     await client.logout().catch(() => {});
   }
