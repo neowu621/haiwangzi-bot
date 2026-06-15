@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
     pendingWishes,
     attendanceTrips,
     attendanceTours,
+    pendingEmails,
   ] = await Promise.all([
     // 待確認匯款：未審核 + booking 仍存在（DISTINCT booking_id，與完整 stats 一致）
     prisma.$queryRaw<Array<{ count: bigint }>>`
@@ -101,6 +102,8 @@ export async function GET(req: NextRequest) {
       where: { dateStart: { gte: yesterdayDate, lt: tomorrowDate }, status: { not: "cancelled" } },
       select: { id: true },
     }),
+    // v533：客服信箱待回覆數（側欄徽章用）
+    prisma.emailThread.count({ where: { status: "WAITING" } }),
   ]);
 
   const attTripIds = attendanceTrips.map((t) => t.id);
@@ -126,5 +129,6 @@ export async function GET(req: NextRequest) {
     todayTrips: { count: todayTripIds.length, people: todayPeopleAgg?._sum.participants ?? 0 },
     tomorrowTrips: { count: tomorrowTripIds.length, people: tomorrowPeopleAgg?._sum.participants ?? 0 },
     pendingWishes,
+    pendingEmails,
   });
 }
