@@ -86,6 +86,9 @@ const NAV_GROUPS = [
 // 扁平清單（給頂部標題對照用）
 const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
+// v530：我的最愛預設常用 4 項（使用者可用星號自訂，存 localStorage）
+const DEFAULT_FAVS = ["/admin/tonight", "/admin/bookings", "/admin/dive-wishes", "/admin/email"];
+
 function NavLink({
   href,
   icon: Icon,
@@ -93,6 +96,8 @@ function NavLink({
   active,
   badge,
   onClick,
+  fav,
+  onToggleFav,
 }: {
   href: string;
   icon: typeof BookOpen;
@@ -100,13 +105,15 @@ function NavLink({
   active: boolean;
   badge?: number;
   onClick?: () => void;
+  fav?: boolean;            // v530：是否已在「我的最愛」
+  onToggleFav?: () => void; // 有傳才顯示星號切換
 }) {
   return (
     <Link
       href={href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
+        "group flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
         active
           ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
           : "text-[rgba(230,240,255,0.7)] hover:bg-white/10 hover:text-white",
@@ -114,6 +121,18 @@ function NavLink({
     >
       <Icon className="h-4 w-4 flex-shrink-0" />
       <span className="flex-1 truncate">{label}</span>
+      {/* v530：加入/移除「我的最愛」— hover 才浮現，已加最愛恆亮 */}
+      {onToggleFav ? (
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(); }}
+          title={fav ? "從我的最愛移除" : "加入我的最愛"}
+          aria-label={fav ? "從我的最愛移除" : "加入我的最愛"}
+          className={cn("flex-shrink-0 transition-opacity", fav ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+        >
+          <Star className="h-3.5 w-3.5" style={{ fill: fav ? "var(--color-phosphor)" : "none", color: fav ? "var(--color-phosphor)" : "rgba(230,240,255,0.55)" }} />
+        </button>
+      ) : null}
       {/* v508：待處理數量徽章 */}
       {badge && badge > 0 ? (
         <span
@@ -172,6 +191,24 @@ export function AdminShell({
   }, [activeGroupLabel]);
   const toggleGroup = (label: string) => setOpenGroups((s) => ({ ...s, [label]: !s[label] }));
   const groupBadge = (items: { href: string }[]) => items.reduce((sum, it) => sum + badgeFor(it.href), 0);
+
+  // v530：我的最愛（localStorage 記住，預設 4 項）
+  const [favs, setFavs] = useState<string[]>(DEFAULT_FAVS);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("adminFavs");
+      if (raw) setFavs(JSON.parse(raw));
+    } catch { /* 用預設 */ }
+  }, []);
+  const toggleFav = (href: string) =>
+    setFavs((cur) => {
+      const next = cur.includes(href) ? cur.filter((h) => h !== href) : [...cur, href];
+      try { localStorage.setItem("adminFavs", JSON.stringify(next)); } catch { /* 無痕模式等忽略 */ }
+      return next;
+    });
+  const favItems = favs
+    .map((h) => NAV_ITEMS.find((n) => n.href === h))
+    .filter((x): x is (typeof NAV_ITEMS)[number] => Boolean(x));
 
   if (!ready) {
     return (
@@ -253,6 +290,29 @@ export function AdminShell({
 
       {/* Nav（v350：功能分組）*/}
       <nav className="flex-1 overflow-y-auto px-2.5 py-1.5">
+        {/* v530：我的最愛 — 常用捷徑，點選單項目的星號可增減 */}
+        {favItems.length > 0 && (
+          <div className="mb-2 pb-1.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="flex items-center gap-1.5 px-3 pb-0.5 pt-1 text-[10px] font-bold tracking-wide" style={{ color: "var(--color-phosphor)" }}>
+              <Star className="h-3 w-3" style={{ fill: "var(--color-phosphor)" }} /> 我的最愛
+            </div>
+            <div className="space-y-px">
+              {favItems.map((item) => (
+                <NavLink
+                  key={"fav-" + item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  badge={badgeFor(item.href)}
+                  active={isItemActive(item)}
+                  fav
+                  onToggleFav={() => toggleFav(item.href)}
+                  onClick={() => setMobileOpen(false)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {NAV_GROUPS.map((group) => {
           const open = !!openGroups[group.label];
           const gb = groupBadge(group.items);
@@ -289,6 +349,8 @@ export function AdminShell({
                       label={item.label}
                       badge={badgeFor(item.href)}
                       active={isItemActive(item)}
+                      fav={favs.includes(item.href)}
+                      onToggleFav={() => toggleFav(item.href)}
                       onClick={() => setMobileOpen(false)}
                     />
                   ))}
