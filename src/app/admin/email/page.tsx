@@ -60,6 +60,12 @@ function esc(s: string) {
 function initials(t: Thread) {
   return (t.customerName ?? t.customerEmail).slice(0, 1).toUpperCase();
 }
+function fmtFull(d: string) {
+  return new Date(d).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+interface PollLog {
+  id: string; trigger: string; scanned: number; ingested: number; dedup: number; skipped: number; ok: boolean; error?: string | null; ranAt: string;
+}
 
 export default function AdminEmailPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -72,11 +78,22 @@ export default function AdminEmailPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [polling, setPolling] = useState(false);
+  const [pollLogs, setPollLogs] = useState<PollLog[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const showToast = useCallback((m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   }, []);
+
+  const loadPollLogs = useCallback(async () => {
+    try {
+      const d = await adminFetch<{ logs: PollLog[] }>("/api/admin/email/poll");
+      setPollLogs(d.logs);
+    } catch { /* 忽略 */ }
+  }, []);
+  useEffect(() => { loadPollLogs(); }, [loadPollLogs]);
 
   const loadList = useCallback(async () => {
     setLoadingList(true);
@@ -143,6 +160,26 @@ export default function AdminEmailPage() {
     }
   }
 
+  async function doPoll() {
+    if (polling) return;
+    setPolling(true);
+    try {
+      const d = await adminFetch<{ result: { ingested: number; ok: boolean; error?: string }; logs: PollLog[] }>(
+        "/api/admin/email/poll",
+        { method: "POST" },
+      );
+      setPollLogs(d.logs);
+      if (!d.result.ok) showToast("收信失敗：" + (d.result.error ?? ""));
+      else showToast(d.result.ingested > 0 ? `✓ 收到 ${d.result.ingested} 封新信` : "已是最新，沒有新信");
+      await loadList();
+      if (selId) await loadDetail(selId);
+    } catch (e) {
+      showToast("收信失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setPolling(false);
+    }
+  }
+
   async function deleteThread() {
     if (!detail) return;
     const who = detail.customerName ?? detail.customerEmail;
@@ -169,11 +206,36 @@ export default function AdminEmailPage() {
   return (
     <AdminShell title="客服信箱">
       <div style={{ background: "#f4f8f9", height: "calc(100vh - 56px)", margin: "-1rem", display: "flex", flexDirection: "column" }}>
-        {/* top hint */}
-        <div style={{ padding: "10px 16px", fontSize: 12.5, color: "#4a6168", borderBottom: "1px solid #e1ebeb", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          對外信箱 <b style={{ color: "#0e7c8a" }}>service@haiwangzi.xyz</b>
-          <span style={{ color: "#9aabae" }}>· 收信由系統定時讀 Gmail 進來 · 回信走 Zeabur Email</span>
-          <button onClick={() => { loadList(); if (selId) loadDetail(selId); }} style={refreshBtn}>↻ 重新整理</button>
+        {/* top bar：收信鈕在最左 + 最近更新時間 + 紀錄 */}
+        <div style={{ padding: "8px 14px", borderBottom: "1px solid #e1ebeb", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", position: "relative" }}>
+          <button onClick={doPoll} disabled={polling} style={pollBtn(polling)}>
+            {polling ? "收信中…" : "↻ 收信"}
+          </button>
+          {pollLogs[0] ? (
+            <span style={{ fontSize: 12, color: "#4a6168" }}>
+              最近更新 <b>{fmtFull(pollLogs[0].ranAt)}</b>
+              <span style={{ color: "#0e7c8a", marginLeft: 6 }}>收到 {pollLogs[0].ingested} 封</span>
+            </span>
+          ) : (
+            <span style={{ fontSize: 12, color: "#9aabae" }}>尚無收信紀錄</span>
+          )}
+          <button onClick={() => setShowHistory((s) => !s)} style={linkBtn}>更新紀錄 ▾</button>
+          <span style={{ marginLeft: "auto", fontSize: 11.5, color: "#9aabae" }}>
+            對外信箱 service@haiwangzi.xyz · 回信走 Zeabur Email
+          </span>
+          {showHistory && (
+            <div style={historyPanel}>
+              <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, color: "#0a2027" }}>收信紀錄（最近 12 次）</div>
+              {pollLogs.length === 0 && <div style={{ fontSize: 12, color: "#9aabae" }}>尚無紀錄</div>}
+              {pollLogs.map((l) => (
+                <div key={l.id} style={{ display: "flex", gap: 8, fontSize: 11.5, padding: "4px 0", borderTop: "1px solid #f1f4f6", alignItems: "center" }}>
+                  <span style={{ fontFamily: "monospace", color: "#516268" }}>{fmtFull(l.ranAt)}</span>
+                  <span style={{ color: l.trigger === "manual" ? "#0e7c8a" : "#9aabae" }}>{l.trigger === "manual" ? "手動" : "自動"}</span>
+                  <span style={{ marginLeft: "auto", fontWeight: 600, color: l.ingested > 0 ? "#1c8f5e" : "#9aabae" }}>收到 {l.ingested}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ flex: 1, display: "grid", gridTemplateColumns: "340px 1fr", minHeight: 0 }}>
@@ -310,7 +372,11 @@ export default function AdminEmailPage() {
 }
 
 // ── styles ──
-const refreshBtn: React.CSSProperties = { marginLeft: "auto", border: "1px solid #cddada", background: "#fff", borderRadius: 8, padding: "4px 11px", fontSize: 12, color: "#0e4c5a", cursor: "pointer", fontFamily: "inherit" };
+function pollBtn(p: boolean): React.CSSProperties {
+  return { border: "none", borderRadius: 9, padding: "7px 16px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: p ? "wait" : "pointer", background: p ? "#cdd9d9" : "linear-gradient(135deg,#13b5a6,#0e9aa0)", color: "#fff" };
+}
+const linkBtn: React.CSSProperties = { border: "none", background: "none", color: "#0e7c8a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" };
+const historyPanel: React.CSSProperties = { position: "absolute", top: "100%", left: 14, zIndex: 20, marginTop: 4, width: 320, background: "#fff", border: "1px solid #dce7ea", borderRadius: 10, boxShadow: "0 8px 24px rgba(8,34,47,.14)", padding: "10px 13px" };
 const searchInput: React.CSSProperties = { width: "100%", border: "1px solid #dce7ea", borderRadius: 9, padding: "8px 11px", fontSize: 13, fontFamily: "inherit", background: "#f7fafb", outline: "none" };
 const empty: React.CSSProperties = { padding: 24, textAlign: "center", fontSize: 13, color: "#7c9296", lineHeight: 1.7 };
 function pill(on: boolean): React.CSSProperties {

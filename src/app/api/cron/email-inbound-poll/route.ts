@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pollInboundGmail } from "@/lib/gmail-reader";
+import { runAndLogPoll } from "@/lib/gmail-reader";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ async function handle(req: NextRequest) {
     }
   }
   try {
-    const r = await pollInboundGmail();
+    const r = await runAndLogPoll("cron");
     return NextResponse.json(r, { status: r.ok ? 200 : 500 });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });

@@ -963,6 +963,22 @@ model SuppressedEmail {
   @@map("suppressed_emails")
 }
 
+// v531：收信紀錄 — 每次讀 Gmail（手動/排程）記一筆：時間、收到幾封
+model EmailPollLog {
+  id       String   @id @default(cuid())
+  trigger  String // "cron" | "manual"
+  scanned  Int      @default(0)
+  ingested Int      @default(0)
+  dedup    Int      @default(0)
+  skipped  Int      @default(0)
+  ok       Boolean  @default(true)
+  error    String?
+  ranAt    DateTime @default(now()) @map("ran_at")
+
+  @@index([ranAt(sort: Desc)])
+  @@map("email_poll_logs")
+}
+
 enum ThreadStatus {
   WAITING // 待回覆
   PROCESSING // 處理中

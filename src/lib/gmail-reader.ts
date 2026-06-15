@@ -57,6 +57,17 @@ function isForDomain(toText: string, deliveredTo: string): boolean {
   return `${toText} ${deliveredTo}`.toLowerCase().includes("haiwangzi.xyz");
 }
 
+/** v531：跑一次收信並寫一筆紀錄（手動/排程共用）。log 失敗不影響收信。 */
+export async function runAndLogPoll(trigger: "cron" | "manual"): Promise<PollResult> {
+  const r = await pollInboundGmail();
+  try {
+    await prisma.emailPollLog.create({
+      data: { trigger, scanned: r.scanned, ingested: r.ingested, dedup: r.dedup, skipped: r.skipped, ok: r.ok, error: r.error ?? null },
+    });
+  } catch { /* 寫 log 失敗忽略 */ }
+  return r;
+}
+
 export async function pollInboundGmail(limit = 50): Promise<PollResult> {
   if (!inboundImapConfigured()) {
     return { ok: false, scanned: 0, ingested: 0, dedup: 0, skipped: 0, error: "IMAP 未設定（缺 INBOUND_GMAIL_USER / INBOUND_GMAIL_APP_PASSWORD）" };
