@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+// Cloudflare Turnstile Site Key（公開）；可用 env 覆寫
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAADk-txif2tm3B2mC";
 const LINE_URL = "https://line.me/R/ti/p/@894bpmew";
 const PRODUCTS = ["體驗潛水", "OW 考證", "AOW 進階", "1對1 私人", "Fun Dive", "潛水團", "包船", "其他"];
 const PLACES = ["綠島", "蘭嶼", "小琉球", "墾丁", "媽媽島", "薄荷島", "其他"];
@@ -19,6 +21,8 @@ export function ContactForm() {
   const [aBusy, setABusy] = useState(false);
   const [aSent, setASent] = useState<Sent>(false);
   const [aErr, setAErr] = useState("");
+  const [aToken, setAToken] = useState("");
+  const [aReset, setAReset] = useState(0);
 
   // B 開團許願
   const [bTopic, setBTopic] = useState("綠島");
@@ -33,14 +37,27 @@ export function ContactForm() {
   const [bBusy, setBBusy] = useState(false);
   const [bSent, setBSent] = useState<Sent>(false);
   const [bErr, setBErr] = useState("");
+  const [bToken, setBToken] = useState("");
+  const [bReset, setBReset] = useState(0);
+
+  // 載入 Cloudflare Turnstile script（一次）
+  useEffect(() => {
+    if (document.getElementById("cf-turnstile-script")) return;
+    const s = document.createElement("script");
+    s.id = "cf-turnstile-script";
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true;
+    s.defer = true;
+    document.head.appendChild(s);
+  }, []);
 
   async function submit(type: "question" | "wish") {
     const isA = type === "question";
     isA ? setABusy(true) : setBBusy(true);
     isA ? setAErr("") : setBErr("");
     const payload = isA
-      ? { type, topic: aTopic, subject: aSubject, message: aMsg, name: aName, email: aEmail, phone: aPhone, hp: aHp }
-      : { type, topic: bTopic, subject: bSubject, message: bNote, when: bWhen, people: bPeople, name: bName, email: bEmail, phone: bPhone, hp: bHp };
+      ? { type, topic: aTopic, subject: aSubject, message: aMsg, name: aName, email: aEmail, phone: aPhone, hp: aHp, turnstileToken: aToken }
+      : { type, topic: bTopic, subject: bSubject, message: bNote, when: bWhen, people: bPeople, name: bName, email: bEmail, phone: bPhone, hp: bHp, turnstileToken: bToken };
     try {
       const res = await fetch("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const d = await res.json().catch(() => ({}));
@@ -49,6 +66,9 @@ export function ContactForm() {
     } catch (e) {
       const m = e instanceof Error ? e.message : "送出失敗";
       isA ? setAErr(m) : setBErr(m);
+      // token 單次使用，失敗後重置拿新的
+      isA ? setAReset((n) => n + 1) : setBReset((n) => n + 1);
+      isA ? setAToken("") : setBToken("");
     } finally {
       isA ? setABusy(false) : setBBusy(false);
     }
@@ -78,8 +98,9 @@ export function ContactForm() {
                 <input style={inp} value={aPhone} onChange={(e) => setAPhone(e.target.value)} placeholder="電話(選填)" />
               </div>
               <Honeypot value={aHp} onChange={setAHp} />
+              <TurnstileWidget onToken={setAToken} resetKey={aReset} />
               {aErr && <div style={errBox}>{aErr}</div>}
-              <button style={btn("linear-gradient(135deg,#FF6B4A,#F5522F)", aBusy)} disabled={aBusy} onClick={() => submit("question")}>{aBusy ? "送出中…" : "送出問題 ➤"}</button>
+              <button style={btn("linear-gradient(135deg,#FF6B4A,#F5522F)", aBusy || !aToken)} disabled={aBusy || !aToken} onClick={() => submit("question")}>{aBusy ? "送出中…" : !aToken ? "驗證中…" : "送出問題 ➤"}</button>
               <p style={note}>送出後進客服信箱,我們用 Email 回你(通常一天內)。急的話用下面的 LINE。</p>
             </>
           )}
@@ -111,8 +132,9 @@ export function ContactForm() {
                 <input style={inp} value={bPhone} onChange={(e) => setBPhone(e.target.value)} placeholder="電話" />
               </div>
               <Honeypot value={bHp} onChange={setBHp} />
+              <TurnstileWidget onToken={setBToken} resetKey={bReset} />
               {bErr && <div style={errBox}>{bErr}</div>}
-              <button style={btn("linear-gradient(135deg,#0E9AA0,#0a6e73)", bBusy)} disabled={bBusy} onClick={() => submit("wish")}>{bBusy ? "送出中…" : "送出許願 ➤"}</button>
+              <button style={btn("linear-gradient(135deg,#0E9AA0,#0a6e73)", bBusy || !bToken)} disabled={bBusy || !bToken} onClick={() => submit("wish")}>{bBusy ? "送出中…" : !bToken ? "驗證中…" : "送出許願 ➤"}</button>
               <p style={note}>送出後進願望單,湊團 / 排好就優先通知你。</p>
             </>
           )}
@@ -161,6 +183,44 @@ function FauxInput({ tag, tagBg, tagFg, value, onChange, placeholder }: { tag: s
 }
 function Honeypot({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return <input value={value} onChange={(e) => onChange(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />;
+}
+
+interface TurnstileApi {
+  render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+  reset: (id?: string) => void;
+}
+function getTurnstile(): TurnstileApi | undefined {
+  return (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+}
+function TurnstileWidget({ onToken, resetKey }: { onToken: (t: string) => void; resetKey: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const idRef = useRef<string | null>(null);
+  useEffect(() => {
+    let done = false;
+    const tryRender = () => {
+      const ts = getTurnstile();
+      if (done || !ref.current || !ts || idRef.current) return false;
+      idRef.current = ts.render(ref.current, {
+        sitekey: SITE_KEY,
+        callback: (t: string) => onToken(t),
+        "expired-callback": () => onToken(""),
+        "error-callback": () => onToken(""),
+      });
+      return true;
+    };
+    if (!tryRender()) {
+      const iv = setInterval(() => { if (tryRender()) clearInterval(iv); }, 250);
+      return () => { done = true; clearInterval(iv); };
+    }
+    return () => { done = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const ts = getTurnstile();
+    if (resetKey > 0 && ts && idRef.current) { ts.reset(idRef.current); onToken(""); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
+  return <div ref={ref} style={{ marginTop: 12 }} />;
 }
 function Done({ color, text }: { color: string; text: string }) {
   return (

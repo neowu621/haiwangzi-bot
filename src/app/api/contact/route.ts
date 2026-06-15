@@ -21,9 +21,32 @@ interface ContactBody {
   when?: string;        // wish：時間
   people?: string;      // wish：人數
   hp?: string;          // honeypot
+  turnstileToken?: string; // Cloudflare Turnstile token
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 後端對驗 Cloudflare Turnstile token（secret 沒設時跳過，避免設定前壞掉）。 */
+async function verifyTurnstile(token: string | undefined, ip: string | null): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true; // 未設 secret → 不擋（honeypot 仍生效）
+  if (!token) return false;
+  try {
+    const form = new URLSearchParams();
+    form.append("secret", secret);
+    form.append("response", token);
+    if (ip) form.append("remoteip", ip);
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(8000),
+    });
+    const out = (await res.json()) as { success?: boolean };
+    return out.success === true;
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(req: NextRequest) {
   let b: ContactBody;
@@ -35,6 +58,12 @@ export async function POST(req: NextRequest) {
 
   // honeypot：機器人才會填
   if (b.hp && b.hp.trim()) return NextResponse.json({ ok: true }); // 假裝成功，不入庫
+
+  // Cloudflare Turnstile 機器人驗證
+  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  if (!(await verifyTurnstile(b.turnstileToken, ip))) {
+    return NextResponse.json({ error: "機器人驗證未通過，請重試" }, { status: 400 });
+  }
 
   const type = b.type === "wish" ? "wish" : "question";
   const name = (b.name ?? "").trim().slice(0, 60);
