@@ -29,9 +29,11 @@ export async function sendViaZeaburEmail(
   // 自己產一個 Message-ID，方便之後 threading / 去重
   const messageId = `<${cryptoRandom()}@haiwangzi.xyz>`;
 
-  // ✅ 已查證（Zeabur Email REST API 文件）：send body 支援 headers 物件自訂標頭，
-  //   所以 In-Reply-To / References 會帶出去，客人端 email client 能接成同一串。
-  const headers: Record<string, string> = { "Message-ID": messageId };
+  // v532 修正：SES 不允許自訂 Message-ID（保留標頭，由 SES 自己產），帶了會 400
+  //   "header 'Message-ID' is not allowed (reserved by SES)"。
+  //   只帶 In-Reply-To / References（這兩個 SES 允許）讓客人端接成同一串；
+  //   我們自己產的 messageId 僅供 DB 內部記錄/去重用，不送進 SES。
+  const headers: Record<string, string> = {};
   if (input.inReplyTo) headers["In-Reply-To"] = input.inReplyTo;
   if (input.references) headers["References"] = input.references;
 

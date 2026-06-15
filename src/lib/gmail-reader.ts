@@ -104,11 +104,17 @@ export async function pollInboundGmail(limit = 50): Promise<PollResult> {
         }
         scanned += candidates.length;
 
-        // 2) 一次查 DB：哪些 messageId 已入庫 → 跳過，不重複下載
+        // 2) 一次查 DB：哪些 messageId 已入庫 or 已被刪除(墓碑) → 跳過，不重複下載
         const ids = candidates.map((c) => c.messageId);
-        const existing = ids.length
-          ? new Set((await prisma.emailMessage.findMany({ where: { messageId: { in: ids } }, select: { messageId: true } })).map((m) => m.messageId))
-          : new Set<string>();
+        const existing = new Set<string>();
+        if (ids.length) {
+          const [inDb, tombs] = await Promise.all([
+            prisma.emailMessage.findMany({ where: { messageId: { in: ids } }, select: { messageId: true } }),
+            prisma.emailDeletedMsgId.findMany({ where: { messageId: { in: ids } }, select: { messageId: true } }),
+          ]);
+          for (const m of inDb) existing.add(m.messageId);
+          for (const t of tombs) existing.add(t.messageId);
+        }
 
         // 3) 只下載＋解析＋入庫「新的」；完全不改 Gmail 讀取狀態
         for (const c of candidates) {

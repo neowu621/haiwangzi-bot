@@ -16,7 +16,11 @@ async function guard(req: NextRequest) {
 }
 
 async function recentLogs() {
-  return prisma.emailPollLog.findMany({ orderBy: { ranAt: "desc" }, take: 12 });
+  try {
+    return await prisma.emailPollLog.findMany({ orderBy: { ranAt: "desc" }, take: 12 });
+  } catch {
+    return []; // 紀錄表異常不該讓收信整支 500
+  }
 }
 
 /** GET /api/admin/email/poll — 取最近收信紀錄（不觸發收信） */

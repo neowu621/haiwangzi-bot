@@ -979,6 +979,14 @@ model EmailPollLog {
   @@map("email_poll_logs")
 }
 
+// v532：已刪除訊息墓碑 — 後台刪掉的信，記住其 Message-ID，避免下次收信又被當新信收回來
+model EmailDeletedMsgId {
+  messageId String   @id @map("message_id")
+  deletedAt DateTime @default(now()) @map("deleted_at")
+
+  @@map("email_deleted_msgids")
+}
+
 enum ThreadStatus {
   WAITING // 待回覆
   PROCESSING // 處理中

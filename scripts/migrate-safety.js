@@ -532,6 +532,24 @@ const PATCHES = [
      reason TEXT NOT NULL,
      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
+  // v531：收信紀錄（每次讀 Gmail 記一筆）
+  `CREATE TABLE IF NOT EXISTS email_poll_logs (
+     id TEXT PRIMARY KEY,
+     trigger TEXT NOT NULL,
+     scanned INTEGER NOT NULL DEFAULT 0,
+     ingested INTEGER NOT NULL DEFAULT 0,
+     dedup INTEGER NOT NULL DEFAULT 0,
+     skipped INTEGER NOT NULL DEFAULT 0,
+     ok BOOLEAN NOT NULL DEFAULT true,
+     error TEXT,
+     ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS email_poll_logs_ran_idx ON email_poll_logs(ran_at DESC)`,
+  // v532：已刪除訊息墓碑（後台刪掉的信，記住 Message-ID，避免下次收信又收回來）
+  `CREATE TABLE IF NOT EXISTS email_deleted_msgids (
+     message_id TEXT PRIMARY KEY,
+     deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
 ];
 
 async function main() {

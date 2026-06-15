@@ -43,8 +43,9 @@ export async function purgeEmailThreads(ids: string[]): Promise<{ deletedThreads
   let deletedAttachments = 0;
   const msgs = await prisma.emailMessage.findMany({
     where: { threadId: { in: ids } },
-    select: { attachments: true },
+    select: { attachments: true, messageId: true, direction: true },
   });
+  // 清 R2 附件
   for (const m of msgs) {
     const atts = Array.isArray(m.attachments) ? (m.attachments as unknown[]) : [];
     for (const a of atts) {
@@ -53,6 +54,14 @@ export async function purgeEmailThreads(ids: string[]): Promise<{ deletedThreads
         try { await deleteObject("email", key); deletedAttachments++; } catch { /* 盡力刪，失敗不擋 */ }
       }
     }
+  }
+  // v532：把「收進來的(INBOUND)」訊息 Message-ID 記進墓碑 → 下次收信不會又被當新信收回來
+  const inboundIds = msgs.filter((m) => m.direction === "INBOUND").map((m) => m.messageId);
+  if (inboundIds.length) {
+    await prisma.emailDeletedMsgId.createMany({
+      data: inboundIds.map((messageId) => ({ messageId })),
+      skipDuplicates: true,
+    }).catch(() => { /* 墓碑寫入失敗不擋刪除 */ });
   }
   const res = await prisma.emailThread.deleteMany({ where: { id: { in: ids } } });
   return { deletedThreads: res.count, deletedAttachments };
@@ -65,6 +74,10 @@ export async function ingestInboundEmail(m: InboundEmail): Promise<IngestResult>
     select: { threadId: true },
   });
   if (exists) return { ok: true, dedup: true, threadId: exists.threadId };
+
+  // 1.5) v532：已被後台刪除過的信 → 不要再收回來
+  const tomb = await prisma.emailDeletedMsgId.findUnique({ where: { messageId: m.messageId }, select: { messageId: true } });
+  if (tomb) return { ok: true, dedup: true };
 
   const subject = m.subject || "(無主旨)";
 
