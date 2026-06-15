@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/course`, changeFrequency: "monthly", priority: 0.9 },
     ...["discover", "ow", "aow", "private"].map((s) => ({ url: `${base}/guide/${s}`, changeFrequency: "monthly" as const, priority: 0.7 })),
     { url: `${base}/pricing`, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/contact`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/northsea-diving`, changeFrequency: "monthly", priority: 0.9 },
     ...SPOTS.map((s) => ({ url: `${base}/dive/${s.slug}`, changeFrequency: "monthly" as const, priority: 0.7 })),
     { url: `${base}/haiwangzi`, changeFrequency: "monthly", priority: 0.8 },

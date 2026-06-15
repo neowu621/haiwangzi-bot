@@ -13,6 +13,7 @@ export const SEO_PAGES = [
   { href: "/haiwangzi", label: "關於汪汪教練", icon: "⚜️" },
   { href: "/faq", label: "常見問題", icon: "❓" },
   { href: "/safety", label: "潛水安全", icon: "🛡️" },
+  { href: "/contact", label: "聯絡 / 詢問", icon: "✉️" },
 ];
 
 export function SeoShell({
