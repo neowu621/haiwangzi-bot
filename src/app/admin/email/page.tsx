@@ -82,12 +82,13 @@ function linkifyHtml(escaped: string): string {
 function MessageBody({ text, html }: { text?: string | null; html?: string | null }) {
   const hasText = !!(text && text.trim());
   const hasHtml = !!(html && html.trim());
-  const [showHtml, setShowHtml] = useState(!hasText && hasHtml); // 沒純文字才預設 HTML
+  const [showHtml, setShowHtml] = useState(hasHtml); // v551：有 HTML 版就預設用 HTML 渲染（像 Gmail）
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const srcDoc = hasHtml
     ? `<!doctype html><html><head><meta charset="utf-8">` +
-      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:">` +
+      // v551：允許遠端圖片（信件圖才不會破），仍擋 script / object / frame（XSS 主向量）
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https: http:; style-src 'unsafe-inline'; font-src data: https:">` +
       `<base target="_blank">` +
       `<style>body{margin:0;font-family:-apple-system,'Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.6;color:#1a2330;word-break:break-word}a{color:#0e7c8a}</style>` +
       `</head><body>${html}</body></html>`
@@ -109,10 +110,16 @@ function MessageBody({ text, html }: { text?: string | null; html?: string | nul
           sandbox="allow-same-origin"
           srcDoc={srcDoc}
           onLoad={() => {
-            try {
-              const h = iframeRef.current?.contentDocument?.body?.scrollHeight;
-              if (h) iframeRef.current!.style.height = `${Math.min(h + 8, 900)}px`;
-            } catch { /* ignore */ }
+            // v551：量高度自適應；圖片在 onLoad 後才載完 → 延遲重量幾次避免被截斷
+            const measure = () => {
+              try {
+                const h = iframeRef.current?.contentDocument?.body?.scrollHeight;
+                if (h) iframeRef.current!.style.height = `${Math.min(h + 8, 1600)}px`;
+              } catch { /* ignore */ }
+            };
+            measure();
+            setTimeout(measure, 400);
+            setTimeout(measure, 1200);
           }}
           style={{ width: "100%", minHeight: 60, border: "none", background: "#fff" }}
         />
