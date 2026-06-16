@@ -481,7 +481,9 @@ function chipStatus(s: Status): React.CSSProperties {
 const statusSel: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #dce7ea", background: "#fff", color: "#3d5563", fontFamily: "inherit", cursor: "pointer" };
 const delBtn: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #f3c6c6", background: "#fff", color: "#c0432a", fontFamily: "inherit", cursor: "pointer", fontWeight: 600 };
 function bubble(out: boolean): React.CSSProperties {
-  return { background: out ? "#fefbfa" : "#fff", border: `1px solid ${out ? "#f3ddd5" : "#e1ebeb"}`, borderRadius: out ? "13px 4px 13px 13px" : "4px 13px 13px 13px", padding: "12px 15px", fontSize: 13.5, lineHeight: 1.7, color: "#0f2430", maxWidth: 620, boxShadow: "0 1px 3px rgba(8,34,47,.05)" };
+  // v553：給定義寬度(填滿欄位、上限放寬)→ 內含的 HTML iframe(width:100%)才有合理參照寬度,
+  //   不會退回 iframe 預設 300px 而被左右壓縮。
+  return { background: out ? "#fefbfa" : "#fff", border: `1px solid ${out ? "#f3ddd5" : "#e1ebeb"}`, borderRadius: out ? "13px 4px 13px 13px" : "4px 13px 13px 13px", padding: "12px 15px", fontSize: 13.5, lineHeight: 1.7, color: "#0f2430", width: "100%", maxWidth: 860, boxSizing: "border-box", boxShadow: "0 1px 3px rgba(8,34,47,.05)" };
 }
 const att: React.CSSProperties = { display: "inline-block", marginTop: 8, padding: "5px 10px", background: "#f4f8f9", border: "1px solid #e1ebeb", borderRadius: 8, fontSize: 12, color: "#3d5563" };
 const composer: React.CSSProperties = { width: "100%", border: "1.5px solid #dce7ea", borderRadius: 11, padding: "11px 14px", fontSize: 13.5, lineHeight: 1.7, fontFamily: "inherit", resize: "vertical", minHeight: 70, outline: "none", color: "#0f2430" };
