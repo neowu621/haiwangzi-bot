@@ -64,7 +64,7 @@ export default function SiteNav() {
         </span>
         {/* v481：瀏覽器會員登入 / 線上下單入口（測試期間導向 /dtest） */}
         <a href="/dtest" className="nav-member" title="會員登入 / 線上預約">會員登入</a>
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line nav-cta"><LineIcon />LINE 預約</a>
+        {/* v550：右上角 LINE 預約鈕移除（hero 已有 LINE + 線上詢問，避免重複） */}
         <button className={`nav-toggle${menuOpen ? " open" : ""}`} aria-label="開啟選單" onClick={() => setMenuOpen((o) => !o)}><span /><span /><span /></button>
       </header>
       <div className={`nav-backdrop${menuOpen ? " open" : ""}`} onClick={closeMenu} />
