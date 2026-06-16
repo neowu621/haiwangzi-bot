@@ -369,7 +369,7 @@ export default function AdminEmailPage() {
                       <div style={{ fontSize: 12.5, color: "#3d5563", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</div>
                       {last && <div style={{ fontSize: 11.5, color: "#9aabae", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(last.bodyText ?? "").slice(0, 60)}</div>}
                       <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
-                        {t.channel === "line" && <span style={{ fontSize: 9.5, fontWeight: 700, color: "#fff", background: "#06c755", padding: "1px 6px", borderRadius: 20 }}>LINE</span>}
+                        <span style={srcChip(t.channel)}>{t.channel === "line" ? "💬 LINE" : "✉️ Email"}</span>
                         {t.bookingId && <span style={chipBook}>＃訂位</span>}
                         <span style={chipStatus(t.status)}><span style={{ width: 6, height: 6, borderRadius: "50%", background: ST[t.status].dot }} />{ST[t.status].label}</span>
                       </div>
@@ -390,7 +390,7 @@ export default function AdminEmailPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
                       {detail.customerName ?? detail.customerEmail}
-                      {detail.channel === "line" && <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: "#06c755", padding: "1px 7px", borderRadius: 20 }}>LINE</span>}
+                      <span style={srcChip(detail.channel)}>{detail.channel === "line" ? "💬 LINE" : "✉️ Email"}</span>
                     </div>
                     <div style={{ fontSize: 12, color: "#9aabae", fontFamily: "monospace" }}>
                       {detail.channel === "line" ? "LINE 對話（直接回覆即推送給客人）" : detail.customerEmail}
@@ -487,6 +487,11 @@ function avatar(s: Status): React.CSSProperties {
   return { width: 34, height: 34, borderRadius: 10, flex: "none", display: "grid", placeItems: "center", color: "#fff", fontWeight: 600, fontSize: 14, background: s === "WAITING" ? "linear-gradient(135deg,#0E9AA0,#0A6E73)" : s === "PROCESSING" ? "linear-gradient(135deg,#E08A2B,#c2701a)" : "linear-gradient(135deg,#9aa7ae,#7a8890)" };
 }
 const chipBook: React.CSSProperties = { fontSize: 10.5, padding: "2px 7px", borderRadius: 6, background: "#eaf1f3", color: "#3d5563", fontFamily: "monospace" };
+// v562：收件來源 chip(Email / LINE)
+function srcChip(channel?: string): React.CSSProperties {
+  const line = channel === "line";
+  return { fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: line ? "#e3f7ec" : "#e8eef9", color: line ? "#06893f" : "#2c4a8f" };
+}
 function chipStatus(s: Status): React.CSSProperties {
   return { fontSize: 10.5, padding: "2px 8px", borderRadius: 6, background: ST[s].bg, color: ST[s].fg, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 };
 }
