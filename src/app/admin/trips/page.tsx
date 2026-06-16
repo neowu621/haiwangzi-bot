@@ -1883,14 +1883,10 @@ export default function AdminTripsPage() {
             <div className="grid grid-cols-[80px_1fr] items-center gap-2">
               <Label className="text-xs">起始日期</Label>
               <div className="flex items-center gap-2">
-                {/* v558：lang=sv-SE → 日曆以星期一為開始 + yyyy-mm-dd 顯示 */}
-                <Input
-                  type="date"
-                  lang="sv-SE"
-                  value={dumpStartDate}
-                  onChange={(e) => setDumpStartDate(e.target.value)}
-                  className="flex-1"
-                />
+                {/* v560：自製日曆(保證星期一為開始,不靠瀏覽器 native picker) */}
+                <div className="flex-1">
+                  <MondayDatePicker value={dumpStartDate} onChange={setDumpStartDate} />
+                </div>
                 <Label className="text-xs whitespace-nowrap">天數</Label>
                 <Input
                   type="number"
@@ -1933,3 +1929,69 @@ export default function AdminTripsPage() {
     </AdminShell>
   );
 }
+
+// v560：自製日曆 —— 保證「星期一為一週開始」(native input 的週起始無法可靠控制)。
+//   value/onChange 用 yyyy-mm-dd 字串,與原本相容。
+const CAL_WD = ["一", "二", "三", "四", "五", "六", "日"];
+function MondayDatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymd = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
+  const base = value ? new Date(`${value}T00:00:00`) : new Date();
+  const [vy, setVy] = useState(base.getFullYear());
+  const [vm, setVm] = useState(base.getMonth());
+
+  const now = new Date();
+  const today = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+  const firstDow = (new Date(vy, vm, 1).getDay() + 6) % 7; // 週一=0
+  const daysIn = new Date(vy, vm + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysIn; d++) cells.push(d);
+  const prevM = () => { if (vm === 0) { setVy(vy - 1); setVm(11); } else { setVm(vm - 1); } };
+  const nextM = () => { if (vm === 11) { setVy(vy + 1); setVm(0); } else { setVm(vm + 1); } };
+  const selWd = value ? (new Date(`${value}T00:00:00`).getDay() + 6) % 7 : -1;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "1px solid #cdd9de", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <span>{value || "選擇日期"}{selWd >= 0 ? `（週${CAL_WD[selWd]}）` : ""}</span>
+        <span aria-hidden style={{ opacity: 0.55 }}>📅</span>
+      </button>
+      {open && (
+        <div style={{ position: "absolute", zIndex: 50, top: "calc(100% + 4px)", left: 0, background: "#fff", border: "1px solid #d3dde2", borderRadius: 10, boxShadow: "0 8px 28px rgba(8,34,47,.2)", padding: 10, width: 252 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <button type="button" onClick={prevM} style={calNavBtn}>‹</button>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#0a2342" }}>{vy} 年 {vm + 1} 月</span>
+            <button type="button" onClick={nextM} style={calNavBtn}>›</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
+            {CAL_WD.map((w, i) => <div key={w} style={{ textAlign: "center", fontSize: 10.5, fontWeight: 700, color: i >= 5 ? "#c0432a" : "#7c8a96" }}>{w}</div>)}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
+            {cells.map((d, i) => {
+              if (d == null) return <div key={`b${i}`} />;
+              const ds = ymd(vy, vm, d);
+              const isSel = ds === value;
+              const isToday = ds === today;
+              const weekend = i % 7 >= 5;
+              return (
+                <button key={ds} type="button" onClick={() => { onChange(ds); setOpen(false); }}
+                  style={{ height: 28, borderRadius: 7, border: isToday && !isSel ? "1px solid #00b3a4" : "1px solid transparent", background: isSel ? "#0e7c8a" : "transparent", color: isSel ? "#fff" : weekend ? "#c0432a" : "#1a2330", fontSize: 12.5, fontWeight: isSel ? 700 : 500, cursor: "pointer" }}>
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <button type="button" onClick={() => { onChange(today); setOpen(false); }} style={calLinkBtn}>今天</button>
+            <button type="button" onClick={() => setOpen(false)} style={calLinkBtn}>關閉</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+const calNavBtn: React.CSSProperties = { width: 26, height: 26, borderRadius: 6, border: "1px solid #d3dde2", background: "#fff", cursor: "pointer", fontSize: 15, lineHeight: 1, color: "#0a2342" };
+const calLinkBtn: React.CSSProperties = { fontSize: 11.5, color: "#0e7c8a", background: "none", border: "none", cursor: "pointer", fontWeight: 600 };
