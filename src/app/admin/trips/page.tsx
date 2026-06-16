@@ -306,8 +306,8 @@ export default function AdminTripsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   // v180：日期預設 asc（近的在最上面）
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  // v277：預設「全部」+ 加「過期」「未到期」filter
-  const [filterRange, setFilterRange] = useState<"week" | "month" | "all" | "past" | "upcoming">("all");
+  // v556：預設「未到期(全部未來)」讓畫面乾淨(不顯示過期場次);仍可切「全部」
+  const [filterRange, setFilterRange] = useState<"week" | "month" | "all" | "past" | "upcoming">("upcoming");
   const [search, setSearch] = useState(""); // v397：搜尋 filter
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
