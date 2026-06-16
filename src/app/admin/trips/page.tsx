@@ -255,6 +255,7 @@ export default function AdminTripsPage() {
     return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   });
   const [dumpDays, setDumpDays] = useState(7); // v558：一次抓幾天(手動,預設 7)
+  const [dumpText, setDumpText] = useState(""); // v559：可手動編輯的預覽內容
   const [dumpCopied, setDumpCopied] = useState(false);
   // v391：場次 Dump 自動優惠開頭（由系統設定控制）
   const [dumpPromo, setDumpPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: "" });
@@ -348,6 +349,11 @@ export default function AdminTripsPage() {
   }, []);
   // v399：場次本地變動同步回快取
   useEffect(() => { setCached("/api/admin/trips", { trips }); }, [trips]);
+  // v559：開啟 Dump / 改起始日或天數 → 重生預覽(中間的手動編輯保留,直到這些改變才覆蓋)
+  useEffect(() => {
+    if (dumpOpen) setDumpText(computeDumpText());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dumpOpen, dumpStartDate, dumpDays]);
 
   function siteName(id: string) {
     return sites.find((s) => s.id === id)?.name ?? id;
@@ -999,7 +1005,7 @@ export default function AdminTripsPage() {
     return lines.join("\n");
   }
   async function copyDumpText() {
-    const text = computeDumpText();
+    const text = dumpText || computeDumpText(); // v559：複製手動編輯後的內容
     try {
       await navigator.clipboard.writeText(text);
       setDumpCopied(true);
@@ -1903,12 +1909,11 @@ export default function AdminTripsPage() {
               <Label className="text-xs mb-1 block">預覽（可直接編輯）</Label>
               <textarea
                 id="dump-textarea"
-                value={computeDumpText()}
-                onChange={() => { /* read-only via key, but allow select+modify */ }}
-                rows={Math.max(8, computeDumpText().split("\n").length + 1)}
+                value={dumpText}
+                onChange={(e) => setDumpText(e.target.value)}
+                rows={Math.max(8, dumpText.split("\n").length + 1)}
                 className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-xs font-mono whitespace-pre"
                 spellCheck={false}
-                readOnly
               />
             </div>
             <div className="flex items-center justify-between gap-2 pt-1">
