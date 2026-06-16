@@ -35,12 +35,12 @@ const nextConfig: NextConfig = {
     //   但鎖死 object-src、base-uri（防 base 注入），frame-ancestors 限 self + LINE
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://*.line-scdn.net https://*.line.me",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://*.line-scdn.net https://*.line.me https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https:",
-      "frame-src 'self' https://*.line.me https://www.youtube.com https://www.youtube-nocookie.com",
+      "frame-src 'self' https://*.line.me https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com",
       "frame-ancestors 'self' https://*.line.me",
       "object-src 'none'",
       "base-uri 'self'",
