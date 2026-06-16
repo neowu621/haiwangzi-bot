@@ -254,6 +254,7 @@ export default function AdminTripsPage() {
     d.setDate(d.getDate() + daysUntilNextMonday);
     return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   });
+  const [dumpDays, setDumpDays] = useState(7); // v558：一次抓幾天(手動,預設 7)
   const [dumpCopied, setDumpCopied] = useState(false);
   // v391：場次 Dump 自動優惠開頭（由系統設定控制）
   const [dumpPromo, setDumpPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: "" });
@@ -914,7 +915,7 @@ export default function AdminTripsPage() {
   function computeDumpText(): string {
     const start = new Date(`${dumpStartDate}T00:00:00+08:00`);
     const end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    end.setDate(end.getDate() + Math.max(1, dumpDays) - 1); // v558：天數手動(含當日)
     // v383：日期改斜線 MM/DD
     const fmtMD = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
     const weekdayMap = ["日", "一", "二", "三", "四", "五", "六"];
@@ -1875,14 +1876,28 @@ export default function AdminTripsPage() {
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-[80px_1fr] items-center gap-2">
               <Label className="text-xs">起始日期</Label>
-              <Input
-                type="date"
-                value={dumpStartDate}
-                onChange={(e) => setDumpStartDate(e.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                {/* v558：lang=sv-SE → 日曆以星期一為開始 + yyyy-mm-dd 顯示 */}
+                <Input
+                  type="date"
+                  lang="sv-SE"
+                  value={dumpStartDate}
+                  onChange={(e) => setDumpStartDate(e.target.value)}
+                  className="flex-1"
+                />
+                <Label className="text-xs whitespace-nowrap">天數</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={dumpDays}
+                  onChange={(e) => setDumpDays(Math.max(1, Math.min(31, parseInt(e.target.value, 10) || 7)))}
+                  className="w-16"
+                />
+              </div>
             </div>
             <div className="text-[11px] text-[var(--muted-foreground)] pl-[80px]">
-              範圍：選定日期起算 7 天（含當日）；潛旅依「起始日」落在此區間自動納入
+              範圍：起始日起算 {dumpDays} 天（含當日，預設下週一×7天）；潛旅依「起始日」落在此區間自動納入
             </div>
             <div>
               <Label className="text-xs mb-1 block">預覽（可直接編輯）</Label>
