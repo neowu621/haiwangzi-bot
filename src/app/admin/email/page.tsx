@@ -27,6 +27,7 @@ interface Thread {
   subject: string;
   customerEmail: string;
   customerName?: string | null;
+  channel?: string; // v561：email / line
   status: Status;
   tags: string[];
   bookingId?: string | null;
@@ -368,6 +369,7 @@ export default function AdminEmailPage() {
                       <div style={{ fontSize: 12.5, color: "#3d5563", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</div>
                       {last && <div style={{ fontSize: 11.5, color: "#9aabae", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(last.bodyText ?? "").slice(0, 60)}</div>}
                       <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                        {t.channel === "line" && <span style={{ fontSize: 9.5, fontWeight: 700, color: "#fff", background: "#06c755", padding: "1px 6px", borderRadius: 20 }}>LINE</span>}
                         {t.bookingId && <span style={chipBook}>＃訂位</span>}
                         <span style={chipStatus(t.status)}><span style={{ width: 6, height: 6, borderRadius: "50%", background: ST[t.status].dot }} />{ST[t.status].label}</span>
                       </div>
@@ -386,8 +388,13 @@ export default function AdminEmailPage() {
                 <div style={{ background: "#fff", padding: "12px 20px", borderBottom: "1px solid #e1ebeb", display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ ...avatar(detail.status), width: 38, height: 38 }}>{initials(detail)}</div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{detail.customerName ?? detail.customerEmail}</div>
-                    <div style={{ fontSize: 12, color: "#9aabae", fontFamily: "monospace" }}>{detail.customerEmail}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
+                      {detail.customerName ?? detail.customerEmail}
+                      {detail.channel === "line" && <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: "#06c755", padding: "1px 7px", borderRadius: 20 }}>LINE</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#9aabae", fontFamily: "monospace" }}>
+                      {detail.channel === "line" ? "LINE 對話（直接回覆即推送給客人）" : detail.customerEmail}
+                    </div>
                   </div>
                   <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
                     <select value={detail.status} onChange={(e) => changeStatus(e.target.value as Status)} style={statusSel}>
@@ -425,8 +432,13 @@ export default function AdminEmailPage() {
                 {/* composer */}
                 <div style={{ background: "#fff", borderTop: "1px solid #e1ebeb", padding: "12px 20px" }}>
                   <div style={{ fontSize: 11.5, color: "#7c9296", marginBottom: 7 }}>
-                    以 <b style={{ color: "#0a2027" }}>service@haiwangzi.xyz</b> 回覆給 {detail.customerName ?? detail.customerEmail}
-                    <span style={{ marginLeft: 8, color: "#9aabae" }}>· Zeabur Email 寄送</span>
+                    {detail.channel === "line" ? (
+                      <>以 <b style={{ color: "#06a34a" }}>LINE 官方帳號</b> 回覆給 {detail.customerName ?? "LINE 客人"}
+                        <span style={{ marginLeft: 8, color: "#9aabae" }}>· LINE 推送</span></>
+                    ) : (
+                      <>以 <b style={{ color: "#0a2027" }}>service@haiwangzi.xyz</b> 回覆給 {detail.customerName ?? detail.customerEmail}
+                        <span style={{ marginLeft: 8, color: "#9aabae" }}>· Zeabur Email 寄送</span></>
+                    )}
                   </div>
                   <textarea
                     value={reply}

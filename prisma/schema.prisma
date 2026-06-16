@@ -906,6 +906,9 @@ model EmailThread {
   subject       String
   customerEmail String         @map("customer_email")
   customerName  String?        @map("customer_name")
+  // v561：通道(email / line);LINE 對話用 lineUserId 當識別
+  channel       String         @default("email")
+  lineUserId    String?        @map("line_user_id")
   status        ThreadStatus   @default(WAITING)
   tags          String[]       @default([])
   assignee      String? // "汪汪" / "Neo"
@@ -927,6 +930,7 @@ model EmailMessage {
   thread   EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   direction Direction
+  channel   String  @default("email") // v561：email / line
   fromAddr  String  @map("from_addr")
   toAddr    String  @map("to_addr")
   ccAddr    String? @map("cc_addr")

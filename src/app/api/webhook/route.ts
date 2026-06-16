@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { buildFlexByKeyAsync } from "@/lib/flex";
 import { notifyCustomer } from "@/lib/notify-template";
 import { genMemberCode } from "@/lib/code-gen";
+import { ingestLineMessage } from "@/lib/line-inbound";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,9 +49,18 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
       break;
 
     case "message":
-      // v343：移除關鍵字自動回覆。客戶傳訊只更新「最後活躍時間」，不自動回覆
-      //   （由老闆/教練親自回覆，或 LINE 官方帳號的自動回應設定處理）
-      if (userId) await touchUserActivity(userId);
+      // v343：不自動回覆;v561：文字訊息收進客服信箱(channel=line),老闆在後台可直接回
+      if (userId) {
+        await touchUserActivity(userId);
+        if (event.message.type === "text") {
+          try {
+            const u = await prisma.user.findUnique({ where: { lineUserId: userId }, select: { displayName: true } });
+            await ingestLineMessage({ lineUserId: userId, displayName: u?.displayName, text: event.message.text, lineMessageId: event.message.id });
+          } catch (e) {
+            console.error("[webhook] ingestLineMessage failed", e);
+          }
+        }
+      }
       break;
 
     case "postback":

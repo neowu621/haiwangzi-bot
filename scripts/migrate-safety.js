@@ -527,6 +527,11 @@ const PATCHES = [
   `CREATE UNIQUE INDEX IF NOT EXISTS email_messages_message_id_key ON email_messages(message_id)`,
   `CREATE INDEX IF NOT EXISTS email_messages_thread_idx ON email_messages(thread_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS email_messages_provider_idx ON email_messages(provider_id)`,
+  // v561：客服信箱支援 LINE 通道(LINE 客人訊息進信箱、後台可直接回)
+  `ALTER TABLE email_threads ADD COLUMN IF NOT EXISTS channel VARCHAR(8) NOT NULL DEFAULT 'email'`,
+  `ALTER TABLE email_threads ADD COLUMN IF NOT EXISTS line_user_id VARCHAR(64)`,
+  `ALTER TABLE email_messages ADD COLUMN IF NOT EXISTS channel VARCHAR(8) NOT NULL DEFAULT 'email'`,
+  `CREATE INDEX IF NOT EXISTS email_threads_line_idx ON email_threads(line_user_id)`,
   `CREATE TABLE IF NOT EXISTS suppressed_emails (
      email TEXT PRIMARY KEY,
      reason TEXT NOT NULL,

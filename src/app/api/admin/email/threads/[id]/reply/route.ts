@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { sendViaZeaburEmail } from "@/lib/zeabur-email";
+import { getLineClient } from "@/lib/line";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: { messages: { orderBy: { createdAt: "desc" } } },
   });
   if (!thread) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  // v561：LINE 對話 → 用 LINE push 回覆(非 email)
+  if (thread.channel === "line") {
+    if (!thread.lineUserId) return NextResponse.json({ error: "此 LINE 對話缺 lineUserId,無法回覆" }, { status: 400 });
+    const lineText = (text && text.trim()) ? text : html.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
+    const pending = await prisma.emailMessage.create({
+      data: {
+        threadId: id, direction: "OUTBOUND", channel: "line",
+        fromAddr: "line-oa", toAddr: thread.lineUserId, subject: thread.subject,
+        bodyText: lineText, messageId: `<line-out-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@line>`,
+        status: "QUEUED",
+      },
+    });
+    try {
+      const client = getLineClient();
+      await client.pushMessage({ to: thread.lineUserId, messages: [{ type: "text", text: lineText }] });
+      await prisma.emailMessage.update({ where: { id: pending.id }, data: { status: "SENT" } });
+      await prisma.emailThread.update({ where: { id }, data: { status: "PROCESSING", lastMessageAt: new Date() } });
+      return NextResponse.json({ ok: true, messageId: pending.id });
+    } catch (e) {
+      await prisma.emailMessage.update({ where: { id: pending.id }, data: { status: "FAILED" } });
+      return NextResponse.json({ error: `LINE 推送失敗：${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
+    }
+  }
 
   // 抑制名單檢查（退信/投訴過的地址不再寄）
   const suppressed = await prisma.suppressedEmail.findUnique({

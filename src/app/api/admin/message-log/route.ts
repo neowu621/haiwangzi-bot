@@ -65,11 +65,11 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 30), 100);
   const cursorTime = cursor ? new Date(cursor) : null;
 
-  // 決定查哪些表(MessageLog 都是 outbound;EmailMessage 都是 email channel)
+  // 決定查哪些表(MessageLog 都是 outbound;EmailMessage 含 email + line 兩種 channel)
   let includeLog = true;
   let includeEmail = true;
   if (direction === "in") includeLog = false;
-  if (channel === "line" || channel === "inapp") includeEmail = false;
+  if (channel === "inapp") includeEmail = false; // EmailMessage 無 inapp
   if (status === "received" || status === "opened") includeLog = false;
 
   const logWhere: Record<string, unknown> = {};
@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
 
   const emailWhere: Record<string, unknown> = {};
   if (cursorTime) emailWhere.createdAt = { lt: cursorTime };
+  if (channel === "email" || channel === "line") emailWhere.channel = channel; // v561
   if (direction === "in" || status === "received") emailWhere.direction = "INBOUND";
   else if (direction === "out") emailWhere.direction = "OUTBOUND";
   if (status === "opened") emailWhere.openedAt = { not: null };
@@ -109,14 +110,17 @@ export async function GET(req: NextRequest) {
     });
   }
   for (const e of emails) {
-    const em = e as typeof e & { thread?: { id: string; customerName: string | null; tags: string[] } | null };
+    const em = e as typeof e & { channel?: string; thread?: { id: string; customerName: string | null; tags: string[] } | null };
     const dir: Dir = em.direction === "INBOUND" ? "in" : "out";
+    const isLine = em.channel === "line";
     const who = dir === "in" ? (em.thread?.customerName ?? em.fromAddr) : em.toAddr;
-    const cat = dir === "in"
-      ? (em.thread?.tags?.includes("網站詢問") ? "網站詢問" : "客人來訊")
-      : (em.subject?.startsWith("我們已收到") ? "自動回覆" : "客服回覆");
+    const cat = isLine
+      ? (dir === "in" ? "LINE 詢問" : "LINE 回覆")
+      : dir === "in"
+        ? (em.thread?.tags?.includes("網站詢問") ? "網站詢問" : "客人來訊")
+        : (em.subject?.startsWith("我們已收到") ? "自動回覆" : "客服回覆");
     merged.push({
-      id: "E:" + em.id, kind: "email", direction: dir, channel: "email",
+      id: "E:" + em.id, kind: "email", direction: dir, channel: isLine ? "line" : "email",
       status: emailStatus(em.direction, em.status, !!em.openedAt),
       recipient: who, title: em.subject,
       category: cat, error: null, threadId: em.thread?.id ?? em.threadId,
