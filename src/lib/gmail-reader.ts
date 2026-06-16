@@ -23,6 +23,9 @@ import { r2Configured, makeKey, putBuffer } from "@/lib/r2";
 
 const HOST = "imap.gmail.com";
 const LOOKBACK_DAYS = 7; // 掃近 7 天的信，靠 messageId 去重，重掃不會重複入庫
+// v547：系統收進來的信，在 Gmail 貼上此標籤（老闆一眼看出哪些被系統讀過）。
+//   Gmail 的 IMAP 標籤＝把信 COPY 到該標籤資料夾（信仍留在 Inbox、不碰讀取狀態）。
+const PROCESSED_LABEL = process.env.GMAIL_PROCESSED_LABEL || "Haiwangzi";
 
 export function inboundImapConfigured(): boolean {
   return Boolean(
@@ -117,8 +120,10 @@ export async function pollInboundGmail(limit = 50): Promise<PollResult> {
         }
 
         // 3) 只下載＋解析＋入庫「新的」；完全不改 Gmail 讀取狀態
+        //    labelUids：所有「系統已處理(新入庫 or 已在 DB)」的本網域信 UID → 之後一次貼標籤
+        const labelUids: number[] = [];
         for (const c of candidates) {
-          if (existing.has(c.messageId)) { dedup++; continue; }
+          if (existing.has(c.messageId)) { dedup++; labelUids.push(c.uid); continue; }
           try {
             const dl = await client.download(`${c.uid}`, undefined, { uid: true });
             if (!dl?.content) { skipped++; continue; }
@@ -159,8 +164,21 @@ export async function pollInboundGmail(limit = 50): Promise<PollResult> {
               attachments,
             });
             if (r.dedup) dedup++; else ingested++;
+            labelUids.push(c.uid); // 已入庫 → 之後在 Gmail 貼「已處理」標籤
           } catch {
-            skipped++; // 單封失敗不影響其它
+            skipped++; // 單封失敗不影響其它（也不貼標籤，方便老闆注意漏接的）
+          }
+        }
+
+        // 4) v547：一次把已處理的信 COPY 到「Haiwangzi」標籤（idempotent，重複貼不會變多）。
+        //    best-effort：標籤不存在則建立後重試；任何失敗都不影響收信結果。
+        if (labelUids.length) {
+          const range = labelUids.join(",");
+          try {
+            await client.messageCopy(range, PROCESSED_LABEL, { uid: true });
+          } catch {
+            try { await client.mailboxCreate(PROCESSED_LABEL); } catch { /* 已存在 */ }
+            try { await client.messageCopy(range, PROCESSED_LABEL, { uid: true }); } catch { /* 放棄貼標籤 */ }
           }
         }
       } finally {
