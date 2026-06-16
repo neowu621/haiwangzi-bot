@@ -48,7 +48,7 @@ export async function sendViaZsend(p: ZsendParams): Promise<ZsendResult> {
   };
   if (p.html) payload.html = p.html;
   if (p.text) payload.text = p.text;
-  if (p.replyTo) payload.reply_to = p.replyTo;
+  if (p.replyTo) payload.reply_to = [p.replyTo]; // v555：ZSend 要 reply_to 為字串陣列([]string),非單一字串
   if (p.headers && Object.keys(p.headers).length) payload.headers = p.headers; // v521
 
   try {

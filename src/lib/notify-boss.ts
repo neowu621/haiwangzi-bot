@@ -47,16 +47,18 @@ export async function notifyBossNewInquiry(info: BossInquiryInfo): Promise<void>
         `👉 前往回覆：${link}`;
       const client = getLineClient();
       let ok = 0;
+      let lastErr = "";
       for (const uid of adminIds) {
         try {
           await client.pushMessage({ to: uid, messages: [{ type: "text", text }] });
           ok += 1;
         } catch (e) {
+          lastErr = e instanceof Error ? e.message : String(e);
           console.error(`[notify-boss] LINE push to ${uid} failed`, e);
         }
       }
-      // v552：記入通訊紀錄(「通知老闆」LINE)
-      logMessage({ channel: "line", templateKey: "contact_notify_admin", recipient: `老闆 ×${ok || adminIds.length}`, title, status: ok > 0 ? "sent" : "failed", source: "contact" });
+      // v552：記入通訊紀錄(「通知老闆」LINE);v555：失敗時帶上原因方便排查
+      logMessage({ channel: "line", templateKey: "contact_notify_admin", recipient: `老闆 ×${ok || adminIds.length}`, title, status: ok > 0 ? "sent" : "failed", error: ok > 0 ? null : lastErr, source: "contact" });
     }
   } catch (e) {
     console.error("[notify-boss] LINE block failed", e);
