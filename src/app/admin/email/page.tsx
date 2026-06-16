@@ -154,6 +154,11 @@ export default function AdminEmailPage() {
   const [q, setQ] = useState("");
   const [selId, setSelId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Thread | null>(null);
+  // v552：支援從通訊紀錄深連結 ?thread=<id> 自動開啟該對話
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("thread");
+    if (t) setSelId(t);
+  }, []);
   const [reply, setReply] = useState("");
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);

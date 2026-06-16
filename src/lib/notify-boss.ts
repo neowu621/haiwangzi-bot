@@ -9,6 +9,7 @@ import { getLineClient } from "@/lib/line";
 import { sendViaZsend } from "@/lib/email/zsend";
 import { sendViaZeaburEmail } from "@/lib/zeabur-email";
 import { prisma } from "@/lib/prisma";
+import { logMessage } from "@/lib/message-log";
 
 export interface BossInquiryInfo {
   type: "question" | "wish";
@@ -45,13 +46,17 @@ export async function notifyBossNewInquiry(info: BossInquiryInfo): Promise<void>
         `${info.bodyText.slice(0, 300)}\n\n` +
         `👉 前往回覆：${link}`;
       const client = getLineClient();
+      let ok = 0;
       for (const uid of adminIds) {
         try {
           await client.pushMessage({ to: uid, messages: [{ type: "text", text }] });
+          ok += 1;
         } catch (e) {
           console.error(`[notify-boss] LINE push to ${uid} failed`, e);
         }
       }
+      // v552：記入通訊紀錄(「通知老闆」LINE)
+      logMessage({ channel: "line", templateKey: "contact_notify_admin", recipient: `老闆 ×${ok || adminIds.length}`, title, status: ok > 0 ? "sent" : "failed", source: "contact" });
     }
   } catch (e) {
     console.error("[notify-boss] LINE block failed", e);
@@ -83,6 +88,8 @@ export async function notifyBossNewInquiry(info: BossInquiryInfo): Promise<void>
         replyTo: info.email, // 老闆在信箱直接「回覆」即回到客人
       });
       if (!r.ok) console.error("[notify-boss] email send failed:", r.error);
+      // v552：記入通訊紀錄(「通知老闆」Email)
+      logMessage({ channel: "email", templateKey: "contact_notify_admin", recipient: to, title, status: r.ok ? "sent" : "failed", error: r.ok ? null : r.error, source: "contact" });
     }
   } catch (e) {
     console.error("[notify-boss] email block failed", e);
