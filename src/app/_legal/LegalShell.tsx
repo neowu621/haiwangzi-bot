@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MantaTridentMark } from "@/components/brand/MantaTrident";
 
 // v481：隱私權政策 / 服務條款 / FAQ / 安全政策 共用版型（品牌化、可列印）
 export function LegalShell({ title, updated, children, backHref = "/dtest", backLabel = "返回會員預約", wide }: { title: string; updated: string; children: React.ReactNode; backHref?: string; backLabel?: string; wide?: boolean }) {
@@ -8,7 +9,7 @@ export function LegalShell({ title, updated, children, backHref = "/dtest", back
       <header style={{ background: "#0A2342", color: "#fff" }}>
         <div style={{ maxWidth: maxW, margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/" style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: 9 }}>
-            <span style={{ fontSize: 19 }}>🌊</span>
+            <MantaTridentMark size={26} />
             <span style={{ fontWeight: 800, fontSize: 15 }}>東北角海王子潛水</span>
           </Link>
         </div>

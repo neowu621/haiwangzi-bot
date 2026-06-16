@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LINE_BOOK_URL, LineIcon } from "../_home/data";
+import { MantaTridentMark } from "@/components/brand/MantaTrident";
 
 // v496：SEO 行銷頁共用版型（海洋品牌風、輕量、含 LINE CTA 與內部互連）
 // 用於 /course /northsea-diving /comment /haiwangzi —— 讓 Google 收錄、彼此互連提升爬取。
@@ -36,7 +37,7 @@ export function SeoShell({
       <header style={{ background: "#0A2342", color: "#fff" }}>
         <div style={{ maxWidth: 960, margin: "0 auto", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <Link href="/" style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: 9 }}>
-            <span style={{ fontSize: 19 }}>🌊</span>
+            <MantaTridentMark size={26} />
             <span style={{ fontWeight: 800, fontSize: 15 }}>東北角海王子潛水</span>
           </Link>
           <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 13, padding: "8px 14px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 6 }}>

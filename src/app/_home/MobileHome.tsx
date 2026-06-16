@@ -6,6 +6,17 @@ import {
   COURSES, SPOTS, BUILTIN_REVIEWS, FAQ, LineIcon, FbIcon, YtIcon, IgIcon,
 } from "./data";
 import { localBusinessJsonLd } from "@/lib/business-info";
+import { MantaTridentMark } from "@/components/brand/MantaTrident";
+
+// v549：手機潛點 2×4 格用的縮圖（沿用既有 WebP，對應 home.css 的 bg-* 圖）
+const SPOT_IMG: Record<string, string> = {
+  "bg-reeffish": "/home/src-04.webp",
+  "bg-coraldiver": "/home/src-02.webp",
+  "bg-blue": "/home/src-08.webp",
+  "bg-macro": "/home/src-09.webp",
+  "bg-coral": "/home/src-05.webp",
+  "bg-boat": "/home/src-06.webp",
+};
 
 // v504：手機專屬首頁（App 化）。同網址內部依裝置渲染，先放 /mobile 預覽。
 // 設計重點（對症老闆痛點）：字級/間距收斂、區塊重排（預約優先）、圖片精簡延遲載入、
@@ -24,17 +35,12 @@ export default function MobileHome() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd()) }} />
 
       {/* 頂部 App Bar（sticky）*/}
-      <header style={{ position: "sticky", top: 0, zIndex: 20, background: C.navy, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 19 }}>🌊</span>
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ fontWeight: 800, fontSize: 14.5 }}>東北角海王子潛水</span>
-            <span style={{ fontSize: 9.5, color: "#7fbfb6", letterSpacing: 1 }}>萊萊鶯歌石 · 安心潛水</span>
-          </div>
+      <header style={{ position: "sticky", top: 0, zIndex: 20, background: C.navy, color: "#fff", display: "flex", alignItems: "center", gap: 9, padding: "9px 16px" }}>
+        <MantaTridentMark size={30} />
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+          <span style={{ fontWeight: 800, fontSize: 14.5 }}>東北角海王子潛水</span>
+          <span style={{ fontSize: 9.5, color: "#7fbfb6", letterSpacing: 1 }}>萊萊鶯歌石 · 安心潛水</span>
         </div>
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" aria-label="加 LINE" style={{ background: "#06c755", color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 12.5, fontWeight: 800, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <LineIcon s={14} />LINE
-        </a>
       </header>
 
       {/* Hero（精簡）*/}
@@ -140,18 +146,23 @@ export default function MobileHome() {
         </Scroller>
       </Section>
 
-      {/* 東北角潛點（精簡清單）*/}
+      {/* 東北角潛點（2×4 八格：小圖 + 名稱；第 8 格看全部）*/}
       <Section title="東北角潛點" sub="Dive Sites" icon="🗺️" moreHref="/northsea-diving">
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {SPOTS.map((s) => (
-            <Link key={s.slug} href={`/dive/${s.slug}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 14px", textDecoration: "none", color: C.ink }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14.5, color: C.navy }}>{s.zh}</div>
-                <div style={{ fontSize: 11.5, color: C.mist }}>{s.tags[0]}</div>
+            <Link key={s.slug} href={`/dive/${s.slug}`} style={{ position: "relative", display: "block", aspectRatio: "4 / 3", borderRadius: 12, overflow: "hidden", textDecoration: "none" }}>
+              <Image src={SPOT_IMG[s.bg] ?? "/home/src-08.webp"} alt={s.zh} fill sizes="(max-width:520px) 48vw, 240px" style={{ objectFit: "cover" }} />
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(2,21,42,.05) 35%, rgba(2,21,42,.8) 100%)" }} />
+              <div style={{ position: "absolute", left: 10, right: 10, bottom: 8, color: "#fff" }}>
+                <div style={{ fontWeight: 800, fontSize: 14, textShadow: "0 1px 3px rgba(0,0,0,.55)" }}>{s.zh}</div>
+                <div style={{ fontSize: 10.5, color: "#dbeeea", textShadow: "0 1px 2px rgba(0,0,0,.55)" }}>{s.tags[0]}</div>
               </div>
-              <span style={{ color: C.teal, fontSize: 18 }}>›</span>
             </Link>
           ))}
+          <Link href="/northsea-diving" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", aspectRatio: "4 / 3", borderRadius: 12, background: C.navy, color: "#fff", textDecoration: "none", gap: 5 }}>
+            <span style={{ fontSize: 22 }}>🗺️</span>
+            <span style={{ fontWeight: 800, fontSize: 13 }}>看全部潛點 ›</span>
+          </Link>
         </div>
       </Section>
 
@@ -184,11 +195,11 @@ export default function MobileHome() {
         <div style={{ fontSize: 10, opacity: .45, marginTop: 16, letterSpacing: .5 }}>© {new Date().getFullYear()} 東北角海王子 · v{APP_VERSION}</div>
       </footer>
 
-      {/* 底部固定列（App 感）：場次 + 線上詢問 + LINE 預約（v546 加線上詢問次要鈕） */}
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 14px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 8, boxSizing: "border-box" }}>
-        <a href="/schedule" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 11px", borderRadius: 12, fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 場次</a>
-        <Link href="/contact" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.navy}`, color: C.navy, textAlign: "center", padding: "12px 11px", borderRadius: 12, fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>✉️ 詢問</Link>
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: 1, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 15, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+      {/* 底部固定列（App 感）：場次 + 詢問 + LINE 預約。三鈕皆 flex+minWidth:0 → 任何寬度都不溢出 */}
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 8, boxSizing: "border-box" }}>
+        <a href="/schedule" style={{ flex: "1 1 0", minWidth: 0, background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 6px", borderRadius: 12, fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 場次</a>
+        <Link href="/contact" style={{ flex: "1 1 0", minWidth: 0, background: "#fff", border: `1.5px solid ${C.navy}`, color: C.navy, textAlign: "center", padding: "12px 6px", borderRadius: 12, fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>✉️ 詢問</Link>
+        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: "1.7 1 0", minWidth: 0, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px 6px", borderRadius: 12, fontWeight: 800, fontSize: 14.5, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
           <LineIcon s={18} />LINE 預約
         </a>
       </div>
