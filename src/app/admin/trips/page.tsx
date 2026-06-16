@@ -175,7 +175,7 @@ function weekdayLabel(dateStr: string): string {
 
 const BLANK_PRICING_DEFAULT: Pricing = {
   baseTrip: 0,
-  extraTank: 500,
+  extraTank: 650, // v557：氣瓶費(每瓶)預設 650
   nightDive: 300,
   scooterRental: 500,
   otherFee: 0,
