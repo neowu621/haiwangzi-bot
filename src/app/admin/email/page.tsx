@@ -355,23 +355,23 @@ export default function AdminEmailPage() {
               )}
               {threads.map((t) => {
                 const sel = t.id === selId;
-                const last = t.messages?.[0];
                 return (
                   <div key={t.id} onClick={() => setSelId(t.id)} style={threadRow(sel)}>
                     <div style={avatar(t.status)}>{initials(t)}</div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {t.customerName ?? t.customerEmail}
-                        </span>
-                        <span style={{ marginLeft: "auto", fontSize: 11, color: "#9aabae", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmt(t.lastMessageAt)}</span>
+                      {/* 第 1 行：來源 icon + 名稱 + 時間 */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontSize: 13, flexShrink: 0 }} title={t.channel === "line" ? "LINE" : "Email"}>{t.channel === "line" ? "💬" : "✉️"}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.customerName ?? t.customerEmail}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#9aabae", whiteSpace: "nowrap", flexShrink: 0 }}>{fmt(t.lastMessageAt)}</span>
                       </div>
-                      <div style={{ fontSize: 12.5, color: "#3d5563", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</div>
-                      {last && <div style={{ fontSize: 11.5, color: "#9aabae", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(last.bodyText ?? "").slice(0, 60)}</div>}
-                      <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
-                        <span style={srcChip(t.channel)}>{t.channel === "line" ? "💬 LINE" : "✉️ Email"}</span>
-                        {t.bookingId && <span style={chipBook}>＃訂位</span>}
-                        <span style={chipStatus(t.status)}><span style={{ width: 6, height: 6, borderRadius: "50%", background: ST[t.status].dot }} />{ST[t.status].label}</span>
+                      {/* 第 2 行：主旨 + 訂位 + 狀態 */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#3d5563", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.subject}</span>
+                        {t.bookingId && <span style={{ fontSize: 11, color: "#3d5563", flexShrink: 0 }} title="有訂位">＃</span>}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, color: ST[t.status].fg, flexShrink: 0 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: ST[t.status].dot }} />{ST[t.status].label}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -418,7 +418,7 @@ export default function AdminEmailPage() {
                           <span>{new Date(m.createdAt).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
                           {out && <span style={{ color: "#2BA66B" }}>{m.status === "DELIVERED" ? "✓ 已送達" : m.status === "SENT" ? "已寄出" : m.status === "BOUNCED" ? "✗ 退信" : m.status}</span>}
                         </div>
-                        <div style={bubble(out)}>
+                        <div style={bubble(out, !out && !!m.bodyHtml)}>
                           <MessageBody text={m.bodyText} html={m.bodyHtml} />
                           {(m.attachments ?? []).map((a, i) => (
                             <div key={i} style={att}>📎 {a.filename}{a.size ? ` · ${Math.round(a.size / 1024)} KB` : ""}</div>
@@ -481,26 +481,28 @@ function pill(on: boolean): React.CSSProperties {
   return { fontSize: 12, padding: "5px 11px", borderRadius: 8, border: `1px solid ${on ? "#0a2027" : "#dce7ea"}`, background: on ? "#0a2027" : "#fff", color: on ? "#fff" : "#3d5563", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 };
 }
 function threadRow(sel: boolean): React.CSSProperties {
-  return { display: "flex", gap: 11, padding: "12px 14px", borderBottom: "1px solid #f1f4f6", cursor: "pointer", background: sel ? "#e6f4f4" : undefined, boxShadow: sel ? "inset 3px 0 0 #0e9aa0" : undefined };
+  return { display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", borderBottom: "1px solid #f1f4f6", cursor: "pointer", background: sel ? "#e6f4f4" : undefined, boxShadow: sel ? "inset 3px 0 0 #0e9aa0" : undefined };
 }
 function avatar(s: Status): React.CSSProperties {
-  return { width: 34, height: 34, borderRadius: 10, flex: "none", display: "grid", placeItems: "center", color: "#fff", fontWeight: 600, fontSize: 14, background: s === "WAITING" ? "linear-gradient(135deg,#0E9AA0,#0A6E73)" : s === "PROCESSING" ? "linear-gradient(135deg,#E08A2B,#c2701a)" : "linear-gradient(135deg,#9aa7ae,#7a8890)" };
+  return { width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", color: "#fff", fontWeight: 600, fontSize: 13, background: s === "WAITING" ? "linear-gradient(135deg,#0E9AA0,#0A6E73)" : s === "PROCESSING" ? "linear-gradient(135deg,#E08A2B,#c2701a)" : "linear-gradient(135deg,#9aa7ae,#7a8890)" };
 }
-const chipBook: React.CSSProperties = { fontSize: 10.5, padding: "2px 7px", borderRadius: 6, background: "#eaf1f3", color: "#3d5563", fontFamily: "monospace" };
 // v562：收件來源 chip(Email / LINE)
 function srcChip(channel?: string): React.CSSProperties {
   const line = channel === "line";
   return { fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: line ? "#e3f7ec" : "#e8eef9", color: line ? "#06893f" : "#2c4a8f" };
 }
-function chipStatus(s: Status): React.CSSProperties {
-  return { fontSize: 10.5, padding: "2px 8px", borderRadius: 6, background: ST[s].bg, color: ST[s].fg, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 };
-}
 const statusSel: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #dce7ea", background: "#fff", color: "#3d5563", fontFamily: "inherit", cursor: "pointer" };
 const delBtn: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #f3c6c6", background: "#fff", color: "#c0432a", fontFamily: "inherit", cursor: "pointer", fontWeight: 600 };
-function bubble(out: boolean): React.CSSProperties {
-  // v553：給定義寬度(填滿欄位、上限放寬)→ 內含的 HTML iframe(width:100%)才有合理參照寬度,
-  //   不會退回 iframe 預設 300px 而被左右壓縮。
-  return { background: out ? "#fefbfa" : "#fff", border: `1px solid ${out ? "#f3ddd5" : "#e1ebeb"}`, borderRadius: out ? "13px 4px 13px 13px" : "4px 13px 13px 13px", padding: "12px 15px", fontSize: 13.5, lineHeight: 1.7, color: "#0f2430", width: "100%", maxWidth: 860, boxSizing: "border-box", boxShadow: "0 1px 3px rgba(8,34,47,.05)" };
+function bubble(out: boolean, wide: boolean): React.CSSProperties {
+  // v564：有 HTML(iframe)的訊息才用寬泡泡(填滿欄位,讓 iframe 有參照寬度);
+  //   純文字(LINE/一般回覆)用聊天式內容寬 → 配合欄位的 flex-end/flex-start 自然靠右/靠左。
+  return {
+    background: out ? "#fefbfa" : "#fff", border: `1px solid ${out ? "#f3ddd5" : "#e1ebeb"}`,
+    borderRadius: out ? "13px 4px 13px 13px" : "4px 13px 13px 13px", padding: "12px 15px",
+    fontSize: 13.5, lineHeight: 1.7, color: "#0f2430", boxSizing: "border-box",
+    boxShadow: "0 1px 3px rgba(8,34,47,.05)",
+    ...(wide ? { width: "100%", maxWidth: 860 } : { maxWidth: 560 }),
+  };
 }
 const att: React.CSSProperties = { display: "inline-block", marginTop: 8, padding: "5px 10px", background: "#f4f8f9", border: "1px solid #e1ebeb", borderRadius: 8, fontSize: 12, color: "#3d5563" };
 const composer: React.CSSProperties = { width: "100%", border: "1.5px solid #dce7ea", borderRadius: 11, padding: "11px 14px", fontSize: 13.5, lineHeight: 1.7, fontFamily: "inherit", resize: "vertical", minHeight: 70, outline: "none", color: "#0f2430" };
