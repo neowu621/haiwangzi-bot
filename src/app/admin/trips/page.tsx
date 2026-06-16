@@ -22,6 +22,20 @@ interface Pricing {
   otherFeeNote?: string;
 }
 
+// v545：Dump 一週也納入潛旅（依起始日 dateStart 落在區間判斷）
+interface DumpTour {
+  id: string;
+  title: string;
+  dateStart: string;
+  dateEnd: string;
+  durationLabel?: string | null;
+  capacity?: number | null;
+  booked?: number;
+  deposit?: number | null;
+  basePrice?: number | null;
+  status: string;
+}
+
 interface Trip {
   id: string;
   code?: string | null;
@@ -211,6 +225,10 @@ export default function AdminTripsPage() {
     () => (getCached<Site[]>("/api/admin/sites") as Site[] | undefined) ?? [],
   );
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  // v545：潛旅（給 Dump 一週納入，依起始日判斷）
+  const [tours, setTours] = useState<DumpTour[]>(
+    () => getCached<{ tours: DumpTour[] }>("/api/admin/tours")?.tours ?? [],
+  );
   const [loading, setLoading] = useState(() => getCached("/api/admin/trips") === undefined);
   const [err, setErr] = useState<string | null>(null);
 
@@ -307,12 +325,14 @@ export default function AdminTripsPage() {
       adminFetch<Site[]>("/api/admin/sites"),
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches"),
       adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string } }>("/api/admin/site-config"),
-    ]).then(([t, s, c, cfg]) => {
+      adminFetch<{ tours: DumpTour[] }>("/api/admin/tours"),
+    ]).then(([t, s, c, cfg, to]) => {
       if (t.status === "fulfilled") { setTrips(t.value.trips ?? []); setCached("/api/admin/trips", { trips: t.value.trips ?? [] }); }
       else setErr("場次載入失敗：" + (t.reason?.message ?? String(t.reason)));
 
       if (s.status === "fulfilled") { setSites(Array.isArray(s.value) ? s.value : []); setCached("/api/admin/sites", Array.isArray(s.value) ? s.value : []); }
       if (c.status === "fulfilled") setCoaches(c.value.coaches ?? []);
+      if (to.status === "fulfilled") { setTours(to.value.tours ?? []); setCached("/api/admin/tours", { tours: to.value.tours ?? [] }); }
       if (cfg.status === "fulfilled") {
         const dp = cfg.value.config.defaultTripPricing;
         if (dp && Object.keys(dp).length > 0) {
@@ -942,6 +962,36 @@ export default function AdminTripsPage() {
         const sitesStr = t.diveSiteIds.map(siteName).join("·") || "未設潛點";
         const moon = t.isNightDive ? "🌙" : ""; // v383：夜潛圖示放潛點前
         lines.push(`${dateStr}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount} 支`);
+      }
+    }
+    // v545：潛旅 — 依「起始日 dateStart」落在本週區間才納入
+    const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
+    const toursInRange = tours
+      .filter((t) => {
+        if (t.status === "cancelled") return false;
+        const sd = new Date(`${t.dateStart.slice(0, 10)}T00:00:00+08:00`);
+        return sd >= start && sd <= end;
+      })
+      .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
+    if (toursInRange.length > 0) {
+      lines.push("");
+      lines.push("━━━━━━━━━━━━━━");
+      lines.push("");
+      lines.push("⛴️ 本週出發潛旅");
+      lines.push("");
+      for (const t of toursInRange) {
+        const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
+          ? fmtMDs(t.dateStart)
+          : `${fmtMDs(t.dateStart)}–${fmtMDs(t.dateEnd)}`;
+        const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
+        const remain = t.capacity == null
+          ? ""
+          : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
+        lines.push(`${range} ${t.title}${dur}${remain}`);
+        const sub: string[] = [];
+        if (t.deposit) sub.push(`訂金 $${t.deposit.toLocaleString()}/人`);
+        if (t.basePrice) sub.push(`團費 $${t.basePrice.toLocaleString()}/人`);
+        if (sub.length) lines.push(`　${sub.join("・")}`);
       }
     }
     lines.push("");
@@ -1834,7 +1884,7 @@ export default function AdminTripsPage() {
               />
             </div>
             <div className="text-[11px] text-[var(--muted-foreground)] pl-[80px]">
-              範圍：選定日期起算 7 天（含當日）
+              範圍：選定日期起算 7 天（含當日）；潛旅依「起始日」落在此區間自動納入
             </div>
             <div>
               <Label className="text-xs mb-1 block">預覽（可直接編輯）</Label>
