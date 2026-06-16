@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notifyBossNewInquiry } from "@/lib/notify-boss";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,6 +133,9 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
+
+  // 紀錄已寫入客服信箱 → 主動通知老闆（LINE + Email）。best-effort，失敗不影響送單。
+  await notifyBossNewInquiry({ type, subject, name, email, phone, bodyText });
 
   return NextResponse.json({ ok: true });
 }
