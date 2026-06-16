@@ -935,7 +935,7 @@ export default function AdminTripsPage() {
     // v383：小編 LINE 群組連結（如需更換改這裡）
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];
-    lines.push("🌊 東北角海王子官網"); // v515：第一行品牌標籤 + 首頁網址
+    lines.push("🔱 東北角海王子官網"); // v554：品牌三叉戟 emoji(純文字無法嵌真圖)
     lines.push(baseUrl);
     lines.push("");
     // v391：開啟「Dump 優惠開頭」時，先帶出系統設定的優惠文案 + 分隔線
@@ -947,9 +947,8 @@ export default function AdminTripsPage() {
     }
     const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
     const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
-    lines.push(`🌊 ${startLabel} ~ ${endLabel} 日潛場次`);
-    lines.push("");
-    lines.push("🔗 請使用手機至以下連結報名預約潛水");
+    lines.push(`🌊 日潛場次 ${startLabel} ~ ${endLabel}`);
+    lines.push("🔗 請使用手機至以下連結報名預約潛水 有優惠喔");
     lines.push(`${baseUrl}/d`);
     lines.push("");
     if (inRange.length === 0) {
@@ -976,9 +975,7 @@ export default function AdminTripsPage() {
     if (toursInRange.length > 0) {
       lines.push("");
       lines.push("━━━━━━━━━━━━━━");
-      lines.push("");
       lines.push("⛴️ 本週出發潛旅");
-      lines.push("");
       for (const t of toursInRange) {
         const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
           ? fmtMDs(t.dateStart)
@@ -995,8 +992,9 @@ export default function AdminTripsPage() {
       }
     }
     lines.push("");
-    lines.push("🔗 如果有潛水任何問題請與小編聯繫");
-    lines.push(supportLine);
+    lines.push("🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫");
+    lines.push(`LINE  ${supportLine}`);
+    lines.push(`線上詢問 ${baseUrl}/contact`);
     return lines.join("\n");
   }
   async function copyDumpText() {
