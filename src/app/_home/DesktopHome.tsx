@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import "../home.css";
 import { APP_VERSION } from "@/lib/version";
 import SiteNav from "./SiteNav";
@@ -33,8 +34,9 @@ export default function DesktopHome() {
             <p className="lead">剛入門、還在摸索都沒關係——有海王子教練「汪汪」在身邊，每一潛都安心。你只要放鬆，盡情擁抱大海。</p>
             <div className="hero-cta">
               <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
-              <a href="#start" className="btn btn-ghost">第一次潛水？看這裡</a>
+              <Link href="/contact" className="btn btn-ask">✉️ 線上詢問</Link>
             </div>
+            <a href="#start" className="hero-cta-sub">第一次潛水？看這裡 →</a>
           </div>
           <div className="hero-coach">
             <Image

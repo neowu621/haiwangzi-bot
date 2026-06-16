@@ -58,13 +58,18 @@ export function SeoShell({
       <main style={{ maxWidth: 960, margin: "0 auto", padding: "30px 20px 56px" }}>
         {children}
 
-        {/* CTA */}
+        {/* CTA（v546：成對 — LINE 主要 + 線上詢問 次要） */}
         <div style={{ textAlign: "center", background: "#fff", border: "1px solid #dfe7ee", borderRadius: 18, padding: "30px 22px", marginTop: 34, boxShadow: "0 4px 20px rgba(10,35,66,.06)" }}>
           <div style={{ fontSize: 20, fontWeight: 900, color: "#0A2342", marginBottom: 8 }}>準備好下水了嗎？</div>
-          <p style={{ color: "#5a6b7d", fontSize: 14.5, margin: "0 0 18px" }}>加入官方 LINE，告訴汪汪你想潛的日期與人數，幫你把行程安排好。</p>
-          <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 15.5, padding: "13px 26px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <LineIcon s={19} />加 LINE 預約潛水
-          </a>
+          <p style={{ color: "#5a6b7d", fontSize: 14.5, margin: "0 0 18px" }}>想直接約 → 加 LINE；還在考慮、有疑問 → 線上詢問，留 Email 馬上收到確認信。</p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 15.5, padding: "13px 26px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <LineIcon s={19} />加 LINE 預約潛水
+            </a>
+            <Link href="/contact" style={{ background: "#fff", color: "#0A2342", textDecoration: "none", fontWeight: 800, fontSize: 15.5, padding: "13px 26px", borderRadius: 999, border: "2px solid #c7d6dd", display: "inline-flex", alignItems: "center", gap: 8 }}>
+              ✉️ 線上詢問
+            </Link>
+          </div>
         </div>
 
         {/* 內部互連（SEO） */}

@@ -20,6 +20,11 @@
 .hw .btn-line:hover{transform:translateY(-3px);box-shadow:0 18px 40px -8px rgba(6,199,85,.7)}
 .hw .btn-ghost{background:rgba(102,216,246,.08);color:var(--foam);border:1px solid rgba(102,216,246,.45);backdrop-filter:blur(6px)}
 .hw .btn-ghost:hover{background:rgba(102,216,246,.18);transform:translateY(-3px)}
+/* v546：線上詢問 次要 CTA（白色 outline，主次分明、不與 LINE 綠搶） */
+.hw .btn-ask{background:rgba(255,255,255,.06);color:#fff;border:2px solid rgba(255,255,255,.55)}
+.hw .btn-ask:hover{background:rgba(255,255,255,.16);transform:translateY(-3px)}
+.hw .hero-cta-sub{display:inline-block;margin-top:14px;color:var(--foam);font-size:.92rem;font-weight:600;text-decoration:none;border-bottom:1px solid transparent}
+.hw .hero-cta-sub:hover{border-bottom-color:currentColor}
 
 .hw .bg-reeffish{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-04.webp) center/cover}
 .hw .bg-coraldiver{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-02.webp) center/cover}

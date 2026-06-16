@@ -184,11 +184,12 @@ export default function MobileHome() {
         <div style={{ fontSize: 10, opacity: .45, marginTop: 16, letterSpacing: .5 }}>© {new Date().getFullYear()} 東北角海王子 · v{APP_VERSION}</div>
       </footer>
 
-      {/* 底部固定列（App 感）：本月場次 + LINE 預約 */}
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 10, boxSizing: "border-box" }}>
-        <a href="/schedule" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 14px", borderRadius: 12, fontWeight: 800, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 本月場次</a>
-        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: 1, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 15.5, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 7 }}>
-          <LineIcon s={19} />LINE 立即預約
+      {/* 底部固定列（App 感）：場次 + 線上詢問 + LINE 預約（v546 加線上詢問次要鈕） */}
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.line}`, padding: "10px 14px calc(10px + env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", display: "flex", gap: 8, boxSizing: "border-box" }}>
+        <a href="/schedule" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.teal}`, color: C.teal, textAlign: "center", padding: "12px 11px", borderRadius: 12, fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>🗓 場次</a>
+        <Link href="/contact" style={{ flex: "0 0 auto", background: "#fff", border: `1.5px solid ${C.navy}`, color: C.navy, textAlign: "center", padding: "12px 11px", borderRadius: 12, fontWeight: 800, fontSize: 13.5, textDecoration: "none", whiteSpace: "nowrap" }}>✉️ 詢問</Link>
+        <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flex: 1, background: "#06c755", color: "#fff", textAlign: "center", padding: "13px", borderRadius: 12, fontWeight: 800, fontSize: 15, textDecoration: "none", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+          <LineIcon s={18} />LINE 預約
         </a>
       </div>
     </div>
