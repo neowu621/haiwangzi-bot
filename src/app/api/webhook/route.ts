@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-line-signature");
 
+  // v563：診斷 log —— 確認 LINE 有把事件送來、簽章是否通過
+  console.log(`[webhook] 收到 POST，body 長度=${rawBody.length}，有簽章=${!!signature}`);
+
   if (!verifyLineSignature(rawBody, signature)) {
+    console.warn("[webhook] 簽章驗證失敗(LINE_CHANNEL_SECRET 可能不符)→ 401");
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
 
@@ -31,6 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
+  console.log(`[webhook] 簽章 OK，事件數=${body.events.length}，類型=[${body.events.map((e) => e.type).join(",")}]`);
   await Promise.allSettled(body.events.map(handleEvent));
   return NextResponse.json({ ok: true });
 }
@@ -56,9 +61,12 @@ async function handleEvent(event: WebhookEvent): Promise<void> {
           try {
             const u = await prisma.user.findUnique({ where: { lineUserId: userId }, select: { displayName: true } });
             await ingestLineMessage({ lineUserId: userId, displayName: u?.displayName, text: event.message.text, lineMessageId: event.message.id });
+            console.log(`[webhook] LINE 文字訊息已收進客服信箱(from ${userId.slice(0, 8)}…)`);
           } catch (e) {
             console.error("[webhook] ingestLineMessage failed", e);
           }
+        } else {
+          console.log(`[webhook] 非文字訊息(type=${event.message.type}),略過 ingest`);
         }
       }
       break;
