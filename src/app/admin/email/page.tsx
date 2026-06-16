@@ -4,7 +4,8 @@
  * 接後端 5 支 API：/api/admin/email/threads(list)、/threads/[id](detail+patch)、
  *   /threads/[id]/reply、/compose。收信由 cron(/api/cron/email-inbound-poll)讀 Gmail 進 DB。
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 
@@ -56,6 +57,79 @@ function fmt(d: string) {
 }
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// v548：純文字 URL → 可點連結（React node，安全：只認 http(s)，文字由 React 跳脫）
+const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+function linkifyNodes(line: string): React.ReactNode[] {
+  return line.split(URL_RE).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "#0e7c8a", wordBreak: "break-all" }}>{part}</a>
+    ) : (
+      <React.Fragment key={i}>{part}</React.Fragment>
+    ),
+  );
+}
+// v548：回覆寄出時，把已跳脫文字裡的 URL 包成 <a>（href 用同字串，&amp; 在 href 內合法）
+function linkifyHtml(escaped: string): string {
+  return escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+// v548：安全顯示一封信的內容。
+//   ① 純文字版優先（URL 變可點）。② 有 HTML 版可切到「HTML 檢視」——
+//   用 sandbox iframe + CSP（default-src none、禁 script、img 只允 data:）安全 render，
+//   徹底取代原本未消毒的 dangerouslySetInnerHTML，並擋掉遠端追蹤像素。
+function MessageBody({ text, html }: { text?: string | null; html?: string | null }) {
+  const hasText = !!(text && text.trim());
+  const hasHtml = !!(html && html.trim());
+  const [showHtml, setShowHtml] = useState(!hasText && hasHtml); // 沒純文字才預設 HTML
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const srcDoc = hasHtml
+    ? `<!doctype html><html><head><meta charset="utf-8">` +
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:">` +
+      `<base target="_blank">` +
+      `<style>body{margin:0;font-family:-apple-system,'Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.6;color:#1a2330;word-break:break-word}a{color:#0e7c8a}</style>` +
+      `</head><body>${html}</body></html>`
+    : "";
+
+  return (
+    <div>
+      {hasText && hasHtml && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          <button type="button" onClick={() => setShowHtml(false)} style={viewTab(!showHtml)}>純文字</button>
+          <button type="button" onClick={() => setShowHtml(true)} style={viewTab(showHtml)}>HTML</button>
+        </div>
+      )}
+      {showHtml && hasHtml ? (
+        <iframe
+          ref={iframeRef}
+          title="email-html"
+          // allow-same-origin（不含 allow-scripts）：可量高度自適應，但 JS 仍被禁 → 安全
+          sandbox="allow-same-origin"
+          srcDoc={srcDoc}
+          onLoad={() => {
+            try {
+              const h = iframeRef.current?.contentDocument?.body?.scrollHeight;
+              if (h) iframeRef.current!.style.height = `${Math.min(h + 8, 900)}px`;
+            } catch { /* ignore */ }
+          }}
+          style={{ width: "100%", minHeight: 60, border: "none", background: "#fff" }}
+        />
+      ) : (
+        (text ?? "").split("\n").map((l, i) => (
+          <p key={i} style={{ margin: "0 0 6px" }}>{l ? linkifyNodes(l) : " "}</p>
+        ))
+      )}
+    </div>
+  );
+}
+function viewTab(active: boolean): React.CSSProperties {
+  return {
+    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 7, cursor: "pointer",
+    border: `1px solid ${active ? "#0e7c8a" : "#d3e0e3"}`,
+    background: active ? "#0e7c8a" : "#fff", color: active ? "#fff" : "#5b7080",
+  };
 }
 function initials(t: Thread) {
   return (t.customerName ?? t.customerEmail).slice(0, 1).toUpperCase();
@@ -131,7 +205,7 @@ export default function AdminEmailPage() {
     if (!detail || !reply.trim() || sending) return;
     setSending(true);
     try {
-      const html = reply.split("\n").map((l) => `<p>${esc(l) || "&nbsp;"}</p>`).join("");
+      const html = reply.split("\n").map((l) => `<p>${linkifyHtml(esc(l)) || "&nbsp;"}</p>`).join("");
       await adminFetch(`/api/admin/email/threads/${detail.id}/reply`, {
         method: "POST",
         body: JSON.stringify({ html, text: reply }),
@@ -326,7 +400,7 @@ export default function AdminEmailPage() {
                           {out && <span style={{ color: "#2BA66B" }}>{m.status === "DELIVERED" ? "✓ 已送達" : m.status === "SENT" ? "已寄出" : m.status === "BOUNCED" ? "✗ 退信" : m.status}</span>}
                         </div>
                         <div style={bubble(out)}>
-                          {m.bodyText ? m.bodyText.split("\n").map((l, i) => <p key={i} style={{ margin: "0 0 6px" }}>{l || " "}</p>) : <span dangerouslySetInnerHTML={{ __html: m.bodyHtml ?? "" }} />}
+                          <MessageBody text={m.bodyText} html={m.bodyHtml} />
                           {(m.attachments ?? []).map((a, i) => (
                             <div key={i} style={att}>📎 {a.filename}{a.size ? ` · ${Math.round(a.size / 1024)} KB` : ""}</div>
                           ))}
