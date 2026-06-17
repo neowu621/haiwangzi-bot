@@ -297,13 +297,21 @@ export default function AdminLoginPage() {
             </button>
             <button
               type="button"
-              onClick={() => { window.location.href = "/api/auth/google/login"; }}
+              onClick={() => {
+                const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+                if (/Line\/|FBAN|FBAV|Instagram|Messenger|; wv\)/i.test(ua)) {
+                  alert("Google 登入無法在 App 內建瀏覽器使用(Google 安全政策)。\n\n請改用 Chrome / Safari 開啟此頁再登入,或改用上方「LINE 登入」。");
+                  return;
+                }
+                window.location.href = "/api/auth/google/login";
+              }}
               className="flex w-full items-center justify-center gap-2 rounded-md py-2.5 text-sm font-bold"
               style={{ background: "#fff", color: "#3c4043", border: "1px solid #dadce0" }}
             >
               <span style={{ fontWeight: 800, fontSize: 15 }}>G</span> 用 Google 登入後台
             </button>
             <p className="text-center text-[10.5px]" style={subStyle}>僅開放具 admin / 老闆角色的帳號(LINE 比對身分、Google 比對 email)</p>
+            <p className="text-center text-[10px]" style={{ color: "rgba(255,200,120,0.75)" }}>⚠ Google 登入請用 Chrome / Safari 開啟,不能在 LINE 等 App 內建瀏覽器(Google 政策)</p>
           </div>
         )}
 
