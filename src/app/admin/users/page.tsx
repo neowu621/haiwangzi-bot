@@ -24,6 +24,7 @@ import {
   Crown,
   ChevronUp,
   ChevronDown,
+  ChevronsUpDown,
   Mail,
   Archive,
   RotateCcw,
@@ -270,16 +271,13 @@ export default function AdminUsersPage() {
   }
 
   function SortIcon({ k }: { k: SortKey }) {
+    // v567：未排序時用上下雙箭頭(明顯=此欄可排);排序中用實心單箭頭 + 品牌色
     if (sortKey !== k)
-      return (
-        <span className="ml-1 opacity-30">
-          <ChevronUp className="inline h-3 w-3" />
-        </span>
-      );
+      return <ChevronsUpDown className="ml-1 inline h-3.5 w-3.5 opacity-50" />;
     return sortAsc ? (
-      <ChevronUp className="ml-1 inline h-3 w-3" />
+      <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-[var(--primary,#0e9aa0)]" />
     ) : (
-      <ChevronDown className="ml-1 inline h-3 w-3" />
+      <ChevronDown className="ml-1 inline h-3.5 w-3.5 text-[var(--primary,#0e9aa0)]" />
     );
   }
 
