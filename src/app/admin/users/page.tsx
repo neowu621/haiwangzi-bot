@@ -158,7 +158,7 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState("");
-  const [filter, setFilter] = useState<"all" | Role | "blacklist" | "vip">("all");
+  const [filter, setFilter] = useState<"all" | Role | "blacklist" | "vip" | "vip1" | "vip2" | "vip3" | "vip4" | "vip5" | "vip5plus">("all");
   const [sortKey, setSortKey] = useState<SortKey>("lastActiveAt");
   const [sortAsc, setSortAsc] = useState(false);
   const [creditAmount, setCreditAmount] = useState("");
@@ -204,15 +204,14 @@ export default function AdminUsersPage() {
   const filtered = useMemo(() => {
     const k = keyword.trim().toLowerCase();
     let arr = users.filter((u) => {
-      if (filter === "blacklist" && !u.blacklisted) return false;
-      if (filter === "vip" && u.vipLevel === 0) return false;
-      if (
-        filter !== "all" &&
-        filter !== "blacklist" &&
-        filter !== "vip" &&
-        !u.effectiveRoles?.includes(filter)
-      )
-        return false;
+      // v568：VIP 依等級篩選(LV1~LV5 各別,5+ = LV6 以上)
+      if (filter === "blacklist") { if (!u.blacklisted) return false; }
+      else if (filter === "vip") { if (u.vipLevel === 0) return false; }
+      else if (filter === "vip5plus") { if (u.vipLevel < 6) return false; }
+      else if (filter === "vip1" || filter === "vip2" || filter === "vip3" || filter === "vip4" || filter === "vip5") {
+        if (u.vipLevel !== Number(filter.slice(3))) return false;
+      }
+      else if (filter !== "all") { if (!u.effectiveRoles?.includes(filter)) return false; }
       if (k) {
         const hay = [
           u.displayName,
@@ -605,7 +604,12 @@ export default function AdminUsersPage() {
                   "admin",
                   `管理員 (${users.filter((u) => u.effectiveRoles?.includes("admin")).length})`,
                 ],
-                ["vip", `VIP (${users.filter((u) => u.vipLevel > 0).length})`],
+                ["vip1", `VIP1 (${users.filter((u) => u.vipLevel === 1).length})`],
+                ["vip2", `VIP2 (${users.filter((u) => u.vipLevel === 2).length})`],
+                ["vip3", `VIP3 (${users.filter((u) => u.vipLevel === 3).length})`],
+                ["vip4", `VIP4 (${users.filter((u) => u.vipLevel === 4).length})`],
+                ["vip5", `VIP5 (${users.filter((u) => u.vipLevel === 5).length})`],
+                ["vip5plus", `VIP5+ (${users.filter((u) => u.vipLevel >= 6).length})`],
                 [
                   "blacklist",
                   `黑名單 (${users.filter((u) => u.blacklisted).length})`,
