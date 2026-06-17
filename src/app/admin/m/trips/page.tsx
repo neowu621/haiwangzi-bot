@@ -73,9 +73,8 @@ export default function MobileTripsPage() {
     : [];
 
   return (
-    <MobileAdminShell>
-      <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-base font-bold">📅 今明場次</h1>
+    <MobileAdminShell title="日潛場次" back="/admin/m">
+      <div className="mb-3 flex items-center justify-end">
         <Link
           href="/admin/trips"
           className="flex items-center gap-1 text-xs"

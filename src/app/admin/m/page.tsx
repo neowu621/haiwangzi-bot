@@ -46,14 +46,14 @@ export default function MobileAdminHome() {
   const tripsBadge = stats ? stats.todayTrips.count + stats.tomorrowTrips.count : undefined;
 
   const cards: Array<{ href: string; icon: typeof Wallet; emoji: string; title: string; badge: number | undefined; sub?: string; accent: boolean }> = [
-    { href: "/admin/tonight", icon: Wallet, emoji: "🧾", title: "老闆結帳", badge: stats ? tonightBadge : undefined, sub: stats ? `待匯款 ${stats.tonight.proofs}・待到場 ${stats.tonight.attendance}` : undefined, accent: tonightBadge > 0 },
-    { href: "/admin/bookings", icon: BookOpen, emoji: "📖", title: "訂單管理", badge: stats?.pendingProofs, sub: "確認 / 收款", accent: (stats?.pendingProofs ?? 0) > 0 },
-    { href: "/admin/dive-wishes", icon: MessageSquare, emoji: "📝", title: "願望單", badge: stats?.pendingWishes, sub: "新許願 / 回覆", accent: (stats?.pendingWishes ?? 0) > 0 },
-    { href: "/admin/email", icon: Mail, emoji: "📧", title: "客服信箱", badge: stats?.pendingEmails, sub: "回客人 / LINE", accent: (stats?.pendingEmails ?? 0) > 0 },
+    { href: "/admin/m/tonight", icon: Wallet, emoji: "🧾", title: "老闆結帳", badge: stats ? tonightBadge : undefined, sub: stats ? `待匯款 ${stats.tonight.proofs}・待到場 ${stats.tonight.attendance}` : undefined, accent: tonightBadge > 0 },
+    { href: "/admin/m/bookings", icon: BookOpen, emoji: "📖", title: "訂單管理", badge: stats?.pendingProofs, sub: "確認 / 收款", accent: (stats?.pendingProofs ?? 0) > 0 },
+    { href: "/admin/m/dive-wishes", icon: MessageSquare, emoji: "📝", title: "願望單", badge: stats?.pendingWishes, sub: "新許願 / 回覆", accent: (stats?.pendingWishes ?? 0) > 0 },
+    { href: "/admin/m/email", icon: Mail, emoji: "📧", title: "客服信箱", badge: stats?.pendingEmails, sub: "回客人 / LINE", accent: (stats?.pendingEmails ?? 0) > 0 },
     { href: "/admin/m/trips", icon: CalendarDays, emoji: "🌊", title: "日潛場次", badge: tripsBadge, sub: stats ? `今 ${stats.todayTrips.count}・明 ${stats.tomorrowTrips.count} 場` : "誰報名 / 集合", accent: false },
-    { href: "/admin/users", icon: Users, emoji: "👥", title: "會員管理", badge: undefined, sub: "查詢會員", accent: false },
-    { href: "/admin/tours", icon: Ship, emoji: "⛴️", title: "潛水旅行", badge: undefined, sub: "團況", accent: false },
-    { href: "/admin/credits", icon: Star, emoji: "⭐", title: "抵用金管理", badge: undefined, sub: "查 / 發抵用金", accent: false },
+    { href: "/admin/m/users", icon: Users, emoji: "👥", title: "會員管理", badge: undefined, sub: "查詢會員", accent: false },
+    { href: "/admin/m/tours", icon: Ship, emoji: "⛴️", title: "潛水旅行", badge: undefined, sub: "團況", accent: false },
+    { href: "/admin/m/credits", icon: Star, emoji: "⭐", title: "抵用金管理", badge: undefined, sub: "查 / 發抵用金", accent: false },
   ];
 
   return (

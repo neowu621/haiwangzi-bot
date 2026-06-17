@@ -115,9 +115,8 @@ export default function MobileBookingsPage() {
   }, [loadMore]);
 
   return (
-    <MobileAdminShell>
-      <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-base font-bold">📋 訂單快查</h1>
+    <MobileAdminShell title="訂單管理" back="/admin/m">
+      <div className="mb-3 flex items-center justify-end">
         <Link
           href="/admin/bookings"
           className="flex items-center gap-1 text-xs"
