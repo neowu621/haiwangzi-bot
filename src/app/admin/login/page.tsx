@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { APP_VERSION } from "@/lib/version";
+import { BrandMark } from "@/components/brand/MantaTrident";
 
 interface AdminUser {
   lineUserId: string;
@@ -206,7 +207,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md rounded-2xl p-8 shadow-2xl" style={cardStyle}>
         {/* Logo */}
         <div className="mb-6 text-center">
-          <div className="mb-2 text-4xl">🤿</div>
+          <div className="mb-2 flex justify-center"><BrandMark size={60} radius={14} /></div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--color-phosphor)" }}>
             {process.env.NEXT_PUBLIC_APP_NAME ?? "管理後台"}
           </h1>
