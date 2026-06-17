@@ -294,7 +294,15 @@ export default function AdminLoginPage() {
             >
               <span style={{ fontSize: 16 }}>💬</span> 用 LINE 登入後台
             </button>
-            <p className="text-center text-[10.5px]" style={subStyle}>僅開放具 admin / 老闆角色的 LINE 帳號</p>
+            <button
+              type="button"
+              onClick={() => { window.location.href = "/api/auth/google/login"; }}
+              className="flex w-full items-center justify-center gap-2 rounded-md py-2.5 text-sm font-bold"
+              style={{ background: "#fff", color: "#3c4043", border: "1px solid #dadce0" }}
+            >
+              <span style={{ fontWeight: 800, fontSize: 15 }}>G</span> 用 Google 登入後台
+            </button>
+            <p className="text-center text-[10.5px]" style={subStyle}>僅開放具 admin / 老闆角色的帳號(LINE 比對身分、Google 比對 email)</p>
           </div>
         )}
 
