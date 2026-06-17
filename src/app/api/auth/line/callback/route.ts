@@ -7,8 +7,11 @@ import {
 import {
   verifyLineLoginIdToken,
   createMemberWebJwt,
+  createAdminWebJwt,
   MEMBER_WEB_COOKIE,
 } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +56,29 @@ export async function GET(req: NextRequest) {
     return failRedirect("id_token_invalid");
   }
 
+  const clearOauthCookies = (r: NextResponse) => {
+    for (const c of ["hwz_oauth_state", "hwz_oauth_nonce", "hwz_oauth_next", "hwz_oauth_admin"]) {
+      r.cookies.set(c, "", { path: "/", maxAge: 0 });
+    }
+    return r;
+  };
+
+  // v571：後台登入流程 —— 驗角色(admin/boss)→ 簽後台 token,經 URL fragment 交回 /admin/login
+  if (req.cookies.get("hwz_oauth_admin")?.value === "1") {
+    const u = await prisma.user.findUnique({
+      where: { lineUserId: verified.lineUserId },
+      select: { lineUserId: true, displayName: true, realName: true, role: true, roles: true },
+    });
+    const roles = u ? (u.roles && u.roles.length > 0 ? u.roles : [u.role]) : [];
+    if (!u || !(roles.includes("admin") || roles.includes("boss"))) {
+      return clearOauthCookies(NextResponse.redirect(`${base}/admin/login#err=${encodeURIComponent("此 LINE 帳號沒有後台權限")}`));
+    }
+    const adminJwt = await createAdminWebJwt(verified.lineUserId);
+    const u64 = Buffer.from(JSON.stringify({ lineUserId: u.lineUserId, displayName: u.displayName, realName: u.realName, effectiveRoles: roles })).toString("base64url");
+    await logAudit({ actorId: u.lineUserId, actorName: u.realName ?? u.displayName ?? undefined, action: "auth.login", targetType: "user", targetId: u.lineUserId, targetLabel: u.realName ?? u.displayName ?? u.lineUserId, metadata: { channel: "web_admin", method: "line" } });
+    return clearOauthCookies(NextResponse.redirect(`${base}/admin/login#at=${adminJwt}&u=${u64}`));
+  }
+
   // 簽會員 web session JWT（30 天）→ httpOnly cookie
   const jwt = await createMemberWebJwt(verified.lineUserId);
 
@@ -66,7 +92,7 @@ export async function GET(req: NextRequest) {
     maxAge: 60 * 60 * 24 * 30, // 30 天
   });
   // 清掉一次性 oauth cookie
-  for (const c of ["hwz_oauth_state", "hwz_oauth_nonce", "hwz_oauth_next"]) {
+  for (const c of ["hwz_oauth_state", "hwz_oauth_nonce", "hwz_oauth_next", "hwz_oauth_admin"]) {
     res.cookies.set(c, "", { path: "/", maxAge: 0 });
   }
   return res;

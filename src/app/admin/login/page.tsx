@@ -1,7 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setAdminToken, setAdminUser } from "@/lib/admin-web-auth";
+
+// v571：把 OAuth callback 經 URL fragment 回傳的後台 user(base64url, 可含中文)解回物件
+function b64urlToObj(s: string): { lineUserId: string; displayName: string; realName: string | null; effectiveRoles: string[] } {
+  let b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4) b64 += "=";
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +65,23 @@ export default function AdminLoginPage() {
   const [confirmPwd, setConfirmPwd] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  /* v571：OAuth(LINE/Google)登入回來 → fragment 帶 #at=<token>&u=<base64user> 或 #err= */
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location.hash) return;
+    const p = new URLSearchParams(window.location.hash.slice(1));
+    const at = p.get("at"); const u = p.get("u"); const errMsg = p.get("err");
+    // 立即清掉 hash(token 不留在網址列)
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (errMsg) { setErr(decodeURIComponent(errMsg)); return; }
+    if (at) {
+      try {
+        setAdminToken(at);
+        if (u) setAdminUser(b64urlToObj(u));
+        router.replace("/admin");
+      } catch { setErr("登入處理失敗,請重試"); }
+    }
+  }, [router]);
 
   /* Step 1：驗共用管理密碼 */
   async function verifySecret() {
@@ -254,6 +279,22 @@ export default function AdminLoginPage() {
             >
               {loading ? "驗證中..." : "下一步"}
             </Button>
+
+            {/* v571：免密碼 — 用 LINE 登入(僅限 admin/老闆角色) */}
+            <div className="flex items-center gap-3 py-1">
+              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.12)" }} />
+              <span className="text-[11px]" style={subStyle}>或免密碼登入</span>
+              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.12)" }} />
+            </div>
+            <button
+              type="button"
+              onClick={() => { window.location.href = "/api/auth/line/login?admin=1&next=/admin"; }}
+              className="flex w-full items-center justify-center gap-2 rounded-md py-2.5 text-sm font-bold text-white"
+              style={{ background: "#06c755" }}
+            >
+              <span style={{ fontSize: 16 }}>💬</span> 用 LINE 登入後台
+            </button>
+            <p className="text-center text-[10.5px]" style={subStyle}>僅開放具 admin / 老闆角色的 LINE 帳號</p>
           </div>
         )}
 

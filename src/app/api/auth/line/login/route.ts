@@ -36,5 +36,7 @@ export function GET(req: NextRequest) {
   res.cookies.set("hwz_oauth_state", state, cookieOpts);
   res.cookies.set("hwz_oauth_nonce", nonce, cookieOpts);
   res.cookies.set("hwz_oauth_next", safeNext, cookieOpts);
+  // v571：?admin=1 → 標記「後台登入」,callback 會改驗角色(admin/boss)+ 簽後台 token
+  res.cookies.set("hwz_oauth_admin", url.searchParams.get("admin") === "1" ? "1" : "", cookieOpts);
   return res;
 }
