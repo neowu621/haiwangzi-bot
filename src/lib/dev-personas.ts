@@ -53,7 +53,7 @@ export const DEV_PERSONAS: DevPersona[] = [
     certNumber: "PADI-MSDT-200001",
     phone: "0912-345101",
     email: "dev.coach1@example.com",
-    emoji: "🤿",
+    emoji: "🔱",
     description: "資深教練（Instructor）",
   },
   {

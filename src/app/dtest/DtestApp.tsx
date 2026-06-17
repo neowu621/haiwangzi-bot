@@ -1045,7 +1045,7 @@ function MyOrders() {
     api<{ bookings: MyBooking[] }>("/api/bookings/my").then((d) => setBookings(d.bookings)).catch(() => setBookings([]));
   }, []);
   if (bookings === null) return <Loading />;
-  if (bookings.length === 0) return <Empty>還沒有任何訂單，去「預約」開始第一筆吧 🤿</Empty>;
+  if (bookings.length === 0) return <Empty>還沒有任何訂單，去「預約」開始第一筆吧 🔱</Empty>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep }}>我的訂單</h2>

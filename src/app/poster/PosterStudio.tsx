@@ -260,7 +260,7 @@ export default function PosterStudio({ embedded = false }: { embedded?: boolean 
                 {loading ? (
                   <div style={{ fontSize: 13, color: theme.mist }}>載入中…</div>
                 ) : data.rows.length === 0 ? (
-                  <div style={{ fontSize: 13, color: theme.mist, lineHeight: 1.6 }}>本月場次陸續更新中，<br />加 LINE 詢問或預約客製行程 🤿</div>
+                  <div style={{ fontSize: 13, color: theme.mist, lineHeight: 1.6 }}>本月場次陸續更新中，<br />加 LINE 詢問或預約客製行程 🔱</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: small ? 5 : 7 }}>
                     {shownRows.map((r, i) => (

@@ -75,7 +75,7 @@ export default function HomePage() {
           // 未加 / 未知 — 預設顯示「請加入好友」+ QR + 大按鈕
           <div className="mt-10 flex flex-col items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-3xl">🤿</span>
+              <span className="text-3xl">🔱</span>
               <span className="text-2xl font-bold tracking-wide text-white sm:text-3xl">
                 請加入 LINE 好友
               </span>

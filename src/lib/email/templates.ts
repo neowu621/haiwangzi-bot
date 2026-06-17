@@ -39,7 +39,7 @@ function shell(title: string, bodyHtml: string): string {
         </td></tr>
         <tr><td bgcolor="#f5f7fa" style="background-color:#f5f7fa;padding:16px 28px;font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;">
           <p style="margin:0 0 4px 0;">這封信由系統自動發送，請勿直接回覆。</p>
-          <p style="margin:0;">若有問題請在 LINE 官方帳號留言聯絡我們 🤿</p>
+          <p style="margin:0;">若有問題請在 LINE 官方帳號留言聯絡我們 🔱</p>
         </td></tr>
       </table>
     </td></tr>
@@ -157,7 +157,7 @@ export function depositReminderEmail(params: {
   lines.push(["匯款帳號", params.bankAccount]);
 
   const text =
-    `Hi ${params.name},\n\n感謝你預約「${params.tourTitle}」🤿\n\n` +
+    `Hi ${params.name},\n\n感謝你預約「${params.tourTitle}」🔱\n\n` +
     `為了保留你的名額，請於 7 天內 完成訂金匯款：\n\n` +
     lines.map(([k, v]) => `  ${k}：${v}`).join("\n") +
     `\n\n匯款後請到 LIFF App 上傳轉帳截圖：\n${params.bookingUrl}\n\n— 海王子潛水團`;
@@ -166,7 +166,7 @@ export function depositReminderEmail(params: {
     subject,
     `
     <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
-    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;">感謝你預約「<b>${escapeHtml(params.tourTitle)}</b>」🤿</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;">感謝你預約「<b>${escapeHtml(params.tourTitle)}</b>」🔱</p>
     <div style="margin:16px 0;padding:14px;background:#fff8e6;border-left:4px solid #FFB800;border-radius:4px;">
       <div style="font-size:13px;font-weight:bold;color:#b45309;">⚠ 請於 7 天內完成訂金匯款以保留名額</div>
     </div>
@@ -213,7 +213,7 @@ export function finalReminderEmail(params: {
     subject,
     `
     <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
-    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;">你的「<b>${escapeHtml(params.tourTitle)}</b>」即將出發 🤿</p>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;">你的「<b>${escapeHtml(params.tourTitle)}</b>」即將出發 🔱</p>
     <div style="margin:16px 0;padding:14px;background:#fff0eb;border-left:4px solid #FF7B5A;border-radius:4px;">
       <div style="font-size:13px;font-weight:bold;color:#9a3412;">⏰ 還剩 ${params.daysLeft} 天，請完成尾款</div>
     </div>
@@ -243,7 +243,7 @@ export function tripGuideEmail(params: {
   notes?: string | null;
   daysLeft: number;
 }): EmailContent {
-  const subject = `🤿 行前通知｜${params.date}${params.time ? " " + params.time : ""}（${params.daysLeft} 天後出發）`;
+  const subject = `🔱 行前通知｜${params.date}${params.time ? " " + params.time : ""}（${params.daysLeft} 天後出發）`;
   const lines: Array<[string, string]> = [
     ["日期", params.date + (params.time ? ` ${params.time}` : "")],
     ["潛點", params.site],
@@ -260,7 +260,7 @@ export function tripGuideEmail(params: {
   ];
 
   const text =
-    `Hi ${params.name},\n\n出發前 ${params.daysLeft} 天行前通知 🤿\n\n` +
+    `Hi ${params.name},\n\n出發前 ${params.daysLeft} 天行前通知 🔱\n\n` +
     lines.map(([k, v]) => `  ${k}：${v}`).join("\n") +
     `\n\n【裝備清單】\n` +
     checklist.map((c) => `  □ ${c}`).join("\n") +
@@ -272,7 +272,7 @@ export function tripGuideEmail(params: {
     `
     <p style="font-size:16px;margin:0 0 8px 0;">Hi ${escapeHtml(params.name)},</p>
     <p style="font-size:14px;line-height:1.7;margin:0 0 16px 0;color:${BRAND_PHOSPHOR};font-weight:bold;">
-      🤿 還剩 ${params.daysLeft} 天就要出發！
+      🔱 還剩 ${params.daysLeft} 天就要出發！
     </p>
     <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;">
       ${lines

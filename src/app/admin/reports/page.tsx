@@ -113,7 +113,7 @@ export default function ReportsPage() {
 
             {/* Trips */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">🤿 場次</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">🔱 場次</p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <StatCard label="日潛場次（總計）" value={stats.trips.total.toString()} />
                 <StatCard label="開放中" value={stats.trips.open.toString()} />

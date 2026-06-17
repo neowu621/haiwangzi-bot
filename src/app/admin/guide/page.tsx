@@ -378,7 +378,7 @@ export default function AdminGuidePage() {
           <DiagramBox title="💰 自動付款提醒時間軸（系統，每筆每段只發一次）">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="rounded-md p-3" style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.25)" }}>
-                <div className="mb-1 text-xs font-bold" style={{ color: "#60a5fa" }}>🤿 一日潛水</div>
+                <div className="mb-1 text-xs font-bold" style={{ color: "#60a5fa" }}>🔱 一日潛水</div>
                 <ul className="space-y-1 text-[11px]" style={{ color: "rgba(230,240,255,0.8)" }}>
                   <li>📋 下訂後第 <b>2 天</b>未付 → 提醒</li>
                   <li>🚨 第 <b>7 天</b> → 最後通知</li>

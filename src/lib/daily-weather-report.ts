@@ -240,7 +240,7 @@ export async function runDailyWeatherReport(opts?: {
     const overall =
       marineBlock.light === "🔴" ? "⚠️ 部分海域不建議下水"
         : marineBlock.light === "🟡" ? "尚可，部分海域請留意"
-          : "良好，適合下水 🤿";
+          : "良好，適合下水 🔱";
     blocks.push(["", `—— 綜合海況：${marineBlock.light} ${overall}`].join("\n"));
   }
 

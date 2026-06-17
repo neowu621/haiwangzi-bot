@@ -51,9 +51,9 @@ const TEMPLATE_DEFAULTS: Record<string, { altText: string; text: string; emailSu
   text: { altText: "", text: "", emailSubject: "", emailBody: "", params: "{}" },
   booking_confirm: {
     altText: "您的潛水預約已確認",
-    text: "您的潛水預約已確認\n\n📅 場次：{tripDate}（{weekday}）\n📍 潛點：{siteName}\n💰 金額：NT${amount}\n\n感謝您的支持，期待當天見面 🤿",
+    text: "您的潛水預約已確認\n\n📅 場次：{tripDate}（{weekday}）\n📍 潛點：{siteName}\n💰 金額：NT${amount}\n\n感謝您的支持，期待當天見面 🔱",
     emailSubject: "您的潛水預約已確認",
-    emailBody: "場次：{tripDate}（{weekday}）\n潛點：{siteName}\n金額：NT${amount}\n\n感謝您的支持，期待當天見面 🤿",
+    emailBody: "場次：{tripDate}（{weekday}）\n潛點：{siteName}\n金額：NT${amount}\n\n感謝您的支持，期待當天見面 🔱",
     params: '{"tripDate":"06/01","weekday":"週日","siteName":"龍洞","amount":"1200"}',
   },
   d1_reminder: {

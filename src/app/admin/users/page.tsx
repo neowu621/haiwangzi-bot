@@ -1027,7 +1027,7 @@ export default function AdminUsersPage() {
                 <div className="rounded-lg border-2 p-3 space-y-2.5"
                   style={{ borderColor: "rgba(8,145,178,0.35)", background: "rgba(8,145,178,0.05)" }}>
                   <div className="flex items-center gap-2 text-sm font-bold text-cyan-700">
-                    🤿 教練設定
+                    🔱 教練設定
                     <span className="ml-auto text-[10px] font-normal text-slate-500">儲存後自動同步教練清單</span>
                   </div>
 

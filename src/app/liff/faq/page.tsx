@@ -315,7 +315,7 @@ export default function FaqPage() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-white/15 px-3 py-1 text-white">
-              🤿 全年無休
+              🔱 全年無休
             </span>
             <span className="rounded-full bg-white/15 px-3 py-1 text-white">
               🏆 專業教練群
@@ -371,7 +371,7 @@ export default function FaqPage() {
           style={{ borderColor: "var(--color-phosphor)", background: "var(--color-phosphor)" + "10" }}>
           <p className="text-sm font-semibold text-[var(--foreground)] mb-1">還有其他問題？</p>
           <p className="text-xs text-[var(--muted-foreground)] mb-3">
-            隨時透過 LINE 私訊我們，會盡快回覆 🤿
+            隨時透過 LINE 私訊我們，會盡快回覆 🔱
           </p>
           <a
             href={`https://line.me/R/ti/p/${encodeURIComponent(LINE_OA)}`}

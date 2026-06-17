@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     const paidAmt = bookings.reduce((s, b) => s + b.paidAmount, 0);
     const totalPeople = bookings.reduce((s, b) => s + b.participants, 0);
     return {
-      label: `🤿 ${t.startTime} ${t.diveSiteIds.map((id) => siteMap.get(id) ?? id).join("/")}`,
+      label: `🔱 ${t.startTime} ${t.diveSiteIds.map((id) => siteMap.get(id) ?? id).join("/")}`,
       bookings,
       totalAmt,
       paidAmt,
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
   // ── 教練 lightweight 訊息 ──
   function buildCoachText(): string {
     const lines: string[] = [];
-    lines.push(`🤿 海王子明日場次｜${fmtDate(tomorrow)}`);
+    lines.push(`🔱 海王子明日場次｜${fmtDate(tomorrow)}`);
     lines.push("━━━━━━━━━━━━━━━");
     lines.push("");
     if (allGroups.length === 0) {

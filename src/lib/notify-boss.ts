@@ -117,7 +117,7 @@ export async function sendCustomerAck(params: {
   const html =
     `<div style="font-family:'Microsoft JhengHei',sans-serif;font-size:15px;line-height:1.8;color:#0f2430;max-width:560px">` +
     `<p>${greet}</p>` +
-    `<p>我們<b>已收到你的詢問</b>，汪汪教練會在<b>第一時間（通常一天內）親自回覆你</b>，請稍候 🤿</p>` +
+    `<p>我們<b>已收到你的詢問</b>，汪汪教練會在<b>第一時間（通常一天內）親自回覆你</b>，請稍候 🔱</p>` +
     `<p style="background:#f5f7fa;border-left:4px solid #00d9cb;border-radius:8px;padding:10px 14px;color:#3d5563">` +
     `你詢問的主旨：<b>${esc(subject)}</b></p>` +
     `<p>若比較急，也可以直接加官方 LINE 找我們：<br>` +

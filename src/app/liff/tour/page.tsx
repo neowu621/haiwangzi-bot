@@ -162,7 +162,7 @@ export default function TourListPage() {
                         <span>⏱ <b style={{ color: "#1A1A1B", fontWeight: 500 }}>{t.durationLabel}</b></span>
                       )}
                       {t.tanksCount != null && (
-                        <span>🤿 <b style={{ color: "#1A1A1B", fontWeight: 500 }}>{t.tanksCount}支</b></span>
+                        <span>🔱 <b style={{ color: "#1A1A1B", fontWeight: 500 }}>{t.tanksCount}支</b></span>
                       )}
                       {t.available != null && (
                         <span>👥 <b style={{ color: "#1A1A1B", fontWeight: 500 }}>

@@ -40,7 +40,7 @@ export const MSG_EDITABLE_FIELDS: Record<
     { key: "altText", label: "通知列文字", defaultValue: "預約已確認" },
   ],
   d1_reminder: [
-    { key: "title", label: "標題", defaultValue: "🤿 明日行前提醒" },
+    { key: "title", label: "標題", defaultValue: "🔱 明日行前提醒" },
     { key: "subtitle", label: "副標", defaultValue: "海況穩定，記得帶裝備" },
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看詳情" },
     { key: "altText", label: "通知列文字", defaultValue: "明日行前提醒" },
@@ -160,7 +160,7 @@ export function msgField(key: string, field: MsgFieldKey, override?: MsgOverride
 // ── 模板固定裝飾（LINE flex / Email / 站內 三通道共用，與 flex builder 同步）──
 export const HERO_EMOJI: Record<string, string> = {
   welcome: "🌊", booking_confirm: "✅", deposit_notice: "💰", deposit_confirm: "✅",
-  final_reminder: "⏰", trip_guide: "📘", d1_reminder: "🤿", weather_cancel: "🌊",
+  final_reminder: "⏰", trip_guide: "📘", d1_reminder: "🔱", weather_cancel: "🌊",
   overcap_alert: "⚠️", admin_weekly: "📊", attendance_confirmed: "🐠",
   first_order_reward_grant: "🎁", refund_request: "💸", payment_reject: "🚫",
   booking_cancel: "❌", refund_complete: "✅", vip_upgrade: "🌟",

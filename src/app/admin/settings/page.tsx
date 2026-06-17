@@ -644,7 +644,7 @@ export default function SettingsPage() {
 
           {/* B1 裝備租借 — v391：橫式表（項目一行、價格一行） */}
           <div className="mb-5">
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">🤿 裝備租借費率（NT$）</p>
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">🔱 裝備租借費率（NT$）</p>
             <div className="overflow-x-auto">
               <table className="border-collapse text-sm">
                 <thead>

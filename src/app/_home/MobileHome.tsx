@@ -111,7 +111,7 @@ export default function MobileHome() {
       </Section>
 
       {/* 關於汪汪 + 數據 */}
-      <Section title="嗨，我是汪汪" sub="About" icon="🤿">
+      <Section title="嗨，我是汪汪" sub="About" icon="🔱">
         <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden" }}>
           <Image src="/home/src-about.webp" alt="汪汪教練" width={520} height={300} loading="lazy" sizes="(max-width:520px) 100vw, 520px" style={{ width: "100%", height: "auto", display: "block" }} />
           <div style={{ padding: "13px 15px" }}>

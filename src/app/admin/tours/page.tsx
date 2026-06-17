@@ -455,7 +455,7 @@ export default function ToursPage() {
     lines.push(`📍 目的地：${DEST_LABELS[t.destination] ?? t.destination}`);
     lines.push(`📅 ${fmt(t.dateStart)} → ${fmt(t.dateEnd)}${t.durationLabel ? `（${t.durationLabel}）` : ""}`);
     if (t.roomLabel) lines.push(`🛏 ${t.roomLabel}`);
-    if (t.tanksCount) lines.push(`🤿 ${t.tanksCount} 支氣瓶`);
+    if (t.tanksCount) lines.push(`🔱 ${t.tanksCount} 支氣瓶`);
     if (t.siteList) lines.push(`🐠 潛點：${t.siteList}`);
     lines.push(`💰 團費 NT$${t.basePrice.toLocaleString()}・訂金 NT$${t.deposit.toLocaleString()}`);
     const dd = t.depositDeadline ? fmt(t.depositDeadline) : null;

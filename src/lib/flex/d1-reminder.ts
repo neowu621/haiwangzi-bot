@@ -16,7 +16,7 @@ export function d1Reminder(
       backgroundColor: COLORS.oceanSurface,
       paddingAll: "16px",
       contents: [
-        { type: "text", text: ovr(override, "title", "🤿 明日行前提醒"), color: COLORS.phosphor, weight: "bold", size: "md" },
+        { type: "text", text: ovr(override, "title", "🔱 明日行前提醒"), color: COLORS.phosphor, weight: "bold", size: "md" },
         { type: "text", text: `${asString(params.date)} ${asString(params.time)}`, color: "#ffffff", size: "lg", weight: "bold", margin: "xs" },
         { type: "text", text: asString(params.site), color: "#ffffff", size: "md", margin: "xs" },
         ...(override?.subtitle ? [{ type: "text" as const, text: override.subtitle, color: "#ffffff", size: "xs", margin: "xs", wrap: true }] : []),

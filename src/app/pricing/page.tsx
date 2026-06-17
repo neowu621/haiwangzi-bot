@@ -62,7 +62,7 @@ export default async function PricingPage() {
       >
         {/* 日潛 Fun Dive */}
         <Card>
-          <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0A2342", margin: "0 0 4px" }}>🤿 日潛 Fun Dive（持證）</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0A2342", margin: "0 0 4px" }}>🔱 日潛 Fun Dive（持證）</h2>
           <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含空氣）」計，依潛點不同；一天通常 2 支氣瓶。裝備租借另計（見下表）。</p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含空氣）</th></tr></thead>

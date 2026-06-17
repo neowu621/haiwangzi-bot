@@ -204,7 +204,7 @@ export default function CommunityPage() {
 
         {/* 提示 */}
         <p className="mt-6 text-center text-[10px] text-[var(--muted-foreground)]">
-          點擊開啟對應 app/網頁 · 按讚追蹤不錯過任何資訊 🤿
+          點擊開啟對應 app/網頁 · 按讚追蹤不錯過任何資訊 🔱
         </p>
       </div>
       <BottomNav />

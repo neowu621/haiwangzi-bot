@@ -502,7 +502,7 @@ export default function TonightPage() {
                     <div key={g.key} className="rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
                       <div className="border-b p-3" style={{ borderColor: "var(--border)" }}>
                         <p className="text-sm font-bold">
-                          {g.type === "daily" ? "🤿" : "✈️"} {g.label}
+                          {g.type === "daily" ? "🔱" : "✈️"} {g.label}
                         </p>
                         <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
                           待勾選 {g.bookings.length} 筆

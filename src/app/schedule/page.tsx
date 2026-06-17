@@ -71,7 +71,7 @@ export default async function SchedulePage() {
         <>
           {trips.length > 0 && (
             <>
-              <h2 style={hStyle}>🤿 日潛 Fun Dive</h2>
+              <h2 style={hStyle}>🔱 日潛 Fun Dive</h2>
               {trips.map((t) => {
                 const booked = bookedMap.get(t.id) ?? 0;
                 const a = availLabel(t.capacity, booked);

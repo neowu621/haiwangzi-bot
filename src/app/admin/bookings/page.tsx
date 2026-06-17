@@ -1313,7 +1313,7 @@ export default function AdminBookingsPage() {
                               <option value="linepay">💚 LINE Pay（實收）</option>
                               <option value="credit">⭐ 抵用金折抵</option>
                               <option value="boss_discount">🎁 老闆折抵</option>
-                              <option value="assistant">🤿 助教減免</option>
+                              <option value="assistant">🔱 助教減免</option>
                               <option value="other">✏️ 其他（需說明）</option>
                             </select>
                             <Input type="text" inputMode="numeric" value={adjAmount}

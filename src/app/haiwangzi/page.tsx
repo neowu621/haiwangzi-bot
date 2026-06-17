@@ -87,7 +87,7 @@ export default function HaiwangziPage() {
           </p>
           <div style={{ display: "grid", gap: 8, fontSize: 15.5, fontWeight: 700, color: "#d6e6ef" }}>
             <div>🌊 敬畏海洋，而非征服海洋。</div>
-            <div>🤿 享受潛水，而非挑戰極限。</div>
+            <div>🔱 享受潛水，而非挑戰極限。</div>
             <div>💙 讓每一次下潛，都成為值得珍藏的回憶。</div>
           </div>
         </Card>
