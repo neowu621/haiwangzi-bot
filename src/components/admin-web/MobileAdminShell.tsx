@@ -25,12 +25,8 @@ export function MobileAdminShell({ children }: { children: ReactNode }) {
   }
 
   function toFullVersion() {
-    try {
-      localStorage.setItem("admin_pref_layout", "full");
-    } catch {
-      /* localStorage 不可用時忽略，仍導向完整版 */
-    }
-    router.push("/admin");
+    // v570：用 ?desktop=1 看桌機(無狀態,不會卡住;下次重開 /admin 仍預設手機版)
+    router.push("/admin?desktop=1");
   }
 
   return (

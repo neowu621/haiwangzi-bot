@@ -88,6 +88,15 @@ const PAY_STATUS_COLOR: Record<string, string> = {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  // v570：手機開後台 → 自動導到手機簡版 /admin/m(?desktop=1 可看完整桌機版)
+  const [mRedirect, setMRedirect] = useState(false);
+  useEffect(() => {
+    try {
+      const isMobile = window.matchMedia("(max-width: 820px)").matches;
+      const forceDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
+      if (isMobile && !forceDesktop) { setMRedirect(true); router.replace("/admin/m"); }
+    } catch { /* ignore */ }
+  }, [router]);
   const [stats, setStats] = useState<Stats | null>(() => getCached<Stats>(STATS_URL) ?? null);
   const [pendingWishes, setPendingWishes] = useState(0); // v318
   const [loading, setLoading] = useState(() => getCached(STATS_URL) === undefined);
@@ -115,6 +124,9 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // v570：手機轉址中 → 不渲染桌機儀表板(避免閃一下)
+  if (mRedirect) return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#7c8a96", fontSize: 14 }}>開啟手機版…</div>;
 
   return (
     <AdminShell title="總覽">
