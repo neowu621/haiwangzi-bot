@@ -36,7 +36,9 @@ import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialo
 type Role = "customer" | "coach" | "boss" | "admin";
 type Cert = "OW" | "AOW" | "Rescue" | "DM" | "Instructor";
 type SortKey =
+  | "code"
   | "displayName"
+  | "vipLevel"
   | "lastActiveAt"
   | "haiwangziLogCount"
   | "creditBalance"
@@ -229,7 +231,13 @@ export default function AdminUsersPage() {
     arr = [...arr].sort((a, b) => {
       let va: string | number = 0;
       let vb: string | number = 0;
-      if (sortKey === "displayName") {
+      if (sortKey === "code") {
+        va = (a.code ?? "").toLowerCase();
+        vb = (b.code ?? "").toLowerCase();
+      } else if (sortKey === "vipLevel") {
+        va = a.vipLevel;
+        vb = b.vipLevel;
+      } else if (sortKey === "displayName") {
         va = (a.realName ?? a.displayName).toLowerCase();
         vb = (b.realName ?? b.displayName).toLowerCase();
       } else if (sortKey === "lastActiveAt") {
@@ -640,7 +648,13 @@ export default function AdminUsersPage() {
                     className="text-left text-xs text-[var(--muted-foreground)]"
                     style={{ background: "var(--muted)" }}
                   >
-                    <th className="px-4 py-3 font-medium">會員編號</th>
+                    <th
+                      className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
+                      onClick={() => toggleSort("code")}
+                    >
+                      會員編號
+                      <SortIcon k="code" />
+                    </th>
                     <th
                       className="cursor-pointer pl-2 pr-3 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("displayName")}
@@ -651,7 +665,13 @@ export default function AdminUsersPage() {
                     <th className="px-2 py-3 font-medium" style={{ width: "1%" }}>角色</th>
                     {/* v320：電話/證照 改在客戶詳情 modal 內顯示 */}
                     <th className="px-4 py-3 font-medium">Email / LINE ID</th>
-                    <th className="px-4 py-3 font-medium">VIP</th>
+                    <th
+                      className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
+                      onClick={() => toggleSort("vipLevel")}
+                    >
+                      VIP
+                      <SortIcon k="vipLevel" />
+                    </th>
                     <th
                       className="cursor-pointer px-4 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("creditBalance")}
