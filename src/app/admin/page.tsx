@@ -10,11 +10,19 @@ import { adminFetch } from "@/lib/admin-web-auth";
 import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
 
 const STATS_URL = "/api/admin/stats";
+const VISITS_URL = "/api/admin/stats/visits";
 import { useRouter } from "next/navigation";
 import {
   Calendar, ChevronRight, Sun, Moon,
-  UserCheck, Trophy, Cake, RotateCw,
+  UserCheck, Trophy, Cake, RotateCw, Eye,
 } from "lucide-react";
+
+interface DayStat { date: string; views: number; visitors: number }
+interface VisitStats {
+  today: DayStat;
+  week: { views: number; visitors: number };
+  days: DayStat[];
+}
 
 interface CustomerOnTrip {
   name: string;
@@ -98,6 +106,7 @@ export default function AdminDashboard() {
     } catch { /* ignore */ }
   }, [router]);
   const [stats, setStats] = useState<Stats | null>(() => getCached<Stats>(STATS_URL) ?? null);
+  const [visits, setVisits] = useState<VisitStats | undefined>(() => getCached<VisitStats>(VISITS_URL)); // v577
   const [pendingWishes, setPendingWishes] = useState(0); // v318
   const [loading, setLoading] = useState(() => getCached(STATS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
@@ -106,14 +115,16 @@ export default function AdminDashboard() {
   async function load() {
     setRefreshing(true);
     // v399：stats 與願望單數「並行」拉（原本序列等待），stats 走快取秒開
-    const [s, w] = await Promise.allSettled([
+    const [s, w, v] = await Promise.allSettled([
       cachedFetch<Stats>(STATS_URL, { force: true }),
       adminFetch<{ counts: Array<{ status: string; _count: { _all: number } }> }>(
         "/api/admin/dive-wishes?status=all",
       ),
+      cachedFetch<VisitStats>(VISITS_URL, { force: true }), // v577 訪客數
     ]);
     if (s.status === "fulfilled") { setStats(s.value); setCached(STATS_URL, s.value); }
     else setErr(s.reason instanceof Error ? s.reason.message : "載入失敗");
+    if (v.status === "fulfilled") setVisits(v.value);
     if (w.status === "fulfilled") {
       const map: Record<string, number> = {};
       for (const c of w.value.counts ?? []) map[c.status] = c._count._all;
@@ -144,6 +155,56 @@ export default function AdminDashboard() {
               重新整理
             </button>
           </div>
+
+          {/* ═══════ v577：網站訪客 ═══════ */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <Eye className="h-3.5 w-3.5" /> 網站訪客
+            </div>
+            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+              <div>
+                <div className="text-3xl font-bold tabular-nums text-slate-900">
+                  {visits ? visits.today.visitors : "–"}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-500">
+                  今日訪客{visits ? `・${visits.today.views} 次瀏覽` : ""}
+                </div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold tabular-nums" style={{ color: "#0891b2" }}>
+                  {visits ? visits.week.visitors : "–"}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-500">近 7 天訪客</div>
+              </div>
+              {/* 近 7 天訪客長條 */}
+              {visits && (() => {
+                const max = Math.max(1, ...visits.days.map((d) => d.visitors));
+                return (
+                  <div className="ml-auto flex h-14 items-end gap-1.5">
+                    {visits.days.map((d, i) => {
+                      const isToday = i === visits.days.length - 1;
+                      return (
+                        <div key={d.date} className="flex flex-col items-center gap-1">
+                          <div
+                            className="w-4 rounded-t"
+                            title={`${d.date.slice(5)}：${d.visitors} 人 / ${d.views} 次`}
+                            style={{
+                              height: `${Math.max(6, (d.visitors / max) * 44)}px`,
+                              background: isToday ? "#0891b2" : "#cbd5e1",
+                            }}
+                          />
+                          <span className="text-[9px] text-slate-400">{d.date.slice(8)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="mt-3 text-[11px] text-slate-400">
+              只計公開網站訪客（後台瀏覽不計）。深入數據（來源/裝置/熱門頁）請看 Google Analytics。
+            </div>
+          </section>
 
 
           {/* ═══════ 區塊 2：📅 今日 + 明日場次（含客戶名單） ═══════ */}
