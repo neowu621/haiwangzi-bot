@@ -6,7 +6,7 @@
 
 **Production**: https://haiwangzi.xyz  
 **LIFF Entry**: https://liff.line.me/2010006458-fyokMnVv  
-**當前版本**: `20260513_03`
+**當前版本**: `20260619_588`（版本規則 `YYYYMMDD_NN`，見 `src/lib/version.ts`，每次 push 必 bump）
 
 ---
 
@@ -29,6 +29,32 @@
 15. [疑難排解](#疑難排解)
 
 ---
+
+## 專案用途
+
+東北角海王子潛水團的線上營運系統。一套程式服務三種角色：
+
+- **客戶**：在 LINE LIFF App 內預約日潛 / 旅遊潛水、付款上傳憑證、查訂單、提開團許願、看通知。
+- **教練**：LIFF 教練端看當日帶團、排班、水邊核對收款、上傳活動照片。
+- **老闆 / 管理者**：Web 後台（桌機 + 手機版）管理訂單、會員、場次、潛旅、抵用金、客服信箱、群發、報表與網站分析。
+
+公開官網（`haiwangzi.xyz`）負責 SEO 與行銷，導客加 LINE 進 LIFF。
+
+## 目前功能（功能總覽）
+
+- **預約**：日潛場次、潛水旅行團、開團許願單三種管道；場次開始前 2 小時截止。
+- **付款**：銀行轉帳 / LINE Pay；上傳轉帳截圖 → 後台審核憑證 → 確認訂單。
+- **自動通知**（Cronicle 排程）：D-1 行前提醒、訂金/尾款催繳、海況天氣警示、生日抵用金、VIP 升等。
+- **會員 / VIP**：依「海王子潛次」自動升級 LV1–5；註冊送 50 元、首單送 100 元抵用金。
+- **手機後台** `/admin/m`：8 大卡（老闆結帳 / 訂單 / 願望單 / 客服信箱 / 日潛 / 會員 / 潛旅 / 抵用金），手機開 `/admin` 自動進。
+- **客服信箱** `/admin/email`：網站諮詢 + Email + LINE 客人訊息統一收件匣，可在後台直接回（LINE 用官方帳號 / Email 用信件）。
+- **網站分析**：自建訪客計數（今日 / 近 7 天 / 近 24 小時曲線，後台瀏覽不計）＋ Google Analytics 近 30 天（OAuth，免服務帳戶金鑰）嵌入後台 `/admin/analytics`。
+- **保險提醒**：下訂後在訂單成功頁 / 確認信 / LINE 確認訊息引導客戶自行加保個人海域險（富邦第 1 類）。
+- **官網連結**：每封 Email、每則 LINE 文字訊息、歡迎卡都帶官網連結，方便客戶回首頁。
+- **後台登入**：帳密 + Google / LINE OAuth（僅 admin / 老闆）。
+- **裝置分流**：前台手機真人 → `/mobile`；後台 ≤820px → `/admin/m`（爬蟲不轉，留給 SEO）。
+
+> 完整頁面架構與操作說明見後台 `/admin/guide`。
 
 ## 快速開始
 
@@ -440,8 +466,15 @@ Web UI: https://neowu-cron-hub.zeabur.app
 | `R2_ENDPOINT` | R2 endpoint | `https://<account>.r2.cloudflarestorage.com` |
 | `R2_PUBLIC_URL` | 公開 bucket URL base | `https://pub-xxx.r2.dev` |
 | `BANK_NAME` / `BANK_BRANCH` / `BANK_ACCOUNT` / `BANK_HOLDER` | 匯款資訊（顯示於 Flex） | 中國信託 822 / 484540139251 / 汪教練 |
-| `NEXT_PUBLIC_BASE_URL` | 用於 Flex 內 deep link | `https://haiwangzi.xyz` |
+| `NEXT_PUBLIC_BASE_URL` | 用於 Flex 內 deep link + 官網連結 fallback | `https://haiwangzi.xyz` |
 | `NEXT_PUBLIC_LIFF_MOCK` | 桌面測試開關 | `1`=mock, `0`=真實 LIFF |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 後台登入 + GA4 OAuth（共用同一組） | 從 Google Cloud Console |
+| `ADMIN_LINE_USER_IDS` | 新詢問通知老闆的 LINE userId（逗號分隔） | `U123...,U456...` |
+| `ADMIN_NOTIFY_EMAIL` | 新詢問通知老闆的 Email | `neowu62@gmail.com` |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` | 客服信箱收 Email（IMAP） | Gmail 應用程式密碼 |
+| `NEXT_PUBLIC_GA_ID` | GA4 評估 ID（前台 gtag） | `G-XXXXXXXXXX` |
+
+> GA4 Data API 的 refresh token 不放 env，存於 DB（`google_oauth` 表），由後台 `/admin/analytics` 一次性 OAuth 授權取得。
 
 ---
 
@@ -638,6 +671,23 @@ curl -fsS -X POST \
 
 ---
 
+## 已知問題
+
+- **`prisma db push` / `prisma migrate` 在正式環境不可靠** → schema 變更一律加成 idempotent 的 `ALTER/CREATE ... IF NOT EXISTS` 寫進 `scripts/migrate-safety.js`（容器啟動由 `docker-entrypoint.sh` 跑）。
+- **GA4 服務帳戶金鑰被組織政策鎖**（`iam.disableServiceAccountKeyCreation`）→ 已改用 OAuth refresh token 拉 GA 數據，不需金鑰。
+- **新網域 SEO**：`haiwangzi.xyz` 仍在等 Google 收錄（Search Console「無法擷取」屬新站排程延遲，技術面已驗證可被抓取）；有每日自動排程 `haiwangzi-index-check` 追蹤。
+- **純 Flex LINE 卡片**（訂單確認 / 提醒）目前不自動帶社群/官網 footer（只有最後一則 text 訊息與 Email 會帶）；歡迎卡已單獨加官網按鈕。
+- **行動裝置前端鐵則**：手機 / LINE WebView 較慢 → 圖片用 WebP、延遲載入、減少 API 往返、首屏只載必要內容（見 `AGENTS.md`）。
+
+## 下一步
+
+- 等 Google 收錄 `haiwangzi.xyz`（每日排程追蹤，收錄即通知並停止）；可加 Google 商家檔案強化品牌搜尋。
+- （可選）讓「所有純 Flex 卡片」也帶官網 footer。
+- （可選）把後台 `/admin/guide` 的頁面架構圖做成視覺版 / 匯出客戶版說明。
+- 行銷頁 SEO 持續優化（結構化資料、內外連結）。
+
+---
+
 ## 授權與聯絡
 
 私有專案 — 海王子潛水團專用。  
@@ -647,4 +697,4 @@ Email: neowu62@gmail.com
 ---
 
 _Generated and maintained for 東北角海王子潛水團 LIFF App project_  
-_當前版本：`20260513_03`_
+_當前版本：`20260619_588`_
