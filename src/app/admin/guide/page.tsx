@@ -173,10 +173,76 @@ export default function AdminGuidePage() {
         <div className="mb-4 rounded-xl p-5" style={cardStyle}>
           <h1 className="text-lg font-bold" style={{ color: "#e6f0ff" }}>📖 海王子潛水 — 完整操作說明</h1>
           <p className="mt-1 text-xs" style={subStyle}>
-            分「前台篇（客戶 / 教練在 LINE 內看到的）」與「後台篇（你管理用的）」兩大部分，涵蓋預約、付款、提醒、會員、VIP 等完整流程。
+            先看「🗺️ 頁面架構總覽」(前台 / 後台 × 桌機 / 手機 + 裝置分流),再分「前台篇(客戶 / 教練)」與「後台篇(管理用)」,最後「🆕 新功能補充」(手機後台 / 客服信箱 / 願望單 / 網站分析 / 保險 / 外部連結)。
           </p>
           <div className="mt-3"><Legend /></div>
         </div>
+
+        {/* ══════════════ 架構總覽 ══════════════ */}
+        <GroupHeader hint="前台 / 後台 × 桌機 / 手機">🗺️ 頁面架構總覽</GroupHeader>
+
+        <Section title="0 裝置自動分流（重要）">
+          <DiagramBox title="同一網址,依裝置給不同版面">
+            <ul className="list-disc space-y-1 pl-5 text-xs">
+              <li><b>前台</b> <code style={{ color: "#60a5fa" }}>/</code>：桌機 → 桌機版首頁;<b>手機真人 → 自動轉 <code style={{ color: "#60a5fa" }}>/mobile</code></b>(手機版);搜尋引擎爬蟲留在 <code style={{ color: "#60a5fa" }}>/</code> 給 Google 收錄。內容頁皆 RWD,桌機 / 手機共用。</li>
+              <li><b>後台</b> <code style={{ color: "#60a5fa" }}>/admin</code>：螢幕 <b>≤820px 自動轉 <code style={{ color: "#60a5fa" }}>/admin/m</code></b>(手機版 8 大卡);網址加 <code style={{ color: "#60a5fa" }}>?desktop=1</code> 或右上「完整版」可看桌機版。</li>
+            </ul>
+          </DiagramBox>
+        </Section>
+
+        <Section title="0① 四大區塊與主要頁面">
+          <div className="text-xs font-bold" style={{ color: "#34d399" }}>🌊 前台官網（公開・Google 可收錄）</div>
+          <PageRef items={[
+            ["/", "官網首頁(桌機)"],
+            ["/mobile", "手機版首頁(手機真人自動到這)"],
+            ["/schedule", "日潛場次"],
+            ["/course", "課程介紹"],
+            ["/pricing", "價格"],
+            ["/northsea-diving", "東北角潛點"],
+            ["/dive/[潛點]", "單一潛點介紹"],
+            ["/haiwangzi", "品牌 / 教練介紹"],
+            ["/comment", "學員評價"],
+            ["/faq", "常見問題(含保險)"],
+            ["/safety", "安全須知 + 保險說明"],
+            ["/contact", "線上諮詢 → 進客服信箱"],
+          ]} />
+          <div className="mt-2 text-xs font-bold" style={{ color: "#34d399" }}>📱 LIFF 會員 App（LINE 內・手機）</div>
+          <PageRef items={[
+            ["/liff/welcome", "LIFF 入口"],
+            ["/liff/calendar", "場次月曆 → 日潛報名"],
+            ["/liff/tour", "潛旅報名"],
+            ["/liff/wishes/new", "開團許願"],
+            ["/liff/my", "我的預約 / 付款 / 退款"],
+            ["/liff/profile", "會員中心(VIP / 抵用金)"],
+            ["/liff/coach/today", "教練端:今日帶團 / 排班 / 收款"],
+          ]} />
+          <div className="mt-2 text-xs font-bold" style={{ color: "#60a5fa" }}>🖥 後台桌機 /admin（側欄分組）</div>
+          <PageRef items={[
+            ["/admin", "總覽(含訪客計數 + GA)"],
+            ["/admin/tonight", "老闆結帳"],
+            ["/admin/bookings", "訂單管理"],
+            ["/admin/users", "會員管理"],
+            ["/admin/email", "客服信箱(Email + LINE)"],
+            ["/admin/dive-wishes", "願望單"],
+            ["/admin/trips", "日潛場次"],
+            ["/admin/tours", "潛水旅行"],
+            ["/admin/credits", "抵用金"],
+            ["/admin/analytics", "網站分析(GA4)"],
+            ["/admin/settings", "系統設定(含外部連結)"],
+          ]} />
+          <div className="mt-2 text-xs font-bold" style={{ color: "#60a5fa" }}>📱 後台手機 /admin/m（8 大卡）</div>
+          <PageRef items={[
+            ["/admin/m", "手機後台首頁(8 卡 + 訪客數)"],
+            ["/admin/m/tonight", "老闆結帳"],
+            ["/admin/m/bookings", "訂單"],
+            ["/admin/m/dive-wishes", "願望單"],
+            ["/admin/m/email", "客服信箱"],
+            ["/admin/m/trips", "日潛場次"],
+            ["/admin/m/users", "會員"],
+            ["/admin/m/tours", "潛旅"],
+            ["/admin/m/credits", "抵用金"],
+          ]} />
+        </Section>
 
         {/* ══════════════ 前台篇 ══════════════ */}
         <GroupHeader hint="客戶 / 教練在 LINE LIFF 內操作">🌊 前台篇</GroupHeader>
@@ -450,6 +516,55 @@ export default function AdminGuidePage() {
             <li><b>VIP 等級怪怪的</b>？→ 看「海王子潛次」而非自填總經驗；存一次 VIP 設定會全員重算。</li>
             <li><b>場次點不進去</b>？→ 開始前 2 小時已截止，屬正常。</li>
             <li><b>部署後版本沒更新</b>？→ 看後台左下角 v 版號 / <code>/api/healthz</code>。</li>
+          </ul>
+        </Section>
+
+        {/* ══════════════ 新功能補充 ══════════════ */}
+        <GroupHeader hint="近期新增的功能">🆕 新功能補充</GroupHeader>
+
+        <Section title="新① 手機後台（/admin/m）">
+          <ul className="list-disc space-y-1 pl-5 text-xs">
+            <li>手機開 <code>/admin</code> 會<b>自動進手機版 <code>/admin/m</code></b>（8 大卡:老闆結帳 / 訂單 / 願望單 / 客服信箱 / 日潛 / 會員 / 潛旅 / 抵用金）。</li>
+            <li>每張子頁最上面有「<b>← 首頁</b>」可一鍵回手機後台首頁;右上「<b>完整版</b>」切桌機。</li>
+            <li>常用動作可就地做(確認收款 / 回覆客服 / 發抵用金);複雜編輯仍深連桌機。</li>
+          </ul>
+        </Section>
+
+        <Section title="新② 客服信箱（Email + LINE 整合）">
+          <PageRef items={[
+            ["/admin/email", "統一收件匣:網站諮詢 / Email / LINE 客人訊息"],
+            ["/contact", "客戶端線上諮詢表單(送出即進信箱 + 通知老闆)"],
+          ]} />
+          <ul className="list-disc space-y-1 pl-5 text-xs">
+            <li>客戶從 <code>/contact</code> 送出 → 自動<b>通知老闆(LINE + Email)</b> + 寄<b>自動回覆</b>給客戶。</li>
+            <li>LINE 客人傳訊也會進信箱(💬 標記),可在後台<b>直接用官方帳號回覆</b>;Email 來信則以 Email 回。</li>
+            <li>支援安全的 HTML 信件閱讀(沙箱)+ 回覆。</li>
+          </ul>
+        </Section>
+
+        <Section title="新③ 願望單（找不到日期時客戶自提）">
+          <PageRef items={[
+            ["/admin/dive-wishes", "願望單管理:回覆 / 開場次 / 轉訂單"],
+            ["/liff/wishes/new", "客戶端提願望"],
+          ]} />
+          <p className="text-xs">客戶提想潛的日期 / 型態 → 後台回覆討論 → 喬好後直接開場次或轉訂單。手機版 <code>/admin/m/dive-wishes</code> 可就地回覆。</p>
+        </Section>
+
+        <Section title="新④ 網站分析（訪客計數 + Google Analytics）">
+          <ul className="list-disc space-y-1 pl-5 text-xs">
+            <li><b>即時計數(自建)</b>:後台總覽左卡顯示今日 / 近 7 天訪客 + <b>近 24 小時曲線</b>。隱私友善,只存每天 / 每小時總數,<b>後台自己的瀏覽不計</b>。</li>
+            <li><b>Google Analytics(近 30 天)</b>:總覽右卡;點「詳細分析」進 <code>/admin/analytics</code> 看訪客趨勢 / 熱門頁 / 來源 / 裝置(需先在 analytics 頁連接 Google 授權)。</li>
+          </ul>
+        </Section>
+
+        <Section title="新⑤ 保險提醒（下訂後引導加保個人海域險）">
+          <p className="text-xs">客戶下訂後,在<b>訂單成功頁 / 確認 Email / LINE 確認訊息</b>都會出現「建議自行加保個人海域險(富邦第1類)」+ 投保連結;<code>/safety</code> 與 <code>/faq</code> 也有保險說明。文案集中在 <code>lib/insurance.ts</code>,改一處全站同步。</p>
+        </Section>
+
+        <Section title="新⑥ 官網外部連結 + Google 後台登入">
+          <ul className="list-disc space-y-1 pl-5 text-xs">
+            <li><b>外部連結</b>(系統設定 → 外部連結):官方網站 / FB / YouTube / IG / LINE QR。其中<b>官網會自動附在每封 Email 與 LINE 訊息結尾</b>。</li>
+            <li><b>Google / LINE 後台登入</b>:<code>/admin/login</code> 可用 Google 或 LINE 快速登入(僅限 admin / 老闆;Email 須與帳號相符)。</li>
           </ul>
         </Section>
       </div>
