@@ -23,6 +23,12 @@ interface VisitStats {
   week: { views: number; visitors: number };
   days: DayStat[];
 }
+interface GaResp {
+  connected: boolean;
+  needProperty?: boolean;
+  insights?: { trend: Array<{ date: string; users: number; views: number }> };
+  error?: string;
+}
 
 interface CustomerOnTrip {
   name: string;
@@ -107,6 +113,7 @@ export default function AdminDashboard() {
   }, [router]);
   const [stats, setStats] = useState<Stats | null>(() => getCached<Stats>(STATS_URL) ?? null);
   const [visits, setVisits] = useState<VisitStats | undefined>(() => getCached<VisitStats>(VISITS_URL)); // v577
+  const [ga, setGa] = useState<GaResp | null>(null); // v581：GA 近 30 天摘要
   const [pendingWishes, setPendingWishes] = useState(0); // v318
   const [loading, setLoading] = useState(() => getCached(STATS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
@@ -136,6 +143,13 @@ export default function AdminDashboard() {
 
   useEffect(() => { load(); }, []);
 
+  // v581：GA 近 30 天摘要(獨立載入,慢也不擋主儀表板)
+  useEffect(() => {
+    adminFetch<GaResp>("/api/admin/ga/insights")
+      .then(setGa)
+      .catch(() => setGa({ connected: false, error: "讀取失敗" }));
+  }, []);
+
   // v570：手機轉址中 → 不渲染桌機儀表板(避免閃一下)
   if (mRedirect) return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#7c8a96", fontSize: 14 }}>開啟手機版…</div>;
 
@@ -156,62 +170,100 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          {/* ═══════ v577：網站訪客 ═══════ */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <Eye className="h-3.5 w-3.5" /> 網站訪客
-            </div>
-            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <div>
-                <div className="text-3xl font-bold tabular-nums text-slate-900">
-                  {visits ? visits.today.visitors : "–"}
-                </div>
-                <div className="mt-0.5 text-xs text-slate-500">
-                  今日訪客{visits ? `・${visits.today.views} 次瀏覽` : ""}
-                </div>
+          {/* ═══════ v577/v581：網站訪客 — 左:即時計數(自建)  右:Google Analytics(近30天) ═══════ */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* 左：即時計數器（自建、隱私友善） */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <Eye className="h-3.5 w-3.5" /> 網站訪客（即時計數）
               </div>
-              <div>
-                <div className="text-3xl font-bold tabular-nums" style={{ color: "#0891b2" }}>
-                  {visits ? visits.week.visitors : "–"}
+              <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+                <div>
+                  <div className="text-3xl font-bold tabular-nums text-slate-900">
+                    {visits ? visits.today.visitors : "–"}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    今日訪客{visits ? `・${visits.today.views} 次瀏覽` : ""}
+                  </div>
                 </div>
-                <div className="mt-0.5 text-xs text-slate-500">近 7 天訪客</div>
+                <div>
+                  <div className="text-3xl font-bold tabular-nums" style={{ color: "#0891b2" }}>
+                    {visits ? visits.week.visitors : "–"}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">近 7 天訪客</div>
+                </div>
+                {visits && (() => {
+                  const max = Math.max(1, ...visits.days.map((d) => d.visitors));
+                  return (
+                    <div className="ml-auto flex h-14 items-end gap-1.5">
+                      {visits.days.map((d, i) => {
+                        const isToday = i === visits.days.length - 1;
+                        return (
+                          <div key={d.date} className="flex flex-col items-center gap-1">
+                            <div className="w-4 rounded-t"
+                              title={`${d.date.slice(5)}：${d.visitors} 人 / ${d.views} 次`}
+                              style={{ height: `${Math.max(6, (d.visitors / max) * 44)}px`, background: isToday ? "#0891b2" : "#cbd5e1" }} />
+                            <span className="text-[9px] text-slate-400">{d.date.slice(8)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
-              {/* 近 7 天訪客長條 */}
-              {visits && (() => {
-                const max = Math.max(1, ...visits.days.map((d) => d.visitors));
+              <div className="mt-3 text-[11px] text-slate-400">只計公開網站訪客（後台瀏覽不計）。</div>
+            </section>
+
+            {/* 右：Google Analytics（近 30 天） */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <BarChart3 className="h-3.5 w-3.5" /> Google Analytics（近 30 天）
+                </div>
+                <button onClick={() => router.push("/admin/analytics")}
+                  className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-white" style={{ background: "#0891b2" }}>
+                  詳細分析 ›
+                </button>
+              </div>
+              {ga?.insights ? (() => {
+                const trend = ga.insights.trend;
+                const users = trend.reduce((a, d) => a + d.users, 0);
+                const views = trend.reduce((a, d) => a + d.views, 0);
+                const max = Math.max(1, ...trend.map((d) => d.users));
                 return (
-                  <div className="ml-auto flex h-14 items-end gap-1.5">
-                    {visits.days.map((d, i) => {
-                      const isToday = i === visits.days.length - 1;
-                      return (
-                        <div key={d.date} className="flex flex-col items-center gap-1">
-                          <div
-                            className="w-4 rounded-t"
-                            title={`${d.date.slice(5)}：${d.visitors} 人 / ${d.views} 次`}
-                            style={{
-                              height: `${Math.max(6, (d.visitors / max) * 44)}px`,
-                              background: isToday ? "#0891b2" : "#cbd5e1",
-                            }}
-                          />
-                          <span className="text-[9px] text-slate-400">{d.date.slice(8)}</span>
-                        </div>
-                      );
-                    })}
+                  <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+                    <div>
+                      <div className="text-3xl font-bold tabular-nums text-slate-900">{users.toLocaleString()}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">近 30 天訪客</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold tabular-nums" style={{ color: "#7c3aed" }}>{views.toLocaleString()}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">近 30 天瀏覽</div>
+                    </div>
+                    <div className="ml-auto flex h-14 items-end gap-[2px]">
+                      {trend.map((d) => (
+                        <div key={d.date} className="w-1 rounded-t" title={`${d.date}：${d.users} 訪客`}
+                          style={{ height: `${Math.max(3, (d.users / max) * 52)}px`, background: "#c4b5fd" }} />
+                      ))}
+                    </div>
                   </div>
                 );
-              })()}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] text-slate-400">只計公開網站訪客（後台瀏覽不計）。</span>
-              <button
-                onClick={() => router.push("/admin/analytics")}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-white"
-                style={{ background: "#0891b2" }}
-              >
-                <BarChart3 className="h-3.5 w-3.5" /> 詳細分析（來源/裝置/熱門頁）
-              </button>
-            </div>
-          </section>
+              })() : ga && ga.connected && ga.needProperty ? (
+                <button onClick={() => router.push("/admin/analytics")} className="flex h-20 w-full items-center justify-center rounded-xl border border-dashed border-amber-300 bg-amber-50 text-sm text-amber-700">
+                  已連接，請點此設定 GA4 資源 ID →
+                </button>
+              ) : ga && !ga.connected ? (
+                <button onClick={() => router.push("/admin/analytics")} className="flex h-20 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
+                  <span>尚未連接 Google Analytics</span>
+                  <span className="text-xs" style={{ color: "#0891b2" }}>點此連接，看來源 / 裝置 / 熱門頁 →</span>
+                </button>
+              ) : (
+                <div className="flex h-20 items-center justify-center text-xs text-slate-400">
+                  {ga?.error ? `讀取失敗，點「詳細分析」查看` : "GA 載入中..."}
+                </div>
+              )}
+            </section>
+          </div>
 
 
           {/* ═══════ 區塊 2：📅 今日 + 明日場次（含客戶名單） ═══════ */}
