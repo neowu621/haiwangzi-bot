@@ -1003,6 +1003,16 @@ model DailyStat {
   @@map("daily_stats")
 }
 
+// v584：每小時訪客計數（給後台「近 24 小時」活動圖）。hour = "YYYY-MM-DD HH"（Asia/Taipei）。
+model HourlyStat {
+  hour      String   @id @db.VarChar(13) // "YYYY-MM-DD HH"（Asia/Taipei）
+  views     Int      @default(0)
+  visitors  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("hourly_stats")
+}
+
 // v580：Google OAuth 連線（目前用於 GA4 Data API 唯讀）。provider="ga"。
 //   refreshToken 是長期憑證 → 後台用它換 access token 拉 GA 數據（analytics.readonly）。
 //   只有老闆/管理者能連接；存於自家 DB（非 repo）。

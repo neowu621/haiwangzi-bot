@@ -562,6 +562,13 @@ const PATCHES = [
      visitors INT NOT NULL DEFAULT 0,
      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
+  // v584：每小時訪客計數（後台「近 24 小時」活動圖）
+  `CREATE TABLE IF NOT EXISTS hourly_stats (
+     hour VARCHAR(13) PRIMARY KEY,
+     views INT NOT NULL DEFAULT 0,
+     visitors INT NOT NULL DEFAULT 0,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
   // v580：Google OAuth 連線（GA4 唯讀 refresh token）
   `CREATE TABLE IF NOT EXISTS google_oauth (
      provider VARCHAR(16) PRIMARY KEY,

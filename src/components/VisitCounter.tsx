@@ -14,17 +14,23 @@ export function VisitCounter() {
       if (window.location.pathname.startsWith("/admin")) return;
 
       const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+      // v584：小時桶 "YYYY-MM-DD HH"（Asia/Taipei）
+      const hourKey = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 13);
       const key = `hwz_seen_${today}`;
+      const hkey = `hwz_h_${hourKey}`;
       let isNew = false;
+      let isNewHour = false;
       try {
         isNew = !localStorage.getItem(key);
         if (isNew) localStorage.setItem(key, "1");
+        isNewHour = !localStorage.getItem(hkey);
+        if (isNewHour) localStorage.setItem(hkey, "1");
       } catch {
         /* 無痕模式等 localStorage 不可用 → 當作一般 view */
       }
 
       const url = "/api/track/visit";
-      const body = JSON.stringify({ u: isNew });
+      const body = JSON.stringify({ u: isNew, uh: isNewHour });
       if (typeof navigator !== "undefined" && navigator.sendBeacon) {
         navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
       } else {

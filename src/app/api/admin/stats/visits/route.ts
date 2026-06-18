@@ -35,5 +35,23 @@ export async function GET(req: NextRequest) {
     { views: 0, visitors: 0 },
   );
 
-  return NextResponse.json({ today, week, days, todayStr });
+  // v584：近 24 小時(每小時)— 小時桶 "YYYY-MM-DD HH"(Asia/Taipei)
+  const twHour = (d: Date) => d.toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 13);
+  const hourKeys: string[] = [];
+  for (let i = 23; i >= 0; i--) hourKeys.push(twHour(new Date(now - i * 3600000)));
+  const hourRows = await prisma.hourlyStat.findMany({
+    where: { hour: { in: hourKeys } },
+    select: { hour: true, views: true, visitors: true },
+  });
+  const hourMap = new Map(hourRows.map((r) => [r.hour, r]));
+  const hours = hourKeys.map((h) => {
+    const r = hourMap.get(h);
+    return { hour: h, hh: h.slice(11, 13), views: r?.views ?? 0, visitors: r?.visitors ?? 0 };
+  });
+  const last24 = hours.reduce(
+    (a, h) => ({ views: a.views + h.views, visitors: a.visitors + h.visitors }),
+    { views: 0, visitors: 0 },
+  );
+
+  return NextResponse.json({ today, week, days, hours, last24, todayStr });
 }

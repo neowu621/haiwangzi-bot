@@ -18,10 +18,13 @@ import {
 } from "lucide-react";
 
 interface DayStat { date: string; views: number; visitors: number }
+interface HourStat { hour: string; hh: string; views: number; visitors: number }
 interface VisitStats {
   today: DayStat;
   week: { views: number; visitors: number };
   days: DayStat[];
+  hours?: HourStat[];
+  last24?: { views: number; visitors: number };
 }
 interface GaResp {
   connected: boolean;
@@ -211,6 +214,36 @@ export default function AdminDashboard() {
                   );
                 })()}
               </div>
+              {/* v584：近 24 小時(每小時瀏覽)活動圖 */}
+              {visits?.hours && visits.hours.length > 0 && (() => {
+                const hmax = Math.max(1, ...visits.hours.map((h) => h.views));
+                return (
+                  <div className="mt-4 border-t border-slate-100 pt-3">
+                    <div className="mb-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="font-medium">近 24 小時</span>
+                      <span className="text-slate-400">{visits.last24?.views ?? 0} 次瀏覽・{visits.last24?.visitors ?? 0} 訪客</span>
+                    </div>
+                    <div className="flex h-14 items-end gap-[2px]">
+                      {visits.hours.map((h, i) => {
+                        const isNow = i === visits.hours!.length - 1;
+                        return (
+                          <div
+                            key={h.hour}
+                            className="flex-1 rounded-t"
+                            title={`${h.hh}:00　${h.views} 次瀏覽 / ${h.visitors} 訪客`}
+                            style={{ height: `${Math.max(2, (h.views / hmax) * 56)}px`, background: isNow ? "#0891b2" : "#cbd5e1" }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="mt-1 flex justify-between text-[9px] text-slate-400">
+                      <span>{visits.hours[0]?.hh}:00</span>
+                      <span>12:00</span>
+                      <span>現在</span>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="mt-3 text-[11px] text-slate-400">只計公開網站訪客（後台瀏覽不計）。</div>
             </section>
 

@@ -10,25 +10,43 @@ export const dynamic = "force-dynamic";
 function taipeiToday(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
 }
+// 台北小時桶 "YYYY-MM-DD HH"
+function taipeiHour(): string {
+  return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 13);
+}
 
 export async function POST(req: NextRequest) {
   try {
     let isNew = false;
+    let isNewHour = false;
     try {
-      const body = (await req.json()) as { u?: unknown };
+      const body = (await req.json()) as { u?: unknown; uh?: unknown };
       isNew = body?.u === true;
+      isNewHour = body?.uh === true;
     } catch {
       /* 無 body / 壞 body 都當一般 view */
     }
     const date = taipeiToday();
-    await prisma.dailyStat.upsert({
-      where: { date },
-      create: { date, views: 1, visitors: isNew ? 1 : 0 },
-      update: {
-        views: { increment: 1 },
-        ...(isNew ? { visitors: { increment: 1 } } : {}),
-      },
-    });
+    const hour = taipeiHour();
+    await Promise.all([
+      prisma.dailyStat.upsert({
+        where: { date },
+        create: { date, views: 1, visitors: isNew ? 1 : 0 },
+        update: {
+          views: { increment: 1 },
+          ...(isNew ? { visitors: { increment: 1 } } : {}),
+        },
+      }),
+      // v584：每小時桶
+      prisma.hourlyStat.upsert({
+        where: { hour },
+        create: { hour, views: 1, visitors: isNewHour ? 1 : 0 },
+        update: {
+          views: { increment: 1 },
+          ...(isNewHour ? { visitors: { increment: 1 } } : {}),
+        },
+      }),
+    ]);
   } catch (e) {
     // 計數失敗絕不影響使用者；只記 log
     console.error("[track/visit]", e);
