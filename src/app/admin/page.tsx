@@ -202,7 +202,16 @@ export default function AdminDashboard() {
               })()}
             </div>
             <div className="mt-3 text-[11px] text-slate-400">
-              只計公開網站訪客（後台瀏覽不計）。深入數據（來源/裝置/熱門頁）請看 Google Analytics。
+              只計公開網站訪客（後台瀏覽不計）。深入數據（來源/裝置/熱門頁）請看{" "}
+              <a
+                href="https://analytics.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline hover:text-cyan-600"
+                style={{ color: "#0891b2" }}
+              >
+                Google Analytics ↗
+              </a>
             </div>
           </section>
 
