@@ -46,7 +46,8 @@ export async function getSocialFooter(): Promise<SocialFooter> {
     // DB 失敗 → 回空 footer，不影響主訊息
   }
 
-  const web = links.websiteUrl?.trim();
+  // v588：官網永遠帶上(沒設定就 fallback 到正式網址),讓每封信 / 每則 LINE 都能回首頁
+  const web = links.websiteUrl?.trim() || process.env.NEXT_PUBLIC_BASE_URL || "https://haiwangzi.xyz";
   const fb = links.fbGroupUrl?.trim();
   const yt = links.youtubeChannelUrl?.trim();
   const ig = links.instagramUrl?.trim();

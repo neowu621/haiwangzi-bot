@@ -13,6 +13,8 @@ export function welcome(
     params.liffUrl,
     "https://liff.line.me/2010006458-fyokMnVv",
   );
+  // v588：官方網站連結(讓客戶輕鬆到首頁認識我們)
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://haiwangzi.xyz";
   return flex(altText, {
     type: "bubble",
     hero: {
@@ -121,6 +123,17 @@ export function welcome(
             type: "uri",
             label: ovr(override, "buttonLabel", "開啟預約 App"),
             uri: liffUrl,
+          },
+        },
+        // v588：官方網站連結
+        {
+          type: "button",
+          style: "link",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: "認識我們 · 官方網站",
+            uri: siteUrl,
           },
         },
       ],
