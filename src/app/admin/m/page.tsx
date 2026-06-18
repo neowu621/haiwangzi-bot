@@ -79,14 +79,16 @@ export default function MobileAdminHome() {
         </div>
       )}
 
-      {/* v577：訪客計數卡 — 今日/本週訪客 + 近 7 天迷你長條 */}
-      <div
-        className="mb-3 rounded-2xl border p-3.5"
+      {/* v577：訪客計數卡 — 今日/本週訪客 + 近 7 天迷你長條;v580：可點進詳細分析 */}
+      <Link
+        href="/admin/analytics"
+        className="mb-3 block rounded-2xl border p-3.5 active:scale-[0.99]"
         style={{ background: "var(--color-ocean-deep)", borderColor: "rgba(0,0,0,0.08)" }}
       >
         <div className="mb-2 flex items-center gap-1.5" style={{ color: "var(--color-phosphor)" }}>
           <Eye className="h-4 w-4" />
           <span className="text-[11px] font-bold tracking-wide">網站訪客</span>
+          <span className="ml-auto text-[10px] font-medium" style={{ color: "rgba(230,240,255,0.7)" }}>詳細分析 ›</span>
         </div>
         <div className="flex items-end gap-5">
           <div>
@@ -125,7 +127,7 @@ export default function MobileAdminHome() {
             </div>
           )}
         </div>
-      </div>
+      </Link>
 
       <div className="grid grid-cols-2 gap-3">
         {cards.map((c) => {

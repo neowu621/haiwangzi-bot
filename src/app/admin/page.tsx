@@ -14,7 +14,7 @@ const VISITS_URL = "/api/admin/stats/visits";
 import { useRouter } from "next/navigation";
 import {
   Calendar, ChevronRight, Sun, Moon,
-  UserCheck, Trophy, Cake, RotateCw, Eye,
+  UserCheck, Trophy, Cake, RotateCw, Eye, BarChart3,
 } from "lucide-react";
 
 interface DayStat { date: string; views: number; visitors: number }
@@ -201,17 +201,15 @@ export default function AdminDashboard() {
                 );
               })()}
             </div>
-            <div className="mt-3 text-[11px] text-slate-400">
-              只計公開網站訪客（後台瀏覽不計）。深入數據（來源/裝置/熱門頁）請看{" "}
-              <a
-                href="https://analytics.google.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium underline hover:text-cyan-600"
-                style={{ color: "#0891b2" }}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[11px] text-slate-400">只計公開網站訪客（後台瀏覽不計）。</span>
+              <button
+                onClick={() => router.push("/admin/analytics")}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-white"
+                style={{ background: "#0891b2" }}
               >
-                Google Analytics ↗
-              </a>
+                <BarChart3 className="h-3.5 w-3.5" /> 詳細分析（來源/裝置/熱門頁）
+              </button>
             </div>
           </section>
 

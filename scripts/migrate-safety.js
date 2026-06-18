@@ -562,6 +562,14 @@ const PATCHES = [
      visitors INT NOT NULL DEFAULT 0,
      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
+  // v580：Google OAuth 連線（GA4 唯讀 refresh token）
+  `CREATE TABLE IF NOT EXISTS google_oauth (
+     provider VARCHAR(16) PRIMARY KEY,
+     refresh_token TEXT NOT NULL,
+     property_id VARCHAR(32),
+     connected_by VARCHAR(64),
+     connected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
 ];
 
 async function main() {

@@ -1003,6 +1003,19 @@ model DailyStat {
   @@map("daily_stats")
 }
 
+// v580：Google OAuth 連線（目前用於 GA4 Data API 唯讀）。provider="ga"。
+//   refreshToken 是長期憑證 → 後台用它換 access token 拉 GA 數據（analytics.readonly）。
+//   只有老闆/管理者能連接；存於自家 DB（非 repo）。
+model GoogleOAuth {
+  provider     String   @id // "ga"
+  refreshToken String   @map("refresh_token")
+  propertyId   String?  @map("property_id") // GA4 數字資源 ID
+  connectedBy  String?  @map("connected_by")
+  connectedAt  DateTime @default(now()) @map("connected_at") @db.Timestamptz
+
+  @@map("google_oauth")
+}
+
 enum ThreadStatus {
   WAITING // 待回覆
   PROCESSING // 處理中
