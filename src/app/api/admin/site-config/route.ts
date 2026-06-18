@@ -60,6 +60,7 @@ const PatchSchema = z.object({
   weatherWindThreshold: z.number().int().min(1).max(50).optional(),
   // 外部連結（FB 社群、IG、YouTube、LINE OA QR 等）
   externalLinks: z.object({
+    websiteUrl: z.string().url().optional().or(z.literal("")),  // v583：官方網站
     fbGroupUrl: z.string().url().optional().or(z.literal("")),
     mediaUrl: z.string().url().optional().or(z.literal("")),
     youtubeChannelUrl: z.string().url().optional().or(z.literal("")),

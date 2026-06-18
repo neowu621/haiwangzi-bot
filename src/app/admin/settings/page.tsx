@@ -40,6 +40,7 @@ interface VipUpgradeCredits {
 }
 
 interface ExternalLinks {
+  websiteUrl?: string;        // v583：官方網站 https://haiwangzi.xyz
   fbGroupUrl?: string;
   mediaUrl?: string;
   youtubeChannelUrl?: string;
@@ -490,6 +491,13 @@ export default function SettingsPage() {
             這些連結會被 LINE Rich Menu 與 LIFF 引用。修改後需重新同步 Rich Menu 才會生效。
           </p>
           <div className="grid grid-cols-1 gap-3">
+            <FieldRow label="官方網站">
+              <Input
+                value={cfg?.externalLinks?.websiteUrl ?? ""}
+                onChange={(e) => setCfg((c) => c ? { ...c, externalLinks: { ...(c.externalLinks ?? {}), websiteUrl: e.target.value } } : c)}
+                placeholder="https://haiwangzi.xyz"
+              />
+            </FieldRow>
             <FieldRow label="Facebook 社團">
               <Input
                 value={cfg?.externalLinks?.fbGroupUrl ?? ""}

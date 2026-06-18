@@ -19,6 +19,7 @@ export interface SocialFooter {
 }
 
 interface ExternalLinks {
+  websiteUrl?: string; // v583：官方網站
   fbGroupUrl?: string;
   youtubeChannelUrl?: string;
   instagramUrl?: string;
@@ -45,12 +46,14 @@ export async function getSocialFooter(): Promise<SocialFooter> {
     // DB 失敗 → 回空 footer，不影響主訊息
   }
 
+  const web = links.websiteUrl?.trim();
   const fb = links.fbGroupUrl?.trim();
   const yt = links.youtubeChannelUrl?.trim();
   const ig = links.instagramUrl?.trim();
 
   // LINE 文字版
   const lineLines: string[] = [];
+  if (web) lineLines.push(`🌐 官網：${web}`);
   if (fb) lineLines.push(`📘 Facebook：${fb}`);
   if (yt) lineLines.push(`▶️ YouTube：${yt}`);
   if (ig) lineLines.push(`📷 Instagram：${ig}`);
@@ -60,6 +63,7 @@ export async function getSocialFooter(): Promise<SocialFooter> {
 
   // Email HTML 版
   const parts: string[] = [];
+  if (web) parts.push(`<a href="${web}" style="color:#0a8f86;text-decoration:none">官方網站</a>`);
   if (fb) parts.push(`<a href="${fb}" style="color:#1877F2;text-decoration:none">Facebook</a>`);
   if (yt) parts.push(`<a href="${yt}" style="color:#FF0000;text-decoration:none">YouTube</a>`);
   if (ig) parts.push(`<a href="${ig}" style="color:#E1306C;text-decoration:none">Instagram</a>`);
