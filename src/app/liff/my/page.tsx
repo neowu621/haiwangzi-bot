@@ -34,6 +34,7 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { deriveBookingDisplay } from "@/lib/booking-status"; // v319
+import { InsuranceNotice } from "@/components/InsuranceNotice"; // v582
 import { computePaymentDeadline, activityStartFromTaipei } from "@/lib/payment-deadline"; // v367
 
 type GearItemType =
@@ -309,9 +310,25 @@ export default function MyBookingsPage() {
     }
   }
 
+  // v582：剛下訂(/liff/my?just=<id>)→ 顯示個人海域險安心提醒
+  const [justBooked, setJustBooked] = useState(false);
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("just")) setJustBooked(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return (
     <LiffShell title="我的預約" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <div className="px-4 pt-4">
+        {/* v582：下訂後安心提醒 — 建議自行加保個人海域險 */}
+        {justBooked && (
+          <div className="mb-3">
+            <InsuranceNotice variant="compact" />
+          </div>
+        )}
         {/* 站內通知中心入口 */}
         <Link
           href="/liff/notifications"

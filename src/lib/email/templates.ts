@@ -5,6 +5,8 @@
 //  - 全繁體中文，避免被歸類為垃圾信
 //  - 不要塞太多圖（也不要 hot-link，會被擋）
 
+import { insuranceEmailSection, insuranceTextSection } from "@/lib/insurance"; // v582
+
 export interface EmailContent {
   subject: string;
   text: string;
@@ -111,7 +113,9 @@ export function bookingConfirmEmail(params: {
     `你的預約已確認 ✓\n\n` +
     lines.map(([k, v]) => `  ${k}：${v}`).join("\n") +
     `\n\n預約編號：${params.bookingId.slice(0, 8)}\n\n` +
-    `如要取消或修改，請在 LINE 官方帳號告訴我們。\n\n— 海王子潛水團`;
+    `如要取消或修改，請在 LINE 官方帳號告訴我們。` +
+    insuranceTextSection() + // v582：建議加保個人海域險
+    `\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -134,6 +138,7 @@ export function bookingConfirmEmail(params: {
           </div>`
         : ""
     }
+    ${insuranceEmailSection()}
     <p style="font-size:12px;color:#6b7280;margin:20px 0 0 0;">預約編號：${params.bookingId.slice(0, 8)}</p>
     `,
   );

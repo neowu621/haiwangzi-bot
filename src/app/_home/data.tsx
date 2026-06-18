@@ -200,7 +200,7 @@ export const FAQ: { zh: string; en: string; items: QA[] }[] = [
     { q: "可以一個人報名嗎？", a: "可以，常有同學單獨報名，現場也很容易認識新潛伴，一起下水更有趣。" },
   ] },
   { zh: "保險提醒（重要）", en: "Insurance", items: [
-    { q: "有保險嗎？需要自己加保嗎？", a: (<><p>本店已投保相關責任保險。為了讓你獲得更完整的保障，仍強烈建議自行加保潛水專屬／海域活動保險：</p><ul><li><a href="https://www.fubon.com/insurance/b2c/content/marine_activity/index.html" target="_blank" rel="noopener">富邦海域活動險</a></li><li><a href="https://www.cathay-ins.com.tw/cathayins/personal/travel/sea/" target="_blank" rel="noopener">國泰海域活動保險</a></li></ul></>) },
+    { q: "有保險嗎？需要自己加保嗎？", a: (<><p>潛水有兩層保障，互補不可取代：</p><p>① <b>店家責任險</b>：教練／店家已投保「水域遊憩活動責任保險」，保障活動期間責任。</p><p>② <b>個人海域險</b>：保障您個人安全，建議自行加保。富邦線上即可投保（第1類含水肺潛水）：</p><ul><li><a href="https://www.fubon.com/insurance/b2c/content/marine_activity/index.html" target="_blank" rel="noopener">富邦海域險線上投保《第1類活動》</a></li><li><a href="https://www.cathay-ins.com.tw/cathayins/personal/travel/sea/" target="_blank" rel="noopener">國泰海域活動保險（其他可參考）</a></li></ul><p style={{ fontSize: 12.5, color: "#8595a6" }}>詳細投保內容與需求依保險條款，建議自行向富邦洽詢。</p></>) },
   ] },
   { zh: "活動紀錄與隱私", en: "Photos & Privacy", items: [
     { q: "活動會拍照、錄影嗎？會公開使用嗎？", a: "活動中可能拍攝照片／影片，用於官方社群與活動紀錄。若你不同意公開使用，請於活動前告知，我們會予以尊重。" },

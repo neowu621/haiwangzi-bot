@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 import { LegalShell } from "../_legal/LegalShell";
+import { InsuranceNotice } from "@/components/InsuranceNotice"; // v582
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // 讀 DB 最新安全政策
@@ -32,6 +33,8 @@ export default async function SafetyPage() {
   return (
     <LegalShell title="潛水安全注意事項" updated="2026-06-12" backHref="/" backLabel="返回首頁">
       <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.9 }}>{linkify(policy)}</div>
+      {/* v582：個人海域險投保提醒(兩層保險說明) */}
+      <InsuranceNotice variant="full" />
       <p style={{ marginTop: 28, fontSize: 13, color: "#7c9296", borderTop: "1px solid #e3e9f0", paddingTop: 16 }}>
         🌊 完成預約即視同已閱讀並同意以上安全須知。潛水安全第一，如有任何不適請勿勉強，歡迎直接 LINE 與汪汪教練聯繫。
       </p>

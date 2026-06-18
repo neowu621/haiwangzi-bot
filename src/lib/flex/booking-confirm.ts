@@ -1,5 +1,6 @@
 import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
+import { FUBON_MARINE_URL } from "@/lib/insurance"; // v582
 
 // 預約確認 Flex 卡
 // params: { name, date, time, site, total, bookingId? }
@@ -45,6 +46,14 @@ export function bookingConfirm(
           color: COLORS.phosphor,
           action: { type: "uri", label: ovr(override, "buttonLabel", "查看我的預約"), uri: asString(params.url, "https://line.me/") },
         },
+        // v582：建議自行加保個人海域險(富邦,第1類含水肺潛水)
+        {
+          type: "button",
+          style: "link",
+          height: "sm",
+          action: { type: "uri", label: "海域險投保《第1類活動》", uri: FUBON_MARINE_URL },
+        },
+        { type: "text", text: "建議自行加保個人海域險・詳情洽富邦", size: "xxs", color: COLORS.mute, align: "center", wrap: true },
       ],
     },
   });
