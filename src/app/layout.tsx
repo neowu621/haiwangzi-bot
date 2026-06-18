@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_TC, Outfit } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@/components/Analytics";
+import { VisitCounter } from "@/components/VisitCounter";
 
 // v428：載入優化 — 移除「Noto Serif TC（CJK 明體，render-blocking 字體 CSS 大宗）」與
 //   全站未使用的 Inter；Noto Sans TC 字重 6→4（砍 300/600，faux 合成可接受）。
@@ -54,6 +55,8 @@ export default function RootLayout({
         {children}
         {/* v503：GA4（只有設了 NEXT_PUBLIC_GA_ID 才載入）*/}
         <Analytics />
+        {/* v577：自建每日訪客計數 beacon（背景送，不擋載入；/admin 不計）*/}
+        <VisitCounter />
       </body>
     </html>
   );

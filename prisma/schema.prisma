@@ -991,6 +991,18 @@ model EmailDeletedMsgId {
   @@map("email_deleted_msgids")
 }
 
+// v577：每日訪客計數（隱私友善）— 只存「每天總數」聚合，不存任何訪客身分 / 不放 cookie。
+//   views    = 當天頁面開啟次數（每次全頁載入 +1，/admin 後台不計）
+//   visitors = 當天「新訪客」數（同一瀏覽器當天第一次開才 +1，靠 localStorage 旗標判斷）
+model DailyStat {
+  date      String   @id @db.VarChar(10) // YYYY-MM-DD（Asia/Taipei）
+  views     Int      @default(0)
+  visitors  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("daily_stats")
+}
+
 enum ThreadStatus {
   WAITING // 待回覆
   PROCESSING // 處理中

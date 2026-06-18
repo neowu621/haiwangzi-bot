@@ -15,9 +15,11 @@ import {
   CalendarDays,
   Ship,
   Star,
+  Eye,
 } from "lucide-react";
 
 const LITE_URL = "/api/admin/stats/lite";
+const VISITS_URL = "/api/admin/stats/visits";
 
 interface LiteStats {
   tonight: { proofs: number; attendance: number };
@@ -28,9 +30,17 @@ interface LiteStats {
   pendingEmails: number;
 }
 
+interface DayStat { date: string; views: number; visitors: number }
+interface VisitStats {
+  today: DayStat;
+  week: { views: number; visitors: number };
+  days: DayStat[];
+}
+
 export default function MobileAdminHome() {
   const { ready } = useAdminAuth();
   const [stats, setStats] = useState<LiteStats | undefined>(() => getCached<LiteStats>(LITE_URL));
+  const [visits, setVisits] = useState<VisitStats | undefined>(() => getCached<VisitStats>(VISITS_URL));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,8 +49,13 @@ export default function MobileAdminHome() {
     cachedFetch<LiteStats>(LITE_URL, { force: true })
       .then((d) => { if (alive) { setStats(d); setError(null); } })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "載入失敗"); });
+    cachedFetch<VisitStats>(VISITS_URL, { force: true })
+      .then((d) => { if (alive) setVisits(d); })
+      .catch(() => { /* 訪客數非關鍵，靜默 */ });
     return () => { alive = false; };
   }, [ready]);
+
+  const maxVisitors = visits ? Math.max(1, ...visits.days.map((d) => d.visitors)) : 1;
 
   const tonightBadge = (stats?.tonight.proofs ?? 0) + (stats?.tonight.attendance ?? 0);
   const tripsBadge = stats ? stats.todayTrips.count + stats.tomorrowTrips.count : undefined;
@@ -63,6 +78,54 @@ export default function MobileAdminHome() {
           載入失敗：{error}
         </div>
       )}
+
+      {/* v577：訪客計數卡 — 今日/本週訪客 + 近 7 天迷你長條 */}
+      <div
+        className="mb-3 rounded-2xl border p-3.5"
+        style={{ background: "var(--color-ocean-deep)", borderColor: "rgba(0,0,0,0.08)" }}
+      >
+        <div className="mb-2 flex items-center gap-1.5" style={{ color: "var(--color-phosphor)" }}>
+          <Eye className="h-4 w-4" />
+          <span className="text-[11px] font-bold tracking-wide">網站訪客</span>
+        </div>
+        <div className="flex items-end gap-5">
+          <div>
+            <div className="font-mono text-2xl font-bold leading-none tabular-nums" style={{ color: "#fff" }}>
+              {visits ? visits.today.visitors : "–"}
+            </div>
+            <div className="mt-1 text-[10px]" style={{ color: "rgba(230,240,255,0.6)" }}>
+              今日訪客{visits ? `・${visits.today.views} 次瀏覽` : ""}
+            </div>
+          </div>
+          <div>
+            <div className="font-mono text-2xl font-bold leading-none tabular-nums" style={{ color: "var(--color-phosphor)" }}>
+              {visits ? visits.week.visitors : "–"}
+            </div>
+            <div className="mt-1 text-[10px]" style={{ color: "rgba(230,240,255,0.6)" }}>
+              近 7 天訪客
+            </div>
+          </div>
+          {/* 迷你長條（近 7 天訪客數） */}
+          {visits && (
+            <div className="ml-auto flex h-9 items-end gap-1">
+              {visits.days.map((d, i) => {
+                const isToday = i === visits.days.length - 1;
+                return (
+                  <div
+                    key={d.date}
+                    className="w-1.5 rounded-sm"
+                    title={`${d.date.slice(5)}：${d.visitors} 人`}
+                    style={{
+                      height: `${Math.max(8, (d.visitors / maxVisitors) * 100)}%`,
+                      background: isToday ? "var(--color-phosphor)" : "rgba(230,240,255,0.35)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {cards.map((c) => {

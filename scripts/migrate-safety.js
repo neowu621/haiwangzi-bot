@@ -555,6 +555,13 @@ const PATCHES = [
      message_id TEXT PRIMARY KEY,
      deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
+  // v577：每日訪客計數（只存每天聚合總數，不存訪客身分）
+  `CREATE TABLE IF NOT EXISTS daily_stats (
+     date VARCHAR(10) PRIMARY KEY,
+     views INT NOT NULL DEFAULT 0,
+     visitors INT NOT NULL DEFAULT 0,
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
 ];
 
 async function main() {
