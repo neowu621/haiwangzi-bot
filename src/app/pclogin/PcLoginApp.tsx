@@ -1096,6 +1096,7 @@ function NotificationsPanel() {
   const [contactMsg, setContactMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
+  const [convo, setConvo] = useState<Array<{ who: "me" | "cs"; body: string; createdAt: string }>>([]);
 
   const reload = () => {
     setLoading(true);
@@ -1104,8 +1105,10 @@ function NotificationsPanel() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
+  const loadConvo = () => { api<{ messages: Array<{ who: "me" | "cs"; body: string; createdAt: string }> }>("/api/me/contact").then((d) => setConvo(d.messages ?? [])).catch(() => {}); };
   useEffect(() => {
     reload();
+    loadConvo();
     api("/api/me/notifications/read", { method: "POST", body: JSON.stringify({ all: true }) }).catch(() => {});
   }, []);
 
@@ -1122,7 +1125,7 @@ function NotificationsPanel() {
     setSending(true); setSent(null);
     try {
       await api("/api/me/contact", { method: "POST", body: JSON.stringify({ message: contactMsg }) });
-      setSent("✅ 已送出,客服會盡快回覆(回覆會出現在下方通知)"); setContactMsg("");
+      setSent("✅ 已送出,客服會盡快回覆"); setContactMsg(""); loadConvo();
     } catch (e) { setSent(e instanceof Error ? e.message : "送出失敗"); }
     finally { setSending(false); }
   }
@@ -1143,6 +1146,20 @@ function NotificationsPanel() {
           <span style={{ fontSize: 11.5, color: sent?.startsWith("✅") ? "#0a8f86" : "#c0473b" }}>{sent}</span>
           <button onClick={sendContact} disabled={sending || !contactMsg.trim()} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 9, padding: "7px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: sending || !contactMsg.trim() ? 0.5 : 1 }}>送出</button>
         </div>
+        {convo.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 11.5, color: C.mute }}>對話紀錄</div>
+            {convo.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: m.who === "me" ? C.deep : "#eef3f6", color: m.who === "me" ? "#fff" : C.ink }}>
+                  {m.who === "cs" && <div style={{ fontSize: 11, fontWeight: 700, color: "#0a8f86", marginBottom: 2 }}>客服</div>}
+                  {m.body}
+                  <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{new Date(m.createdAt).toLocaleString("zh-TW")}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 篩選 */}

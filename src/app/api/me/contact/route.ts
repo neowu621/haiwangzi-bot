@@ -8,6 +8,27 @@ import { notifyBossNewInquiry } from "@/lib/notify-boss";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// v596：會員看自己的客服對話(自己發的 + 客服回的)
+export async function GET(req: NextRequest) {
+  const auth = await authFromRequest(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+  const threads = await prisma.emailThread.findMany({
+    where: { channel: "web", lineUserId: auth.user.lineUserId },
+    select: { id: true },
+  });
+  const ids = threads.map((t) => t.id);
+  const rows = ids.length
+    ? await prisma.emailMessage.findMany({
+        where: { threadId: { in: ids } },
+        orderBy: { createdAt: "asc" },
+        select: { direction: true, bodyText: true, createdAt: true },
+      })
+    : [];
+  return NextResponse.json({
+    messages: rows.map((m) => ({ who: m.direction === "OUTBOUND" ? "cs" : "me", body: m.bodyText, createdAt: m.createdAt })),
+  });
+}
+
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
