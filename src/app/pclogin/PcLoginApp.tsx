@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SignaturePad } from "@/components/ui/SignaturePad";
 import { APP_VERSION } from "@/lib/version";
 import { BrandMark, MantaTridentMark } from "@/components/brand/MantaTrident";
+import { PromoPopup, type ActivePromo } from "@/components/PromoPopup"; // v592
 
 // ─── 型別 ──────────────────────────────────────────────────────────
 interface Member {
@@ -199,6 +200,7 @@ export function PcLoginApp() {
             {view.name === "orders" && <MyOrders />}
             {view.name === "notifications" && <NotificationsPanel />}
             {view.name === "profile" && <ProfilePanel member={member} onSaved={reloadMe} />}
+            <PromoPopup load={() => api<{ items: ActivePromo[] }>("/api/promo/active").then((d) => d.items)} />
           </>
         )}
       </main>

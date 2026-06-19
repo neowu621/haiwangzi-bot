@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { Plus, Trash2, Dice5, RotateCw } from "lucide-react";
+import { Plus, Trash2, Dice5, RotateCw, Send } from "lucide-react";
 
 interface Promo {
   id: string;
@@ -45,6 +45,12 @@ export default function PromoCodesPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // v592：發送精靈
+  const [sendFor, setSendFor] = useState<Promo | null>(null);
+  const [sendCh, setSendCh] = useState<{ line: boolean; email: boolean; inapp: boolean }>({ line: true, email: true, inapp: true });
+  const [sendAud, setSendAud] = useState<"all" | "vip5" | "hasEmail" | "active30">("all");
+  const [sendPreview, setSendPreview] = useState<{ count: number; line: number; email: number; inapp: number } | null>(null);
+  const [sendBusy, setSendBusy] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -85,6 +91,29 @@ export default function PromoCodesPage() {
       setMsg("✅ 早鳥設定已儲存");
     } catch (e) { setMsg(e instanceof Error ? e.message : "儲存失敗"); }
     finally { setBusy(false); }
+  }
+
+  function chArray(): string[] {
+    return [sendCh.line ? "line" : "", sendCh.email ? "email" : "", sendCh.inapp ? "inapp" : ""].filter(Boolean);
+  }
+  function openSend(p: Promo) { setSendFor(p); setSendPreview(null); setSendCh({ line: true, email: true, inapp: true }); setSendAud("all"); }
+  async function doPreview() {
+    if (!sendFor) return;
+    setSendBusy(true); setMsg(null);
+    try {
+      const r = await adminFetch<{ count: number; line: number; email: number; inapp: number }>("/api/admin/promo/send", { method: "POST", body: JSON.stringify({ promoId: sendFor.id, channels: chArray(), audience: sendAud, mode: "preview" }) });
+      setSendPreview(r);
+    } catch (e) { setMsg(e instanceof Error ? e.message : "預覽失敗"); } finally { setSendBusy(false); }
+  }
+  async function doSend(testSelf: boolean) {
+    if (!sendFor) return;
+    if (!testSelf && !window.confirm(`確定發送給約 ${sendPreview?.count ?? "?"} 人?`)) return;
+    setSendBusy(true); setMsg(null);
+    try {
+      await adminFetch("/api/admin/promo/send", { method: "POST", body: JSON.stringify({ promoId: sendFor.id, channels: chArray(), audience: sendAud, mode: "send", testSelf }) });
+      setMsg(testSelf ? "✅ 已測試送給自己" : "✅ 已發送");
+      if (!testSelf) { setSendFor(null); setSendPreview(null); }
+    } catch (e) { setMsg(e instanceof Error ? e.message : "發送失敗"); } finally { setSendBusy(false); }
   }
 
   const disc = (p: Promo) => p.discountType === "per_tank" ? `氣瓶 −$${p.discountValue}` : `訂單 −${p.discountValue}%`;
@@ -155,7 +184,8 @@ export default function PromoCodesPage() {
                     <td className="pr-2 text-slate-500">{limitTxt(p)}</td>
                     <td className="pr-2 tabular-nums">{p.usedCount}</td>
                     <td className="pr-2"><button onClick={() => toggle(p)} className={`rounded-full px-2 py-0.5 text-[10px] ${p.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{p.enabled ? "啟用" : "停用"}</button></td>
-                    <td className="flex gap-1.5 py-2">
+                    <td className="flex items-center gap-2 py-2">
+                      <button onClick={() => openSend(p)} className="flex items-center gap-1 text-emerald-600" title="發送推廣"><Send className="h-3.5 w-3.5" />發送</button>
                       <button onClick={() => setForm({ ...p, startAt: p.startAt, endAt: p.endAt })} className="text-cyan-700">編輯</button>
                       <button onClick={() => del(p.id)} className="text-rose-500"><Trash2 className="h-3.5 w-3.5" /></button>
                     </td>
@@ -200,6 +230,43 @@ export default function PromoCodesPage() {
               <button onClick={() => setForm(null)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm text-slate-600">取消</button>
               <button onClick={savePromo} disabled={busy || !form.title} className="rounded-lg bg-cyan-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50">儲存檔期</button>
             </div>
+          </section>
+        )}
+        {/* 發送精靈 */}
+        {sendFor && (
+          <section className="rounded-2xl border-2 border-emerald-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-bold text-slate-800"><Send className="mr-1 inline h-4 w-4" />發送精靈 — {sendFor.title}（<code className="font-mono">{sendFor.code}</code>）</div>
+              <button onClick={() => { setSendFor(null); setSendPreview(null); }} className="text-xs text-slate-400">關閉</button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <div className="mb-1 text-[11px] text-slate-500">發送對象</div>
+                <select value={sendAud} onChange={(e) => { setSendAud(e.target.value as typeof sendAud); setSendPreview(null); }} className="inp">
+                  <option value="all">全部會員</option>
+                  <option value="vip5">VIP5 會員</option>
+                  <option value="hasEmail">有 Email（已驗證）</option>
+                  <option value="active30">近 30 天活躍</option>
+                </select>
+              </div>
+              <div>
+                <div className="mb-1 text-[11px] text-slate-500">管道（可複選）</div>
+                <div className="flex gap-4 pt-1.5 text-xs text-slate-600">
+                  <label className="flex items-center gap-1"><input type="checkbox" checked={sendCh.line} onChange={(e) => { setSendCh({ ...sendCh, line: e.target.checked }); setSendPreview(null); }} /> LINE</label>
+                  <label className="flex items-center gap-1"><input type="checkbox" checked={sendCh.email} onChange={(e) => { setSendCh({ ...sendCh, email: e.target.checked }); setSendPreview(null); }} /> Email</label>
+                  <label className="flex items-center gap-1"><input type="checkbox" checked={sendCh.inapp} onChange={(e) => { setSendCh({ ...sendCh, inapp: e.target.checked }); setSendPreview(null); }} /> 內部訊息</label>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button onClick={doPreview} disabled={sendBusy || chArray().length === 0} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-50">預覽人數</button>
+              {sendPreview && <span className="text-xs text-slate-600">預估 <b className="text-cyan-700">{sendPreview.count}</b> 人（LINE {sendPreview.line}・Email {sendPreview.email}・內部 {sendPreview.inapp}）</span>}
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button onClick={() => doSend(true)} disabled={sendBusy} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600">測試送給自己</button>
+              <button onClick={() => doSend(false)} disabled={sendBusy || !sendPreview} className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50">確認發送</button>
+            </div>
+            <div className="mt-2 text-[11px] text-slate-400">※ 先「預覽人數」再「確認發送」;按下確認才會真的寄出。</div>
           </section>
         )}
       </div>

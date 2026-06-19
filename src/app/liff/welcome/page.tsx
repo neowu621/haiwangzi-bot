@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
+import { PromoPopup, type ActivePromo } from "@/components/PromoPopup"; // v592
 import {
   DEFAULT_SITE_CONFIG,
   type SiteConfig,
@@ -125,6 +126,9 @@ export default function WelcomePage() {
 
   return (
     <LiffShell bottomNav={<BottomNav />} midnight>
+      {liff.ready && liff.loggedIn && (
+        <PromoPopup load={() => liff.fetchWithAuth<{ items: ActivePromo[] }>("/api/promo/active").then((d) => d.items)} />
+      )}
       <div className="min-h-[calc(100dvh-3.5rem)] bg-[var(--color-midnight)] pb-24">
         {/* Hero — Logo 左 + 標題右（橫向，省 Y 軸） */}
         <section

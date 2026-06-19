@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-19（續3）— 節慶優惠 Phase 2 完成（2a + 2b）
+
+### 完成（v592 後端 / v593 前端 / v594 推廣）
+- **2a 後端**：下單套代碼(取其優+可疊抵用金)、早鳥結案發放(30天)、抵用金「先用最近到期」FIFO + 到期作廢、promo validate/active API。
+- **2a 前端**：LIFF + `/pclogin` 下單加優惠代碼輸入;`/pclogin` 加「通知」頁籤(與手機同模式);Dump 加優惠代碼下拉;移除 `/dtest`。
+- **2b**：發送精靈(`/admin/promo-codes` + `/api/admin/promo/send`,對象 全部/VIP5/有Email/活躍 × 管道 LINE/Email/內部,**預覽人數→確認才送**);進入彈窗 `components/PromoPopup`(LIFF welcome + `/pclogin`,今日不再顯示)。
+
+### 改了哪些重要檔案
+- `lib/credit-fifo.ts`(FIFO)、`lib/early-bird.ts`(結案發放)、`lib/promo.ts`(驗證/折扣/早鳥)。
+- `api/bookings/daily`(套代碼+早鳥+FIFO)、`api/me`(讀餘額先清過期)、`coach/.../attendance`(掛早鳥)。
+- `api/promo/validate|active`、`api/admin/promo/send`。
+- `liff/dive/trip/[tripId]`、`pclogin/PcLoginApp`(代碼+通知+彈窗)、`admin/trips`(Dump)、`admin/promo-codes`(發送精靈)、`liff/welcome`(彈窗)。
+
+### 卡在哪 / 下次先看什麼
+- 抵用金 FIFO 是新模型(CreditTx.consumedAmount);退款/取消目前用 grantCredit(+) 還原成新 lot — 若要更精準的「還原到原 lot」之後可加強。
+- 早鳥/代碼的 tour(潛旅)端尚未接(目前只日潛 daily);潛旅下單要套代碼需在 `/api/bookings/tour` 比照 daily 加。
+- 驗收路徑:後台「🎏 節慶優惠」建公開檔 → LIFF/`/pclogin` 下單輸入該碼 → 看折扣;早鳥需設級距 + 到場完成才發。
+
+---
+
 ## 2026-06-19（續2）— 桌面會員登入入口改名
 
 ### 完成（v591）
