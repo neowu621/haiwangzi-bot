@@ -9,9 +9,10 @@ export function welcome(
   altText: string,
   override?: TemplateOverride,
 ): FlexMessage {
+  // v598：修正 — 改用 env + 與全站一致的 LIFF ID(原寫死 2010006458 是舊的,導致按鈕打不開 LINE)
   const liffUrl = asString(
     params.liffUrl,
-    "https://liff.line.me/2010006458-fyokMnVv",
+    process.env.NEXT_PUBLIC_LIFF_URL || "https://liff.line.me/2010219428-E5frY7tm",
   );
   // v588：官方網站連結(讓客戶輕鬆到首頁認識我們)
   const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://haiwangzi.xyz";
