@@ -27,6 +27,11 @@ import {
 import { sendEmail } from "./email/send";
 import { logMessage } from "./message-log"; // v473：發送紀錄
 
+// v600：Email 按鈕一律導小編 LINE 官方帳號 —— LIFF 連結被 Zeabur/SES awstrack 點擊追蹤
+//   包成 awstrack.me 轉址後,LINE 深層連結會打不開;line.me/R/ti/p 通用連結較耐包裝。
+//   (LINE flex 仍用原 LIFF,在 LINE 內正常;只有 Email 改導 OA。)
+const EMAIL_LINK = "https://line.me/R/ti/p/%40894bpmew";
+
 export function notifyCustomer(opts: {
   /** 客戶 lineUserId */
   userId: string;
@@ -78,7 +83,8 @@ export function notifyCustomer(opts: {
 
       // ── Email（模板組稿：標題/副標/說明/動態主體/按鈕 與後台填寫一致）──
       if (emailOn && (user.notifyByEmail ?? true) && user.email) {
-        const params = linkUrl ? { ...opts.params, url: linkUrl } : opts.params;
+        // v600：Email 按鈕一律導小編 LINE OA(避開 awstrack 追蹤破壞 LIFF)
+        const params = { ...opts.params, url: EMAIL_LINK };
         const content = composeEmail(key, params, tpl);
         const r = await sendEmail({ to: user.email, subject: content.subject, text: content.text, html: content.html });
         logMessage({ channel: "email", templateKey: key, recipientId: opts.userId, recipient: user.email, title: content.subject, status: r.ok ? "sent" : r.skipped ? "skipped" : "failed", error: r.error ?? null, source: "notify" });
