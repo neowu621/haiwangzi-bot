@@ -19,7 +19,9 @@ export type CreditReason =
   | "admin_adjust"        // admin 手動調整
   | "first_order_reward"  // v261：首單付款完成 + Email 已驗證
   | "signup_reward"       // v388：註冊禮金（Email 驗證通過後發）
-  | "vip_overflow";       // v388：VIP5 滿級後每 N 潛回饋
+  | "vip_overflow"        // v388：VIP5 滿級後每 N 潛回饋
+  | "early_bird"          // v592：日潛早鳥回饋（結案後發）
+  | "expired";            // v592：到期作廢（負數）
 
 export interface GrantCreditArgs {
   userId: string;

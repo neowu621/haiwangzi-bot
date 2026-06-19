@@ -5,6 +5,7 @@ import { authFromRequest } from "@/lib/auth";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 import { normalizeVipTiers, getGearDiscountPct } from "@/lib/vip-tier"; // v388
 import { getActiveTankPromo } from "@/lib/tank-promo"; // v392
+import { reconcileExpiredCredits, availableCredit } from "@/lib/credit-fifo"; // v592
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,9 @@ export async function GET(req: NextRequest) {
   });
 
   const u = auth.user;
+  // v592：先清掉已過期抵用金,讓顯示餘額準確(早鳥 30 天短效金到期作廢)
+  await reconcileExpiredCredits(u.lineUserId).catch(() => {});
+  const creditBalanceNow = await availableCredit(u.lineUserId).catch(() => u.creditBalance ?? 0);
   // v388：算出此會員的「裝備租借折扣 %」（100=不折）給下單頁顯示折後價用
   const cfg = await prisma.siteConfig
     .findUnique({
@@ -68,7 +72,7 @@ export async function GET(req: NextRequest) {
     tankPromo, // v392：氣瓶限時折扣 { active, discount, reason }
     totalSpend: u.totalSpend ?? 0,
     birthday: u.birthday,
-    creditBalance: u.creditBalance ?? 0,
+    creditBalance: creditBalanceNow,
     notes: u.notes,
     emergencyContact: u.emergencyContact,
     companions: u.companions ?? [],

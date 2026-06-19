@@ -211,6 +211,11 @@ export async function POST(
         .then((m) => m.maybeGrantFirstOrderReward(booking.userId, id))
         .catch((e) => console.error("[first-order-reward attendance]", e));
 
+      // v592：日潛早鳥回饋（結案後發,30 天到期）
+      void import("@/lib/early-bird")
+        .then((m) => m.maybeGrantEarlyBird(id))
+        .catch((e) => console.error("[early-bird grant]", e));
+
       return NextResponse.json({ ok: true, action: "completed", logsAdded: addLogs });
     } else {
       await prisma.$transaction([

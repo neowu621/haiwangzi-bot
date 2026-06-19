@@ -608,6 +608,8 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_discount INT NOT NULL DEFAULT 0`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS early_bird_credit INT NOT NULL DEFAULT 0`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS early_bird_granted BOOLEAN NOT NULL DEFAULT FALSE`,
+  // v592：抵用金批次扣抵「先用最近到期」
+  `ALTER TABLE credit_txs ADD COLUMN IF NOT EXISTS consumed_amount INT NOT NULL DEFAULT 0`,
 ];
 
 async function main() {

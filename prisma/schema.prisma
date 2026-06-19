@@ -279,6 +279,8 @@ model CreditTx {
   note         String?
   // 紀錄事件後的餘額（方便對帳）
   balanceAfter Int       @map("balance_after")
+  // v592：批次扣抵「先用最近到期」— 正向發放筆已被用掉/作廢的金額（amount − consumed = 此筆剩餘可用）
+  consumedAmount Int     @default(0) @map("consumed_amount")
   createdBy    String?   @map("created_by") @db.VarChar(64) // admin lineUserId
   // 到期日（v184）。null = 永不過期。birthday / 升等獎勵等可設過期
   expiresAt    DateTime? @map("expires_at") @db.Timestamptz

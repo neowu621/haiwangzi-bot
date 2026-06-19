@@ -5,13 +5,14 @@ import { authFromRequest } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKeyAsync } from "@/lib/flex";
 import { notifyCustomer } from "@/lib/notify-template";
-import { grantCredit } from "@/lib/credit";
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 import { normalizeVipTiers, getGearDiscountPct } from "@/lib/vip-tier"; // v388
 import { getActiveTankPromo } from "@/lib/tank-promo"; // v392
+import { validatePromoCode, computeCodeDiscount, earlyBirdCredit, type EarlyBirdTier } from "@/lib/promo"; // v592
+import { spendCreditFIFO, availableCredit } from "@/lib/credit-fifo"; // v592
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,8 +41,10 @@ const BodySchema = z.object({
   paymentMethod: z.enum(["bank", "linepay", "other"]).nullable().optional(),
   // 「其他」付款方式時客戶填寫的說明
   paymentNote: z.string().max(200).optional(),
-  // 使用抵用金折抵 (NT$)。後端會驗 ≤ user.creditBalance 且 ≤ totalAmount
+  // 使用抵用金折抵 (NT$)。後端會驗 ≤ 可用抵用金 且 ≤ totalAmount
   creditUsed: z.number().int().min(0).optional().default(0),
+  // v592：節慶優惠代碼（可空）
+  promoCode: z.string().max(16).optional(),
   agreedToTerms: z.literal(true),
   // v260：手寫簽名 PNG data URL（後端解 base64 上傳 R2 後存 key 到 Booking）
   signatureDataUrl: z.string().optional(),
@@ -191,25 +194,25 @@ export async function POST(req: NextRequest) {
         tankPromoReason: true,
         tankPromoStart: true,
         tankPromoEnd: true,
+        // v592：日潛早鳥回饋
+        earlyBirdEnabled: true,
+        earlyBirdMinAmount: true,
+        earlyBirdTiers: true,
       },
     })
     .catch(() => null);
 
-  // v392：氣瓶限時折扣 — 潛水費 = (每瓶費 − 折扣) × 瓶數 × 人數（折扣不可使每瓶費變負）
+  // v392：氣瓶限時折扣（自動,每瓶折抵 NT$,不可使每瓶費變負）
   const tankPromo = getActiveTankPromo(cfg);
   const tankDiscountPerTank = tankPromo.active
     ? Math.min(tankPromo.discount, pricing.extraTank)
     : 0;
-  const effectiveTankFee = Math.max(0, pricing.extraTank - tankDiscountPerTank);
-  const divesAmount = effectiveTankFee * effectiveTanks * data.participants;
 
   let extraAmount = pricing.baseTrip;
   if (trip.isNightDive) extraAmount += pricing.nightDive;
   if (trip.isScooter) extraAmount += pricing.scooterRental;
-  // 裝備：各自獨立數量
+  // 裝備：各自獨立數量 + VIP 折扣
   const gearAmountRaw = data.rentalGear.reduce((s, g) => s + g.price * g.qty, 0);
-  // v388：依會員 VIP 等級自動折扣「裝備租借」（不折潛水費/附加費）。
-  //   gearDiscountPct 是「應付 %」（100=不折，80=打 8 折）。折扣%在 VIP 設定可調。
   let gearAmount = gearAmountRaw;
   let gearDiscountPct = 100;
   if (gearAmountRaw > 0) {
@@ -219,24 +222,56 @@ export async function POST(req: NextRequest) {
       gearAmount = Math.round((gearAmountRaw * gearDiscountPct) / 100);
     }
   }
-  const totalAmount = divesAmount + extraAmount + gearAmount;
-  // 二次保護：理論上 schema 已擋負數，但 baseAmount 也可能因 admin 設負 pricing 出狀況
-  if (totalAmount < 0) {
-    return NextResponse.json(
-      { error: `計算結果異常 (totalAmount=${totalAmount})，請聯絡客服` },
-      { status: 400 },
+  void gearDiscountPct;
+
+  // v592：未折前總額 + 自動氣瓶折(總)
+  const totalTanks = effectiveTanks * data.participants;
+  const baseNoDiscount = pricing.extraTank * totalTanks + extraAmount + gearAmount;
+  const autoDiscount = tankDiscountPerTank * totalTanks;
+
+  // v592：節慶優惠代碼 —— 與自動氣瓶折「取其優」(不疊加),可疊抵用金
+  let promoCodeApplied: string | null = null;
+  let promoDiscount = 0;
+  if (data.promoCode?.trim()) {
+    const vr = await validatePromoCode(data.promoCode, {
+      type: "daily",
+      orderAmount: baseNoDiscount,
+      userId: auth.user.lineUserId,
+      userVipLevel: auth.user.vipLevel ?? 0,
+    });
+    if (!vr.ok) {
+      return NextResponse.json({ error: vr.reason ?? "優惠代碼無效" }, { status: 400 });
+    }
+    if (vr.promo) {
+      const codeDiscount = computeCodeDiscount(
+        { discountType: vr.promo.discountType, discountValue: vr.promo.discountValue, minAmount: vr.promo.minAmount },
+        { orderAmount: baseNoDiscount, totalTanks },
+      );
+      if (codeDiscount > autoDiscount) {
+        promoCodeApplied = vr.promo.code;
+        promoDiscount = codeDiscount;
+      }
+    }
+  }
+
+  const finalDiscount = Math.max(autoDiscount, promoDiscount);
+  const totalAmount = Math.max(0, baseNoDiscount - finalDiscount);
+
+  // v592：日潛早鳥回饋(預計;訂單結案後才實際發放,30 天到期)
+  let earlyBirdReward = 0;
+  if (cfg?.earlyBirdEnabled) {
+    const leadDays = Math.floor((new Date(trip.date).getTime() - Date.now()) / 86400000);
+    earlyBirdReward = earlyBirdCredit(
+      (cfg.earlyBirdTiers as unknown as EarlyBirdTier[]) ?? [],
+      leadDays,
+      totalAmount,
+      cfg.earlyBirdMinAmount ?? 0,
     );
   }
 
-  // 抵用金折抵：不能超過 user 餘額也不能超過總金額
-  const creditUsed = Math.max(
-    0,
-    Math.min(
-      data.creditUsed ?? 0,
-      auth.user.creditBalance ?? 0,
-      totalAmount,
-    ),
-  );
+  // 抵用金折抵：不超過「可用抵用金(已清過期)」也不超過總金額(可疊優惠代碼)
+  const availCredit = await availableCredit(auth.user.lineUserId);
+  const creditUsed = Math.max(0, Math.min(data.creditUsed ?? 0, availCredit, totalAmount));
 
   // 更新 user 個資 (如有提供)
   const userPatch: Parameters<typeof prisma.user.update>[0]["data"] = {};
@@ -318,6 +353,10 @@ export async function POST(req: NextRequest) {
       // v296：公開付款連結 token
       payLinkToken: generatePayLinkToken(),
       creditUsed,
+      // v592：節慶優惠 + 早鳥
+      promoCode: promoCodeApplied,
+      promoDiscount,
+      earlyBirdCredit: earlyBirdReward,
       status,
       agreedToTermsAt: new Date(),
       overCapacity,
@@ -361,13 +400,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 扣抵用金（用 grantCredit 寫 audit + 同步 balance）
+  // 扣抵用金（v592：批次「先用最近到期」FIFO）
   if (creditUsed > 0) {
     try {
-      await grantCredit({
+      await spendCreditFIFO({
         userId: auth.user.lineUserId,
-        amount: -creditUsed,
-        reason: "used",
+        amount: creditUsed,
         refType: "booking",
         refId: booking.id,
         note: `日潛預約折抵`,
@@ -381,6 +419,11 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+  }
+
+  // v592：優惠代碼使用次數 +1（總量上限統計用）
+  if (promoCodeApplied) {
+    await prisma.promoCode.updateMany({ where: { code: promoCodeApplied }, data: { usedCount: { increment: 1 } } }).catch((e) => console.error("[promo usedCount]", e));
   }
 
   // 超賣警示 → 推 Flex 給該場次的教練（fire-and-forget；失敗不影響預約建立）
