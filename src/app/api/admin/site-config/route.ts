@@ -170,6 +170,13 @@ const PatchSchema = z.object({
     text: z.string().max(800).default(""),
   })).max(6).optional(),
   homeReviewsNote: z.string().max(400).optional(),
+  // v590：日潛早鳥回饋
+  earlyBirdEnabled: z.boolean().optional(),
+  earlyBirdMinAmount: z.number().int().min(0).max(1000000).optional(),
+  earlyBirdTiers: z.array(z.object({
+    weeks: z.number().int().min(1).max(52),
+    credit: z.number().int().min(0).max(100000),
+  })).max(6).optional(),
 });
 
 // GET /api/admin/site-config - admin 編輯用 (含當前值或預設)
@@ -275,6 +282,10 @@ export async function GET(req: NextRequest) {
       tankPromoReason: (row as unknown as { tankPromoReason?: string }).tankPromoReason ?? "",
       tankPromoStart: (row as unknown as { tankPromoStart?: Date | null }).tankPromoStart ?? null,
       tankPromoEnd: (row as unknown as { tankPromoEnd?: Date | null }).tankPromoEnd ?? null,
+      // v590 日潛早鳥回饋
+      earlyBirdEnabled: (row as unknown as { earlyBirdEnabled?: boolean }).earlyBirdEnabled ?? false,
+      earlyBirdMinAmount: (row as unknown as { earlyBirdMinAmount?: number }).earlyBirdMinAmount ?? 1000,
+      earlyBirdTiers: ((row as unknown as { earlyBirdTiers?: unknown }).earlyBirdTiers as Array<{ weeks: number; credit: number }> | undefined) ?? [],
       // v403 首頁影片
       homeVideosMode: (row as unknown as { homeVideosMode?: string }).homeVideosMode ?? "curated",
       homeVideos: ((row as unknown as { homeVideos?: unknown }).homeVideos as Array<{ id: string; title: string; isShort: boolean }> | undefined) ?? [],

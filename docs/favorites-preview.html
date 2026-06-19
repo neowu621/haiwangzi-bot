@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>我的最愛 預覽</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","Segoe UI",system-ui,sans-serif;background:#eef3f5;padding:26px 30px;color:#0f2430}
+h1{font-size:19px;color:#08222F}.sub{color:#5b7080;font-size:13px;margin-top:4px}
+.row{display:flex;gap:34px;margin-top:18px;align-items:flex-start}
+.side{width:232px;background:#0A2342;border-radius:14px;padding:12px 9px;color:#cfe0e6}
+.brand{display:flex;align-items:center;gap:8px;padding:4px 6px 10px}
+.brand .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#19B6B0,#0A6E73);display:grid;place-items:center;font-size:15px}
+.brand .nm{font-size:13px;font-weight:700;color:#00D9CB}
+.brand .v{font-size:8.5px;color:#00D9CB;background:rgba(0,217,203,.18);padding:1px 5px;border-radius:5px;font-family:monospace;margin-left:auto}
+.diag{background:rgba(255,255,255,.06);border-radius:10px;padding:9px 11px;margin:0 2px 10px;font-size:10.5px;color:#8fb0bc}
+.gh{display:flex;align-items:center;gap:6px;padding:6px 9px;font-size:10px;font-weight:700;letter-spacing:.5px;color:#00D9CB;border-radius:7px}
+.gh .star{font-size:11px}
+.gh .badge{background:#FF6B4A;color:#fff;font-size:8.5px;font-weight:700;padding:0 6px;border-radius:9px}
+.gh .chev{margin-left:auto;opacity:.55;font-size:10px}
+.it{display:flex;align-items:center;gap:8px;padding:6px 11px;font-size:12.5px;color:#bcd2da;border-radius:8px}
+.it .ico{width:15px;text-align:center;flex:none;font-size:13px}
+.it .lbl{flex:1}
+.it .fav{color:#00D9CB;font-size:12px}
+.it .favoff{color:rgba(230,240,255,.4);font-size:12px}
+.it .ct{font-size:9px;background:#FF6B4A;color:#fff;padding:0 5px;border-radius:8px;font-weight:700}
+.favwrap{border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:6px;margin-bottom:6px}
+.cap{font-size:11px;color:#8595a6;margin-top:8px}
+.notes{width:330px;font-size:13px;line-height:1.8;color:#0f2430}
+.notes .box{background:#fff;border:1px solid #dbe5e9;border-radius:12px;padding:12px 15px;margin-bottom:11px}
+.notes b{color:#0e7c8a}
+.kbd{display:inline-block;background:#0A2342;color:#00D9CB;border-radius:5px;padding:0 6px;font-size:12px}
+</style>
+</head>
+<body>
+<h1>後台側欄「我的最愛」— 實際長相預覽</h1>
+<p class="sub">用與正式程式相同的樣式重現(v20260615_530 已上線)。</p>
+<div class="row">
+  <div>
+    <div class="side">
+      <div class="brand"><div class="m">🔱</div><div class="nm">海王子 客服</div><span class="v">v530</span></div>
+      <div class="diag">🛰 連線測速 — 按「測速」實測延遲</div>
+
+      <!-- 我的最愛 -->
+      <div class="favwrap">
+        <div class="gh"><span class="star">⭐</span> 我的最愛</div>
+        <div class="it"><span class="ico">🧾</span><span class="lbl">老闆結帳</span><span class="fav">★</span><span class="ct">2</span></div>
+        <div class="it"><span class="ico">📖</span><span class="lbl">訂單管理</span><span class="fav">★</span><span class="ct">1</span></div>
+        <div class="it"><span class="ico">📝</span><span class="lbl">願望單</span><span class="fav">★</span><span class="ct">1</span></div>
+        <div class="it"><span class="ico">📧</span><span class="lbl">客服信箱</span><span class="fav">★</span></div>
+      </div>
+
+      <div class="gh">即時營運<span class="badge">2</span><span class="chev">▾</span></div>
+      <div class="gh">訂單 / 客戶<span class="badge">2</span><span class="chev">▾</span></div>
+      <div class="gh" style="background:rgba(255,255,255,.05)">行銷 / 通知<span class="chev" style="transform:rotate(180deg);display:inline-block">▾</span></div>
+      <div class="it"><span class="ico">📧</span><span class="lbl">客服信箱</span><span class="favoff">☆</span></div>
+      <div class="it"><span class="ico">🎨</span><span class="lbl">業務推廣</span><span class="favoff">☆</span></div>
+      <div class="it"><span class="ico">📣</span><span class="lbl">訊息模板</span><span class="favoff">☆</span></div>
+      <div class="gh">系統<span class="chev">▾</span></div>
+    </div>
+    <div class="cap">↑ 滑到項目上才浮現星號;這裡示意 hover 的樣子</div>
+  </div>
+
+  <div class="notes">
+    <div class="box"><b>⭐ 我的最愛(綠框那個位置)</b><br>固定在側欄最上方,放你圈的 4 個常用:老闆結帳 / 訂單管理 / 願望單 / 客服信箱,還會帶待處理數字徽章。</div>
+    <div class="box"><b>怎麼自訂</b><br>滑到任何選單項目 → 右側浮現 <span class="kbd">☆</span> → 點一下加入(變亮 <span class="kbd">★</span>);最愛裡的項目點 ★ 就移除。</div>
+    <div class="box"><b>記憶</b><br>存在這台瀏覽器,記住不跑掉(換電腦要重設)。</div>
+  </div>
+</div>
+</body>
+</html>

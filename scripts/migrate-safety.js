@@ -577,6 +577,37 @@ const PATCHES = [
      connected_by VARCHAR(64),
      connected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    )`,
+  // v590：節慶優惠代碼
+  `CREATE TABLE IF NOT EXISTS promo_codes (
+     id TEXT PRIMARY KEY,
+     title TEXT NOT NULL,
+     code VARCHAR(16) NOT NULL UNIQUE,
+     discount_type VARCHAR(12) NOT NULL,
+     discount_value INT NOT NULL,
+     start_at TIMESTAMPTZ NOT NULL,
+     end_at TIMESTAMPTZ NOT NULL,
+     is_public BOOLEAN NOT NULL DEFAULT TRUE,
+     applies_to VARCHAR(8) NOT NULL DEFAULT 'daily',
+     min_amount INT NOT NULL DEFAULT 0,
+     per_user_limit INT NOT NULL DEFAULT 0,
+     total_limit INT NOT NULL DEFAULT 0,
+     used_count INT NOT NULL DEFAULT 0,
+     audience_tag VARCHAR(24),
+     enabled BOOLEAN NOT NULL DEFAULT TRUE,
+     note TEXT NOT NULL DEFAULT '',
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS promo_codes_code_idx ON promo_codes(code)`,
+  // v590：日潛早鳥回饋（site_config）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS early_bird_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS early_bird_min_amount INT NOT NULL DEFAULT 1000`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS early_bird_tiers JSONB NOT NULL DEFAULT '[]'`,
+  // v590：訂單記錄優惠 / 早鳥
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code VARCHAR(16)`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_discount INT NOT NULL DEFAULT 0`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS early_bird_credit INT NOT NULL DEFAULT 0`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS early_bird_granted BOOLEAN NOT NULL DEFAULT FALSE`,
 ];
 
 async function main() {

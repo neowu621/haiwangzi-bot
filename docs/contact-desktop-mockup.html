@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>客戶詢問頁 — 桌機版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#eef3f5;color:#0f2430}
+.page{max-width:1140px;margin:0 auto;background:#fff;border:1px solid #dbe5e9;border-radius:18px;overflow:hidden;box-shadow:0 14px 40px rgba(8,34,47,.1)}
+.hero{background:linear-gradient(160deg,#0A2342,#103848);color:#fff;padding:34px 40px;text-align:center;position:relative}
+.hero .w{font-size:34px}
+.hero h1{font-size:28px;font-weight:700;margin-top:6px}
+.hero p{font-size:15px;color:#9fc6d2;margin-top:8px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:28px 32px}
+.card{border-radius:16px;padding:24px;border:1.5px solid}
+.card.a{background:#fff6f3;border-color:#f3c6b8}
+.card.b{background:#eef9f8;border-color:#bfe5e2}
+.card .top{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+.card .ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:24px;flex:none}
+.card.a .ic{background:#ffe2d8}.card.b .ic{background:#d6f0ee}
+.card h2{font-size:19px}.card.a h2{color:#c0432a}.card.b h2{color:#0e7c8a}
+.card .sub{font-size:13px;color:#516268;line-height:1.6;margin-bottom:16px}
+.lbl{font-size:13px;font-weight:700;color:#0A2342;margin:14px 0 8px}
+.lbl:first-of-type{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:13px;padding:7px 14px;border-radius:22px;border:1.5px solid #cfe0e0;background:#fff;color:#0e7c8a;cursor:pointer}
+.chip.on{background:#0E9AA0;border-color:#0E9AA0;color:#fff;font-weight:700}
+.chip.coral.on{background:#FF6B4A;border-color:#FF6B4A}
+.qbox{background:#fff;border:1px solid #f0d9d0;border-radius:11px;padding:12px 14px;margin-top:6px}
+.qbox .q{font-size:13.5px;font-weight:700;color:#1A2330;padding:6px 0;border-bottom:1px solid #f5eae6;display:flex;justify-content:space-between}
+.qbox .q:last-child{border-bottom:none}
+.qbox .q .arr{color:#c0432a}
+.two{display:flex;gap:12px}.two>div{flex:1}
+input,textarea{width:100%;border:1.5px solid #dce7ea;border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;color:#0f2430}
+textarea{min-height:64px;resize:none;line-height:1.6}
+.btn{width:100%;margin-top:16px;border:none;border-radius:12px;padding:14px;font-size:15.5px;font-weight:700;color:#fff;font-family:inherit;cursor:pointer}
+.btn.a{background:linear-gradient(135deg,#FF6B4A,#F5522F)}
+.btn.b{background:linear-gradient(135deg,#0E9AA0,#0a6e73)}
+.note{font-size:12px;color:#7c9296;margin-top:10px;line-height:1.6}.note b{color:#0e7c8a}
+.fauxinput{display:flex;align-items:center;gap:7px;border:1.5px solid #dce7ea;border-radius:10px;padding:9px 11px;background:#fff;font-size:14px}
+.ftag{font-weight:700;border-radius:6px;padding:2px 8px;font-size:12.5px;flex:none}
+.ftag.a{background:#ffe2d8;color:#c0432a}.ftag.b{background:#d6f0ee;color:#0e7c8a}
+.fauxinput .ph{color:#9aabae}
+/* fallback strip */
+.strip{display:flex;align-items:center;gap:16px;background:#f4f8f9;border-top:1px solid #e1ebeb;padding:18px 32px;flex-wrap:wrap}
+.strip .t{font-size:14px;font-weight:700;color:#0A2342}
+.line{display:inline-flex;align-items:center;gap:9px;background:#06C755;color:#fff;border-radius:11px;padding:11px 20px;font-size:15px;font-weight:700;text-decoration:none}
+.line .ic{width:21px;height:21px;background:#fff;border-radius:5px;color:#06C755;display:grid;place-items:center;font-size:12px;font-weight:800}
+.email{font-size:13px;color:#516268}.email b{color:#0e7c8a;font-family:monospace}
+.cap{max-width:1140px;margin:10px auto 0;font-size:12px;color:#5b7080;text-align:center}
+.wrap{padding:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="page">
+  <div class="hero">
+    <div class="w">🤿</div>
+    <h1>想潛水,但還在考慮?</h1>
+    <p>不用客套,直接告訴我們你卡在哪 —— 我們幫你問清楚、或為你開團</p>
+  </div>
+
+  <div class="cols">
+    <!-- A 購買疑慮 -->
+    <div class="card a">
+      <div class="top"><div class="ic">🤔</div><h2>對課程 / 潛旅有疑問</h2></div>
+      <div class="sub">還在考慮、卡在某個問題?選一個方案,把疑問問清楚再決定。</div>
+      <div class="lbl">你在考慮哪一個?</div>
+      <div class="chips">
+        <span class="chip coral on">體驗潛水</span><span class="chip">OW 考證</span><span class="chip">AOW 進階</span>
+        <span class="chip">1對1 私人</span><span class="chip">Fun Dive</span><span class="chip">潛水團</span><span class="chip">包船</span><span class="chip">其他</span>
+      </div>
+      <div class="lbl">主旨(選方案後自動帶入,可再補充)</div>
+      <div class="fauxinput"><span class="ftag a">體驗潛水</span><span class="ph">想問費用與天數…</span></div>
+      <div class="lbl">想問什麼?</div>
+      <textarea placeholder="例:我想帶女友一起體驗,她很怕水,適合嗎?"></textarea>
+      <div class="lbl">怎麼聯絡你?</div>
+      <input placeholder="姓名(怎麼稱呼你)">
+      <div class="two" style="margin-top:9px">
+        <div><input placeholder="Email ＊我們回信用"></div>
+        <div><input placeholder="電話(選填,方便急聯)"></div>
+      </div>
+      <button class="btn a">送出問題 ➤</button>
+      <div class="note">送出後進<b>客服信箱</b>,我們用 Email 回你(通常一天內);急的話用下面的 LINE。</div>
+    </div>
+
+    <!-- B 開團許願 -->
+    <div class="card b">
+      <div class="top"><div class="ic">🌊</div><h2>想去某地 / 想揪團</h2></div>
+      <div class="sub">想去但目前沒團?留個許願,湊到人或排好行程就主動通知你。</div>
+      <div class="lbl">想去哪?</div>
+      <div class="chips">
+        <span class="chip on">綠島</span><span class="chip">蘭嶼</span><span class="chip">小琉球</span>
+        <span class="chip">墾丁</span><span class="chip">媽媽島</span><span class="chip">薄荷島</span><span class="chip">其他</span>
+      </div>
+      <div class="lbl">主旨(選地點後自動帶入,可再補充)</div>
+      <div class="fauxinput"><span class="ftag b">綠島</span><span class="ph">想揪 7 月中的團…</span></div>
+      <div class="lbl">大概什麼時候?幾個人?</div>
+      <div class="two">
+        <div><input placeholder="例:7 月中、暑假"></div>
+        <div><input placeholder="人數 例:2"></div>
+      </div>
+      <div class="lbl">備註(選填)</div>
+      <textarea placeholder="例:都有 OW,想去綠島看大香菇,住宿幫忙安排"></textarea>
+      <div class="lbl">怎麼聯絡你?</div>
+      <input placeholder="姓名(怎麼稱呼你)">
+      <div class="two" style="margin-top:9px">
+        <div><input placeholder="Email"></div>
+        <div><input placeholder="電話"></div>
+      </div>
+      <button class="btn b">送出許願 ➤</button>
+      <div class="note">送出後進<b>願望單</b>,湊團 / 排好就<b>優先通知你</b>。已加 LINE 的客人可在 LINE 裡看進度。</div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <span class="t">急著問?直接找真人 →</span>
+    <a class="line"><span class="ic">L</span>LINE 問汪汪教練(最快)</a>
+    <span class="email">或 Email：<b>service@haiwangzi.xyz</b></span>
+  </div>
+</div>
+<div class="cap">桌機版 /contact —— 兩個意圖並排,各自展開填寫,下方一條真人管道</div>
+</div>
+</body>
+</html>

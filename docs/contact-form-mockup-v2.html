@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>客戶詢問頁 v2 — 自助漏斗</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#e8edf0;padding:24px;display:flex;gap:26px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;align-items:center;gap:8px}
+.cap{font-size:12px;color:#5b7080;text-align:center;max-width:330px}
+.step{display:inline-block;background:#0A2342;color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 11px;margin-bottom:2px}
+.phone{width:330px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 36px rgba(8,34,47,.16);border:1px solid #d9e2e7}
+.hero{background:linear-gradient(160deg,#0A2342,#103848);color:#fff;padding:18px 18px 16px;text-align:center}
+.hero h1{font-size:18px;font-weight:700}.hero p{font-size:12px;color:#9fc6d2;margin-top:5px}
+.body{padding:15px 15px 18px}
+.lbl{font-size:12px;font-weight:700;color:#0A2342;margin:2px 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.chip{font-size:12.5px;padding:7px 12px;border-radius:20px;border:1.5px solid #cfe0e0;background:#fff;color:#0e7c8a}
+.chip.on{background:#0E9AA0;border-color:#0E9AA0;color:#fff;font-weight:700}
+.hot{font-size:11.5px;color:#9aabae;font-weight:700;margin:4px 0 7px}
+.qa{border:1px solid #e1ebeb;border-radius:11px;padding:11px 13px;margin-bottom:8px;background:#f7fafb}
+.qa .q{font-size:13.5px;font-weight:700;color:#1A2330;display:flex;justify-content:space-between;gap:8px}
+.qa .q .arr{color:#0E9AA0;flex:none}
+.qa.open{background:#fff;border-color:#0E9AA0;box-shadow:0 4px 14px rgba(14,154,160,.1)}
+.qa .a{font-size:12.5px;color:#516268;line-height:1.7;margin-top:9px}
+.cta-row{display:flex;gap:8px;margin-top:12px}
+.cta{flex:1;text-align:center;border-radius:10px;padding:10px;font-size:13px;font-weight:700;text-decoration:none}
+.cta.main{background:linear-gradient(135deg,#FF6B4A,#F5522F);color:#fff}
+.cta.alt{background:#E6F4F4;color:#0e7c8a;border:1px solid #b9e0e0}
+.guide{margin-top:9px;font-size:11.5px;color:#0e7c8a;text-align:center}
+.foot{margin-top:16px;border-top:1px dashed #d9e2e7;padding-top:13px}
+.foot .t{font-size:12px;font-weight:700;color:#0A2342;text-align:center;margin-bottom:9px}
+.line-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#06C755;color:#fff;border-radius:11px;padding:11px;font-size:14px;font-weight:700;text-decoration:none}
+.line-btn .ic{width:20px;height:20px;background:#fff;border-radius:5px;color:#06C755;display:grid;place-items:center;font-size:12px;font-weight:800}
+.email-link{display:block;text-align:center;font-size:12px;color:#7c9296;margin-top:9px}
+.email-link b{color:#0e7c8a}
+</style>
+</head>
+<body>
+
+<!-- Screen 1: 主題選單 -->
+<div class="col">
+  <span class="step">① 先給選單</span>
+  <div class="phone">
+    <div class="hero"><h1>有問題?先看看這些 👇</h1><p>多數問題這裡馬上有答案,不用等回信</p></div>
+    <div class="body">
+      <div class="lbl">你想問什麼?</div>
+      <div class="chips">
+        <span class="chip on">新手會怕</span><span class="chip">不會游泳</span><span class="chip">耳朵會痛</span>
+        <span class="chip">健康安全</span><span class="chip">費用 / 時間</span><span class="chip">天氣取消</span><span class="chip">考證流程</span>
+      </div>
+      <div class="hot">🔥 熱門問題</div>
+      <div class="qa"><div class="q"><span>潛水危險嗎?第一次會不會很可怕?</span><span class="arr">＋</span></div></div>
+      <div class="qa"><div class="q"><span>完全不會游泳,可以潛水嗎?</span><span class="arr">＋</span></div></div>
+      <div class="qa"><div class="q"><span>耳朵會不會痛?</span><span class="arr">＋</span></div></div>
+      <div class="qa"><div class="q"><span>哪些健康狀況需要事先告知?</span><span class="arr">＋</span></div></div>
+    </div>
+  </div>
+  <div class="cap">點主題或問題就展開答案(下一張)</div>
+</div>
+
+<!-- Screen 2: 答案 + 引導預約 + 真人 -->
+<div class="col">
+  <span class="step">② 給答案 → 引導預約 → 才轉真人</span>
+  <div class="phone">
+    <div class="hero"><h1>新手會怕</h1><p>放心,這些都是最常見的顧慮</p></div>
+    <div class="body">
+      <div class="qa open">
+        <div class="q"><span>潛水危險嗎?第一次會不會很可怕?</span><span class="arr">－</span></div>
+        <div class="a">其實比想像中安全也輕鬆。體驗潛水是小團、教練全程陪同,先在淺水區慢慢適應,確認你準備好才往下。你只要放輕鬆呼吸,其餘交給教練。</div>
+        <div class="cta-row">
+          <a class="cta main">這聽起來適合我 →<br>看體驗潛水</a>
+          <a class="cta alt">直接 LINE<br>預約</a>
+        </div>
+        <div class="guide">💡 不確定適合哪種?幫你 3 題快速判斷 →</div>
+      </div>
+      <div class="qa"><div class="q"><span>我怕水、怕深,慌了想上岸怎麼辦?</span><span class="arr">＋</span></div></div>
+      <div class="qa"><div class="q"><span>完全不會游泳,可以潛水嗎?</span><span class="arr">＋</span></div></div>
+
+      <div class="foot">
+        <div class="t">沒解決你的問題?直接問我們</div>
+        <a class="line-btn"><span class="ic">L</span>用 LINE 問汪汪教練(最快)</a>
+        <a class="email-link">或寄 email 到 <b>service@haiwangzi.xyz</b>,我們一天內回</a>
+      </div>
+    </div>
+  </div>
+  <div class="cap">答案底下就放預約 CTA,把「來問的人」順勢變「來預約的人」</div>
+</div>
+
+</body>
+</html>

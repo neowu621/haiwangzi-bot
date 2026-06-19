@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>客戶詢問頁 — 手機版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#e8edf0;padding:24px;display:flex;justify-content:center}
+.phone{width:360px;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 14px 40px rgba(8,34,47,.18);border:1px solid #d9e2e7}
+.hero{background:linear-gradient(160deg,#0A2342,#103848);color:#fff;padding:20px 18px 18px;text-align:center}
+.hero .w{font-size:30px}.hero h1{font-size:20px;font-weight:700;margin-top:4px}.hero p{font-size:12.5px;color:#9fc6d2;margin-top:6px;line-height:1.6}
+.body{padding:16px}
+.card{border-radius:15px;padding:16px;border:1.5px solid;margin-bottom:14px}
+.card.a{background:#fff6f3;border-color:#f3c6b8}.card.b{background:#eef9f8;border-color:#bfe5e2}
+.top{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:20px;flex:none}
+.card.a .ic{background:#ffe2d8}.card.b .ic{background:#d6f0ee}
+.top h2{font-size:16px}.card.a h2{color:#c0432a}.card.b h2{color:#0e7c8a}
+.sub{font-size:12px;color:#516268;line-height:1.6;margin-bottom:12px}
+.lbl{font-size:12px;font-weight:700;color:#0A2342;margin:11px 0 7px}.lbl:first-of-type{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:6px 11px;border-radius:20px;border:1.5px solid #cfe0e0;background:#fff;color:#0e7c8a}
+.chip.on{background:#0E9AA0;border-color:#0E9AA0;color:#fff;font-weight:700}
+.chip.coral.on{background:#FF6B4A;border-color:#FF6B4A}
+.fauxinput{display:flex;align-items:center;gap:7px;border:1.5px solid #dce7ea;border-radius:10px;padding:9px 11px;background:#fff;font-size:13.5px}
+.ftag{font-weight:700;border-radius:6px;padding:2px 8px;font-size:12px;flex:none}
+.ftag.a{background:#ffe2d8;color:#c0432a}.ftag.b{background:#d6f0ee;color:#0e7c8a}
+.ph{color:#9aabae}
+input,textarea{width:100%;border:1.5px solid #dce7ea;border-radius:10px;padding:10px 12px;font-size:13.5px;font-family:inherit;background:#fff;color:#0f2430}
+textarea{min-height:58px;resize:none;line-height:1.6}
+.two{display:flex;gap:9px}.two>div{flex:1}
+.btn{width:100%;margin-top:13px;border:none;border-radius:11px;padding:13px;font-size:15px;font-weight:700;color:#fff;font-family:inherit}
+.btn.a{background:linear-gradient(135deg,#FF6B4A,#F5522F)}.btn.b{background:linear-gradient(135deg,#0E9AA0,#0a6e73)}
+.note{font-size:11px;color:#7c9296;margin-top:9px;line-height:1.6}.note b{color:#0e7c8a}
+.foot{border-top:1px dashed #d9e2e7;padding-top:13px;text-align:center}
+.foot .t{font-size:12.5px;font-weight:700;color:#0A2342;margin-bottom:9px}
+.line{display:flex;align-items:center;justify-content:center;gap:8px;background:#06C755;color:#fff;border-radius:11px;padding:12px;font-size:14.5px;font-weight:700;text-decoration:none}
+.line .ic2{width:20px;height:20px;background:#fff;border-radius:5px;color:#06C755;display:grid;place-items:center;font-size:12px;font-weight:800}
+.email{display:block;font-size:11.5px;color:#7c9296;margin-top:9px}.email b{color:#0e7c8a;font-family:monospace}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="hero"><div class="w">🤿</div><h1>想潛水,但還在考慮?</h1><p>告訴我們你卡在哪 —— 幫你問清楚,或為你開團</p></div>
+  <div class="body">
+
+    <div class="card a">
+      <div class="top"><div class="ic">🤔</div><h2>對課程 / 潛旅有疑問</h2></div>
+      <div class="sub">還在考慮?選一個方案,把疑問問清楚再決定。</div>
+      <div class="lbl">你在考慮哪一個?</div>
+      <div class="chips">
+        <span class="chip coral on">體驗潛水</span><span class="chip">OW 考證</span><span class="chip">AOW</span>
+        <span class="chip">1對1 私人</span><span class="chip">Fun Dive</span><span class="chip">潛水團</span><span class="chip">包船</span><span class="chip">其他</span>
+      </div>
+      <div class="lbl">主旨(選方案後自動帶入,可再補充)</div>
+      <div class="fauxinput"><span class="ftag a">體驗潛水</span><span class="ph">想問費用與天數…</span></div>
+      <div class="lbl">想問什麼?</div>
+      <textarea placeholder="例:想帶女友一起體驗,她很怕水,適合嗎?"></textarea>
+      <div class="lbl">怎麼聯絡你?</div>
+      <input placeholder="姓名(怎麼稱呼你)">
+      <div class="two" style="margin-top:9px">
+        <div><input placeholder="Email ＊回信用"></div>
+        <div><input placeholder="電話(選填)"></div>
+      </div>
+      <button class="btn a">送出問題 ➤</button>
+      <div class="note">送出後進<b>客服信箱</b>,Email 回你(通常一天內)。</div>
+    </div>
+
+    <div class="card b">
+      <div class="top"><div class="ic">🌊</div><h2>想去某地 / 想揪團</h2></div>
+      <div class="sub">想去但沒團?留個許願,湊到人就開、優先通知你。</div>
+      <div class="lbl">想去哪?</div>
+      <div class="chips">
+        <span class="chip on">綠島</span><span class="chip">蘭嶼</span><span class="chip">小琉球</span>
+        <span class="chip">墾丁</span><span class="chip">媽媽島</span><span class="chip">薄荷島</span><span class="chip">其他</span>
+      </div>
+      <div class="lbl">主旨(選地點後自動帶入,可再補充)</div>
+      <div class="fauxinput"><span class="ftag b">綠島</span><span class="ph">想揪 7 月中的團…</span></div>
+      <div class="lbl">大概什麼時候?幾個人?</div>
+      <div class="two"><div><input placeholder="例:7 月中"></div><div><input placeholder="人數 例:2"></div></div>
+      <div class="lbl">備註(選填)</div>
+      <textarea placeholder="例:都有 OW,想看大香菇,住宿幫忙安排"></textarea>
+      <div class="lbl">怎麼聯絡你?</div>
+      <input placeholder="姓名(怎麼稱呼你)">
+      <div class="two" style="margin-top:9px">
+        <div><input placeholder="Email"></div>
+        <div><input placeholder="電話"></div>
+      </div>
+      <button class="btn b">送出許願 ➤</button>
+      <div class="note">送出後進<b>願望單</b>,湊團 / 排好就<b>優先通知你</b>。</div>
+    </div>
+
+    <div class="foot">
+      <div class="t">急著問?直接找真人</div>
+      <a class="line"><span class="ic2">L</span>LINE 問汪汪教練(最快)</a>
+      <span class="email">或 Email：<b>service@haiwangzi.xyz</b></span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

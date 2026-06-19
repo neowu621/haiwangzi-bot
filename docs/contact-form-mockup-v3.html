@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>客戶詢問頁 v3 — 購買疑慮 + 開團許願</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#e8edf0;padding:24px;display:flex;gap:26px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;align-items:center;gap:8px}
+.cap{font-size:12px;color:#5b7080;text-align:center;max-width:330px;line-height:1.6}
+.step{display:inline-block;background:#0A2342;color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:2px 11px}
+.phone{width:330px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 36px rgba(8,34,47,.16);border:1px solid #d9e2e7}
+.hero{background:linear-gradient(160deg,#0A2342,#103848);color:#fff;padding:18px;text-align:center}
+.hero h1{font-size:18px;font-weight:700}.hero p{font-size:12px;color:#9fc6d2;margin-top:5px}
+.body{padding:15px}
+/* intent cards */
+.icard{border-radius:14px;padding:15px;margin-bottom:12px;border:1.5px solid;display:block;text-decoration:none}
+.icard.a{background:#fff4f1;border-color:#f3c6b8}
+.icard.b{background:#eef9f8;border-color:#bfe5e2}
+.icard .ic{font-size:22px}
+.icard h3{font-size:15.5px;margin-top:4px}
+.icard.a h3{color:#c0432a}.icard.b h3{color:#0e7c8a}
+.icard p{font-size:12px;color:#516268;margin-top:4px;line-height:1.6}
+.icard .go{font-size:12.5px;font-weight:700;margin-top:9px}
+.icard.a .go{color:#c0432a}.icard.b .go{color:#0e7c8a}
+.qline{font-size:11.5px;color:#7c9296;margin-top:2px}
+.qline b{color:#0e7c8a}
+/* form B */
+.lbl{font-size:12.5px;font-weight:700;color:#0A2342;margin:12px 0 7px}
+.lbl:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:12.5px;padding:7px 12px;border-radius:20px;border:1.5px solid #cfe0e0;background:#fff;color:#0e7c8a}
+.chip.on{background:#0E9AA0;border-color:#0E9AA0;color:#fff;font-weight:700}
+.two{display:flex;gap:9px}
+.two>div{flex:1}
+input{width:100%;border:1.5px solid #dce7ea;border-radius:10px;padding:9px 11px;font-size:13.5px;font-family:inherit;background:#fff;color:#0f2430}
+.submit{width:100%;margin-top:14px;border:none;border-radius:12px;padding:13px;font-size:15.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0E9AA0,#0a6e73);font-family:inherit}
+.note{font-size:11px;color:#7c9296;text-align:center;margin-top:9px;line-height:1.6}
+.note b{color:#0e7c8a}
+.back{font-size:12px;color:#0e7c8a;margin-bottom:8px;display:inline-block}
+</style>
+</head>
+<body>
+
+<!-- Screen 1: 兩個意圖 -->
+<div class="col">
+  <span class="step">入口:兩個有目的的動作</span>
+  <div class="phone">
+    <div class="hero"><h1>想潛水,但還在考慮?</h1><p>不用客套,直接告訴我們你卡在哪</p></div>
+    <div class="body">
+      <a class="icard a">
+        <div class="ic">🤔</div>
+        <h3>對課程 / 潛旅有疑問</h3>
+        <p>體驗 vs 考證怎麼選?要幾天、多少錢?完全沒經驗 / 怕水可以嗎?問清楚再決定。</p>
+        <div class="go">問清楚再決定 →</div>
+        <div class="qline">熱門:<b>OW 要幾天?</b> · <b>沒經驗能潛嗎?</b> · <b>包船 6 人報價</b></div>
+      </a>
+      <a class="icard b">
+        <div class="ic">🌊</div>
+        <h3>想去某地 / 想揪團</h3>
+        <p>綠島、蘭嶼、小琉球、墾丁、國外…想去但目前沒團?留個許願,湊到人我們就開團通知你。</p>
+        <div class="go">許願開團 →</div>
+      </a>
+    </div>
+  </div>
+  <div class="cap">把「閒聊」拿掉,只留兩個會成交 / 收需求的動作</div>
+</div>
+
+<!-- Screen 2: 開團許願表單(接願望單) -->
+<div class="col">
+  <span class="step">B. 開團許願(接你現有願望單)</span>
+  <div class="phone">
+    <div class="hero"><h1>許願開團 🌊</h1><p>湊到人就開,優先通知你</p></div>
+    <div class="body">
+      <span class="back">← 返回</span>
+      <div class="lbl">想去哪?</div>
+      <div class="chips">
+        <span class="chip on">綠島</span><span class="chip">蘭嶼</span><span class="chip">小琉球</span>
+        <span class="chip">墾丁</span><span class="chip">媽媽島</span><span class="chip">薄荷島</span><span class="chip">其他</span>
+      </div>
+      <div class="lbl">大概什麼時候?幾個人?</div>
+      <div class="two">
+        <div><input placeholder="例:7 月中"></div>
+        <div><input placeholder="人數 例:2"></div>
+      </div>
+      <div class="lbl">怎麼聯絡你?</div>
+      <input placeholder="LINE 名稱 或 Email">
+      <button class="submit">送出許願 ➤</button>
+      <div class="note">送出後進我們的<b>願望單</b>,湊到人或安排好就<b>主動通知你</b>。<br>(已加 LINE 的客人可直接在 LINE 裡許願,進度看得到)</div>
+    </div>
+  </div>
+  <div class="cap">公開訪客的許願 → 進你後台「願望單」/「客服信箱」,不用先加 LINE</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>後台側欄 — Cloudflare 風格</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft JhengHei","Segoe UI",system-ui,sans-serif;background:#eef3f5;padding:26px 30px;color:#0f2430;display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+h1{font-size:19px;color:#08222F}.sub{color:#5b7080;font-size:13px;margin-top:4px;margin-bottom:16px}
+/* sidebar */
+.side{width:248px;background:#0A2342;border-radius:14px;padding:12px 8px 16px;color:#cfe0e6}
+.brand{display:flex;align-items:center;gap:9px;padding:5px 8px 12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px}
+.brand .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#19B6B0,#0A6E73);display:grid;place-items:center;font-size:15px}
+.brand .nm{font-size:13px;font-weight:700;color:#00D9CB}
+.brand .v{font-size:8.5px;color:#00D9CB;background:rgba(0,217,203,.18);padding:1px 5px;border-radius:5px;font-family:monospace;margin-left:auto}
+
+/* 分區標題(靜態,像 Cloudflare 的 Observe/組建) */
+.sec{font-size:10px;font-weight:700;letter-spacing:1px;color:#5e8493;padding:12px 10px 5px;text-transform:none}
+
+/* 可展開群組 header */
+.gh{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:13px;color:#cfe0e6;background:none;border:none;font-family:inherit;text-align:left}
+.gh:hover{background:rgba(255,255,255,.05)}
+.gh .ic{width:17px;text-align:center;flex:none;opacity:.9}
+.gh .lbl{flex:1}
+.gh .badge{background:#FF6B4A;color:#fff;font-size:8.5px;font-weight:700;padding:1px 6px;border-radius:9px}
+.gh .chev{opacity:.5;font-size:11px;transition:transform .2s}
+.gh.open .chev{transform:rotate(90deg)}
+
+/* 子項目:縮排 + 左側導引線(像 Cloudflare WAF/Turnstile) */
+.kids{margin:2px 0 4px;padding-left:26px;position:relative}
+.kids::before{content:"";position:absolute;left:18px;top:2px;bottom:6px;width:1px;background:rgba(255,255,255,.12)}
+.it{display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:8px;font-size:12.5px;color:#a9c2cc;cursor:pointer}
+.it:hover{background:rgba(255,255,255,.05);color:#eaf4f6}
+.it.on{background:rgba(255,255,255,.12);color:#fff;font-weight:600}  /* 目前頁淺色 highlight(像 Cloudflare Turnstile) */
+.it .ct{margin-left:auto;font-size:9px;background:#FF6B4A;color:#fff;padding:0 5px;border-radius:8px;font-weight:700}
+
+/* 直接連結(無子項,像 帳戶首頁) */
+.direct{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;font-size:13px;color:#cfe0e6;cursor:pointer}
+.direct:hover{background:rgba(255,255,255,.05)}
+.direct .ic{width:17px;text-align:center;flex:none;opacity:.9}
+.direct .ct{margin-left:auto;font-size:9px;background:#FF6B4A;color:#fff;padding:0 5px;border-radius:8px;font-weight:700}
+
+.fav .sec{display:flex;align-items:center;gap:5px}
+.notes{width:320px;font-size:13px;line-height:1.8}
+.notes h2{font-size:16px;color:#08222F;margin-bottom:8px}
+.box{background:#fff;border:1px solid #dbe5e9;border-radius:12px;padding:12px 15px;margin-bottom:11px}
+.box b{color:#0e7c8a}
+</style>
+</head>
+<body>
+<div>
+<h1>後台側欄 — Cloudflare 風格(展開方式)</h1>
+<p class="sub">分區標題(灰)+ 群組展開、子項目縮排+左導引線 + 目前頁淺色 highlight。</p>
+<div class="side">
+  <div class="brand"><div class="m">🔱</div><div class="nm">海王子 客服</div><span class="v">v535</span></div>
+
+  <!-- 我的最愛 -->
+  <div class="fav">
+    <div class="sec">⭐ 我的最愛</div>
+    <div class="direct"><span class="ic">🧾</span>老闆結帳<span class="ct">2</span></div>
+    <div class="direct"><span class="ic">📖</span>訂單管理<span class="ct">1</span></div>
+    <div class="direct"><span class="ic">📧</span>客服信箱<span class="ct">9</span></div>
+  </div>
+
+  <!-- 分區:營運 -->
+  <div class="sec">營運</div>
+  <button class="gh open"><span class="ic">📊</span><span class="lbl">即時營運</span><span class="chev">▸</span></button>
+  <div class="kids">
+    <div class="it"><span>總覽</span></div>
+    <div class="it"><span>老闆結帳</span><span class="ct">2</span></div>
+  </div>
+  <button class="gh"><span class="ic">📋</span><span class="lbl">訂單 / 客戶</span><span class="badge">2</span><span class="chev">▸</span></button>
+
+  <!-- 分區:行銷與通知 -->
+  <div class="sec">行銷與通知</div>
+  <button class="gh open"><span class="ic">📣</span><span class="lbl">行銷 / 通知</span><span class="chev">▸</span></button>
+  <div class="kids">
+    <div class="it on"><span>📧 客服信箱</span><span class="ct">9</span></div>
+    <div class="it"><span>🎨 業務推廣</span></div>
+    <div class="it"><span>訊息模板</span></div>
+    <div class="it"><span>群發通知</span></div>
+    <div class="it"><span>📋 發送紀錄</span></div>
+  </div>
+
+  <!-- 分區:系統 -->
+  <div class="sec">系統</div>
+  <button class="gh"><span class="ic">📈</span><span class="lbl">分析</span><span class="chev">▸</span></button>
+  <button class="gh"><span class="ic">⚙️</span><span class="lbl">系統設定</span><span class="chev">▸</span></button>
+</div>
+</div>
+
+<div class="notes">
+  <h2>跟現在差在哪</h2>
+  <div class="box"><b>① 多了「分區標題」(灰字)</b><br>像 Cloudflare 的 Observe/組建/保護與連線,把群組再分大類,一眼分層。</div>
+  <div class="box"><b>② 群組展開 = 子項目縮排 + 左導引線</b><br>展開後子項目往右縮、左邊一條細線,層次更清楚(像 WAF/Turnstile 那段)。</div>
+  <div class="box"><b>③ 目前所在頁 = 淺色 highlight</b><br>不是整條變色,而是像 Cloudflare 那種低調的淺灰底(圖中「客服信箱」)。</div>
+  <div class="box"><b>④ chevron 改成 ▸ → 展開轉 90°</b><br>跟 Cloudflare 的 &gt; / ∨ 一致。</div>
+  <div class="box" style="background:#fff8ec;border-color:#f3e2c0"><b>保留</b>:深色品牌、我的最愛、待處理徽章。要不要改成 Cloudflare 那種<b>白底淺色</b>主題?可以,但會跟現有後台風格差很多,我建議先維持深色。</div>
+</div>
+</body>
+</html>

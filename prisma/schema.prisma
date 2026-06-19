@@ -462,6 +462,12 @@ model Booking {
   paymentEntries PaymentEntry[] // v366：付款/折抵逐筆明細帳
   emailThreads   EmailThread[] // v521：客服信箱 console（email-console bundle）反向 relation
 
+  // v590：節慶優惠代碼 + 日潛早鳥回饋
+  promoCode        String?  @map("promo_code") @db.VarChar(16) // 此訂單使用的優惠代碼
+  promoDiscount    Int      @default(0) @map("promo_discount") // 代碼折抵金額 NT$
+  earlyBirdCredit  Int      @default(0) @map("early_bird_credit") // 早鳥回饋抵用金(結案後發)
+  earlyBirdGranted Boolean  @default(false) @map("early_bird_granted") // 是否已發放
+
   // v355：效能索引（原本完全沒有，所有 admin/coach/cron 查詢都是 seq scan）
   @@index([refId, type, status]) // by-trip / coach-today / reminders
   @@index([userId, createdAt(sort: Desc)]) // 我的預約 / 會員 LTV
@@ -796,6 +802,11 @@ model SiteConfig {
   tankPromoStart    DateTime? @map("tank_promo_start") @db.Timestamptz
   tankPromoEnd      DateTime? @map("tank_promo_end") @db.Timestamptz
 
+  // v590：日潛早鳥回饋（提早預約、滿額、結案後送抵用金；越早送越多）
+  earlyBirdEnabled   Boolean @default(false) @map("early_bird_enabled")
+  earlyBirdMinAmount Int     @default(1000) @map("early_bird_min_amount") // 最低消費門檻
+  earlyBirdTiers     Json    @default("[]") @map("early_bird_tiers") // [{weeks:3,credit:50},{weeks:4,credit:100}]
+
   // v470：Email 發送路徑 — gmail（預設）/ zsend / fallback（Gmail 失敗自動改 ZSend）
   emailProvider String @default("gmail") @map("email_provider") @db.VarChar(16)
 
@@ -1011,6 +1022,34 @@ model HourlyStat {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("hourly_stats")
+}
+
+// v590：節慶優惠代碼（下單輸入；取其優、可疊抵用金）。
+//   discountType: "per_tank"(每支氣瓶折 NT$) / "percent"(訂單折 %)。
+//   isPublic: 公開(秀給客戶+一鍵套用) / 私密(只有拿到碼的人能用)。
+//   appliesTo: "daily" / "tour" / "both"。
+model PromoCode {
+  id            String   @id @default(cuid())
+  title         String                              // 主題
+  code          String   @unique @db.VarChar(16)    // 7 碼英數(系統自動產生)
+  discountType  String   @db.VarChar(12)            // per_tank | percent
+  discountValue Int                                 // NT$/支 或 百分比
+  startAt       DateTime @db.Timestamptz
+  endAt         DateTime @db.Timestamptz
+  isPublic      Boolean  @default(true)
+  appliesTo     String   @default("daily") @db.VarChar(8)
+  minAmount     Int      @default(0)                // 滿額才折(0=不限)
+  perUserLimit  Int      @default(0)                // 每人限用(0=不限)
+  totalLimit    Int      @default(0)                // 總量上限(0=不限)
+  usedCount     Int      @default(0)
+  audienceTag   String?  @db.VarChar(24)            // 限定客群(如 vip5);null=不限
+  enabled       Boolean  @default(true)
+  note          String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([code])
+  @@map("promo_codes")
 }
 
 // v580：Google OAuth 連線（目前用於 GA4 Data API 唯讀）。provider="ga"。

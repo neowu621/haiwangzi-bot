@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聯絡 CTA 配置預覽 — 成對 + 手機漂浮鈕</title>
+<style>
+  :root{
+    --navy:#0A2342; --navy2:#1B3A5C; --teal:#00D9CB; --coral:#FF7B5A;
+    --line:#06C755; --pearl:#F5F7FA; --ink:#0f2430; --muted:#5b7080;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Microsoft JhengHei","PingFang TC","Segoe UI",system-ui,sans-serif;background:#e9eef1;color:var(--ink);padding:28px 22px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:23px;color:var(--navy);font-weight:800}
+  .sub{color:var(--muted);font-size:14px;margin:6px 0 22px;line-height:1.7}
+  h2{font-size:15px;color:var(--navy);margin:30px 0 12px;display:flex;align-items:center;gap:8px}
+  h2 .bar{width:4px;height:17px;border-radius:3px;background:var(--teal)}
+  .tag{font-size:11px;font-weight:700;color:#0e7c8a;background:#e3f6f4;padding:2px 9px;border-radius:20px}
+
+  /* 共用按鈕樣式 */
+  .btn{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:700;
+       padding:13px 22px;border-radius:12px;cursor:pointer;border:2px solid transparent;text-decoration:none;font-family:inherit;transition:.15s}
+  .btn .ic{font-size:17px}
+  .btn-line{background:var(--line);color:#fff;border-color:var(--line);box-shadow:0 6px 16px rgba(6,199,85,.28)}
+  .btn-line:hover{filter:brightness(1.05)}
+  .btn-ask{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
+  .btn-ask:hover{background:rgba(255,255,255,.12)}
+  /* 淺底版(頁尾 bar 用) */
+  .btn-ask.dark{color:var(--navy);border-color:#c7d6dd}
+  .btn-ask.dark:hover{background:#eef4f6}
+
+  /* ---- 桌機 hero ---- */
+  .hero{background:radial-gradient(120% 140% at 80% 0%,#1b3a5c 0%,#0a2342 60%);border-radius:18px;padding:46px 44px;color:#fff;position:relative;overflow:hidden}
+  .hero::after{content:"🔱";position:absolute;right:34px;bottom:-10px;font-size:120px;opacity:.06}
+  .hero .eyebrow{font-size:12px;letter-spacing:2px;color:var(--teal);font-weight:700}
+  .hero h3{font-size:30px;font-weight:800;margin:8px 0 6px;line-height:1.25}
+  .hero p{color:#bcd0da;font-size:14.5px;line-height:1.8;margin-bottom:22px;max-width:440px}
+  .cta-row{display:flex;gap:13px;flex-wrap:wrap;align-items:center}
+  .cta-hint{font-size:12px;color:#8fa9b5;margin-top:11px}
+
+  /* ---- 頁尾 bar ---- */
+  .bar-cta{background:#fff;border:1px solid #dbe5e9;border-radius:14px;padding:16px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .bar-cta .q{font-weight:800;color:var(--navy);font-size:15px}
+  .bar-cta .sp{flex:1}
+  .bar-cta .btn{padding:11px 18px;font-size:14px}
+
+  /* ---- 手機 demo ---- */
+  .phones{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-start}
+  .phone{width:300px;height:540px;background:#fff;border:8px solid #16222e;border-radius:34px;position:relative;overflow:hidden;box-shadow:0 18px 40px rgba(10,35,66,.22)}
+  .phone .scr{position:absolute;inset:0;background:linear-gradient(180deg,#0a2342 0%,#10314e 38%,#f5f7fa 38%);}
+  .phone .topbar{height:46px;display:flex;align-items:center;gap:8px;padding:0 14px;color:#fff;font-size:13px;font-weight:700}
+  .phone .topbar .m{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#19B6B0,#0A6E73);display:grid;place-items:center;font-size:12px}
+  .phone .body{padding:14px}
+  .phone .body h4{color:#fff;font-size:18px;font-weight:800;line-height:1.3;margin-bottom:6px}
+  .phone .body .pp{color:#bcd0da;font-size:11.5px;line-height:1.6}
+  .phone .card{background:#fff;border-radius:12px;margin-top:14px;padding:13px;border:1px solid #e6edf0}
+  .phone .card .ln{height:9px;border-radius:5px;background:#e7eef1;margin:7px 0}
+  .phone .card .ln.s{width:60%}
+
+  /* 漂浮鈕 FAB */
+  .fab{position:absolute;right:16px;bottom:18px;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .fab .opt{display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(10px) scale(.9);pointer-events:none;transition:.22s}
+  .fab.open .opt{opacity:1;transform:none;pointer-events:auto}
+  .fab .opt .lbl{background:#fff;color:var(--navy);font-size:12px;font-weight:700;padding:6px 11px;border-radius:9px;box-shadow:0 4px 12px rgba(0,0,0,.16);white-space:nowrap}
+  .fab .opt .dot{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.25);flex:none}
+  .fab .opt .dot.line{background:var(--line)}
+  .fab .opt .dot.ask{background:var(--navy)}
+  .fab .main{width:58px;height:58px;border-radius:50%;background:var(--coral);color:#fff;border:none;cursor:pointer;
+             font-size:25px;box-shadow:0 8px 22px rgba(255,123,90,.5);display:grid;place-items:center;transition:.22s;align-self:flex-end}
+  .fab.open .main{transform:rotate(45deg);background:var(--navy)}
+
+  .note{background:#fff;border-left:5px solid var(--teal);border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.8;color:#3d5563;margin-top:14px}
+  .note b{color:#0e7c8a}
+  .badpat{background:#fff5f3;border-left-color:#ff8a6b}.badpat b{color:#d2552f}
+  .tip{font-size:12.5px;color:var(--muted);margin-top:8px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:4px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>聯絡入口配置預覽 <span class="tag">成對 CTA · 不雜亂</span></h1>
+  <p class="sub">原則:<b>「加 LINE 預約」=主要(綠實心)</b> + <b>「線上詢問」=次要(線框)</b>,永遠成對、同樣式、主次分明。<br>
+     桌機固定放 hero + 頁尾;手機只放<b>一顆漂浮鈕</b>,點開才展開兩個選項 → 不佔畫面、不打架。</p>
+
+  <!-- 桌機 hero -->
+  <h2><span class="bar"></span>① 桌機首頁 Hero(第一屏)</h2>
+  <div class="hero">
+    <div class="eyebrow">東北角 · 龍洞 · 潮境</div>
+    <h3>第一次潛水,也能安心下水</h3>
+    <p>免證照體驗潛水、考證課程、Fun Dive 日潛、潛旅揪團 —— 專業教練一對一,全程陪同。</p>
+    <div class="cta-row">
+      <a class="btn btn-line"><span class="ic">💬</span>加 LINE 預約</a>
+      <a class="btn btn-ask"><span class="ic">✉️</span>線上詢問</a>
+    </div>
+    <div class="cta-hint">想直接聊 → LINE;還在考慮、不想先加好友 → 線上詢問(留 Email 馬上收到確認信)</div>
+  </div>
+  <div class="legend">
+    <span><i class="sw" style="background:#06C755"></i>LINE 綠 = 主要</span>
+    <span><i class="sw" style="background:transparent;border:2px solid #94a9b4"></i>線框 = 次要</span>
+    <span><i class="sw" style="background:#FF7B5A"></i>珊瑚橘 = 手機漂浮鈕</span>
+  </div>
+
+  <!-- 頁尾 bar -->
+  <h2><span class="bar"></span>② 各頁底部「急著問?」bar(現有,只加一顆次要鈕)</h2>
+  <div class="bar-cta">
+    <span class="q">還有疑問?直接問汪汪教練</span>
+    <span class="sp"></span>
+    <a class="btn btn-line"><span class="ic">💬</span>加 LINE(最快)</a>
+    <a class="btn btn-ask dark"><span class="ic">✉️</span>線上詢問</a>
+  </div>
+  <div class="note">這條 bar 你站上<b>已經有了</b>(現在只有 LINE)。改動最小:<b>右邊補一顆線框「線上詢問」</b>即可,不新增區塊。</div>
+
+  <!-- 手機 -->
+  <h2><span class="bar"></span>③ 手機:單一漂浮鈕(點橘色鈕看展開)</h2>
+  <div class="phones">
+    <div>
+      <div class="phone">
+        <div class="scr">
+          <div class="topbar"><span class="m">🔱</span>海王子潛水</div>
+          <div class="body">
+            <h4>第一次潛水<br>也能安心下水</h4>
+            <div class="pp">免證照體驗 · 專業教練一對一 · 東北角清澈海域</div>
+            <div class="card"><div class="ln"></div><div class="ln"></div><div class="ln s"></div></div>
+            <div class="card"><div class="ln"></div><div class="ln s"></div></div>
+          </div>
+        </div>
+        <!-- FAB -->
+        <div class="fab" id="fab">
+          <div class="opt"><span class="lbl">線上詢問</span><span class="dot ask">✉️</span></div>
+          <div class="opt"><span class="lbl">加 LINE 預約</span><span class="dot line">💬</span></div>
+          <button class="main" id="fabBtn" onclick="document.getElementById('fab').classList.toggle('open')">＋</button>
+        </div>
+      </div>
+      <div class="tip">↑ 平常只看到<b>一顆橘鈕</b>,點下去才展開 LINE / 線上詢問</div>
+    </div>
+
+    <div class="note" style="flex:1;min-width:260px;margin-top:0">
+      <b>為什麼手機要這樣?</b><br>
+      手機畫面小,兩顆鈕並排會擋內容、顯得亂。收進<b>一顆 FAB</b>:<br>
+      ① 平常乾淨,只佔右下小角落<br>
+      ② 點一下才展開兩個選項,選擇清楚<br>
+      ③ LINE 內建瀏覽器也適用<br><br>
+      <span style="color:#0e7c8a;font-weight:700">→ 既覆蓋兩種客人,又不雜亂。</span>
+    </div>
+  </div>
+
+  <div class="note badpat">
+    <b>要避免的(會亂):</b>每段內容、每張卡片都各放 LINE+詢問兩顆;手機兩顆鈕並排懸浮。→ 視覺雜訊、選擇困難,反而沒人點。
+  </div>
+</div>
+</body>
+</html>
