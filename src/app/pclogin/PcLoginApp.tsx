@@ -1086,24 +1086,78 @@ const STATUS_ZH: Record<string, string> = {
 const PAY_ZH: Record<string, string> = {
   unpaid: "未付款", pending: "未付款", deposit_paid: "已付訂金", fully_paid: "已付清", refunded: "已退款",
 };
-// v592：桌面訊息中心(複用 /api/me/notifications)
+// v592/v596：桌面訊息中心 — 通知(可篩選) + 聯絡客服(雙向,複用客服信箱)
+type Notif = { id: string; title: string; body: string; isRead: boolean; createdAt: string };
 function NotificationsPanel() {
-  const [items, setItems] = useState<Array<{ id: string; title: string; body: string; isRead: boolean; createdAt: string }>>([]);
+  const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    api<{ items: Array<{ id: string; title: string; body: string; isRead: boolean; createdAt: string }> }>("/api/me/notifications")
+  const [filter, setFilter] = useState<"all" | "today" | "date">("all");
+  const [pickDate, setPickDate] = useState("");
+  const [contactMsg, setContactMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+
+  const reload = () => {
+    setLoading(true);
+    api<{ items: Notif[] }>("/api/me/notifications?limit=50")
       .then((d) => setItems(d.items ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+  useEffect(() => {
+    reload();
     api("/api/me/notifications/read", { method: "POST", body: JSON.stringify({ all: true }) }).catch(() => {});
   }, []);
+
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const dOf = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const filtered = items.filter((n) => {
+    if (filter === "today") return dOf(n.createdAt) === today;
+    if (filter === "date") return pickDate ? dOf(n.createdAt) === pickDate : true;
+    return true;
+  });
+
+  async function sendContact() {
+    if (!contactMsg.trim()) return;
+    setSending(true); setSent(null);
+    try {
+      await api("/api/me/contact", { method: "POST", body: JSON.stringify({ message: contactMsg }) });
+      setSent("✅ 已送出,客服會盡快回覆(回覆會出現在下方通知)"); setContactMsg("");
+    } catch (e) { setSent(e instanceof Error ? e.message : "送出失敗"); }
+    finally { setSending(false); }
+  }
+
+  const chip = (key: typeof filter, label: string) => (
+    <button onClick={() => setFilter(key)} style={{ fontSize: 12, padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", background: filter === key ? C.deep : "#e6edf2", color: filter === key ? "#fff" : C.mute, fontWeight: 600 }}>{label}</button>
+  );
+
   return (
     <div style={formCard()}>
       <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep, marginBottom: 12 }}>通知</h2>
+
+      {/* 聯絡客服(雙向) */}
+      <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14, background: "#f8fbfc" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.deep, marginBottom: 8 }}>💬 有問題?傳訊息給客服</div>
+        <textarea value={contactMsg} onChange={(e) => setContactMsg(e.target.value)} rows={2} placeholder="輸入您的問題或需求…" style={{ ...inp, width: "100%", resize: "vertical" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+          <span style={{ fontSize: 11.5, color: sent?.startsWith("✅") ? "#0a8f86" : "#c0473b" }}>{sent}</span>
+          <button onClick={sendContact} disabled={sending || !contactMsg.trim()} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 9, padding: "7px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: sending || !contactMsg.trim() ? 0.5 : 1 }}>送出</button>
+        </div>
+      </div>
+
+      {/* 篩選 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        {chip("all", "全部")}
+        {chip("today", "今天")}
+        {chip("date", "選日期")}
+        {filter === "date" && <input type="date" value={pickDate} onChange={(e) => setPickDate(e.target.value)} style={{ ...inp, width: "auto" }} />}
+        <button onClick={reload} style={{ marginLeft: "auto", fontSize: 12, color: C.mute, background: "none", border: "none", cursor: "pointer" }}>↻ 重新整理</button>
+      </div>
+
       {loading && <div style={{ color: C.mute, fontSize: 14 }}>載入中…</div>}
-      {!loading && items.length === 0 && <div style={{ color: C.mute, fontSize: 14, padding: "24px 0", textAlign: "center" }}>目前沒有通知</div>}
+      {!loading && filtered.length === 0 && <div style={{ color: C.mute, fontSize: 14, padding: "24px 0", textAlign: "center" }}>{filter === "all" ? "目前沒有通知" : "這個範圍沒有通知"}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {items.map((n) => (
+        {filtered.map((n) => (
           <div key={n.id} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", background: n.isRead ? "#fff" : "#f0fbfa" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.deep }}>{n.title}</div>
             <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.7, marginTop: 4, whiteSpace: "pre-wrap" }}>{n.body}</div>

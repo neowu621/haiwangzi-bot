@@ -51,6 +51,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // v596：web 對話(桌面 /pclogin 會員)→ 回覆寫成該會員的站內通知(member 在通知頁看得到)
+  if (thread.channel === "web") {
+    if (!thread.lineUserId) return NextResponse.json({ error: "此對話缺 userId,無法回覆" }, { status: 400 });
+    const replyText = (text && text.trim()) ? text : html.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
+    await prisma.emailMessage.create({
+      data: {
+        threadId: id, direction: "OUTBOUND", channel: "web",
+        fromAddr: "service", toAddr: thread.lineUserId, subject: thread.subject,
+        bodyText: replyText, messageId: `<web-out-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@haiwangzi.xyz>`,
+        status: "SENT",
+      },
+    });
+    await prisma.notification.create({
+      data: { userId: thread.lineUserId, templateKey: "cs_reply", title: "客服回覆", body: replyText, icon: "💬" },
+    });
+    await prisma.emailThread.update({ where: { id }, data: { status: "PROCESSING", lastMessageAt: new Date() } });
+    return NextResponse.json({ ok: true });
+  }
+
   // 抑制名單檢查（退信/投訴過的地址不再寄）
   const suppressed = await prisma.suppressedEmail.findUnique({
     where: { email: thread.customerEmail },

@@ -361,7 +361,7 @@ export default function AdminEmailPage() {
                     <div style={{ minWidth: 0, flex: 1 }}>
                       {/* 第 1 行：來源 icon + 名稱 + 時間 */}
                       <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ fontSize: 13, flexShrink: 0 }} title={t.channel === "line" ? "LINE" : "Email"}>{t.channel === "line" ? "💬" : "✉️"}</span>
+                        <span style={{ fontSize: 13, flexShrink: 0 }} title={t.channel === "line" ? "LINE" : t.channel === "web" ? "桌面會員" : "Email"}>{t.channel === "line" ? "💬" : t.channel === "web" ? "🖥" : "✉️"}</span>
                         <span style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.customerName ?? t.customerEmail}</span>
                         <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#9aabae", whiteSpace: "nowrap", flexShrink: 0 }}>{fmt(t.lastMessageAt)}</span>
                       </div>
@@ -390,7 +390,7 @@ export default function AdminEmailPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
                       {detail.customerName ?? detail.customerEmail}
-                      <span style={srcChip(detail.channel)}>{detail.channel === "line" ? "💬 LINE" : "✉️ Email"}</span>
+                      <span style={srcChip(detail.channel)}>{detail.channel === "line" ? "💬 LINE" : detail.channel === "web" ? "🖥 桌面會員" : "✉️ Email"}</span>
                     </div>
                     <div style={{ fontSize: 12, color: "#9aabae", fontFamily: "monospace" }}>
                       {detail.channel === "line" ? "LINE 對話（直接回覆即推送給客人）" : detail.customerEmail}
