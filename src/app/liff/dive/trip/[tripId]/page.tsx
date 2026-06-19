@@ -151,6 +151,11 @@ export default function TripBookingPage({
   // v392：氣瓶限時折扣（每支折抵 NT$ + 理由），由 /api/me 回傳
   const [tankPromo, setTankPromo] = useState<{ active: boolean; discount: number; reason: string }>({ active: false, discount: 0, reason: "" });
   const [creditUsed, setCreditUsed] = useState(0);
+  // v592：節慶優惠代碼
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
+  const [promoMsg, setPromoMsg] = useState<string | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
 
   // 同伴
   const [savedCompanions, setSavedCompanions] = useState<Companion[]>([]);
@@ -358,6 +363,30 @@ export default function TripBookingPage({
   }, [trip]);
   const total = divesAmount + extraAmount + gearDiscounted;
 
+  // v592：節慶優惠代碼 —— 取其優(代碼折扣 > 自動氣瓶折才生效),可疊抵用金
+  const preDiscountTotal = total + tankSaved; // 未折前小計
+  const totalTanksAll = tankCount * participants;
+  const codeDiscountEff = promoApplied && promoApplied.discount > tankSaved ? promoApplied.discount : 0;
+  const finalTotal = Math.max(0, preDiscountTotal - Math.max(tankSaved, codeDiscountEff));
+
+  async function applyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setPromoBusy(true); setPromoMsg(null);
+    try {
+      const r = await liff.fetchWithAuth<{ ok: boolean; reason?: string; code?: string; discount?: number; label?: string }>(
+        "/api/promo/validate",
+        { method: "POST", body: JSON.stringify({ code, type: "daily", orderAmount: preDiscountTotal, totalTanks: totalTanksAll }) },
+      );
+      if (!r.ok) { setPromoApplied(null); setPromoMsg(r.reason ?? "優惠代碼無效"); }
+      else {
+        setPromoApplied({ code: r.code!, discount: r.discount ?? 0, label: r.label ?? "" });
+        setPromoMsg((r.discount ?? 0) > tankSaved ? null : "目前已有更優的氣瓶折扣,此代碼不會額外折抵");
+      }
+    } catch (e) { setPromoMsg(e instanceof Error ? e.message : "驗證失敗"); }
+    finally { setPromoBusy(false); }
+  }
+
   const companionsValid = companionSlots.every(
     (c) => c.name.trim().length >= 2 && c.cert !== null,
   );
@@ -425,7 +454,9 @@ export default function TripBookingPage({
         })),
         notes: notes || undefined,
         // v289：不再送 paymentMethod，後端寫 null（建立時不選付款方式）
-        creditUsed: Math.min(creditUsed, creditBalance, total),
+        creditUsed: Math.min(creditUsed, creditBalance, finalTotal),
+        // v592：節慶優惠代碼(後端二次驗證 + 取其優)
+        promoCode: promoApplied?.code,
         agreedToTerms: true as const,
         // v260：手寫簽名 PNG data URL（後端解 base64 → 上 R2）
         signatureDataUrl: signatureDataUrl ?? undefined,
@@ -801,6 +832,19 @@ export default function TripBookingPage({
               </div>
             </div>
 
+            {/* v592：節慶優惠代碼 */}
+            <div className="rounded-md border border-[var(--color-ocean-deep)]/20 bg-[var(--color-ocean-deep)]/5 p-3">
+              <Label className="text-xs">🎏 優惠代碼</Label>
+              <div className="mt-1.5 flex gap-2">
+                <Input value={promoInput} onChange={(e) => setPromoInput(e.target.value.toUpperCase())} placeholder="輸入優惠代碼" className="font-mono" />
+                <button type="button" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()} className="shrink-0 rounded-md bg-[var(--color-ocean-deep)] px-3 text-xs font-semibold text-white disabled:opacity-50">套用</button>
+              </div>
+              {promoApplied && codeDiscountEff > 0 && (
+                <div className="mt-1.5 text-[11px] font-semibold text-emerald-600">✓ {promoApplied.label}：折 NT$ {codeDiscountEff.toLocaleString()}</div>
+              )}
+              {promoMsg && <div className="mt-1.5 text-[11px] text-[var(--color-coral)]">{promoMsg}</div>}
+            </div>
+
             {/* 抵用金折抵 — 有餘額才顯示 */}
             {creditBalance > 0 && (
               <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-3">
@@ -813,7 +857,7 @@ export default function TripBookingPage({
                   </Label>
                   <button
                     type="button"
-                    onClick={() => setCreditUsed(Math.min(creditBalance, total))}
+                    onClick={() => setCreditUsed(Math.min(creditBalance, finalTotal))}
                     className="rounded-full bg-[var(--color-coral)] px-2 py-0.5 text-[10px] font-semibold text-white"
                   >
                     全部用
@@ -822,11 +866,11 @@ export default function TripBookingPage({
                 <Input
                   type="number"
                   min={0}
-                  max={Math.min(creditBalance, total)}
+                  max={Math.min(creditBalance, finalTotal)}
                   value={creditUsed || ""}
                   onChange={(e) => {
                     const v = Math.max(0, Number(e.target.value) || 0);
-                    setCreditUsed(Math.min(v, creditBalance, total));
+                    setCreditUsed(Math.min(v, creditBalance, finalTotal));
                   }}
                   placeholder="NT$ 0"
                   className="text-center text-base font-bold"
@@ -834,11 +878,12 @@ export default function TripBookingPage({
                 {creditUsed > 0 && (
                   <div className="mt-1 text-[10px] tabular text-[var(--color-coral)]">
                     折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
-                    {(total - creditUsed).toLocaleString()}
+                    {Math.max(0, finalTotal - creditUsed).toLocaleString()}
                   </div>
                 )}
               </div>
             )}
+            <div className="text-right text-sm font-bold text-[var(--color-ocean-deep)]">應付 NT$ {Math.max(0, finalTotal - Math.min(creditUsed, creditBalance, finalTotal)).toLocaleString()}</div>
           </CardContent>
         </Card>
 

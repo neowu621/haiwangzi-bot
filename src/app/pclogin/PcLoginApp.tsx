@@ -141,6 +141,7 @@ type View =
   | { name: "bookDaily"; trip: Trip }
   | { name: "bookTour"; tourId: string }
   | { name: "orders" }
+  | { name: "notifications" }
   | { name: "profile" };
 
 export function PcLoginApp() {
@@ -196,6 +197,7 @@ export function PcLoginApp() {
               <TourBookingForm tourId={view.tourId} member={member} onBack={() => setView({ name: "browse" })} />
             )}
             {view.name === "orders" && <MyOrders />}
+            {view.name === "notifications" && <NotificationsPanel />}
             {view.name === "profile" && <ProfilePanel member={member} onSaved={reloadMe} />}
           </>
         )}
@@ -234,6 +236,7 @@ function TopBar({ member, authState, view, setView }: {
           <nav style={{ display: "flex", gap: 18, marginLeft: 14 }}>
             {navItem("browse", "預約")}
             {navItem("orders", "我的訂單")}
+            {navItem("notifications", "通知")}
             {navItem("profile", "會員中心")}
           </nav>
         )}
@@ -729,6 +732,11 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
   const [companions, setCompanions] = useState<Companion[]>([]); // v491：多人潛伴（第2人起）
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // v592：節慶優惠代碼
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
+  const [promoMsg, setPromoMsg] = useState<string | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
 
   // 人數變動 → 同步潛伴欄位數（participants-1 位）
   useEffect(() => {
@@ -763,9 +771,33 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
   if (trip.isScooter) extraAmount += trip.pricing.scooterRental;
   const gearAmount = member.gearDiscountPct < 100 ? Math.round((gearAmountRaw * member.gearDiscountPct) / 100) : gearAmountRaw;
   const subtotal = divesAmount + extraAmount + gearAmount;
-  const total = Math.max(0, subtotal - f.creditUsed);
   const tankDiscPerTank = member.tankPromo?.active ? Math.min(member.tankPromo.discount ?? 0, trip.pricing.extraTank) : 0;
   const gearSaved = gearAmountRaw - gearAmount;
+  // v592：節慶優惠代碼(取其優,可疊抵用金)
+  const tankSaved = tankDiscPerTank * tankCount * participants;
+  const preDiscountSubtotal = subtotal + tankSaved;
+  const totalTanksAll = tankCount * participants;
+  const codeDiscountEff = promoApplied && promoApplied.discount > tankSaved ? promoApplied.discount : 0;
+  const finalSubtotal = Math.max(0, preDiscountSubtotal - Math.max(tankSaved, codeDiscountEff));
+  const total = Math.max(0, finalSubtotal - f.creditUsed);
+
+  async function applyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setPromoBusy(true); setPromoMsg(null);
+    try {
+      const r = await api<{ ok: boolean; reason?: string; code?: string; discount?: number; label?: string }>(
+        "/api/promo/validate",
+        { method: "POST", body: JSON.stringify({ code, type: "daily", orderAmount: preDiscountSubtotal, totalTanks: totalTanksAll }) },
+      );
+      if (!r.ok) { setPromoApplied(null); setPromoMsg(r.reason ?? "優惠代碼無效"); }
+      else {
+        setPromoApplied({ code: r.code!, discount: r.discount ?? 0, label: r.label ?? "" });
+        setPromoMsg((r.discount ?? 0) > tankSaved ? null : "目前已有更優的氣瓶折扣,此代碼不會額外折抵");
+      }
+    } catch (e) { setPromoMsg(e instanceof Error ? e.message : "驗證失敗"); }
+    finally { setPromoBusy(false); }
+  }
 
   async function submit() {
     setErr(null);
@@ -784,6 +816,7 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
         tripId: trip.id,
         participants,
         tankCount,
+        promoCode: promoApplied?.code, // v592
         cert: f.cert || undefined,
         certNumber: f.certNumber || undefined,
         logCount: f.logCount ? Number(f.logCount) : undefined,
@@ -856,7 +889,18 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
             </>
           )}
 
-          <CreditBox balance={member.creditBalance} used={f.creditUsed} max={subtotal} onChange={(n) => patch({ creditUsed: n })} />
+          {/* v592：節慶優惠代碼 */}
+          <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", marginTop: 14 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.deep, marginBottom: 8 }}>🎏 優惠代碼</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input style={{ ...inp, fontFamily: "monospace", flex: 1 }} placeholder="輸入優惠代碼" value={promoInput} onChange={(e) => setPromoInput(e.target.value.toUpperCase())} />
+              <button type="button" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 9, padding: "0 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: promoBusy || !promoInput.trim() ? 0.5 : 1 }}>套用</button>
+            </div>
+            {promoApplied && codeDiscountEff > 0 && <div style={{ fontSize: 12, color: "#0a8f86", fontWeight: 700, marginTop: 8 }}>✓ {promoApplied.label}：折 {ntd(codeDiscountEff)}</div>}
+            {promoMsg && <div style={{ fontSize: 12, color: "#c0473b", marginTop: 8 }}>{promoMsg}</div>}
+          </div>
+
+          <CreditBox balance={member.creditBalance} used={f.creditUsed} max={finalSubtotal} onChange={(n) => patch({ creditUsed: n })} />
 
           <CommonFields f={f} patch={patch} policies={policies} />
           {err && <div style={{ background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginTop: 14 }}>{err}</div>}
@@ -865,7 +909,8 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
         <SummaryPanel
           rows={[
             ["潛水費", ntd(divesAmount), `${tankFee} × ${tankCount}潛 × ${participants}人`],
-            ...(tankDiscPerTank > 0 ? [["🔥 氣瓶折扣", `−${ntd(tankDiscPerTank * tankCount * participants)}`, `每支 −${tankDiscPerTank}`] as [string, string, string]] : []),
+            ...(tankDiscPerTank > 0 && codeDiscountEff === 0 ? [["🔥 氣瓶折扣", `−${ntd(tankSaved)}`, `每支 −${tankDiscPerTank}`] as [string, string, string]] : []),
+            ...(codeDiscountEff > 0 ? [["🎏 優惠代碼", `−${ntd(codeDiscountEff)}`, promoApplied?.label ?? ""] as [string, string, string]] : []),
             ...(extraAmount > 0 ? [["基本/附加費", ntd(extraAmount), ""] as [string, string, string]] : []),
             ...(gearAmount > 0 ? [["裝備租借", ntd(gearAmount), gearSaved > 0 ? `VIP 省 ${ntd(gearSaved)}` : ""] as [string, string, string]] : []),
             ...(f.creditUsed > 0 ? [["🎁 抵用金折抵", `−${ntd(f.creditUsed)}`, ""] as [string, string, string]] : []),
@@ -1039,6 +1084,35 @@ const STATUS_ZH: Record<string, string> = {
 const PAY_ZH: Record<string, string> = {
   unpaid: "未付款", pending: "未付款", deposit_paid: "已付訂金", fully_paid: "已付清", refunded: "已退款",
 };
+// v592：桌面訊息中心(複用 /api/me/notifications)
+function NotificationsPanel() {
+  const [items, setItems] = useState<Array<{ id: string; title: string; body: string; isRead: boolean; createdAt: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api<{ items: Array<{ id: string; title: string; body: string; isRead: boolean; createdAt: string }> }>("/api/me/notifications")
+      .then((d) => setItems(d.items ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    api("/api/me/notifications/read", { method: "POST", body: JSON.stringify({ all: true }) }).catch(() => {});
+  }, []);
+  return (
+    <div style={formCard()}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep, marginBottom: 12 }}>通知</h2>
+      {loading && <div style={{ color: C.mute, fontSize: 14 }}>載入中…</div>}
+      {!loading && items.length === 0 && <div style={{ color: C.mute, fontSize: 14, padding: "24px 0", textAlign: "center" }}>目前沒有通知</div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {items.map((n) => (
+          <div key={n.id} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", background: n.isRead ? "#fff" : "#f0fbfa" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.deep }}>{n.title}</div>
+            <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.7, marginTop: 4, whiteSpace: "pre-wrap" }}>{n.body}</div>
+            <div style={{ fontSize: 11, color: C.mute, marginTop: 6 }}>{new Date(n.createdAt).toLocaleString("zh-TW")}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MyOrders() {
   const [bookings, setBookings] = useState<MyBooking[] | null>(null);
   useEffect(() => {

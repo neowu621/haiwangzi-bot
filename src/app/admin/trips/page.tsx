@@ -257,6 +257,8 @@ export default function AdminTripsPage() {
   const [dumpDays, setDumpDays] = useState(7); // v558：一次抓幾天(手動,預設 7)
   const [dumpText, setDumpText] = useState(""); // v559：可手動編輯的預覽內容
   const [dumpCopied, setDumpCopied] = useState(false);
+  // v592：可加入 Dump 的「生效中公開優惠代碼」
+  const [activePromos, setActivePromos] = useState<Array<{ code: string; title: string; label: string; endAt: string }>>([]);
   // v391：場次 Dump 自動優惠開頭（由系統設定控制）
   const [dumpPromo, setDumpPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: "" });
 
@@ -354,6 +356,19 @@ export default function AdminTripsPage() {
     if (dumpOpen) setDumpText(computeDumpText());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dumpOpen, dumpStartDate, dumpDays]);
+
+  // v592：開 Dump 時載入生效中的公開優惠代碼(供下拉加入)
+  useEffect(() => {
+    if (!dumpOpen) return;
+    const now = Date.now();
+    adminFetch<{ items: Array<{ code: string; title: string; discountType: string; discountValue: number; startAt: string; endAt: string; isPublic: boolean; enabled: boolean }> }>("/api/admin/promo")
+      .then((d) => setActivePromos(
+        (d.items ?? [])
+          .filter((p) => p.enabled && p.isPublic && new Date(p.startAt).getTime() <= now && new Date(p.endAt).getTime() >= now)
+          .map((p) => ({ code: p.code, title: p.title, endAt: p.endAt, label: p.discountType === "per_tank" ? `每支氣瓶 −$${p.discountValue}` : `訂單 −${p.discountValue}%` })),
+      ))
+      .catch(() => {});
+  }, [dumpOpen]);
 
   function siteName(id: string) {
     return sites.find((s) => s.id === id)?.name ?? id;
@@ -1901,6 +1916,24 @@ export default function AdminTripsPage() {
             <div className="text-[11px] text-[var(--muted-foreground)] pl-[80px]">
               範圍：起始日起算 {dumpDays} 天（含當日，預設下週一×7天）；潛旅依「起始日」落在此區間自動納入
             </div>
+            {activePromos.length > 0 && (
+              <div>
+                <Label className="text-xs mb-1 block">🎏 加入優惠代碼</Label>
+                <select
+                  className="w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-xs"
+                  value=""
+                  onChange={(e) => {
+                    const p = activePromos.find((x) => x.code === e.target.value);
+                    if (p) setDumpText((t) => `${t.replace(/\s*$/, "")}\n──────────\n🎏 ${p.title}：${p.label}，優惠碼 ${p.code}（至 ${p.endAt.slice(5, 10)} 止）\n`);
+                  }}
+                >
+                  <option value="">選擇生效中的優惠檔 → 自動加進下方文字…</option>
+                  {activePromos.map((p) => (
+                    <option key={p.code} value={p.code}>{p.title}・{p.label}・{p.code}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <Label className="text-xs mb-1 block">預覽（可直接編輯）</Label>
               <textarea
