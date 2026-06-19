@@ -187,6 +187,11 @@ export const EXTRA_FOOTER: Record<string, string> = {
   welcome: "安全．專業．陪你看見海",
 };
 
+// v600b：Email 按鈕一律導小編 LINE 官方帳號 —— LIFF 連結被 SES awstrack 點擊追蹤包成
+//   awstrack.me 轉址後 LINE 深層連結打不開;line.me/R/ti/p 通用連結較耐包裝。
+//   (只影響 Email；LINE flex 仍用原 LIFF。涵蓋 notifyCustomer + 後台測試送 所有 Email 路徑。)
+const EMAIL_BUTTON_URL = "https://line.me/R/ti/p/%40894bpmew";
+
 // ── 試送/預覽用完整樣本參數（正式發送時換成真實資料，欄位名相同）──
 const SAMPLE_BASE = "https://haiwangzi.xyz";
 export const MSG_SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
@@ -323,7 +328,8 @@ export function composeEmail(
   const lines = EXTRA_LINES[key] ?? [];
   const dyn = buildDynamicBody(key, params);
   const footer = EXTRA_FOOTER[key] ?? "";
-  const buttonUrl = resolveLinkUrl(params);
+  // v600b：Email 按鈕一律導小編 LINE OA(避開 awstrack 追蹤破壞 LIFF);忽略 params.url/liffUrl
+  const buttonUrl = EMAIL_BUTTON_URL;
   const heroEmoji = HERO_EMOJI[key] ?? "📩";
   const subject = `${opts?.subjectPrefix ?? ""}${title}`;
   const footnote = opts?.footnote ?? "系統自動通知信 · 動態欄位由系統自動帶入";
