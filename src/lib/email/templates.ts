@@ -16,6 +16,8 @@ export interface EmailContent {
 const BRAND_PHOSPHOR = "#00D9CB";
 const BRAND_DEEP = "#0A2342";
 const BRAND_MID = "#1B3A5C";
+// v599：Email 按鈕一律導小編 LINE 官方帳號(LIFF 連結被 SES awstrack 追蹤包裝會打不開;line.me 轉址較耐包裝)
+const LINE_OA = "https://line.me/R/ti/p/%40894bpmew";
 
 function shell(title: string, bodyHtml: string): string {
   // v363：header 改純色（不用漸層，Outlook 也清楚顯示 logo）+ 加 color-scheme meta（深色模式不跑版）
@@ -165,7 +167,7 @@ export function depositReminderEmail(params: {
     `Hi ${params.name},\n\n感謝你預約「${params.tourTitle}」🔱\n\n` +
     `為了保留你的名額，請於 7 天內 完成訂金匯款：\n\n` +
     lines.map(([k, v]) => `  ${k}：${v}`).join("\n") +
-    `\n\n匯款後請到 LIFF App 上傳轉帳截圖：\n${params.bookingUrl}\n\n— 海王子潛水團`;
+    `\n\n匯款後請到 LIFF App 上傳轉帳截圖：\n${LINE_OA}\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -184,7 +186,7 @@ export function depositReminderEmail(params: {
         .join("")}
     </table>
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.bookingUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">上傳轉帳截圖 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">上傳轉帳截圖 →</a>
     </p>
     `,
   );
@@ -212,7 +214,7 @@ export function finalReminderEmail(params: {
     `Hi ${params.name},\n\n你的「${params.tourTitle}」即將出發！\n` +
     `請於出發前 ${params.daysLeft} 天完成尾款匯款：\n\n` +
     lines.map(([k, v]) => `  ${k}：${v}`).join("\n") +
-    `\n\n匯款後請到 LIFF App 上傳轉帳截圖：\n${params.bookingUrl}\n\n— 海王子潛水團`;
+    `\n\n匯款後請到 LIFF App 上傳轉帳截圖：\n${LINE_OA}\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -231,7 +233,7 @@ export function finalReminderEmail(params: {
         .join("")}
     </table>
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.bookingUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">上傳轉帳截圖 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">上傳轉帳截圖 →</a>
     </p>
     `,
   );
@@ -342,7 +344,7 @@ export function weatherCancelEmail(params: {
     ${
       params.url
         ? `<p style="margin:20px 0 0 0;text-align:center;">
-            <a href="${escapeHtml(params.url)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看訂單 →</a>
+            <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看訂單 →</a>
           </p>`
         : ""
     }
@@ -553,7 +555,7 @@ export function paymentRejectEmail(params: {
     `Hi ${params.name},\n\n您上傳的轉帳證明未能核對通過 🚫\n\n` +
     `訂單：${params.bookingTitle}\n` +
     (params.reason ? `原因：${params.reason}\n` : "") +
-    `\n請依正確金額重新上傳轉帳截圖：\n${params.liffUrl}\n\n如有疑問歡迎 LINE 聯繫我們。\n\n— 海王子潛水團`;
+    `\n請依正確金額重新上傳轉帳截圖：\n${LINE_OA}\n\n如有疑問歡迎 LINE 聯繫我們。\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -568,7 +570,7 @@ export function paymentRejectEmail(params: {
       您上傳的轉帳證明未能核對通過，請依正確金額重新上傳轉帳截圖。如有疑問歡迎 LINE 聯繫我們。
     </div>
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">重新上傳截圖 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">重新上傳截圖 →</a>
     </p>
     `,
   );
@@ -587,7 +589,7 @@ export function bookingCancelEmail(params: {
     `Hi ${params.name},\n\n您的這筆預約已取消 ❌\n\n` +
     `訂單：${params.bookingTitle}\n` +
     (params.reason ? `原因：${params.reason}\n` : "") +
-    `\n若有任何疑問，歡迎直接 LINE 與我們聯繫。\n查看我的預約：\n${params.liffUrl}\n\n— 海王子潛水團`;
+    `\n若有任何疑問，歡迎直接 LINE 與我們聯繫。\n查看我的預約：\n${LINE_OA}\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -602,7 +604,7 @@ export function bookingCancelEmail(params: {
       您的這筆預約已取消。若有任何疑問，歡迎直接 LINE 與我們聯繫。
     </div>
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看我的預約 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看我的預約 →</a>
     </p>
     `,
   );
@@ -657,7 +659,7 @@ export function vipUpgradeEmail(params: {
     `謝謝你一直跟著海王子潛水，已為你升級會員等級，享有更多專屬優惠。\n\n` +
     `會員等級：${emoji} ${params.tierName}\n` +
     (params.benefits ? `\n專屬權益：\n${params.benefits}\n` : "") +
-    `\n查看我的會員：\n${params.liffUrl}\n\n— 海王子潛水團`;
+    `\n查看我的會員：\n${LINE_OA}\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -676,7 +678,7 @@ export function vipUpgradeEmail(params: {
         : ""
     }
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看我的會員 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">查看我的會員 →</a>
     </p>
     `,
   );
@@ -697,7 +699,7 @@ export function birthdayCreditEmail(params: {
     `祝你生日快樂！我們準備了一份生日禮金給你，已存入你的帳戶。\n\n` +
     `生日禮金：NT$ ${params.amount.toLocaleString()}\n` +
     `使用期限：${effectiveText}\n\n` +
-    `立即使用禮金：\n${params.liffUrl}\n\n— 海王子潛水團`;
+    `立即使用禮金：\n${LINE_OA}\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -710,7 +712,7 @@ export function birthdayCreditEmail(params: {
       <tr><td style="padding:8px 0;color:#6b7280;width:90px;">使用期限</td><td style="padding:8px 0;font-weight:600;">${effectiveText}</td></tr>
     </table>
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">立即使用禮金 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">立即使用禮金 →</a>
     </p>
     `,
   );
@@ -730,7 +732,7 @@ export function creditExpiryEmail(params: {
     `提醒你，帳戶內的抵用金即將到期，記得在期限前預約使用，別讓優惠過期囉！\n\n` +
     `可用抵用金：NT$ ${params.amount.toLocaleString()}\n` +
     `到期日：${params.expireDate}\n\n` +
-    `立即預約使用：\n${params.liffUrl}\n\n— 海王子潛水團`;
+    `立即預約使用：\n${LINE_OA}\n\n— 海王子潛水團`;
 
   const html = shell(
     subject,
@@ -743,7 +745,7 @@ export function creditExpiryEmail(params: {
       <tr><td style="padding:8px 0;color:#6b7280;width:100px;">到期日</td><td style="padding:8px 0;font-weight:600;color:#FF7B5A;">${escapeHtml(params.expireDate)}</td></tr>
     </table>
     <p style="margin:20px 0 0 0;text-align:center;">
-      <a href="${escapeHtml(params.liffUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">立即預約使用 →</a>
+      <a href="${LINE_OA}" style="display:inline-block;padding:12px 24px;background:${BRAND_PHOSPHOR};color:${BRAND_DEEP};text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">立即預約使用 →</a>
     </p>
     `,
   );
