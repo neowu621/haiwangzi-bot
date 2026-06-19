@@ -1,6 +1,6 @@
 "use client";
 /**
- * v481：瀏覽器（桌面）會員下單介面 — 入口 /dtest
+ * v481：瀏覽器（桌面）會員下單介面 — 入口 /pclogin
  *
  * 認證：瀏覽器 LINE Login（web OAuth）→ httpOnly cookie session（hwz_member）。
  *   與手機 LIFF 同一個 Provider → 同一個會員（同 lineUserId）。
@@ -143,7 +143,7 @@ type View =
   | { name: "orders" }
   | { name: "profile" };
 
-export function DtestApp() {
+export function PcLoginApp() {
   const [member, setMember] = useState<Member | null>(null);
   const [authState, setAuthState] = useState<"loading" | "in" | "out">("loading");
   const [view, setView] = useState<View>({ name: "browse" });
@@ -249,7 +249,7 @@ function TopBar({ member, authState, view, setView }: {
               </a>
             </>
           ) : authState === "out" ? (
-            <a href="/api/auth/line/login?next=/dtest" style={{ fontSize: 13, fontWeight: 800, color: C.deep, background: "#06C755", borderRadius: 9, padding: "8px 16px", textDecoration: "none" }}>
+            <a href="/api/auth/line/login?next=/pclogin" style={{ fontSize: 13, fontWeight: 800, color: C.deep, background: "#06C755", borderRadius: 9, padding: "8px 16px", textDecoration: "none" }}>
               LINE 登入
             </a>
           ) : null}
@@ -279,7 +279,7 @@ function LoginScreen({ error }: { error: string | null }) {
     id_token_invalid: "LINE 身分驗證失敗，請重試",
     access_denied: "你取消了授權",
   };
-  const LOGIN_URL = "/api/auth/line/login?next=/dtest";
+  const LOGIN_URL = "/api/auth/line/login?next=/pclogin";
 
   const emailUses = [
     "寄送課程預約確認與報名結果通知",
@@ -796,7 +796,7 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
         method: "POST", body: JSON.stringify(body),
       });
       const b = res.booking;
-      window.location.href = b.payLinkToken ? `/pay/${b.id}?t=${b.payLinkToken}` : `/dtest`;
+      window.location.href = b.payLinkToken ? `/pay/${b.id}?t=${b.payLinkToken}` : `/pclogin`;
     } catch (e) {
       const ce = e as Error & { code?: string };
       setErr(ce.code === "email_not_verified" ? "請先完成上方 Email 驗證才能下單。" : (e instanceof Error ? e.message : "下單失敗"));
@@ -928,7 +928,7 @@ function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: M
         method: "POST", body: JSON.stringify(body),
       });
       const b = res.booking;
-      window.location.href = b.payLinkToken ? `/pay/${b.id}?t=${b.payLinkToken}` : `/dtest`;
+      window.location.href = b.payLinkToken ? `/pay/${b.id}?t=${b.payLinkToken}` : `/pclogin`;
     } catch (e) {
       const ce = e as Error & { code?: string };
       setErr(ce.code === "email_not_verified" ? "請先完成上方 Email 驗證才能下單。" : (e instanceof Error ? e.message : "報名失敗"));

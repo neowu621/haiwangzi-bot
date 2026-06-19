@@ -1,15 +1,8 @@
-import type { Metadata } from "next";
-import { DtestApp } from "./DtestApp";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+// v591：會員登入入口已改為 /pclogin。舊網址 /dtest 自動轉向（書籤不失效）。
+export const dynamic = "force-static";
 
-export const metadata: Metadata = {
-  title: "會員預約 ‧ 東北角海王子潛水",
-  description: "桌面版會員預約 — 日潛場次、潛旅行程線上下單",
-  robots: { index: false, follow: false }, // v481：測試期間不給搜尋引擎收錄
-};
-
-// v481：瀏覽器（桌面）會員下單入口。測試期間放 /dtest，未來再決定是否併入首頁。
-export default function DtestPage() {
-  return <DtestApp />;
+export default function DtestRedirect() {
+  redirect("/pclogin");
 }

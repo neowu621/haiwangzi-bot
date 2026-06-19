@@ -5,7 +5,7 @@ import { buildAuthorizeUrl, lineLoginConfigured } from "@/lib/line-login";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// v481：GET /api/auth/line/login?next=/dtest
+// v481：GET /api/auth/line/login?next=/pclogin
 //   產生 state + nonce（放短效 httpOnly cookie 防 CSRF / replay），導向 LINE 授權頁。
 export function GET(req: NextRequest) {
   if (!lineLoginConfigured()) {
@@ -16,9 +16,9 @@ export function GET(req: NextRequest) {
   }
   const url = new URL(req.url);
   const origin = url.origin;
-  const next = url.searchParams.get("next") || "/dtest";
+  const next = url.searchParams.get("next") || "/pclogin";
   // 只允許站內相對路徑，避免 open redirect
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dtest";
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/pclogin";
 
   const state = randomBytes(16).toString("hex");
   const nonce = randomBytes(16).toString("hex");

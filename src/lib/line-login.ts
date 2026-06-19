@@ -41,7 +41,7 @@ export function buildAuthorizeUrl(opts: {
   // email scope 需在 Console 申請開通且通過審核；若請求未開通的 email scope，LINE 會直接擋掉授權。
   // 預設只要 openid+profile（登入即通，不必等 email 權限審核）；
   // 待 email 權限核准後，把 LINE_LOGIN_EMAIL_SCOPE=1 設上去即可自動帶 email。
-  // 在那之前，會員 email 由 /dtest 的「Email 驗證」流程收集（更可靠：是我們自己驗證過的）。
+  // 在那之前，會員 email 由 /pclogin 的「Email 驗證」流程收集（更可靠：是我們自己驗證過的）。
   const emailScope = ["1", "true", "yes"].includes((process.env.LINE_LOGIN_EMAIL_SCOPE ?? "").toLowerCase());
   const params = new URLSearchParams({
     response_type: "code",

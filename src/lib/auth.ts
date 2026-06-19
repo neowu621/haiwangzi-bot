@@ -40,7 +40,7 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
     return await verifyIdToken(token);
   }
 
-  // v481：瀏覽器會員 — httpOnly cookie session（/dtest 等瀏覽器頁面用）
+  // v481：瀏覽器會員 — httpOnly cookie session（/pclogin 等瀏覽器頁面用）
   const memberCookie = req.cookies.get(MEMBER_WEB_COOKIE)?.value;
   if (memberCookie) {
     return await tryVerifyMemberWebJwt(memberCookie);

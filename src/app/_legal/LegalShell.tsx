@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MantaTridentMark } from "@/components/brand/MantaTrident";
 
 // v481：隱私權政策 / 服務條款 / FAQ / 安全政策 共用版型（品牌化、可列印）
-export function LegalShell({ title, updated, children, backHref = "/dtest", backLabel = "返回會員預約", wide }: { title: string; updated: string; children: React.ReactNode; backHref?: string; backLabel?: string; wide?: boolean }) {
+export function LegalShell({ title, updated, children, backHref = "/pclogin", backLabel = "返回會員預約", wide }: { title: string; updated: string; children: React.ReactNode; backHref?: string; backLabel?: string; wide?: boolean }) {
   const maxW = wide ? 920 : 820;
   return (
     <div style={{ minHeight: "100vh", background: "#eef3f6", color: "#1A2330", fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" }}>

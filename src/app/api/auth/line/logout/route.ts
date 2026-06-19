@@ -4,10 +4,10 @@ import { MEMBER_WEB_COOKIE } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// v481：登出 — 清掉會員 web session cookie，導回 /dtest
+// v481：登出 — 清掉會員 web session cookie，導回 /pclogin
 function clear(req: NextRequest) {
   const origin = new URL(req.url).origin;
-  const res = NextResponse.redirect(`${origin}/dtest`);
+  const res = NextResponse.redirect(`${origin}/pclogin`);
   res.cookies.set(MEMBER_WEB_COOKIE, "", { path: "/", maxAge: 0 });
   return res;
 }

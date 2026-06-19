@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-19（續2）— 桌面會員登入入口改名
+
+### 完成（v591）
+- **桌面會員登入/下單入口 `/dtest` → `/pclogin`**（官網「會員登入」鈕、LINE Login next、法務頁返回、robots 全部更新）。
+- 舊網址 `/dtest` 保留為 301 轉址(書籤不失效)。元件 `DtestApp` → `PcLoginApp`。
+- 補充:**桌面確實能下單** —— 官網「會員登入」→ `/pclogin`(瀏覽器 LINE Login)→ 下單 → `/pay`。和手機 LIFF 同會員、同後端(`/api/bookings/daily`)。Phase 2 優惠代碼/早鳥提示/彈窗要 **LIFF + /pclogin 兩邊都加**。
+
+---
+
 ## 2026-06-19（續）— 節慶優惠 Phase 1（後台）
 
 ### 完成（v590）

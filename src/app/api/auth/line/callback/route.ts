@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 // v481：GET /api/auth/line/callback?code=...&state=...
 //   驗 state（防 CSRF）→ 換 token → 驗 id_token（audience=Login channel, nonce 比對）
-//   → 簽會員 web JWT 放 httpOnly cookie → 導回 next（預設 /dtest）。
+//   → 簽會員 web JWT 放 httpOnly cookie → 導回 next（預設 /pclogin）。
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const origin = url.origin;
@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
   const state = url.searchParams.get("state");
   const errParam = url.searchParams.get("error");
 
-  const next = req.cookies.get("hwz_oauth_next")?.value || "/dtest";
+  const next = req.cookies.get("hwz_oauth_next")?.value || "/pclogin";
   const failRedirect = (reason: string) =>
-    NextResponse.redirect(`${base}/dtest?login_error=${encodeURIComponent(reason)}`);
+    NextResponse.redirect(`${base}/pclogin?login_error=${encodeURIComponent(reason)}`);
 
   if (!lineLoginConfigured()) return failRedirect("line_login_not_configured");
   if (errParam) return failRedirect(errParam); // 使用者取消授權等
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
   // 簽會員 web session JWT（30 天）→ httpOnly cookie
   const jwt = await createMemberWebJwt(verified.lineUserId);
 
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dtest";
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/pclogin";
   const res = NextResponse.redirect(`${base}${safeNext}`);
   res.cookies.set(MEMBER_WEB_COOKIE, jwt, {
     httpOnly: true,
