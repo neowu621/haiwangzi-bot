@@ -1619,9 +1619,11 @@ export default function AdminBookingsPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="font-medium">
-                            {log.fromStatus
-                              ? `${BOOKING_STATUS_LABEL[log.fromStatus] ?? log.fromStatus} → ${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`
-                              : `初始：${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`}
+                            {!log.fromStatus
+                              ? `初始：${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`
+                              : log.fromStatus === log.toStatus
+                                ? `${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}` /* v607：from==to（如退款附註）只顯示單一狀態 */
+                                : `${BOOKING_STATUS_LABEL[log.fromStatus] ?? log.fromStatus} → ${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`}
                           </span>
                           {log.note && (
                             <span className="ml-1 text-[var(--muted-foreground)]">— {log.note}</span>

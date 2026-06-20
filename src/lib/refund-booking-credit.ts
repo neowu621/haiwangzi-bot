@@ -10,6 +10,24 @@
 // 退還的抵用金永不過期（與 admin「退款轉抵用金」一致，expiresAt=null）。
 import { prisma } from "./prisma";
 import { grantCredit } from "./credit";
+import { logBookingStatusChange } from "./booking-status-log";
+
+/** v607：在訂單歷程補一行「已退還抵用金」（冪等：同訂單已有就不重複寫）。 */
+export async function ensureRefundStatusLog(bookingId: string, status: string, amount: number): Promise<void> {
+  const exists = await prisma.bookingStatusLog.findFirst({
+    where: { bookingId, note: { contains: "退還抵用金" } },
+    select: { id: true },
+  });
+  if (exists) return;
+  await logBookingStatusChange({
+    bookingId,
+    fromStatus: status,
+    toStatus: status, // 不是狀態變更，只是附註 → 顯示端 from==to 只秀單一狀態
+    actorId: null,
+    actorRole: "system",
+    note: `↩ 已退還抵用金 NT$${amount.toLocaleString()}（訂單取消）`,
+  });
+}
 
 /**
  * 退還某張訂單下單時折抵的抵用金。回傳實退金額（0 = 無須退或已退過）。
@@ -21,7 +39,7 @@ export async function refundBookingCredit(
 ): Promise<number> {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, userId: true, creditUsed: true, code: true },
+    select: { id: true, userId: true, creditUsed: true, code: true, status: true },
   });
   if (!booking) return 0;
   const used = booking.creditUsed ?? 0;
@@ -46,5 +64,9 @@ export async function refundBookingCredit(
     createdBy: opts?.createdBy ?? null,
     expiresAt: null, // 退還的抵用金永不過期
   });
+  // v607：在訂單歷程補一行「已退還抵用金」，對帳一條龍看得到
+  await ensureRefundStatusLog(bookingId, booking.status, used).catch((e) =>
+    console.error("[refundBookingCredit ensureRefundStatusLog]", e),
+  );
   return used;
 }

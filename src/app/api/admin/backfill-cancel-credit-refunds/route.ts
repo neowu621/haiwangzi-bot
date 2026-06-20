@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
 import { logAudit } from "@/lib/audit";
+import { ensureRefundStatusLog } from "@/lib/refund-booking-credit";
 import type { BookingStatus } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -82,22 +83,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const rows = await buildReport();
-  const pending = rows.filter((r) => !r.alreadyRefunded && r.creditUsed > 0);
+  const rows = (await buildReport()).filter((r) => r.creditUsed > 0);
   const done = [];
-  for (const r of pending) {
+  let logsAdded = 0;
+  for (const r of rows) {
     try {
-      await grantCredit({
-        userId: (await prisma.booking.findUnique({ where: { id: r.bookingId }, select: { userId: true } }))!.userId,
-        amount: r.creditUsed,
-        reason: "refund",
-        refType: "booking_cancel",
-        refId: r.bookingId,
-        note: `訂單 ${r.code ?? r.bookingId.slice(0, 8)} 取消補退抵用金（v606 補件）`,
-        createdBy: auth.user.lineUserId,
-        expiresAt: null,
-      });
-      done.push({ bookingId: r.bookingId, code: r.code, customer: r.customer, refunded: r.creditUsed });
+      let refunded = 0;
+      // 1) 還沒退過 → 補退抵用金
+      if (!r.alreadyRefunded) {
+        await grantCredit({
+          userId: (await prisma.booking.findUnique({ where: { id: r.bookingId }, select: { userId: true } }))!.userId,
+          amount: r.creditUsed,
+          reason: "refund",
+          refType: "booking_cancel",
+          refId: r.bookingId,
+          note: `訂單 ${r.code ?? r.bookingId.slice(0, 8)} 取消補退抵用金（v606 補件）`,
+          createdBy: auth.user.lineUserId,
+          expiresAt: null,
+        });
+        refunded = r.creditUsed;
+      }
+      // 2) 不論這次或先前退的，訂單歷程都補一行（冪等）
+      const before = await prisma.bookingStatusLog.count({ where: { bookingId: r.bookingId, note: { contains: "退還抵用金" } } });
+      await ensureRefundStatusLog(r.bookingId, r.status, r.creditUsed);
+      if (before === 0) logsAdded += 1;
+      if (refunded > 0 || before === 0) {
+        done.push({ bookingId: r.bookingId, code: r.code, customer: r.customer, refunded, historyLineAdded: before === 0 });
+      }
     } catch (e) {
       done.push({ bookingId: r.bookingId, code: r.code, error: e instanceof Error ? e.message : String(e) });
     }
@@ -107,7 +119,12 @@ export async function POST(req: NextRequest) {
     action: "credit.backfill_cancel_refund",
     targetType: "system",
     targetId: "backfill-cancel-credit-refunds",
-    metadata: { count: done.length, amount: done.reduce((s, d) => s + (d.refunded ?? 0), 0) },
+    metadata: { refunded: done.reduce((s, d) => s + (d.refunded ?? 0), 0), logsAdded },
   });
-  return NextResponse.json({ mode: "executed", refundedCount: done.length, refundedAmount: done.reduce((s, d) => s + (d.refunded ?? 0), 0), done });
+  return NextResponse.json({
+    mode: "executed",
+    refundedAmount: done.reduce((s, d) => s + (d.refunded ?? 0), 0),
+    historyLinesAdded: logsAdded,
+    done,
+  });
 }
