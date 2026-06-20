@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { runDailyWeatherReport } from "@/lib/daily-weather-report";
 
 export const runtime = "nodejs";
@@ -25,7 +26,7 @@ async function handle(req: NextRequest) {
   }
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  if (token !== secret) {
+  if (!safeEqual(token, secret)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

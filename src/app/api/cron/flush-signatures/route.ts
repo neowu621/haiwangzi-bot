@@ -3,6 +3,7 @@
 //   認證：Authorization: Bearer <CRON_SECRET>
 //   正常情況下單後已立即上傳，這支只負責補「崩潰/重啟/R2 暫時故障」漏掉的。
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { flushAllPendingSignatures } from "@/lib/signature-flush";
 
 export const runtime = "nodejs";
@@ -16,7 +17,7 @@ async function handle(req: NextRequest) {
   }
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  if (token !== secret) {
+  if (!safeEqual(token, secret)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

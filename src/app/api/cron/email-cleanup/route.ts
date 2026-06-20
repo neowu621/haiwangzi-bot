@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { purgeEmailThreads } from "@/lib/email-inbound";
 
@@ -16,7 +17,7 @@ const RETENTION_DAYS = 180; // 已結案超過此天數才自動刪除
  */
 async function handle(req: NextRequest) {
   const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || req.headers.get("authorization") !== expected) {
+  if (!process.env.CRON_SECRET || !safeEqual(req.headers.get("authorization"), expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {

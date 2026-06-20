@@ -10,6 +10,7 @@
 //
 // 排除：pending / awaiting_verify / cancelled / no_show / completed
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { logBookingStatusChange } from "@/lib/booking-status-log";
 
@@ -24,7 +25,7 @@ function taipeiTodayDate(): Date {
 
 async function run(req: NextRequest) {
   const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || req.headers.get("authorization") !== expected) {
+  if (!process.env.CRON_SECRET || !safeEqual(req.headers.get("authorization"), expected)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

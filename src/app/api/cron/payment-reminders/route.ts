@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
 import { sendEmail } from "@/lib/email/send";
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 async function handle(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || authHeader !== expected) {
+  if (!process.env.CRON_SECRET || !safeEqual(authHeader, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

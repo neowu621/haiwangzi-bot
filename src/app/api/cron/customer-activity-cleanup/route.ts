@@ -2,6 +2,7 @@
 // 排除 admin/boss/system 操作（合規保留）
 // 建議 Cronicle 排程：每日 04:00 Asia/Taipei
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ const RETENTION_DAYS = 90;
 
 async function run(req: NextRequest) {
   const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || req.headers.get("authorization") !== expected) {
+  if (!process.env.CRON_SECRET || !safeEqual(req.headers.get("authorization"), expected)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

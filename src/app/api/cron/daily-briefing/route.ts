@@ -6,6 +6,7 @@
 //
 // 認證: Authorization: Bearer ${CRON_SECRET}
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
 import { sendEmail } from "@/lib/email/send";
@@ -23,7 +24,7 @@ function fmtDate(d: Date): string {
 
 export async function POST(req: NextRequest) {
   const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || req.headers.get("authorization") !== expected) {
+  if (!process.env.CRON_SECRET || !safeEqual(req.headers.get("authorization"), expected)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

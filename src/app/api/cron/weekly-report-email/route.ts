@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { makeMultiSheetXlsxBuffer } from "@/lib/email/excel";
@@ -18,7 +19,7 @@ export const maxDuration = 120;
  */
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || !safeEqual(authHeader, `Bearer ${process.env.CRON_SECRET}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { ingestInboundEmail, type InboundAttachmentMeta } from "@/lib/email-inbound";
 import { r2Configured, makeKey, putBuffer } from "@/lib/r2";
 
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   const secret = new URL(req.url).searchParams.get("secret");
-  if (secret !== process.env.INBOUND_WEBHOOK_SECRET) {
+  if (!safeEqual(secret, process.env.INBOUND_WEBHOOK_SECRET)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

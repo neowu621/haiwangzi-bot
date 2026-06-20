@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { grantCredit } from "@/lib/credit";
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     );
   }
   const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${secret}`) {
+  if (!safeEqual(auth, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
