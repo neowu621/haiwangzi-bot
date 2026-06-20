@@ -11,12 +11,15 @@ export const maxDuration = 60;
  * 認證：Authorization: Bearer <CRON_SECRET>（與其他 cron 一致）。建議每 1–3 分鐘跑一次。
  */
 async function handle(req: NextRequest) {
+  // v614 安全：未設 CRON_SECRET 一律拒絕（fail-closed），不再因缺密鑰而開放。
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json({ error: "server_misconfigured: CRON_SECRET not set" }, { status: 500 });
+  }
+  const auth = req.headers.get("authorization") ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (token !== secret) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
     const r = await runAndLogPoll("cron");

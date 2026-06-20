@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyBossNewInquiry, sendCustomerAck } from "@/lib/notify-boss";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +31,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** 後端對驗 Cloudflare Turnstile token（secret 沒設時跳過，避免設定前壞掉）。 */
 async function verifyTurnstile(token: string | undefined, ip: string | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // 未設 secret → 不擋（honeypot 仍生效）
+  if (!secret) {
+    // v614：正式環境未設 secret → fail-closed（擋下，避免機器人保護被靜默關閉）；非正式環境放行方便開發。
+    return process.env.NODE_ENV !== "production";
+  }
   if (!token) return false;
   try {
     const form = new URLSearchParams();
@@ -50,6 +54,10 @@ async function verifyTurnstile(token: string | undefined, ip: string | null): Pr
 }
 
 export async function POST(req: NextRequest) {
+  // v614：公開未登入端點 → 加速率限制（每 IP 每分鐘最多 5 次），防 DB/外寄信濫用。
+  const limited = checkRateLimit(req, { scope: "contact", windowMs: 60_000, max: 5 });
+  if (limited) return limited;
+
   let b: ContactBody;
   try {
     b = (await req.json()) as ContactBody;

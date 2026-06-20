@@ -49,7 +49,9 @@ export async function uploadSignatureFromDataUrl(
       return { ok: false, reason: "signature too large (>2MB)" };
     }
     const ts = Date.now();
-    const key = `signatures/${bookingId}-${ts}.png`;
+    // v614：副檔名依實際格式（簽名已改 JPEG 上傳）；content-type 仍以實際為準。
+    const ext = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
+    const key = `signatures/${bookingId}-${ts}.${ext}`;
     await putBuffer("signatures", key, buf, contentType);
     return { ok: true, key };
   } catch (e) {

@@ -25,7 +25,15 @@ export async function POST(req: NextRequest) {
   // v175 安全修正：DB 已有 admin/boss → 拒絕 bootstrap 重複呼叫
   // 防止 secret 外洩後被反覆利用升 admin
   const existingAdmin = await prisma.user.findFirst({
-    where: { OR: [{ role: "admin" }, { role: "boss" }] },
+    // v614：也檢查多重身分 roles[]，避免僅以 roles 表示的 admin 沒擋住重複 bootstrap。
+    where: {
+      OR: [
+        { role: "admin" },
+        { role: "boss" },
+        { roles: { has: "admin" } },
+        { roles: { has: "boss" } },
+      ],
+    },
     select: { lineUserId: true },
   });
   if (existingAdmin) {

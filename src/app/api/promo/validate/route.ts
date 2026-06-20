@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authFromRequest } from "@/lib/auth";
 import { validatePromoCode, computeCodeDiscount } from "@/lib/promo";
+import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+  // v614：限流，防止登入用戶暴力枚舉優惠代碼。
+  const limited = checkRateLimit(req, RATE_LIMIT.LIFF_API);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as {
     code?: string; type?: "daily" | "tour"; orderAmount?: number; totalTanks?: number;

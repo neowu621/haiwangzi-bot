@@ -76,10 +76,28 @@ export function SignaturePad({
     };
   }
 
-  function emitChange() {
+  // v614：匯出時縮到目標寬度 + JPEG 壓縮 —— 簽名是黑線白底，JPEG 無損感、體積小 5~15×。
+  //   原本整張 1600×600 PNG 約 80~250KB；縮 640px + JPEG0.7 通常 8~20KB，手機上傳快很多。
+  function exportDataUrl(): string {
     const canvas = canvasRef.current;
-    if (!canvas || !onChange) return;
-    onChange(canvas.toDataURL("image/png"), hasInk);
+    if (!canvas) return "";
+    const TARGET_W = 640;
+    if (canvas.width <= TARGET_W) return canvas.toDataURL("image/jpeg", 0.7);
+    const ratio = TARGET_W / canvas.width;
+    const out = document.createElement("canvas");
+    out.width = TARGET_W;
+    out.height = Math.round(canvas.height * ratio);
+    const octx = out.getContext("2d");
+    if (!octx) return canvas.toDataURL("image/jpeg", 0.7);
+    octx.fillStyle = "#fff";
+    octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(canvas, 0, 0, out.width, out.height);
+    return out.toDataURL("image/jpeg", 0.7);
+  }
+
+  function emitChange() {
+    if (!onChange) return;
+    onChange(exportDataUrl(), hasInk);
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -110,7 +128,7 @@ export function SignaturePad({
   // hasInk 變動時也通知一次（讓父元件知道 hasInk 從 false→true）
   React.useEffect(() => {
     if (onChange && canvasRef.current) {
-      onChange(canvasRef.current.toDataURL("image/png"), hasInk);
+      onChange(exportDataUrl(), hasInk);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInk]);

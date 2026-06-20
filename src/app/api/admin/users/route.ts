@@ -93,8 +93,12 @@ export async function GET(req: NextRequest) {
   const coachMap = new Map(coaches.map((c) => [c.lineUserId, c]));
 
   return NextResponse.json({
-    users: users.map((u) => ({
+    users: users.map((rawUser) => {
+      // v614 安全：絕不外送密碼雜湊（webPasswordHash），改回布林旗標供 UI 用。
+      const { webPasswordHash, ...u } = rawUser;
+      return {
       ...u,
+      hasWebPassword: Boolean(webPasswordHash),
       // 若 roles 為空，視為 [role]，前端用這個欄位畫 chips
       effectiveRoles: u.roles && u.roles.length > 0 ? u.roles : [u.role],
       stats: stats.get(u.lineUserId) ?? {
@@ -116,7 +120,8 @@ export async function GET(req: NextRequest) {
             active: coachMap.get(u.lineUserId)!.active,
           }
         : null,
-    })),
+      };
+    }),
   });
 }
 
