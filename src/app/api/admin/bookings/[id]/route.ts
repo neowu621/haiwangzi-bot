@@ -3,6 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { refundBookingCredit } from "@/lib/refund-booking-credit"; // v603
+
+const CANCELLED_STATUSES = new Set([
+  "cancelled_by_user",
+  "cancelled_by_weather",
+  "cancelled_unpaid",
+]);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +102,23 @@ export async function PATCH(
         }),
       );
     }
-    return NextResponse.json({ ok: true, booking: updated });
+    // v603：手動改成「取消」狀態時，退還下單折抵的抵用金（冪等）
+    let creditRefunded = 0;
+    if (
+      oldBooking &&
+      patch.status &&
+      !CANCELLED_STATUSES.has(oldBooking.status) &&
+      CANCELLED_STATUSES.has(patch.status as string)
+    ) {
+      creditRefunded = await refundBookingCredit(id, {
+        note: `訂單 ${id.slice(0, 8)} 改為${patch.status}，退還折抵的抵用金`,
+        createdBy: auth.user.lineUserId,
+      }).catch((e) => {
+        console.error("[admin patch refund credit]", e);
+        return 0;
+      });
+    }
+    return NextResponse.json({ ok: true, booking: updated, creditRefunded });
   } catch (e) {
     console.error("[PATCH /admin/bookings]", e);
     return NextResponse.json(
@@ -172,6 +195,16 @@ export async function DELETE(
         note: "admin 軟取消",
       }),
     );
+    // v603：退還下單折抵的抵用金（冪等；若原本已是取消狀態則 helper 內部略過）
+    const creditRefunded = CANCELLED_STATUSES.has(fromStatus)
+      ? 0
+      : await refundBookingCredit(id, {
+          note: `訂單 ${booking.code ?? id.slice(0, 8)} admin 取消，退還折抵的抵用金`,
+          createdBy: auth.user.lineUserId,
+        }).catch((e) => {
+          console.error("[admin cancel refund credit]", e);
+          return 0;
+        });
     // v420：通知客戶「預約已取消」（booking_cancel 模板）
     void (async () => {
       try {
@@ -206,6 +239,7 @@ export async function DELETE(
       ok: true,
       action: "soft_cancelled",
       booking: updated,
+      creditRefunded,
     });
   } catch (e) {
     console.error("[DELETE /admin/bookings]", e);

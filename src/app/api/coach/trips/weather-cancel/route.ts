@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { refundBookingCredit } from "@/lib/refund-booking-credit"; // v603
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,19 @@ export async function POST(req: NextRequest) {
     where: { refId: data.tripId, type: "daily", status: { not: "cancelled_by_user" } },
     data: { status: "cancelled_by_weather", cancellationReason: data.reason },
   });
+
+  // v603：天候取消 → 退還各訂單下單折抵的抵用金（冪等；creditUsed=0 自動略過）
+  //   註：與 admin 手動「退款轉抵用金/110% 補償」分流（refType 不同），不會重複退。
+  for (const b of bookings) {
+    try {
+      await refundBookingCredit(b.id, {
+        note: `訂單 ${b.code ?? b.id.slice(0, 8)} 天候取消，退還折抵的抵用金`,
+        createdBy: auth.user.lineUserId,
+      });
+    } catch (e) {
+      console.error("[weather-cancel refund credit]", b.id, e);
+    }
+  }
 
   // v443：天氣取消通知改走 notifyCustomer + weather_cancel 模板
   //   → 統一 LINE / Email / 站內通知、文案與模板一致、尊重會員各通道開關（取代原本純文字 LINE push）

@@ -2,6 +2,21 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260619_603 — 2026-06-20 (訂單取消自動退還抵用金)
+
+- **問題**：下單時抵用金即用 `spendCreditFIFO` 扣掉（抵用金＝預付），但各取消路徑都沒退回 → 客戶用了抵用金又取消＝憑空蒸發。
+- **修正**：新增冪等 helper `lib/refund-booking-credit.ts`，訂單取消時退還 `booking.creditUsed`（寫一筆 `reason=refund / refType=booking_cancel` 的 +CreditTx，永不過期）。同張訂單只退一次；與 admin 手動退款（`refType=booking`）分流，不重複退。
+- **接入 4 條取消路徑**：客戶自取消（`DELETE /api/bookings/[id]`）、admin 軟取消 + PATCH 改取消狀態（`admin/bookings/[id]`）、批次取消（`cancel-all`）、天候取消（`coach/trips/weather-cancel`）。
+- 回應新增 `creditRefunded` 欄位。
+
+## 20260619_602 — 2026-06-20 (一日潛水日曆改週一起始)
+
+- LIFF `liff/calendar`：星期表頭與每週起始由「週日」改「週一」（`startOfWeek` 改算當週週一）。
+
+## 20260619_601 — 2026-06-20 (Email 按鈕鎖小編 LINE + 改 Gmail 寄信)
+
+- `composeEmail` 按鈕一律導小編 LINE OA（涵蓋所有 Email 路徑）；寄信 provider 由 zsend(SES,有 awstrack 追蹤) 改 gmail，連結乾淨不被包裝。
+
 ## 20260611_482 — 2026-06-11 (/dtest 登入頁改版 + 隱私權/服務條款)
 
 - **登入頁改版**：未登入走全螢幕海洋漸層的「加入海王子會員」頁 — 品牌 crest、Email 使用說明卡（4 用途 + 不外洩聲明）、同意條款 checkbox（勾選後才能按 LINE 註冊/登入）、「已經是會員了？直接登入」。

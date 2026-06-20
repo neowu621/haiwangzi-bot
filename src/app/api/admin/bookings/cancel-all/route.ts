@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { refundBookingCredit } from "@/lib/refund-booking-credit"; // v603
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,7 +62,19 @@ export async function POST(req: NextRequest) {
         }
       }
     }).catch((e) => console.error("[booking-status-log]", e));
-    return NextResponse.json({ ok: true, cancelled: r.count });
+    // v603：逐筆退還下單折抵的抵用金（冪等；creditUsed=0 自動略過）
+    let creditRefunded = 0;
+    for (const t of targets) {
+      try {
+        creditRefunded += await refundBookingCredit(t.id, {
+          note: `訂單 ${t.id.slice(0, 8)} 批次取消，退還折抵的抵用金`,
+          createdBy: auth.user.lineUserId,
+        });
+      } catch (e) {
+        console.error("[cancel-all refund credit]", t.id, e);
+      }
+    }
+    return NextResponse.json({ ok: true, cancelled: r.count, creditRefunded });
   } catch (e) {
     console.error("[POST /admin/bookings/cancel-all]", e);
     return NextResponse.json(

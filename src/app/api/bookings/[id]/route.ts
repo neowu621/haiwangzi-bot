@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { refundBookingCredit } from "@/lib/refund-booking-credit"; // v603
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -283,6 +284,13 @@ export async function DELETE(
       rejectReason: "客戶在審核前取消訂單",
     },
   }).catch((e) => console.error("[cancel auto-reject proofs]", e));
+  // v603：退還下單時折抵的抵用金（冪等；creditUsed=0 自動略過）
+  const creditRefunded = await refundBookingCredit(id, {
+    note: `訂單 ${booking.code ?? id.slice(0, 8)} 客戶取消，退還折抵的抵用金`,
+  }).catch((e) => {
+    console.error("[cancel refund credit]", e);
+    return 0;
+  });
   // v278：log
   void import("@/lib/booking-status-log").then((m) =>
     m.logBookingStatusChange({
@@ -305,5 +313,5 @@ export async function DELETE(
     targetLabel: updated.code ?? undefined,
     metadata: { hasPaid, paidAmount: booking.paidAmount },
   });
-  return NextResponse.json({ ok: true, booking: updated, hasPaid });
+  return NextResponse.json({ ok: true, booking: updated, hasPaid, creditRefunded });
 }

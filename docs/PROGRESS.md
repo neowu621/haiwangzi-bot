@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-20 — 訂單取消自動退還抵用金（v603）+ 雜項（v601 Email、v602 日曆）
+
+### v603：取消退還抵用金（重點）
+- **問題**：抵用金在下單當下就被 `spendCreditFIFO` 扣掉（＝預付），但所有取消路徑都沒退 → 用了又取消＝蒸發。
+- **解法**：新增 `lib/refund-booking-credit.ts` → `refundBookingCredit(bookingId)`，退還 `booking.creditUsed`。
+  - 冪等鍵：`reason=refund + refType=booking_cancel + refId`（同訂單只退一次）。
+  - 與 admin 手動退款 route（`refType=booking`）**分流不重複**。退還永不過期（`expiresAt=null`）。
+- **接入**：客戶自取消 `DELETE /api/bookings/[id]`、admin `admin/bookings/[id]`（DELETE 軟取消 + PATCH 改取消狀態）、`cancel-all`、`coach/trips/weather-cancel`。各回應加 `creditRefunded`。
+- **待辦/可選**：取消通知文案可加一句「已退還抵用金 NT$X」；promo `usedCount` 取消時尚未回沖（次要）。
+
+### v601 / v602（雜項）
+- v601：`composeEmail` 按鈕一律導小編 LINE OA；寄信 provider 由 zsend(SES) 改 **gmail**（DB `emailProvider`，已改線上）→ 連結不再被 `awstrack.me` 包裝。
+- v602：`liff/calendar` 日曆改**週一起始**。
+
+---
+
 ## 2026-06-19（續3）— 節慶優惠 Phase 2 完成（2a + 2b）
 
 ### 完成（v592 後端 / v593 前端 / v594 推廣）
