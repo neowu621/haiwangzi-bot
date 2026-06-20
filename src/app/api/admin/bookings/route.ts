@@ -142,6 +142,9 @@ export async function GET(req: NextRequest) {
         const rr = refundReqByBooking.get(b.id);
         return {
           ...b,
+          // v612：簽名暫存 base64 不外送（避免列表回應暴肥）；只回是否有簽名/上傳中
+          signaturePending: undefined,
+          hasPendingSignature: Boolean((b as unknown as { signaturePending?: string | null }).signaturePending),
           // 管理備註僅 admin/boss 可見
           adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
           // v608：已退還抵用金（>0 才顯示標記）

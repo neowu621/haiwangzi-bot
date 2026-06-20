@@ -48,6 +48,9 @@ const PATCHES = [
   // v260: 手寫簽名（法律證據、長期保留、不會被 30 天清除規則砍）
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signature_image_key VARCHAR(256)`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ`,
+  // v612: 簽名 DB 暫存 buffer + 背景補傳 R2
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signature_pending TEXT`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signature_pending_at TIMESTAMPTZ`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_from_user_agent TEXT`,
 
   // v261: 首單付款獎勵設定

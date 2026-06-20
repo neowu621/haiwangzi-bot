@@ -375,26 +375,27 @@ export async function POST(req: NextRequest) {
     }),
   ).catch((e) => console.error("[booking-status-log]", e));
 
-  // v260：手寫簽名上 R2 → 更新 booking.signatureImageKey + signedAt + UA
-  // v611：改 fire-and-forget — R2 上傳慢/卡（SDK 預設 maxAttempts=3）不該擋下單回應，
-  //   否則前端 12 秒逾時會誤報「連線逾時」。簽名是法律證據但失敗/延遲都不該擋客戶完成預約。
+  // v260/v612：手寫簽名 — 先存進 DB 暫存欄位（快、永久不掉）→ 立刻回應；
+  //   R2 上傳交「立即背景嘗試 + cron 補傳」，成功後清空 pending。簽名是法律證據但延遲/失敗都不擋下單。
   if (data.signatureDataUrl) {
     const ua = req.headers.get("user-agent") ?? null;
-    const sigDataUrl = data.signatureDataUrl;
-    void (async () => {
-      try {
-        const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
-        const up = await uploadSignatureFromDataUrl(sigDataUrl, booking.id);
-        if (up.ok && up.key) {
-          await prisma.booking.update({
-            where: { id: booking.id },
-            data: { signatureImageKey: up.key, signedAt: new Date(), signedFromUserAgent: ua },
-          });
-        }
-      } catch (e) {
-        console.error("[booking signature upload] failed", e);
-      }
-    })();
+    try {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          signaturePending: data.signatureDataUrl,
+          signaturePendingAt: new Date(),
+          signedAt: new Date(),
+          signedFromUserAgent: ua,
+        } as never,
+      });
+      // 立即嘗試上傳（最佳路徑；失敗/崩潰由 cron /api/cron/flush-signatures 補傳）
+      void import("@/lib/signature-flush")
+        .then((m) => m.flushPendingSignature(booking.id))
+        .catch((e) => console.error("[signature immediate flush]", e));
+    } catch (e) {
+      console.error("[booking signature pending save] failed", e);
+    }
   }
 
   // 扣抵用金（v592：批次「先用最近到期」FIFO）

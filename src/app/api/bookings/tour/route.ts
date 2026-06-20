@@ -172,25 +172,25 @@ export async function POST(req: NextRequest) {
     }),
   ).catch((e) => console.error("[booking-status-log]", e));
 
-  // v260：手寫簽名上 R2 → 更新 booking
-  // v611：改 fire-and-forget — R2 上傳慢/卡不該擋下單回應（避免前端 12 秒逾時）。
+  // v260/v612：手寫簽名 — 先存 DB 暫存欄位（秒回）→ R2 交背景 + cron 補傳。
   if (data.signatureDataUrl) {
     const ua = req.headers.get("user-agent") ?? null;
-    const sigDataUrl = data.signatureDataUrl;
-    void (async () => {
-      try {
-        const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
-        const up = await uploadSignatureFromDataUrl(sigDataUrl, booking.id);
-        if (up.ok && up.key) {
-          await prisma.booking.update({
-            where: { id: booking.id },
-            data: { signatureImageKey: up.key, signedAt: new Date(), signedFromUserAgent: ua },
-          });
-        }
-      } catch (e) {
-        console.error("[tour booking signature] failed", e);
-      }
-    })();
+    try {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          signaturePending: data.signatureDataUrl,
+          signaturePendingAt: new Date(),
+          signedAt: new Date(),
+          signedFromUserAgent: ua,
+        } as never,
+      });
+      void import("@/lib/signature-flush")
+        .then((m) => m.flushPendingSignature(booking.id))
+        .catch((e) => console.error("[signature immediate flush]", e));
+    } catch (e) {
+      console.error("[tour booking signature pending save] failed", e);
+    }
   }
 
   if (creditUsed > 0) {
