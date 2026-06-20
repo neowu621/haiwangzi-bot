@@ -173,26 +173,24 @@ export async function POST(req: NextRequest) {
   ).catch((e) => console.error("[booking-status-log]", e));
 
   // v260：手寫簽名上 R2 → 更新 booking
+  // v611：改 fire-and-forget — R2 上傳慢/卡不該擋下單回應（避免前端 12 秒逾時）。
   if (data.signatureDataUrl) {
-    try {
-      const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
-      const up = await uploadSignatureFromDataUrl(
-        data.signatureDataUrl,
-        booking.id,
-      );
-      if (up.ok && up.key) {
-        await prisma.booking.update({
-          where: { id: booking.id },
-          data: {
-            signatureImageKey: up.key,
-            signedAt: new Date(),
-            signedFromUserAgent: req.headers.get("user-agent") ?? null,
-          },
-        });
+    const ua = req.headers.get("user-agent") ?? null;
+    const sigDataUrl = data.signatureDataUrl;
+    void (async () => {
+      try {
+        const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
+        const up = await uploadSignatureFromDataUrl(sigDataUrl, booking.id);
+        if (up.ok && up.key) {
+          await prisma.booking.update({
+            where: { id: booking.id },
+            data: { signatureImageKey: up.key, signedAt: new Date(), signedFromUserAgent: ua },
+          });
+        }
+      } catch (e) {
+        console.error("[tour booking signature] failed", e);
       }
-    } catch (e) {
-      console.error("[tour booking signature] failed", e);
-    }
+    })();
   }
 
   if (creditUsed > 0) {

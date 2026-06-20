@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { randomBytes } from "node:crypto";
 
 const accountId = process.env.R2_ACCOUNT_ID ?? "";
@@ -37,6 +38,12 @@ export function r2Client(): S3Client {
     region: "auto",
     endpoint,
     credentials: { accessKeyId, secretAccessKey },
+    // v611：限制重試 + 連線/傳輸逾時 — R2 慢/卡時快速失敗，避免拖垮呼叫端（如下單）
+    maxAttempts: 2,
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,
+      requestTimeout: 8_000,
+    }),
   });
   return _client;
 }

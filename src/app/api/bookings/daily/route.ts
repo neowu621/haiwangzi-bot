@@ -376,28 +376,25 @@ export async function POST(req: NextRequest) {
   ).catch((e) => console.error("[booking-status-log]", e));
 
   // v260：手寫簽名上 R2 → 更新 booking.signatureImageKey + signedAt + UA
+  // v611：改 fire-and-forget — R2 上傳慢/卡（SDK 預設 maxAttempts=3）不該擋下單回應，
+  //   否則前端 12 秒逾時會誤報「連線逾時」。簽名是法律證據但失敗/延遲都不該擋客戶完成預約。
   if (data.signatureDataUrl) {
-    try {
-      const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
-      const up = await uploadSignatureFromDataUrl(
-        data.signatureDataUrl,
-        booking.id,
-      );
-      if (up.ok && up.key) {
-        await prisma.booking.update({
-          where: { id: booking.id },
-          data: {
-            signatureImageKey: up.key,
-            signedAt: new Date(),
-            signedFromUserAgent: req.headers.get("user-agent") ?? null,
-          },
-        });
+    const ua = req.headers.get("user-agent") ?? null;
+    const sigDataUrl = data.signatureDataUrl;
+    void (async () => {
+      try {
+        const { uploadSignatureFromDataUrl } = await import("@/lib/signature");
+        const up = await uploadSignatureFromDataUrl(sigDataUrl, booking.id);
+        if (up.ok && up.key) {
+          await prisma.booking.update({
+            where: { id: booking.id },
+            data: { signatureImageKey: up.key, signedAt: new Date(), signedFromUserAgent: ua },
+          });
+        }
+      } catch (e) {
+        console.error("[booking signature upload] failed", e);
       }
-      // 失敗不阻擋下單流程（signature 是法律證據但不該擋客戶完成預約；
-      //  R2 未設定 / 網路問題等情況也能用文字 fallback）
-    } catch (e) {
-      console.error("[booking signature upload] failed", e);
-    }
+    })();
   }
 
   // 扣抵用金（v592：批次「先用最近到期」FIFO）
