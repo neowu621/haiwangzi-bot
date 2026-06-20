@@ -151,11 +151,6 @@ export const BOOKING_STATUS_FILTER_GROUPS: Array<{
 export const BOOKING_STATUS_FILTER_KEYS: Array<{ key: BookingStatusKey; label: string }> =
   BOOKING_STATUS_FILTER_GROUPS.flatMap((g) => g.items);
 
-/** 給後台 dashboard 顯示用 — derived key 是否屬於「老闆要處理」 */
-export function isActionable(key: BookingStatusKey): boolean {
-  return key === "awaiting_verify" || key === "awaiting_pay" || key === "refunding";
-}
-
 /**
  * v327：reverse mapping — 老闆從衍生狀態下拉選 → 反推 DB 兩維度該改成什麼
  *

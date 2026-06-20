@@ -110,10 +110,6 @@ export const VIP_TIERS: VipTier[] = [
   },
 ];
 
-export const VIP_TIER_MAP: Record<number, VipTier> = Object.fromEntries(
-  VIP_TIERS.map((t) => [t.level, t]),
-);
-
 /**
  * 計算用戶應有等級 — 僅依潛水次數（海王子累積）
  * 累計消費（totalSpend）參數保留以維持 callsite 向下相容，但不會影響結果
@@ -141,34 +137,6 @@ export function computeVipLevel(
 export function getVipTier(level: number, tiers: VipTier[] = VIP_TIERS): VipTier {
   const map = Object.fromEntries(tiers.map((t) => [t.level, t]));
   return map[level] ?? tiers[0] ?? VIP_TIERS[0];
-}
-
-/**
- * 距離下一級還差多少
- */
-export function getNextTierProgress(
-  logCount: number,
-  totalSpend: number,
-  tiers: VipTier[] = VIP_TIERS,
-): {
-  current: VipTier;
-  next: VipTier;
-  logsLeft: number;
-  spendLeft: number;
-} | null {
-  if (tiers.length === 0) tiers = VIP_TIERS;
-  const sorted = [...tiers].sort((a, b) => a.level - b.level);
-  const currentLevel = computeVipLevel(logCount, totalSpend, sorted);
-  const maxLevel = sorted[sorted.length - 1].level;
-  if (currentLevel >= maxLevel) return null;
-  const current = sorted.find((t) => t.level === currentLevel) ?? sorted[0];
-  const next = sorted.find((t) => t.level > currentLevel) ?? sorted[sorted.length - 1];
-  return {
-    current,
-    next,
-    logsLeft: Math.max(0, next.minLogs - logCount),
-    spendLeft: Math.max(0, next.minSpend - totalSpend),
-  };
 }
 
 /**
