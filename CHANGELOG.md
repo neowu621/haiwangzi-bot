@@ -2,6 +2,25 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260619_615 — 2026-06-21 (清除死碼)
+
+- 刪 src/lib/email/templates.ts 10 個 legacy 死函式（-415 行，客戶 Email 早已改走 notify-template/flex）。
+- 刪 vip-tier `VIP_TIER_MAP`/`getNextTierProgress`、booking-status `isActionable`、bookings 頁未用 import（皆 grep 多次確認 0 引用）。
+
+## 20260619_614 — 2026-06-21 (安全強化 + 簽名上傳優化)
+
+- 安全：cron/email-inbound-poll fail-closed；admin/users 不再外送密碼雜湊；contact 加限流 + Turnstile 正式環境 fail-closed；promo/validate 限流；bootstrap 守衛補 roles[]。
+- 簽名：SignaturePad 匯出由全解析 PNG → 縮 640px + JPEG 0.7（payload 80~250KB → 8~20KB），移除每筆重複序列化。
+
+## 20260619_613 — 2026-06-21 (移除舊網域轉址)
+- proxy.ts 移除 haiwangzi.zeabur.app 轉址（舊網域停用）；保留 www→apex。
+
+## 20260619_612 — 2026-06-20 (簽名 DB-buffer + 自動補傳)
+- 下單簽名先存 DB 暫存欄位（秒回）→ 背景 + cron /api/cron/flush-signatures 補傳 R2，簽名不掉。
+
+## 20260619_611 — 2026-06-20 (修下單連線逾時)
+- 簽名上傳改背景 + R2 S3Client 加逾時/限重試，避免拖過前端 12 秒逾時。
+
 ## 20260619_610 — 2026-06-20 (抵用金異動統一通知，通道可選)
 
 - 任何抵用金變更都通知會員：在 `grantCredit` 統一掛 `notifyCreditChange`（LINE/Email/站內）。
