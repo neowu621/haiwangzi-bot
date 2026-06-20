@@ -323,6 +323,19 @@ curl -X POST \
 
 ---
 
+## Endpoint：`/api/cron/flush-signatures`（簽名補傳 R2，v612）
+
+| 項目 | 說明 |
+|---|---|
+| 用途 | 把「下單時先存進 DB 暫存欄位、但還沒上傳到 R2」的手寫簽名補傳到 R2。正常下單後已立即上傳，這支只補崩潰/重啟/R2 暫時故障漏掉的。 |
+| 排程建議 | 每 5~10 分鐘一次 |
+| Cronicle event | `haiwangzi-flush-signatures`（id `emqmnoeuvsv`，每 10 分） |
+| script | `curl -fsS -X POST -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" "https://haiwangzi.xyz/api/cron/flush-signatures"` |
+
+> ⚠️ **2026-06-21 修正**：Cronicle 的 `HAIWANGZI_BASE_URL` 原指向已死的 `haiwangzi.zeabur.app`，導致**所有 cron 404 失敗**。已（A）把每個 event 腳本改硬寫 `https://haiwangzi.xyz`、（B）把全域變數也更新為 `https://haiwangzi.xyz`。正確 prod 網域永遠是 **`haiwangzi.xyz`**。
+
+---
+
 ## 跨專案參考
 
 - its-17-time（團購）— 採用 GitHub Actions 備援 + Zeabur Cron，可參考其 `docs/CRON_SETUP.md`（位於 `D:\00AI Project\20260418_Group Buying\app\docs\CRON_SETUP.md`）的設計思路（Bearer auth + pollWindowMinutes）。本專案的 API design 與其對齊。
