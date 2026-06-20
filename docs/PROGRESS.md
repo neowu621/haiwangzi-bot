@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-06-21 — 抵用金通知 + 下單/簽名穩定性 + cron 全救回 + 安全/死碼（v604→v616）
+
+目前線上 = **v20260619_616**。本日一連串改動，全部已部署 + 線上實測正常。
+
+### 抵用金（v604/605/606/607/608/610）
+- v604 餘額 0 顯示灰字（LIFF + /pclogin）。
+- v605 抵用金管理刪除防呆：只准刪「未使用發放筆」，餘額 clamp ≥ 0（要扣餘額請用「新增抵用金」填負數）。
+- v606 一次性補退工具 `/api/admin/backfill-cancel-credit-refunds`（已補退 O20260620-1P）。
+- v607 退抵用金時在訂單歷程補一行（`ensureRefundStatusLog`，from==to 顯示單一狀態）。
+- v608 訂單列表顯示「↩ 抵用金已退 NT$X」標記（admin bookings API 回 `creditRefunded`）。
+- v610 **抵用金異動統一通知**：`grantCredit` 掛 `notifyCreditChange`（src/lib/notify-credit.ts），通道由後台抵用金管理頁開關（SiteConfig credit_notify_line/email/inapp，預設 Email+站內）。已有專屬通知（首單/生日/VIP/退款）+ backfill 用 `skipNotify` 避免重複。
+
+### 下單 / 簽名穩定性（v611/612/614）
+- **問題**：下單常「連線逾時」。根因＝簽名上傳 R2 卡在 await 關鍵路徑（R2 SDK 預設重試 3 次、無逾時）。
+- v611 簽名上傳改背景 + R2 client 加 maxAttempts=2 / 連線5s / 傳輸8s。
+- v612 **簽名 DB-buffer**：下單先存 `booking.signaturePending`（秒回）→ 背景 `flushPendingSignature` + cron `/api/cron/flush-signatures`（Cronicle 每10分）補傳 R2，成功清空。簽名 100% 不掉。admin 列表不外送 base64（改 `hasPendingSignature`）。
+- v614 簽名匯出由全解析 PNG → 縮 640px + JPEG 0.7（SignaturePad.tsx），payload 80~250KB → 8~20KB。
+
+### Cron 全站救回（重大）
+- 發現 Cronicle `HAIWANGZI_BASE_URL` 指向**已死的 haiwangzi.zeabur.app** → 所有排程 404 失敗（行前提醒/自動結案/天氣/生日禮金等先前都沒在跑）。
+- 修：(A) 把每個 event 腳本網址硬寫 `https://haiwangzi.xyz`；(B) zeabur 更新該服務全域變數為 xyz。實測 reminders/auto-complete/weather/credit-expiry/flush-sig 全 code=0。
+- v613 proxy.ts 移除舊網域轉址（保留 www→apex）。
+
+### 安全強化 + 死碼（v614/615/616）— 經 3 個並行 agent 審計
+- v614 安全：cron/email-inbound-poll fail-closed；**admin/users 不再外送 webPasswordHash**（改 hasWebPassword）；contact 加限流 + Turnstile 正式環境 fail-closed；promo/validate 限流；bootstrap 守衛補 roles[]。
+- v615 清死碼：templates.ts −415 行（10 個 legacy 函式）+ vip-tier/booking-status/未用 import。
+- v616 22 個 cron + email webhook 密鑰比對改 timing-safe（safeEqual）。
+- 審計確認本就安全：無 IDOR、admin/coach 路由全 requireRole、admin JWT 每次重查 DB 角色、Raw SQL 全參數綁定、webhook 驗簽。
+
+### 雜項（v601/602/609）
+- v601 Email 改 Gmail 寄信（DB emailProvider，避開 awstrack）+ composeEmail 按鈕導小編 LINE。
+- v602 一日潛水日曆改週一起始。v609 訂單管理預設篩選「進行中需關注付款」。
+
+### 下次先看
+- 抵用金通知通道在「後台→抵用金管理」頁頂可調（預設 Email+站內）。
+- 簽名補傳健康度：cron flush-signatures（每10分）；DB `signaturePending IS NOT NULL` 即待補。
+- cron 全部走 `https://haiwangzi.xyz`（勿再用 zeabur.app）。
+
+---
+
 ## 2026-06-20 — 訂單取消自動退還抵用金（v603）+ 雜項（v601 Email、v602 日曆）
 
 ### v603：取消退還抵用金（重點）
