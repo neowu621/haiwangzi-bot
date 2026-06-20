@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isMobileUA, isBotUA } from "@/lib/ua";
 
-// v499：網域正規化 — 把 www / zeabur.app 用 301 永久轉向到正規網址 haiwangzi.xyz，
+// v499：網域正規化 — 把 www 用 301 永久轉向到正規網址 haiwangzi.xyz，
 //   讓 Google 把所有排名訊號合併到單一網址（程式層處理，不依賴平台後台設定）。
+// v613：移除 haiwangzi.zeabur.app 轉址（舊網域已停用，DNS 不再解析）。
 const CANONICAL_HOST = "haiwangzi.xyz";
-const REDIRECT_HOSTS = new Set(["www.haiwangzi.xyz", "haiwangzi.zeabur.app"]);
+const REDIRECT_HOSTS = new Set(["www.haiwangzi.xyz"]);
 
 export function proxy(req: NextRequest) {
   // Zeabur 是反向代理：真正的對外網域在 x-forwarded-host（fallback host）
