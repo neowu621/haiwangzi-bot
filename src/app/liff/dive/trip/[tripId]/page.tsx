@@ -883,6 +883,12 @@ export default function TripBookingPage({
                 )}
               </div>
             )}
+            {/* v604：餘額 0 時也說明有此功能，避免使用者以為沒有抵用金機制 */}
+            {creditBalance <= 0 && (
+              <div className="text-[11px] text-[var(--muted-foreground)]">
+                🎁 目前無抵用金可折抵（生日禮金、VIP 升等、早鳥回饋等會自動入帳，下次下單即可折抵）
+              </div>
+            )}
             <div className="text-right text-sm font-bold text-[var(--color-ocean-deep)]">應付 NT$ {Math.max(0, finalTotal - Math.min(creditUsed, creditBalance, finalTotal)).toLocaleString()}</div>
           </CardContent>
         </Card>

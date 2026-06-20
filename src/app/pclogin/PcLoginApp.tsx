@@ -629,7 +629,14 @@ function PolicyGate({ f, patch, policies }: { f: CommonForm; patch: (p: Partial<
 
 // v491：使用抵用金折抵
 function CreditBox({ balance, used, max, onChange }: { balance: number; used: number; max: number; onChange: (n: number) => void }) {
-  if (balance <= 0) return null;
+  // v604：餘額 0 時也顯示一行灰字說明，讓使用者知道有抵用金折抵機制
+  if (balance <= 0) {
+    return (
+      <div style={{ fontSize: 12.5, color: "#8a8f98", marginBottom: 6 }}>
+        🎁 目前無抵用金可折抵（生日禮金、VIP 升等、早鳥回饋等會自動入帳，下次下單即可折抵）
+      </div>
+    );
+  }
   const cap = Math.min(balance, max);
   return (
     <>
