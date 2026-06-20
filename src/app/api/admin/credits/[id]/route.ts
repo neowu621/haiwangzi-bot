@@ -75,10 +75,24 @@ export async function DELETE(
       const target = await tx.creditTx.findUnique({ where: { id } });
       if (!target) throw new Error("找不到該筆抵用金紀錄");
 
-      // 刪掉
+      // ── v605 防呆：保護 FIFO 與帳目一致，只允許刪「未被使用過的發放筆」──
+      //   負向紀錄(使用/作廢/撤銷/退還) 不可刪：刪了會讓對應發放筆 consumedAmount 對不上、餘額算錯。
+      if (target.amount < 0) {
+        throw new Error(
+          "此筆為「使用／作廢／退還」紀錄，刪除會破壞帳目一致性，不可刪除。若要調整餘額，請用『新增抵用金』填負數做扣抵。",
+        );
+      }
+      //   已被使用過的發放筆不可硬刪：該抵用金已折抵在某張訂單上，刪了帳會對不上。
+      if (target.consumedAmount > 0) {
+        throw new Error(
+          `此發放已被使用 NT$${target.consumedAmount.toLocaleString()}，不能直接刪除（避免帳目不一致）。若要扣掉尚未使用的部分，請用『新增抵用金』填負數做扣抵。`,
+        );
+      }
+
+      // 安全：未使用過的發放筆 → 可刪
       await tx.creditTx.delete({ where: { id } });
 
-      // 重整該 user 所有後續 tx 的 balanceAfter（簡單做法：全部重算）
+      // 重整該 user 所有 tx 的 balanceAfter（全部重算）
       const allTxs = await tx.creditTx.findMany({
         where: { userId: target.userId },
         orderBy: { createdAt: "asc" },
@@ -94,13 +108,14 @@ export async function DELETE(
         }
       }
 
-      // 同步更新 user.creditBalance
+      // 同步更新 user.creditBalance（clamp >= 0 防呆，避免任何情況算成負數）
+      const safeBalance = Math.max(0, running);
       await tx.user.update({
         where: { lineUserId: target.userId },
-        data: { creditBalance: running },
+        data: { creditBalance: safeBalance },
       });
 
-      return { deletedAmount: target.amount, deletedCode: target.code, newBalance: running, userId: target.userId };
+      return { deletedAmount: target.amount, deletedCode: target.code, newBalance: safeBalance, userId: target.userId };
     });
 
     await logAudit({

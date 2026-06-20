@@ -21,6 +21,7 @@ interface CreditTx {
   code: string | null;
   userId: string;
   amount: number;
+  consumedAmount?: number; // v605：發放筆已被折抵/作廢的金額（防呆刪除判斷用）
   reason: string;
   refType: string | null;
   refId: string | null;
@@ -257,7 +258,14 @@ export default function CreditsPage() {
   }
 
   async function deleteTx(t: CreditTx) {
-    if (!confirm(`確定刪除「${t.code ?? t.id.slice(0, 8)}」？\n金額 ${t.amount > 0 ? "+" : ""}${t.amount.toLocaleString()}\n會員餘額會自動重算。`)) return;
+    // v605：只允許刪「未使用過的發放筆」；使用/退還紀錄或已折抵的發放會被後端擋下
+    if (t.amount < 0 || (t.consumedAmount ?? 0) > 0) {
+      alert(
+        "此筆不能直接刪除（使用／退還紀錄、或已被訂單折抵的發放，刪了帳會對不上）。\n\n若要扣抵餘額，請用上方『新增抵用金』填負數做扣抵（會留下軌跡）。",
+      );
+      return;
+    }
+    if (!confirm(`確定刪除「${t.code ?? t.id.slice(0, 8)}」？\n金額 ${t.amount > 0 ? "+" : ""}${t.amount.toLocaleString()}（未使用）\n會員餘額會自動重算。`)) return;
     try {
       await adminFetch(`/api/admin/credits/${t.id}`, { method: "DELETE" });
       await load();
