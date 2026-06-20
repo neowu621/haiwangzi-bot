@@ -99,7 +99,7 @@ export async function POST(
     let creditResult: { newBalance: number; oldBalance: number; granted: number } | null = null;
     if (data.method === "credit") {
       const grantAmount = data.creditAmount ?? data.amount;
-      const r = await grantCredit({
+      const r = await grantCredit({ skipNotify: true,
         userId: booking.userId,
         amount: grantAmount,
         reason: "refund",

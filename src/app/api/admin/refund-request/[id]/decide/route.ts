@@ -98,7 +98,7 @@ export async function POST(
   if (finalMethod === "credit") {
     try {
       const totalCredit = finalAmount + Math.floor(finalAmount * (finalBonusPct / 100));
-      await grantCredit({
+      await grantCredit({ skipNotify: true,
         userId: rr.booking.userId,
         amount: totalCredit,
         reason: "refund",

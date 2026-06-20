@@ -812,6 +812,11 @@ model SiteConfig {
   // v470：Email 發送路徑 — gmail（預設）/ zsend / fallback（Gmail 失敗自動改 ZSend）
   emailProvider String @default("gmail") @map("email_provider") @db.VarChar(16)
 
+  // v610：抵用金異動通知通道（預設 Email + 站內，LINE 預設關）
+  creditNotifyLine  Boolean @default(false) @map("credit_notify_line")
+  creditNotifyEmail Boolean @default(true)  @map("credit_notify_email")
+  creditNotifyInApp Boolean @default(true)  @map("credit_notify_inapp")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy String?  @map("updated_by") @db.VarChar(64)
 

@@ -78,7 +78,7 @@ async function run(req: NextRequest, dryRun: boolean) {
   const failed: Array<{ userId: string; error: string }> = [];
   for (const u of users) {
     try {
-      await grantCredit({
+      await grantCredit({ skipNotify: true,
         userId: u.line_user_id,
         amount,
         reason: "birthday",

@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
         expiryDays > 0
           ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000)
           : null;
-      await grantCredit({
+      await grantCredit({ skipNotify: true,
         userId: u.line_user_id,
         amount,
         reason: "birthday",

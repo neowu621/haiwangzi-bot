@@ -116,6 +116,10 @@ const PatchSchema = z.object({
     .optional(),
   // v470：Email 發送路徑
   emailProvider: z.enum(["gmail", "zsend", "fallback"]).optional(),
+  // v610：抵用金異動通知通道（預設 Email + 站內）
+  creditNotifyLine: z.boolean().optional(),
+  creditNotifyEmail: z.boolean().optional(),
+  creditNotifyInApp: z.boolean().optional(),
   // v411：海象（浮標+潮位）整合
   weatherMarineEnabled: z.boolean().optional(),
   weatherMarinePoints: z
@@ -270,6 +274,10 @@ export async function GET(req: NextRequest) {
         { waveHeight: true, waveDir: true, wavePeriod: true, seaTemp: true, current: true, tide: true },
       // v470 Email 發送路徑
       emailProvider: (row as unknown as { emailProvider?: string }).emailProvider ?? "gmail",
+      // v610 抵用金異動通知通道
+      creditNotifyLine: (row as unknown as { creditNotifyLine?: boolean }).creditNotifyLine ?? false,
+      creditNotifyEmail: (row as unknown as { creditNotifyEmail?: boolean }).creditNotifyEmail ?? true,
+      creditNotifyInApp: (row as unknown as { creditNotifyInApp?: boolean }).creditNotifyInApp ?? true,
       // v315 訂單日報
       dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
       dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,

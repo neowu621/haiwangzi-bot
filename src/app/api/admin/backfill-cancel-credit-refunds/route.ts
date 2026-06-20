@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       let refunded = 0;
       // 1) 還沒退過 → 補退抵用金
       if (!r.alreadyRefunded) {
-        await grantCredit({
+        await grantCredit({ skipNotify: true,
           userId: (await prisma.booking.findUnique({ where: { id: r.bookingId }, select: { userId: true } }))!.userId,
           amount: r.creditUsed,
           reason: "refund",

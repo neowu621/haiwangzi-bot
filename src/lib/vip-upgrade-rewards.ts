@@ -46,7 +46,7 @@ export async function grantVipUpgradeRewards(
 
     try {
       const expiresAt = await computeExpiry("vip_upgrade");
-      await grantCredit({
+      await grantCredit({ skipNotify: true,
         userId,
         amount: tier.upgradeCredit,
         reason: "vip_upgrade",

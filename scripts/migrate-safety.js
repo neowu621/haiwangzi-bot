@@ -40,6 +40,11 @@ const PATCHES = [
   // v257: 安全政策
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS safety_policy TEXT NOT NULL DEFAULT ''`,
 
+  // v610: 抵用金異動通知通道（預設 Email + 站內，LINE 預設關）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS credit_notify_line BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS credit_notify_email BOOLEAN NOT NULL DEFAULT true`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS credit_notify_inapp BOOLEAN NOT NULL DEFAULT true`,
+
   // v260: 手寫簽名（法律證據、長期保留、不會被 30 天清除規則砍）
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signature_image_key VARCHAR(256)`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ`,

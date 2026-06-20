@@ -10,6 +10,7 @@
 import { prisma } from "./prisma";
 import type { Prisma } from "@prisma/client";
 import { genCreditCode } from "./code-gen";
+import { notifyCreditChange } from "./notify-credit"; // v610
 
 export type CreditReason =
   | "birthday"            // 生日自動發
@@ -32,14 +33,18 @@ export interface GrantCreditArgs {
   note?: string | null;
   createdBy?: string | null; // admin lineUserId
   expiresAt?: Date | null;   // v184: 到期日（null = 永不過期）
+  // v610：呼叫端已自帶專屬通知（首單/生日/VIP/退款）時設 true，避免重複通知。
+  //   一次性 backfill 也設 true，避免對歷史會員大量補推。
+  skipNotify?: boolean;
 }
 
 /**
  * 寫入一筆 CreditTx + 同步更新 User.creditBalance
  * 用 transaction 確保 balance 與 audit log 一致
+ * v610：交易成功後統一發「抵用金異動通知」（除非 skipNotify）。
  */
 export async function grantCredit(args: GrantCreditArgs) {
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({
       where: { lineUserId: args.userId },
       select: { creditBalance: true },
@@ -78,6 +83,20 @@ export async function grantCredit(args: GrantCreditArgs) {
 
     return { tx: txRow, oldBalance, newBalance };
   });
+
+  // v610：統一通知（fire-and-forget；專屬通知/backfill 用 skipNotify 跳過）
+  if (!args.skipNotify) {
+    notifyCreditChange({
+      userId: args.userId,
+      amount: args.amount,
+      balanceAfter: result.newBalance,
+      reason: args.reason,
+      note: args.note ?? null,
+      expiresAt: args.expiresAt ?? null,
+    });
+  }
+
+  return result;
 }
 
 /**

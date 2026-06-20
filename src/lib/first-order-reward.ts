@@ -94,7 +94,7 @@ export async function maybeGrantFirstOrderReward(
         ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000)
         : null;
 
-    const { tx, newBalance } = await grantCredit({
+    const { tx, newBalance } = await grantCredit({ skipNotify: true,
       userId,
       amount,
       reason: "first_order_reward",

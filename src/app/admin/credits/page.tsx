@@ -106,6 +106,31 @@ export default function CreditsPage() {
   const [bfBusy, setBfBusy] = useState(false);
   const [bfResult, setBfResult] = useState<string | null>(null);
 
+  // v610：抵用金異動通知通道設定
+  const [notify, setNotify] = useState<{ line: boolean; email: boolean; inapp: boolean }>({ line: false, email: true, inapp: true });
+  useEffect(() => {
+    adminFetch<{ config: { creditNotifyLine?: boolean; creditNotifyEmail?: boolean; creditNotifyInApp?: boolean } }>("/api/admin/site-config")
+      .then((d) => setNotify({
+        line: d.config?.creditNotifyLine ?? false,
+        email: d.config?.creditNotifyEmail ?? true,
+        inapp: d.config?.creditNotifyInApp ?? true,
+      }))
+      .catch(() => {});
+  }, []);
+  async function toggleNotify(key: "line" | "email" | "inapp") {
+    const next = { ...notify, [key]: !notify[key] };
+    setNotify(next);
+    try {
+      await adminFetch("/api/admin/site-config", {
+        method: "POST",
+        body: JSON.stringify({ creditNotifyLine: next.line, creditNotifyEmail: next.email, creditNotifyInApp: next.inapp }),
+      });
+    } catch (e) {
+      setNotify(notify); // 回滾
+      alert("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   async function openBackfill() {
     setBfOpen(true);
     setBfLoading(true);
@@ -286,6 +311,19 @@ export default function CreditsPage() {
   return (
     <AdminShell title="抵用金管理">
       <div className="space-y-4">
+        {/* v610：抵用金異動通知通道設定 */}
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-2.5 text-sm" style={{ borderColor: "var(--border)" }}>
+          <span className="font-semibold text-[var(--color-ocean-deep)]">🔔 抵用金異動通知</span>
+          <span className="text-[11px] text-[var(--muted-foreground)]">任何抵用金變更時通知會員，選擇發送通道：</span>
+          {([["line", "LINE"], ["email", "Email"], ["inapp", "站內"]] as const).map(([k, label]) => (
+            <label key={k} className="inline-flex cursor-pointer items-center gap-1.5">
+              <input type="checkbox" checked={notify[k]} onChange={() => toggleNotify(k)} className="h-4 w-4 accent-[var(--color-phosphor)]" />
+              <span>{label}</span>
+            </label>
+          ))}
+          <span className="text-[10px] text-[var(--muted-foreground)]">（預設 Email + 站內；變更即時生效）</span>
+        </div>
+
         {/* 統計卡 */}
         {stats && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
