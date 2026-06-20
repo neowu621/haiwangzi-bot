@@ -131,6 +131,9 @@ function fmtEntryDate(iso: string) {
   } catch { return iso.slice(5, 16); }
 }
 
+// v609：訂單管理預設篩選 — 正常流程進行中、需關注付款的狀態（紅框那組）
+const DEFAULT_STATUS_FILTER: string[] = ["awaiting_pay", "awaiting_verify", "deposit_paid", "fully_paid"];
+
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pending: "待付款",
   deposit_paid: "已付訂金",
@@ -199,11 +202,16 @@ export default function AdminBookingsPage() {
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   // v294/v329：依 URL ?status= 讀預設值，支援多選（逗號分隔）
   //   filterStatusSet 為 empty Set = "全部"；有東西在 set 內 = 只顯示這些
-  const [filterStatusSet, setFilterStatusSet] = useState<Set<string>>(new Set());
+  // v609：預設只顯示「正常流程進行中、需關注付款」的訂單（等待付款/待確認匯款/已確認付款訂金/已完成付款）
+  //   建立訂單、客戶活動完成、取消、退款等不在預設視圖內，點「全部」或對應 chip 才看。
+  const [filterStatusSet, setFilterStatusSet] = useState<Set<string>>(
+    () => new Set(DEFAULT_STATUS_FILTER),
+  );
   useEffect(() => {
     if (typeof window === "undefined") return;
     const s = new URLSearchParams(window.location.search).get("status");
-    if (s) setFilterStatusSet(new Set(s.split(",").filter(Boolean)));
+    // 有帶 ?status= 才覆寫預設（含 ?status= 空字串 → 全部）
+    if (s !== null) setFilterStatusSet(new Set(s.split(",").filter(Boolean)));
   }, []);
   function toggleStatusFilter(key: string) {
     setFilterStatusSet((prev) => {
