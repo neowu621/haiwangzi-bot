@@ -86,6 +86,19 @@ export async function GET(req: NextRequest) {
       logsByBooking.set(log.bookingId, arr);
     }
 
+    // v608：每筆 booking 已退還的抵用金（訂單取消自動退/補退；refType=booking_cancel）
+    const refundTxs = bookings.length
+      ? await prisma.creditTx.findMany({
+          where: { reason: "refund", refType: "booking_cancel", refId: { in: bookings.map((b) => b.id) } },
+          select: { refId: true, amount: true },
+        })
+      : [];
+    const creditRefundedByBooking = new Map<string, number>();
+    for (const t of refundTxs) {
+      if (!t.refId) continue;
+      creditRefundedByBooking.set(t.refId, (creditRefundedByBooking.get(t.refId) ?? 0) + t.amount);
+    }
+
     // v262：簽名圖 presigned URL（讓 admin UI 直接顯示）
     const { previewUrl, r2Configured } = await import("@/lib/r2");
     const signatureUrls = new Map<string, string>();
@@ -131,6 +144,8 @@ export async function GET(req: NextRequest) {
           ...b,
           // 管理備註僅 admin/boss 可見
           adminNotes: isAdminOrBoss ? b.adminNotes : undefined,
+          // v608：已退還抵用金（>0 才顯示標記）
+          creditRefunded: creditRefundedByBooking.get(b.id) ?? 0,
           // v262：簽名 presigned URL（10 分鐘 TTL）
           signatureImageUrl: signatureUrls.get(b.id) ?? null,
           // v274：退款申請狀態

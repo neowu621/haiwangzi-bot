@@ -44,6 +44,7 @@ interface AdminBooking {
   refundAmount?: number | null;
   refundedAt?: string | null;
   refundMethod?: string | null;
+  creditRefunded?: number; // v608：訂單取消已退還的抵用金
   participants: number;
   overCapacity?: boolean;
   createdAt: string;
@@ -1067,6 +1068,12 @@ export default function AdminBookingsPage() {
                             {b.refundRequest?.status === "rejected_by_admin" && (
                               <span className="inline-flex rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] text-gray-600 whitespace-nowrap">
                                 ✗ 退款已拒絕
+                              </span>
+                            )}
+                            {/* v608：已退還抵用金（取消後自動退） */}
+                            {(b.creditRefunded ?? 0) > 0 && (
+                              <span className="inline-flex rounded-full bg-teal-100 px-1.5 py-0.5 text-[9px] text-teal-700 whitespace-nowrap tabular-nums">
+                                ↩ 抵用金已退 NT$ {(b.creditRefunded ?? 0).toLocaleString()}
                               </span>
                             )}
                           </div>
