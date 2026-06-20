@@ -37,11 +37,12 @@ function addDays(d: Date, n: number) {
   return x;
 }
 
-/** 該日所在週的週日 00:00（台北裝置本地時間） */
+/** 該日所在週的週一 00:00（台北裝置本地時間）— 週一為一週起始 */
 function startOfWeek(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - x.getDay()); // 0=Sun
+  // getDay() 0=Sun..6=Sat；換算到「距離本週一幾天」：Mon=0, Sun=6
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
   return x;
 }
 
@@ -63,7 +64,7 @@ export default function CalendarPage() {
     [thisWeekStart, pageOffset],
   );
   const winEnd = useMemo(() => addDays(winStart, 13), [winStart]);
-  // 兩週 14 格（週日~週六 ×2），對齊星期欄、佔兩列
+  // 兩週 14 格（週一~週日 ×2），對齊星期欄、佔兩列
   const cells = useMemo(
     () => Array.from({ length: 14 }, (_, i) => ({ date: addDays(winStart, i) })),
     [winStart],
@@ -138,7 +139,7 @@ export default function CalendarPage() {
 
         {/* 星期表頭 */}
         <div className="mt-1 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-[var(--muted-foreground)]">
-          {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
+          {["一", "二", "三", "四", "五", "六", "日"].map((d) => (
             <div key={d}>{d}</div>
           ))}
         </div>
