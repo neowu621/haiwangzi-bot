@@ -243,6 +243,8 @@ export default function AdminTripsPage() {
   const [cancelTarget, setCancelTarget] = useState<Trip | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelBusy, setCancelBusy] = useState(false);
+  // v617：天氣取消 — 勾選則走 weather-cancel（取消訂單 + 發天氣取消通知 + 退抵用金）
+  const [cancelNotify, setCancelNotify] = useState(false);
 
   // v336：Dump 一週場次（給 LINE 筆記本用）
   const [dumpOpen, setDumpOpen] = useState(false);
@@ -483,6 +485,8 @@ export default function AdminTripsPage() {
   function deleteTrip(trip: Trip) {
     setCancelTarget(trip);
     setCancelReason("");
+    // v617：有報名時預設「天氣取消（通知+退款）」，避免悄悄取消讓客戶不知道
+    setCancelNotify((trip.booked ?? 0) > 0);
   }
 
   // v242：送出取消（帶原因）
@@ -495,10 +499,20 @@ export default function AdminTripsPage() {
     }
     setCancelBusy(true);
     try {
-      await adminFetch(`/api/admin/trips/${cancelTarget.id}`, {
-        method: "DELETE",
-        body: JSON.stringify({ reason }),
-      });
+      if (cancelNotify) {
+        // v617：天氣取消 → 取消該場次所有訂單 + 發天氣取消通知（LINE/Email/站內）+ 退抵用金
+        const r = await adminFetch<{ ok: boolean; notified: number }>(
+          `/api/coach/trips/weather-cancel`,
+          { method: "POST", body: JSON.stringify({ tripId: cancelTarget.id, reason }) },
+        );
+        alert(`已天氣取消並通知 ${r?.notified ?? 0} 位客戶（已退還其折抵的抵用金）。`);
+      } else {
+        // 僅取消場次（不通知客戶、不退款）
+        await adminFetch(`/api/admin/trips/${cancelTarget.id}`, {
+          method: "DELETE",
+          body: JSON.stringify({ reason }),
+        });
+      }
       setTrips((arr) =>
         arr.map((x) =>
           x.id === cancelTarget.id
@@ -1866,6 +1880,23 @@ export default function AdminTripsPage() {
               />
             </div>
 
+            {/* v617：天氣取消開關 — 由老闆/教練決定是否通知客戶並退款 */}
+            <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-2.5">
+              <input
+                type="checkbox"
+                checked={cancelNotify}
+                onChange={(e) => setCancelNotify(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-sky-600"
+              />
+              <span className="text-[12px] leading-snug text-sky-900">
+                <b>🌊 天氣取消：通知客戶並退款</b>
+                <span className="block text-[11px] text-sky-700">
+                  取消此場次所有訂單 → 發「天氣取消通知」(LINE/Email/站內) → 自動退還客戶折抵的抵用金。
+                  {(cancelTarget.booked ?? 0) === 0 && "（本場次目前無報名）"}
+                </span>
+              </span>
+            </label>
+
             <div className="mt-4 flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -1877,11 +1908,11 @@ export default function AdminTripsPage() {
               </Button>
               <Button
                 size="sm"
-                style={{ background: "#d97706", color: "#fff" }}
+                style={{ background: cancelNotify ? "#0284c7" : "#d97706", color: "#fff" }}
                 onClick={confirmCancelTrip}
                 disabled={cancelBusy || !cancelReason.trim()}
               >
-                {cancelBusy ? "取消中..." : "確認取消場次"}
+                {cancelBusy ? "處理中..." : cancelNotify ? "天氣取消並通知客戶" : "確認取消場次"}
               </Button>
             </div>
           </div>
