@@ -411,7 +411,7 @@ export default function CreditsPage() {
                           )}
                         </td>
                         <td className="px-3 py-1.5 whitespace-nowrap text-xs">
-                          {new Date(t.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }).slice(0, 16)}
+                          {new Date(t.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
                         </td>
                         <td className="px-3 py-1.5 whitespace-nowrap text-xs">
                           <span className="font-semibold">{t.user?.realName ?? t.user?.displayName ?? "—"}</span>
