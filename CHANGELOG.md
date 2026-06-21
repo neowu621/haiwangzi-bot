@@ -2,6 +2,15 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+## 20260619_617 — 2026-06-21 (天氣取消手動觸發)
+
+- 場次管理「取消場次」加勾選「🌊 天氣取消：通知客戶並退款」→ 走 coach/trips/weather-cancel：
+  取消該場次所有訂單 + 發天氣取消通知(LINE/Email/站內) + 自動退抵用金。不勾＝僅改狀態。有報名預設勾。
+- 補足缺口：天氣取消模板原本無 UI 觸發點（cron 未排程、route 無按鈕）。
+
+## 20260619_616 — 2026-06-21 (cron 密鑰 timing-safe)
+- 22 個 cron + email webhook 的 Bearer/secret 比對改用 safeEqual（常數時間）。
+
 ## 20260619_615 — 2026-06-21 (清除死碼)
 
 - 刪 src/lib/email/templates.ts 10 個 legacy 死函式（-415 行，客戶 Email 早已改走 notify-template/flex）。
