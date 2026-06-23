@@ -103,6 +103,26 @@ export async function POST(
   const shouldTransitionStatus = booking.status === "pending";
   const fromStatus = booking.status;
 
+  // v621：防重複提交 — 客戶因「沒看到成功回饋」而連按多次時，5 分鐘內相同
+  //   (訂單 + 類型 + 金額 + 後5碼) 的未審核證明視為重複點擊，回傳既有那筆，不再建立也不再通知。
+  const dupSince = new Date(Date.now() - 5 * 60 * 1000);
+  const existingDup = await prisma.paymentProof.findFirst({
+    where: {
+      bookingId: id,
+      type: data.type,
+      amount: data.amount,
+      last5: data.last5 ?? null,
+      verifiedAt: null,
+      rejectedAt: null,
+      uploadedAt: { gte: dupSince },
+    },
+    orderBy: { uploadedAt: "desc" },
+    select: { id: true },
+  });
+  if (existingDup) {
+    return NextResponse.json({ ok: true, proof: { id: existingDup.id }, deduped: true });
+  }
+
   let proof;
   try {
     // 並行：booking 更新 + proof 建立（無依賴關係）

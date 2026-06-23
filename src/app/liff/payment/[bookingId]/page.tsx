@@ -20,13 +20,14 @@ import { cn } from "@/lib/utils";
 interface MyBookingMini {
   id: string;
   type: "daily" | "tour";
+  participants?: number; // v621：人數
   totalAmount: number;
   depositAmount: number;
   paidAmount: number;
   paymentStatus: string;
   paymentMethod?: "bank" | "linepay" | "other" | null;  // v289
   ref:
-    | { date: string; startTime: string; sites: string[] }
+    | { date: string; startTime: string; sites: string[]; tankCount?: number }
     | { title: string; dateStart: string; dateEnd: string; sites: string[] }
     | null;
   paymentProofs?: Array<{
@@ -75,6 +76,8 @@ export default function PaymentUploadPage({
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // v621：同步防重入鎖 — 慢網路下 React state 來不及把按鈕 disable，連點會觸發多次 submit()。
+  const submittingRef = useRef(false);
   // v368：訂單載入失敗狀態 + 重試 key（避免 fetch 失敗時無限轉圈）
   const [loadError, setLoadError] = useState<"notfound" | "timeout" | "fail" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -237,6 +240,8 @@ export default function PaymentUploadPage({
   }
 
   async function submit() {
+    // v621：同步擋連點 — 已在送出 / 已送出 就直接 return，避免產生重複付款證明。
+    if (submittingRef.current || uploading || uploaded) return;
     if (!booking) return;
     if (!paymentMethod) {
       setError("請選擇付款方式");
@@ -255,6 +260,7 @@ export default function PaymentUploadPage({
       setError("請說明使用的付款方式（例：街口、微信支付⋯）");
       return;
     }
+    submittingRef.current = true; // v621：上鎖（在第一個 await 之前，同步擋住連點）
     setUploading(true);
     setError(null);
 
@@ -336,6 +342,8 @@ export default function PaymentUploadPage({
       setError(msg);
     } finally {
       setUploading(false);
+      // 成功時 uploaded=true 仍會擋住（top guard + 顯示成功卡）；失敗時解鎖讓客戶重試。
+      submittingRef.current = false;
     }
   }
 
@@ -413,6 +421,11 @@ export default function PaymentUploadPage({
               <div>
                 <div className="text-xs text-[var(--muted-foreground)]">
                   {isDaily ? "日潛" : "旅遊潛水"}
+                  {/* v621：氣瓶數量 + 人數 */}
+                  {booking.ref && "date" in booking.ref && booking.ref.tankCount
+                    ? `　${booking.ref.tankCount} 支氣瓶`
+                    : ""}
+                  {booking.participants ? `　${booking.participants} 人` : ""}
                 </div>
                 <div className="mt-1 text-base font-bold">
                   {booking.ref && "title" in booking.ref
@@ -421,6 +434,12 @@ export default function PaymentUploadPage({
                     ? `${booking.ref.date} ${booking.ref.startTime}`
                     : "—"}
                 </div>
+                {/* v621：地點 */}
+                {booking.ref && booking.ref.sites && booking.ref.sites.length > 0 && (
+                  <div className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                    📍 {booking.ref.sites.join("、")}
+                  </div>
+                )}
               </div>
               <Badge variant="muted" className="tabular">
                 {(({ pending: "待付款", deposit_paid: "訂金已付", fully_paid: "已付清", refunding: "退款中", refunded: "已退款" } as Record<string,string>)[booking.paymentStatus] ?? booking.paymentStatus)}
@@ -679,11 +698,11 @@ export default function PaymentUploadPage({
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="mt-1 flex h-32 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--border)] text-sm text-[var(--muted-foreground)]"
+                  className={`mt-1 flex h-36 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed text-sm font-semibold ${paymentMethod === "linepay" ? "border-[var(--color-coral)] bg-[var(--color-coral)]/5 text-[var(--color-coral)]" : "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/5 text-[var(--color-ocean-deep)]"}`}
                 >
-                  <Camera className="h-7 w-7" />
-                  <span>點此拍照或選擇圖檔（選填）</span>
-                  <span className="text-[10px]">會自動壓縮到 &lt; 500 KB</span>
+                  <Camera className="h-10 w-10" />
+                  <span className="text-base">📷 點這裡上傳轉帳截圖</span>
+                  <span className="text-[11px] font-normal text-[var(--muted-foreground)]">拍照或從相簿選，會自動壓縮到 &lt; 500 KB</span>
                 </button>
               )}
             </div>
