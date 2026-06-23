@@ -14,7 +14,10 @@ interface ProofData {
   };
   booking: {
     id: string; code: string; type: string; status: string; customer: string;
-    activity: string; totalAmount: number; depositAmount: number; paidAmount: number;
+    participants: number; activity: string; activityDate: string; activitySite: string;
+    tripBooked: number | null; tripCapacity: number | null;
+    notes: string | null; adminNotes: string | null;
+    totalAmount: number; depositAmount: number; paidAmount: number;
   };
 }
 
@@ -108,10 +111,14 @@ export function PaymentVerifyView({
         {/* 資訊 */}
         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 px-4 py-3 text-[13px]">
           <span className="text-[var(--muted-foreground)]">訂單</span>
-          <span className="font-medium">{booking.code} ・ {booking.customer}</span>
-          {booking.activity && (<>
-            <span className="text-[var(--muted-foreground)]">場次</span>
-            <span>{booking.activity}</span>
+          <span className="font-medium">{booking.code} ・ {booking.customer}（{booking.participants} 位）</span>
+          {(booking.activityDate || booking.activitySite) && (<>
+            <span className="text-[var(--muted-foreground)]">出團</span>
+            <span>{booking.activityDate}{booking.activitySite ? `　${booking.activitySite}` : ""}</span>
+          </>)}
+          {booking.tripBooked != null && (<>
+            <span className="text-[var(--muted-foreground)]">目前已參加</span>
+            <span className="font-medium">{booking.tripBooked}{booking.tripCapacity != null ? ` / ${booking.tripCapacity}` : ""} 位</span>
           </>)}
           <span className="text-[var(--muted-foreground)]">類型</span>
           <span>{TYPE_LABEL[proof.type] ?? proof.type}</span>
@@ -122,6 +129,18 @@ export function PaymentVerifyView({
           <span className="text-[var(--muted-foreground)]">已付 / 總額</span>
           <span>{ntd(booking.paidAmount)} / {ntd(booking.totalAmount)}</span>
         </div>
+
+        {/* 客戶備註 / 管理備註 */}
+        {(booking.notes || booking.adminNotes) && (
+          <div className="mx-4 mb-1 space-y-1.5 rounded-lg bg-amber-50 px-3 py-2 text-[12px]">
+            {booking.notes && (
+              <div className="flex gap-1.5 text-amber-900"><span className="shrink-0 font-semibold">📝 客戶備註</span><span>{booking.notes}</span></div>
+            )}
+            {booking.adminNotes && (
+              <div className="flex gap-1.5 text-slate-700"><span className="shrink-0 font-semibold">🔒 管理備註</span><span>{booking.adminNotes}</span></div>
+            )}
+          </div>
+        )}
 
         {/* 截圖 */}
         <div className="px-4 pb-1">

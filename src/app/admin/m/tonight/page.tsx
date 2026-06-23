@@ -15,6 +15,13 @@ interface ProofBooking {
   id: string;
   code: string | null;
   userId: string;
+  participants?: number;
+  notes?: string | null;
+  adminNotes?: string | null;
+  activityDate?: string;
+  activitySite?: string;
+  tripBooked?: number | null;
+  tripCapacity?: number | null;
   totalAmount: number;
   paidAmount: number;
   paymentStatus: string;
@@ -225,9 +232,22 @@ export default function MobileTonightPage() {
                     {p.booking.code ? `・${p.booking.code}` : ""}
                     {p.last5 ? `・後5碼 ${p.last5}` : ""}
                   </div>
+                  {/* v620：出團 + 該場次已參加人數 */}
+                  {(p.booking.activityDate || p.booking.activitySite) && (
+                    <div className="mt-0.5 truncate text-[11px] text-slate-600">
+                      🤿 {p.booking.activityDate}{p.booking.activitySite ? `　${p.booking.activitySite}` : ""}・{p.booking.participants ?? 1} 位
+                      {p.booking.tripBooked != null ? `（全場 ${p.booking.tripBooked}${p.booking.tripCapacity != null ? `/${p.booking.tripCapacity}` : ""}）` : ""}
+                    </div>
+                  )}
+                  {p.booking.notes && (
+                    <div className="mt-0.5 truncate text-[11px] text-amber-700">📝 {p.booking.notes}</div>
+                  )}
+                  {p.booking.adminNotes && (
+                    <div className="mt-0.5 truncate text-[11px] text-slate-500">🔒 {p.booking.adminNotes}</div>
+                  )}
                   {p.note && (
                     <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-                      {p.note}
+                      💳 {p.note}
                     </div>
                   )}
                 </div>

@@ -35,6 +35,14 @@ interface ProofRow {
     id: string;
     code: string | null;
     userId: string;
+    type?: string;
+    participants?: number;
+    notes?: string | null;
+    adminNotes?: string | null;
+    activityDate?: string;
+    activitySite?: string;
+    tripBooked?: number | null;
+    tripCapacity?: number | null;
     totalAmount: number;
     paidAmount: number;
     paymentStatus: string;
@@ -428,9 +436,26 @@ export default function TonightPage() {
                             <span className="font-bold text-[var(--color-coral)]">NT$ {p.amount.toLocaleString()}</span>
                             {p.last5 && <span className="ml-2 text-[var(--muted-foreground)]">後5碼 <span className="font-mono">{p.last5}</span></span>}
                           </div>
+                          {/* v620：出團資訊 + 該場次目前已參加人數 */}
+                          {(p.booking.activityDate || p.booking.activitySite) && (
+                            <div className="mt-0.5 text-[11px] text-slate-600">
+                              🤿 {p.booking.activityDate}{p.booking.activitySite ? `　${p.booking.activitySite}` : ""}
+                              {" ・ "}{p.booking.participants ?? 1} 位
+                              {p.booking.tripBooked != null && (
+                                <span className="ml-1 text-[var(--muted-foreground)]">（全場 {p.booking.tripBooked}{p.booking.tripCapacity != null ? `/${p.booking.tripCapacity}` : ""}）</span>
+                              )}
+                            </div>
+                          )}
+                          {/* v620：客戶備註 / 管理備註 提醒 */}
+                          {p.booking.notes && (
+                            <div className="mt-0.5 text-[11px] text-amber-700">📝 客戶：{p.booking.notes}</div>
+                          )}
+                          {p.booking.adminNotes && (
+                            <div className="mt-0.5 text-[11px] text-slate-500">🔒 管理：{p.booking.adminNotes}</div>
+                          )}
                           {p.note && (
                             <div className="mt-1 text-[11px] text-[var(--muted-foreground)] truncate">
-                              📝 {p.note}
+                              💳 {p.note}
                             </div>
                           )}
                           <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">

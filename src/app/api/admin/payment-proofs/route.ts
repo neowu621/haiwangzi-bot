@@ -41,6 +41,11 @@ export async function GET(req: NextRequest) {
             id: true,
             code: true,
             userId: true,
+            type: true,
+            refId: true,
+            participants: true,
+            notes: true,
+            adminNotes: true,
             totalAmount: true,
             paidAmount: true,
             paymentStatus: true,
@@ -49,6 +54,33 @@ export async function GET(req: NextRequest) {
         },
       },
     });
+
+    // v620：批次補「出團資訊 + 該場次目前已參加人數」（日潛），避免 N+1。
+    const dailyRefIds = [...new Set(proofs.filter((p) => p.booking.type === "daily").map((p) => p.booking.refId))];
+    const trips = dailyRefIds.length
+      ? await prisma.divingTrip.findMany({ where: { id: { in: dailyRefIds } }, select: { id: true, date: true, startTime: true, diveSiteIds: true, capacity: true } })
+      : [];
+    const tripMap = new Map(trips.map((t) => [t.id, t]));
+    const allSiteIds = [...new Set(trips.flatMap((t) => t.diveSiteIds))];
+    const siteRows = allSiteIds.length
+      ? await prisma.diveSite.findMany({ where: { id: { in: allSiteIds } }, select: { id: true, name: true } })
+      : [];
+    const siteMap = new Map(siteRows.map((s) => [s.id, s.name]));
+    const bookedAgg = dailyRefIds.length
+      ? await prisma.booking.groupBy({ by: ["refId"], where: { refId: { in: dailyRefIds }, type: "daily", status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] } }, _sum: { participants: true } })
+      : [];
+    const bookedMap = new Map(bookedAgg.map((a) => [a.refId, a._sum.participants ?? 0]));
+    function tripInfo(b: { type: string; refId: string }) {
+      if (b.type !== "daily") return { activityDate: "", activitySite: "", tripBooked: null as number | null, tripCapacity: null as number | null };
+      const t = tripMap.get(b.refId);
+      if (!t) return { activityDate: "", activitySite: "", tripBooked: null as number | null, tripCapacity: null as number | null };
+      return {
+        activityDate: `${t.date.toISOString().slice(0, 10)} ${t.startTime}`,
+        activitySite: t.diveSiteIds.map((sid) => siteMap.get(sid) ?? sid).join("、"),
+        tripBooked: bookedMap.get(b.refId) ?? 0,
+        tripCapacity: t.capacity,
+      };
+    }
 
     // 為每張憑證生 presigned URL
     const withUrls = await Promise.all(
@@ -80,7 +112,7 @@ export async function GET(req: NextRequest) {
           rejectReason: p.rejectReason,   // v297
           last5: p.last5,                 // v297：admin 對帳用
           note: p.note,                   // v297
-          booking: p.booking,
+          booking: { ...p.booking, ...tripInfo(p.booking) }, // v620：補出團/已參加人數
         };
       }),
     );

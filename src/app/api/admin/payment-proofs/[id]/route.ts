@@ -22,25 +22,36 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const b = proof.booking;
 
-  // 場次資訊（日潛）
-  let activity = "";
+  // 場次資訊（日潛）+ 該場次目前已參加人數
+  let activityDate = "";
+  let activitySite = "";
+  let tripBooked: number | null = null;
+  let tripCapacity: number | null = null;
   if (b.type === "daily") {
     const trip = await prisma.divingTrip.findUnique({
       where: { id: b.refId },
-      select: { date: true, startTime: true, diveSiteIds: true },
+      select: { date: true, startTime: true, diveSiteIds: true, capacity: true },
     });
     if (trip) {
       const sites = trip.diveSiteIds.length
         ? await prisma.diveSite.findMany({ where: { id: { in: trip.diveSiteIds } }, select: { id: true, name: true } })
         : [];
       const siteMap = new Map(sites.map((s) => [s.id, s.name]));
-      const siteName = trip.diveSiteIds.map((sid) => siteMap.get(sid) ?? sid).join("、");
-      activity = `${trip.date.toISOString().slice(0, 10)} ${trip.startTime}${siteName ? ` ・ ${siteName}` : ""}`;
+      activitySite = trip.diveSiteIds.map((sid) => siteMap.get(sid) ?? sid).join("、");
+      activityDate = `${trip.date.toISOString().slice(0, 10)} ${trip.startTime}`;
+      tripCapacity = trip.capacity;
+      // 已參加人數＝該場次未取消/未缺席訂單的人數加總（與 /api/trips 算法一致）
+      const agg = await prisma.booking.aggregate({
+        where: { refId: b.refId, type: "daily", status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] } },
+        _sum: { participants: true },
+      });
+      tripBooked = agg._sum.participants ?? 0;
     }
   } else {
     const tour = await prisma.tourPackage.findUnique({ where: { id: b.refId }, select: { title: true } });
-    if (tour) activity = tour.title;
+    if (tour) activitySite = tour.title;
   }
+  const activity = [activityDate, activitySite].filter(Boolean).join(" ・ ");
 
   // 圖片：優先 R2 presigned，沒有就回 base64（舊資料）
   let imageUrl: string | null = null;
@@ -78,7 +89,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       type: b.type,
       status: b.status,
       customer: b.user.realName ?? b.user.displayName ?? "",
+      participants: b.participants,
       activity,
+      activityDate,
+      activitySite,
+      tripBooked,
+      tripCapacity,
+      notes: b.notes ?? null,
+      adminNotes: b.adminNotes ?? null,
       totalAmount: b.totalAmount,
       depositAmount: b.depositAmount,
       paidAmount: b.paidAmount,
