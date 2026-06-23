@@ -21,8 +21,7 @@ export async function GET(
 
   // 權限檢查
   const isStaff =
-    auth.user.role === "admin" || auth.user.role === "coach" ||
-    (auth.user.roles ?? []).some((r) => r === "admin" || r === "coach");
+    (auth.user.roles ?? [auth.user.role]).some((r) => r === "admin" || r === "boss" || r === "it" || r === "coach" || r === "assistant");
   let allowed = isStaff;
   if (!allowed) {
     const hasBooking = await prisma.booking.findFirst({

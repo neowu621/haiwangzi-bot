@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   // admin 拿完整資料；coach 只拿基本欄位（開團用）
-  if (auth.user.role === "admin") {
+  if ((auth.user.roles ?? [auth.user.role]).some((r) => r === "admin" || r === "boss" || r === "it")) {
     const sites = await prisma.diveSite.findMany({ orderBy: { name: "asc" } });
     return NextResponse.json(sites);
   }

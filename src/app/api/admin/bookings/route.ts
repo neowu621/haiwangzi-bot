@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     });
     const siteMap = new Map(sites.map((s) => [s.id, s.name]));
 
-    const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
+    const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss" || r === "it");
 
     // v274：取得每筆 booking 的最新 RefundRequest 狀態
     const refundReqs = bookings.length

@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
   // 收件人
   const admins = await prisma.user.findMany({
     where: {
-      OR: [{ role: { in: ["admin", "boss"] } }, { roles: { hasSome: ["admin", "boss"] } }],
+      OR: [{ role: { in: ["admin", "boss", "it"] } }, { roles: { hasSome: ["admin", "boss", "it"] } }],
       deletedAt: null,
       email: { not: null },
       notifyByEmail: true,

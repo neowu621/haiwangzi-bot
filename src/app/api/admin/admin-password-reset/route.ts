@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
   const targetRoles =
     target.roles && target.roles.length > 0 ? target.roles : [target.role];
-  if (!targetRoles.includes("admin") && !targetRoles.includes("boss")) {
+  if (!targetRoles.includes("admin") && !targetRoles.includes("boss") && !targetRoles.includes("it")) {
     return NextResponse.json(
       { error: "只能重設 admin / boss 帳號的登入密碼" },
       { status: 400 },

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const u = await prisma.user.findFirst({
     where: {
       email: { equals: ex.email, mode: "insensitive" },
-      OR: [{ role: { in: ["admin", "boss"] } }, { roles: { hasSome: ["admin", "boss"] } }],
+      OR: [{ role: { in: ["admin", "boss", "it"] } }, { roles: { hasSome: ["admin", "boss", "it"] } }],
     },
     select: { lineUserId: true, displayName: true, realName: true, role: true, roles: true },
   });

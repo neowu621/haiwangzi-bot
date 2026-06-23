@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const includeInactive =
-    auth.user.role === "admin" &&
+    (auth.user.roles ?? [auth.user.role]).some((r) => r === "admin" || r === "boss" || r === "it") &&
     new URL(req.url).searchParams.get("includeInactive") === "1";
 
   const coaches = await prisma.coach.findMany({

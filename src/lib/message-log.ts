@@ -52,8 +52,8 @@ export function notifyAdmins(opts: {
         where: {
           deletedAt: null,
           OR: [
-            { role: { in: ["admin", "boss"] } },
-            { roles: { hasSome: ["admin", "boss"] } },
+            { role: { in: ["admin", "boss", "it"] } },
+            { roles: { hasSome: ["admin", "boss", "it"] } },
           ],
         },
         select: { lineUserId: true },

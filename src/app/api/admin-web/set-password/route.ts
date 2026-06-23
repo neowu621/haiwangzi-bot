@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   // 3. 確認是 admin 或 boss
   const effectiveRoles =
     user.roles && user.roles.length > 0 ? user.roles : [user.role];
-  if (!effectiveRoles.includes("admin") && !effectiveRoles.includes("boss")) {
+  if (!effectiveRoles.includes("admin") && !effectiveRoles.includes("boss") && !effectiveRoles.includes("it")) {
     return NextResponse.json(
       { error: "requires admin or boss role" },
       { status: 403 },

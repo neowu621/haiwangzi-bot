@@ -64,7 +64,7 @@ export async function PATCH(
     );
   }
   const data = parsed.data;
-  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
+  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss" || r === "it");
 
   const patch: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {

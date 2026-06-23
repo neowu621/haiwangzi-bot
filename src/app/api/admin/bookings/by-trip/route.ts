@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     prisma.diveSite.findMany({ select: { id: true, name: true } }),
   ]);
   const siteMap = new Map(sites.map((s) => [s.id, s.name]));
-  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss");
+  const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss" || r === "it");
 
   // group
   const tripGroups = trips.map((t) => {

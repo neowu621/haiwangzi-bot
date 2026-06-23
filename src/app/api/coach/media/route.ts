@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const items = await prisma.tripMedia.findMany({
     where:
-      auth.user.role === "admin"
+      (auth.user.roles ?? [auth.user.role]).some((r) => r === "admin" || r === "boss" || r === "it")
         ? {}
         : { createdBy: auth.user.lineUserId },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],

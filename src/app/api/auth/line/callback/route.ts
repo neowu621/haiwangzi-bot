@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       select: { lineUserId: true, displayName: true, realName: true, role: true, roles: true },
     });
     const roles = u ? (u.roles && u.roles.length > 0 ? u.roles : [u.role]) : [];
-    if (!u || !(roles.includes("admin") || roles.includes("boss"))) {
+    if (!u || !(roles.includes("admin") || roles.includes("boss") || roles.includes("it"))) {
       return clearOauthCookies(NextResponse.redirect(`${base}/admin/login#err=${encodeURIComponent("此 LINE 帳號沒有後台權限")}`));
     }
     const adminJwt = await createAdminWebJwt(verified.lineUserId);
