@@ -219,7 +219,7 @@ export default function ToursPage() {
   // v512：把開放中的潛旅整理成可貼 LINE 筆記本的文字
   function computeTourDumpText(): string {
     const fmtMD = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
-    const open = tours.filter((t) => t.status !== "cancelled");
+    const open = tours.filter((t) => t.status !== "cancelled" && t.dateEnd.slice(0, 10) >= today); // v629：排除已結束
     open.sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
@@ -640,8 +640,14 @@ export default function ToursPage() {
   const visible = useMemo(() => {
     const k = keyword.toLowerCase();
     const now = new Date(); now.setHours(0, 0, 0, 0);
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     return tours
-      .filter((t) => (filter === "all" ? true : t.status === filter))
+      // v629：進行中 = 未取消「且尚未結束」(結束日 ≥ 今天)；過期團不再算進行中（潛旅結束後狀態仍是 open，不會自動轉完成）
+      .filter((t) => {
+        if (filter === "all") return true;
+        if (filter === "cancelled") return t.status === "cancelled";
+        return t.status !== "cancelled" && t.dateEnd.slice(0, 10) >= todayStr; // open
+      })
       .filter((t) => {
         if (destFilter === "all") return true;
         if (destFilter === "overseas") return t.destination === "other";
