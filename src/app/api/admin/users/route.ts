@@ -178,83 +178,48 @@ export async function POST(req: NextRequest) {
 
   const data = PatchSchema.parse(await req.json());
 
-  // v176 角色階層：Admin > Boss > Coach > Member (customer)
-  // - Admin 角色：只能透過 script / bootstrap 設定，不能透過 UI/API 設
-  // - 只有 Admin 可以把人設成 Boss
-  // - Boss 只能把人設成 Member (customer)
-  // - Coach 不能改任何人的角色
-  // - 一個人只能有一個角色
-  const callerRoles = new Set(auth.user.roles ?? [auth.user.role]);
-  const callerPrimary = callerRoles.has("admin") ? "admin"
-    : callerRoles.has("boss") ? "boss"
-    : callerRoles.has("coach") ? "coach"
-    : "customer";
-
-  // 提取目標角色（roles[] 取第一個 / 或 data.role）
-  let targetRole: string | undefined = undefined;
+  // v624：多重身分（身分可疊加在角色上）。
+  //   UI 可指派：customer(會員) / assistant(助教) / coach(教練) / admin(管理者)。
+  //   boss(老闆) / it(IT) 為高權角色 → 只能用 bootstrap-roles（資料庫 / 系統腳本）設定，
+  //   介面不可新增或移除（必須與現況一致），避免權限竄改/誤授。
+  let targetRoles: string[] | undefined = undefined;
   if (data.roles !== undefined) {
-    const uniq = Array.from(new Set(data.roles));
-    if (uniq.length === 0) {
-      return NextResponse.json({ error: "roles 不能為空" }, { status: 400 });
-    }
-    if (uniq.length > 1) {
-      return NextResponse.json(
-        { error: "一個人只能有一個角色，請只傳一個 role" },
-        { status: 400 },
-      );
-    }
-    targetRole = uniq[0];
+    targetRoles = Array.from(new Set(data.roles));
   } else if (data.role !== undefined) {
-    targetRole = data.role;
+    targetRoles = [data.role];
   }
 
-  if (targetRole !== undefined) {
-    // v219：規則 1 — UI/API 禁止「升級」為 Admin（從非 admin → admin）
-    // 但允許「保持」現有 admin（target = admin AND 該 user 本來就是 admin）
-    // 這樣 admin 編輯自己的其他欄位時不會被擋
-    if (targetRole === "admin") {
-      const existing = await prisma.user.findUnique({
-        where: { lineUserId: data.lineUserId },
-        select: { role: true, roles: true },
-      });
-      const wasAdmin = existing?.role === "admin" || (existing?.roles ?? []).includes("admin");
-      if (!wasAdmin) {
+  if (targetRoles !== undefined) {
+    if (targetRoles.length === 0) {
+      return NextResponse.json({ error: "roles 不能為空" }, { status: 400 });
+    }
+    const existing = await prisma.user.findUnique({
+      where: { lineUserId: data.lineUserId },
+      select: { role: true, roles: true },
+    });
+    const existingRoles = new Set(
+      existing?.roles && existing.roles.length > 0
+        ? existing.roles
+        : existing?.role
+          ? [existing.role]
+          : [],
+    );
+    const target = new Set(targetRoles);
+    // 高權角色 boss/it：UI 不可新增也不可移除（必須與現況一致）
+    for (const high of ["boss", "it"] as const) {
+      if (existingRoles.has(high) !== target.has(high)) {
         return NextResponse.json(
-          { error: "Admin 角色只能透過系統腳本設定，不能透過介面授予" },
+          { error: `「${high === "boss" ? "老闆" : "IT"}」角色只能由系統腳本(資料庫)設定，介面不可新增/移除` },
           { status: 403 },
         );
       }
-      // else: 維持原本的 admin，允許通過
-    }
-    // 規則 2：只有 Admin 可以設定 Boss
-    if (targetRole === "boss" && callerPrimary !== "admin") {
-      return NextResponse.json(
-        { error: "權限不足：只有 Admin 可以授予 Boss 身份" },
-        { status: 403 },
-      );
-    }
-    // 規則 3：Boss 可以設定 Coach 或 Member（v177 起放寬）
-    //   v176 限制 Boss 只能設 Member，但實務上教練增減是 Boss 的日常業務
-    //   只剩「設 Boss」需要 Admin 同意
-    if (callerPrimary === "boss" && targetRole !== "customer" && targetRole !== "coach") {
-      return NextResponse.json(
-        { error: "權限不足：Boss 只能將人設為 Coach 或 Member" },
-        { status: 403 },
-      );
-    }
-    // 規則 4：Coach / Member 完全不能改角色（其實到不了這裡，因為 requireRole 已擋）
-    if (callerPrimary !== "admin" && callerPrimary !== "boss") {
-      return NextResponse.json(
-        { error: "權限不足" },
-        { status: 403 },
-      );
     }
   }
 
   const patch: Record<string, unknown> = {};
-  if (targetRole !== undefined) {
-    patch.role = targetRole;
-    patch.roles = [targetRole]; // 單一角色：roles[] 永遠長度為 1
+  if (targetRoles !== undefined) {
+    patch.roles = targetRoles;
+    patch.role = targetRoles[0]; // 主角色（向後相容；getUserRoles 以 roles[] 為主）
   }
   if (data.realName !== undefined)
     patch.realName = data.realName === "" ? null : data.realName;

@@ -34,7 +34,7 @@ import { formatPhoneTW } from "@/lib/phone";
 import { VIP_TIERS, getVipTier } from "@/lib/vip-tier";
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
 
-type Role = "customer" | "coach" | "boss" | "admin";
+type Role = "customer" | "coach" | "boss" | "admin" | "assistant" | "it";
 type Cert = "OW" | "AOW" | "Rescue" | "DM" | "Instructor";
 type SortKey =
   | "code"
@@ -372,8 +372,8 @@ export default function AdminUsersPage() {
           method: "POST",
           body: JSON.stringify({
             lineUserId: editing.lineUserId,
-            // v217：強制單一角色（不再傳整個 effectiveRoles 陣列）
-            roles: [editing.role],
+            // v624：多重身分 — 傳完整 roles 陣列（boss/it 後端會擋 UI 變更）
+            roles: editing.effectiveRoles ?? [editing.role],
             realName: editing.realName,
             phone: editing.phone,
             email: editing.email,
@@ -764,7 +764,7 @@ export default function AdminUsersPage() {
                       <td className="px-2 py-3 whitespace-nowrap" style={{ width: "1%" }}>
                         <div className="flex flex-col gap-0.5">
                           {u.effectiveRoles.map((r) => {
-                            const ROLE_LABELS_CN = { customer: "會員", coach: "教練", boss: "老闆", admin: "管理員" };
+                            const ROLE_LABELS_CN = { customer: "會員", coach: "教練", boss: "老闆", admin: "管理者", assistant: "助教", it: "IT" };
                             return (
                               <Badge
                                 key={r}
@@ -978,47 +978,49 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                <Label className="text-xs pt-1">角色</Label>
-                <div>
-                  <div className="flex gap-1">
-                    {(["customer", "coach", "boss", "admin"] as const).map((r) => {
-                      const cur = editing.role;
-                      const on = cur === r;
-                      const ROLE_LABELS = { customer: "會員", coach: "教練", boss: "老闆", admin: "管理員" };
+                <Label className="text-xs pt-1">角色 / 身分</Label>
+                <div className="space-y-2">
+                  {(() => {
+                    const roles = new Set<string>(editing.effectiveRoles ?? [editing.role]);
+                    const LABELS: Record<string, string> = { customer: "會員", boss: "老闆", assistant: "助教", coach: "教練", admin: "管理者", it: "IT" };
+                    const apply = (next: Set<string>) => {
+                      if (next.size === 0) next.add("customer");
+                      const arr = Array.from(next) as Role[];
+                      setEditing({
+                        ...editing,
+                        effectiveRoles: arr,
+                        role: arr[0],
+                        coach: arr.includes("coach" as Role)
+                          ? (editing.coach ?? { id: editing.lineUserId.slice(0, 32), cert: "DM", specialty: [], feePerDive: 0, note: null, active: true })
+                          : editing.coach,
+                      });
+                    };
+                    const toggle = (r: string) => { const n = new Set(roles); if (n.has(r)) n.delete(r); else n.add(r); apply(n); };
+                    const chip = (r: string, locked = false) => {
+                      const on = roles.has(r);
                       return (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => {
-                            // v209：單選（不可複選）
-                            setEditing({
-                              ...editing,
-                              effectiveRoles: [r],
-                              role: r,
-                              coach: r === "coach"
-                                ? (editing.coach ?? {
-                                    id: editing.lineUserId.slice(0, 32),
-                                    cert: "DM",
-                                    specialty: [],
-                                    feePerDive: 0,
-                                    note: null,
-                                    active: true,
-                                  })
-                                : editing.coach,
-                            });
-                          }}
-                          className={cn(
-                            "flex-1 rounded-full px-2 py-1 text-[11px] font-semibold",
-                            on
-                              ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
-                              : "bg-[var(--muted)] text-[var(--muted-foreground)]",
-                          )}
-                        >
-                          {ROLE_LABELS[r]}
+                        <button key={r} type="button" disabled={locked} onClick={() => !locked && toggle(r)}
+                          className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                            on ? "bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]" : "bg-[var(--muted)] text-[var(--muted-foreground)]",
+                            locked && "opacity-60 cursor-not-allowed")}>
+                          {LABELS[r]}{locked ? " 🔒" : ""}
                         </button>
                       );
-                    })}
-                  </div>
+                    };
+                    return (
+                      <>
+                        <div>
+                          <div className="mb-1 text-[10px] text-[var(--muted-foreground)]">🪪 角色（基本帳號）</div>
+                          <div className="flex flex-wrap gap-1">{chip("customer")}{chip("boss", true)}</div>
+                        </div>
+                        <div>
+                          <div className="mb-1 text-[10px] text-[var(--muted-foreground)]">🛠 身分（職位・可多選）</div>
+                          <div className="flex flex-wrap gap-1">{chip("assistant")}{chip("coach")}{chip("admin")}{chip("it", true)}</div>
+                        </div>
+                        <div className="text-[10px] text-[var(--muted-foreground)]">🔒 老闆 / IT 只能由系統腳本（資料庫）設定，介面不可改</div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

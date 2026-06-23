@@ -33,10 +33,13 @@ import {
 // v350：側欄改「功能分組」由上而下（即時營運 → 訂單客戶 → 商品 → 行銷 → 分析 → 系統）
 const NAV_GROUPS = [
   {
-    label: "即時營運",
+    label: "營運 / 分析",
     items: [
       { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
       { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
+      { href: "/admin/reports", icon: BarChart2, label: "報表" },
+      { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
+      { href: "/admin/guide", icon: HelpCircle, label: "操作說明" },
     ],
   },
   {
@@ -58,30 +61,29 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "行銷 / 通知",
+    label: "客服 / 通知",
     items: [
       { href: "/admin/email", icon: Mail, label: "📧 客服信箱" },
-      { href: "/admin/promo-codes", icon: Ticket, label: "🎏 節慶優惠" },
-      { href: "/admin/promotion", icon: ImageIcon, label: "🎨 業務推廣" },
-      { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
-      { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
       { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
+      { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
       { href: "/admin/message-log", icon: BookOpen, label: "📋 通訊紀錄" },
     ],
   },
   {
-    label: "分析",
+    label: "行銷",
     items: [
-      { href: "/admin/reports", icon: BarChart2, label: "報表" },
-      { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
+      { href: "/admin/promo-codes", icon: Ticket, label: "🎏 節慶優惠" },
+      { href: "/admin/promotion", icon: ImageIcon, label: "🎨 業務推廣" },
+      { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
     ],
   },
   {
-    label: "系統",
+    // v624：系統 / IT — 僅 IT / 老闆 可見（系統設定、操作紀錄）
+    label: "系統 / IT",
+    roles: ["it", "boss"],
     items: [
       { href: "/admin/settings", icon: Settings, label: "系統設定" },
       { href: "/admin/audit-logs", icon: ClipboardCheck, label: "操作紀錄" },
-      { href: "/admin/guide", icon: HelpCircle, label: "操作說明" },
     ],
   },
 ];
@@ -315,7 +317,13 @@ export function AdminShell({
             </div>
           </div>
         )}
-        {NAV_GROUPS.map((group) => {
+        {NAV_GROUPS.filter((group) => {
+          // v624：標了 roles 的群組（系統/IT）只給對應角色看
+          const need = (group as { roles?: string[] }).roles;
+          if (!need) return true;
+          const have = adminUser?.effectiveRoles ?? [];
+          return need.some((r) => have.includes(r));
+        }).map((group) => {
           const open = !!openGroups[group.label];
           const gb = groupBadge(group.items);
           return (
