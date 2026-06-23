@@ -14,16 +14,17 @@ function effectiveRoles(user: { role: string; roles: string[] }): string[] {
 }
 function isAdminOrBoss(user: { role: string; roles: string[] }): boolean {
   const roles = effectiveRoles(user);
-  return roles.includes("admin") || roles.includes("boss");
+  // v622：後台密碼登入開放給 管理者(admin) / 老闆(boss) / IT(it)。
+  return roles.includes("admin") || roles.includes("boss") || roles.includes("it");
 }
 
-// 列出所有 admin/boss 帳號（標示是否已設密碼，不傳 hash）
+// 列出所有可登入後台的帳號（admin/boss/it；標示是否已設密碼，不傳 hash）
 async function listAdminUsers() {
   const users = await prisma.user.findMany({
     where: {
       OR: [
-        { role: { in: ["admin", "boss"] } },
-        { roles: { hasSome: ["admin", "boss"] } },
+        { role: { in: ["admin", "boss", "it"] } },
+        { roles: { hasSome: ["admin", "boss", "it"] } },
       ],
     },
     select: {

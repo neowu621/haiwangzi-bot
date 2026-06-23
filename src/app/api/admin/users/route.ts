@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   // 之前忽略此參數、只回「最近活躍前 500 筆」，導致職員帳號若活躍度不在前段
   // 就被截掉 → 自動發送收件人 picker 顯示「沒有 admin/boss/coach 用戶」。
   // 用 OR(role in, roles hasSome) 同時涵蓋舊單一 role 與新 roles[]，避免殘留不一致漏抓。
-  const ROLE_VALUES = ["customer", "coach", "boss", "admin"] as const;
+  const ROLE_VALUES = ["customer", "coach", "boss", "admin", "assistant", "it"] as const;
   type RoleV = (typeof ROLE_VALUES)[number];
   const roleParam = new URL(req.url).searchParams.get("role");
   const roleFilter: RoleV[] = roleParam
@@ -127,9 +127,9 @@ export async function GET(req: NextRequest) {
 
 const PatchSchema = z.object({
   lineUserId: z.string(),
-  role: z.enum(["customer", "coach", "boss", "admin"]).optional(),
+  role: z.enum(["customer", "coach", "boss", "admin", "assistant", "it"]).optional(),
   // 多重身分（推薦）；若帶這個會同步把 role 設為第一個元素以保持向後相容
-  roles: z.array(z.enum(["customer", "coach", "boss", "admin"])).optional(),
+  roles: z.array(z.enum(["customer", "coach", "boss", "admin", "assistant", "it"])).optional(),
   realName: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z

@@ -83,6 +83,10 @@ const PATCHES = [
   `CREATE INDEX IF NOT EXISTS message_logs_channel_idx ON message_logs(channel, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS message_logs_status_idx ON message_logs(status, created_at DESC)`,
 
+  // v622: UserRole 加 assistant(助教) + it(IT) 兩個角色值
+  `ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'assistant'`,
+  `ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'it'`,
+
   // v475: 客製化訂單 — BookingType 加 custom、Booking 加客製欄位（refId 維持非空，custom 填隨機 UUID）
   `ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'custom'`,
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS custom_item_name VARCHAR(128)`,

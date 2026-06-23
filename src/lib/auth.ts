@@ -298,10 +298,12 @@ export function getUserRoles(user: User): UserRole[] {
 /** 檢查角色,不夠就回 403 — 支援多重身分：只要有任何一個 role 在 allowed 內就過 */
 export function requireRole<T extends User>(
   user: T,
-  allowed: Array<"customer" | "coach" | "boss" | "admin">,
+  allowed: Array<"customer" | "coach" | "boss" | "admin" | "assistant" | "it">,
 ): { ok: true } | { ok: false; status: number; message: string } {
   const effectiveRoles = getUserRoles(user);
   const allowedSet = new Set(allowed);
+  // v622：IT = 技術全權（比照老闆，通過所有端點含 boss-only），方便測試/維護。
+  if (effectiveRoles.includes("it")) return { ok: true };
   // v175 安全修正：移除「admin/boss 永遠通過」的 superuser bypass
   // 標記為 boss-only 的端點 admin 不應該能呼叫，反之亦然
   // boss 仍然可以呼叫 admin 端點（因為他是更高的角色）→ 維持向下兼容
