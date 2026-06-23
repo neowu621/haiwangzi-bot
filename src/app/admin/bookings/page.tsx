@@ -177,7 +177,7 @@ function bookStatusVariant(s: string): "ocean" | "coral" | "gold" | "muted" {
 // ── Main Page ────────────────────────────────────────────────
 export default function AdminBookingsPage() {
   const { adminUser } = useAdminAuth();
-  const isAdminOrBoss = adminUser?.effectiveRoles.some((r) => r === "admin" || r === "boss") ?? false;
+  const isAdminOrBoss = adminUser?.effectiveRoles.some((r) => r === "admin" || r === "boss" || r === "it") ?? false;
 
   const BOOKINGS_URL = "/api/admin/bookings";
   const [bookings, setBookings] = useState<AdminBooking[]>(
@@ -1724,8 +1724,8 @@ export default function AdminBookingsPage() {
                 <Button onClick={saveEdit} disabled={saving}>{saving ? "儲存中..." : "儲存"}</Button>
               </div>
 
-              {/* v335：🚨 危險區 — 永久刪除（boss only） */}
-              {adminUser?.effectiveRoles.includes("boss") && (
+              {/* v335：🚨 危險區 — 永久刪除（boss / it only） */}
+              {adminUser?.effectiveRoles.some((r) => r === "boss" || r === "it") && (
                 <div className="mt-4 rounded-lg border-2 border-rose-400 bg-rose-50 p-3">
                   <div className="text-xs font-bold text-rose-900 mb-2">🚨 危險區 — 永久刪除</div>
                   <p className="text-[11px] text-rose-800 mb-2 leading-relaxed">

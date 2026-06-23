@@ -255,7 +255,7 @@ export default function BroadcastPage() {
     if (audience === "all") return allUsers.length;
     if (audience === "customers") return allUsers.filter((u) => u.role === "customer").length;
     if (audience === "coaches") return allUsers.filter((u) => u.role === "coach" || u.effectiveRoles?.includes("coach")).length;
-    if (audience === "admins") return allUsers.filter((u) => ["admin", "boss"].includes(u.role ?? "") || u.effectiveRoles?.some((r) => r === "admin" || r === "boss")).length;
+    if (audience === "admins") return allUsers.filter((u) => ["admin", "boss", "it"].includes(u.role ?? "") || u.effectiveRoles?.some((r) => r === "admin" || r === "boss" || r === "it")).length;
     if (audience === "single") return singleUserId ? 1 : 0;
     if (audience === "trip") return tripParticipantCount;
     return 0;

@@ -1391,8 +1391,8 @@ export default function AdminUsersPage() {
                 )}
               </div>
 
-              {/* v357：後台登入密碼重設（只對 admin/boss 顯示，給「忘記密碼」救援用）*/}
-              {(editing.effectiveRoles ?? [editing.role]).some((r) => r === "admin" || r === "boss") && (
+              {/* v357：後台登入密碼重設（對 admin/boss/it 顯示，給「忘記密碼」救援用）*/}
+              {(editing.effectiveRoles ?? [editing.role]).some((r) => r === "admin" || r === "boss" || r === "it") && (
                 <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
                   <div className="text-sm font-medium text-[var(--foreground)]">🔑 後台登入密碼</div>
                   <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
