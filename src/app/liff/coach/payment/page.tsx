@@ -92,8 +92,16 @@ export default function CoachPaymentPage() {
     <LiffShell title="付款核對" backHref="/liff/coach/today">
       <div className="space-y-3 px-4 pt-4">
         {err && (
-          <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">
-            {err}
+          <Card className="p-5 text-center text-sm">
+            {/^(requires role|forbidden|403)/i.test(err) || /role/i.test(err) ? (
+              <div className="space-y-1.5 text-[var(--muted-foreground)]">
+                <div className="text-2xl">🔒</div>
+                <div className="font-semibold text-[var(--color-ocean-deep)]">此功能僅限 管理者 / 老闆 / IT</div>
+                <div className="text-[12px]">收款核對是老闆職責，教練 / 助教不經手款項。</div>
+              </div>
+            ) : (
+              <div className="text-[var(--color-coral)]">{err}</div>
+            )}
           </Card>
         )}
         {loading && (
