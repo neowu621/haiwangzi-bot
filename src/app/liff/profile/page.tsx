@@ -84,7 +84,7 @@ interface Me {
   haiwangziLogCount: number;
   role: string;
   // 多重身分
-  roles: Array<"customer" | "coach" | "boss" | "admin">;
+  roles: Array<"customer" | "coach" | "boss" | "admin" | "assistant" | "it">;
   vipLevel: number;
   totalSpend: number;
   // 生日 — 用於生日抵用金
@@ -542,9 +542,10 @@ export default function ProfilePage() {
         {/* 補償金 / 抵用金 卡 */}
         <CreditCard balance={me.creditBalance ?? 0} liff={liff} />
 
-        {/* Admin / Boss / Coach 角色才看到的後台入口（多重身分都會看到對應入口）*/}
+        {/* 後台入口：管理者(admin) / 老闆(boss) / IT(it) — v624 加入 it */}
         {((me.roles ?? [me.role]).includes("admin") ||
-          (me.roles ?? [me.role]).includes("boss")) && (
+          (me.roles ?? [me.role]).includes("boss") ||
+          (me.roles ?? [me.role]).includes("it")) && (
           <Link
             href={
               typeof window !== "undefined" && window.innerWidth < 768
@@ -559,12 +560,14 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold">
-                    {(me.roles ?? [me.role]).includes("admin")
-                      ? "Admin 主控台"
-                      : "老闆主控台"}
+                    {(me.roles ?? [me.role]).includes("it")
+                      ? "IT 主控台"
+                      : (me.roles ?? [me.role]).includes("admin")
+                        ? "管理者主控台"
+                        : "老闆主控台"}
                   </div>
                   <div className="text-[11px] text-[var(--muted-foreground)]">
-                    {(me.roles ?? [me.role]).includes("admin")
+                    {((me.roles ?? [me.role]).includes("admin") || (me.roles ?? [me.role]).includes("it"))
                       ? "開團 / 訂單 / 會員 / 訊息模板 / 系統設定"
                       : "開團 / 訂單 / 會員 / 收款核對"}
                   </div>
@@ -574,7 +577,7 @@ export default function ProfilePage() {
             </Card>
           </Link>
         )}
-        {(me.roles ?? [me.role]).includes("coach") && (
+        {((me.roles ?? [me.role]).includes("coach") || (me.roles ?? [me.role]).includes("assistant")) && (
           <Link href="/liff/coach/today">
             <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
               <CardContent className="flex items-center gap-3 p-4">
@@ -582,9 +585,11 @@ export default function ProfilePage() {
                   <Settings className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-bold">教練後台</div>
+                  <div className="text-sm font-bold">
+                    {(me.roles ?? [me.role]).includes("coach") ? "教練後台" : "助教後台"}
+                  </div>
                   <div className="text-[11px] text-[var(--muted-foreground)]">
-                    今日場次 / 收款核對 / 本期排班
+                    今日場次 / 點名 / 本期排班
                   </div>
                 </div>
                 <span className="text-[var(--color-ocean-deep)]">▸</span>
