@@ -140,8 +140,9 @@ export async function POST(
   notifyAdmins({
     templateKey: "payment_proof_uploaded",
     title: "💳 新付款證明待核對",
-    body: `訂單 ${id.slice(0, 8)} 上傳了${data.type === "deposit" ? "訂金" : data.type === "final" ? "尾款" : ""}付款證明，金額 NT$${data.amount}、後5碼 ${data.last5 ?? "—"}，請進後台核對。`,
-    linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/admin/bookings`,
+    body: `訂單 ${id.slice(0, 8)} 上傳了${data.type === "deposit" ? "訂金" : data.type === "final" ? "尾款" : ""}付款證明，金額 NT$${data.amount}、後5碼 ${data.last5 ?? "—"}，點開即可核對。`,
+    // v619：深連結到「這一筆」的核對頁（中轉頁依環境導手機 LIFF / 瀏覽器後台），不再丟到整頁列表。
+    linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/verify-proof/${proof.id}`,
     icon: "💳",
   });
 
