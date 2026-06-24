@@ -758,6 +758,7 @@ export default function ToursPage() {
                       <th style={thStyle}>行程</th>
                       <th style={{ ...thStyle, textAlign: "right" }}>已報/可接受</th>
                       <th style={{ ...thStyle, textAlign: "right" }}>價格 / 訂金</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>累計費用</th>
                       <th style={thStyle}></th>
                     </tr>
                   </thead>
@@ -845,6 +846,15 @@ export default function ToursPage() {
                               {t.deposit ? (
                                 <div className="text-[11px] text-slate-500 tabular-nums">訂金 {t.deposit.toLocaleString()}</div>
                               ) : null}
+                            </td>
+                            {/* 累計費用（總應收 + 實收）— v632b：保留欄位，移除 NT$ 符號 */}
+                            <td className="px-2 py-2 align-top whitespace-nowrap text-right">
+                              <div className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: "#1B2733" }}>
+                                {(t.totalRevenue ?? 0).toLocaleString()}
+                              </div>
+                              <div className="text-[10px] text-slate-500 tabular-nums">
+                                實收 {(t.totalPaid ?? 0).toLocaleString()}
+                              </div>
                             </td>
                             {/* actions */}
                             <td className="px-2 py-2 align-top" onClick={(e) => e.stopPropagation()}>
