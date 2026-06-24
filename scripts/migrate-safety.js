@@ -462,6 +462,9 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_reason TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_start TIMESTAMPTZ`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_end TIMESTAMPTZ`,
+  // v638：教練/助教 氣瓶優惠價
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS staff_tank_enabled BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS staff_tank_price INTEGER NOT NULL DEFAULT 0`,
 
   // v381: 補上 schema 早已宣告、但 prod 當初用 migrate-safety 加欄時漏掉的 UNIQUE 索引。
   //   這是 prisma db push 一直噴 data-loss 而失敗的根因（它想加唯一約束但不敢動）。

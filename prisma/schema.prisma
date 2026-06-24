@@ -809,6 +809,11 @@ model SiteConfig {
   tankPromoStart    DateTime? @map("tank_promo_start") @db.Timestamptz
   tankPromoEnd      DateTime? @map("tank_promo_end") @db.Timestamptz
 
+  // v638：教練/助教 氣瓶優惠價（固定每支價；下單者 roles 含 coach/assistant 時，
+  //        氣瓶單價改用此價，且獨佔——不疊氣瓶限時折扣/優惠代碼/早鳥；抵用金仍可折。只適用日潛。）
+  staffTankEnabled Boolean @default(false) @map("staff_tank_enabled")
+  staffTankPrice   Int     @default(0) @map("staff_tank_price") // 固定每支氣瓶價 NT$
+
   // v590：日潛早鳥回饋（提早預約、滿額、結案後送抵用金；越早送越多）
   earlyBirdEnabled   Boolean @default(false) @map("early_bird_enabled")
   earlyBirdMinAmount Int     @default(1000) @map("early_bird_min_amount") // 最低消費門檻

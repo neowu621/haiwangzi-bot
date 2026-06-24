@@ -114,6 +114,9 @@ interface Config {
   tankPromoReason?: string;
   tankPromoStart?: string | null;
   tankPromoEnd?: string | null;
+  // v638：教練/助教 氣瓶優惠價（固定每支價）
+  staffTankEnabled?: boolean;
+  staffTankPrice?: number;
   // v403：首頁「最新動態」影片清單 + 模式
   homeVideosMode?: "curated" | "auto";
   homeVideos?: Array<{ id: string; title: string; isShort: boolean }>;
@@ -886,6 +889,40 @@ export default function SettingsPage() {
                 disabled={saving === "氣瓶折扣"}>
                 <Save className="mr-1.5 h-4 w-4" />
                 {saving === "氣瓶折扣" ? "儲存中..." : "儲存氣瓶折扣"}
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* v638：教練/助教 氣瓶優惠價 */}
+        <div className="mt-4">
+          <SectionCard title="👷 教練／助教 氣瓶優惠價">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              開啟後，<b>身分含「教練」或「助教」</b>的人下單日潛時，每支氣瓶改用此<b>固定優惠價</b>（潛水費 = 教練價 × 瓶數 × 人數）。
+              此優惠<b>獨佔</b>：套用時不再疊氣瓶限時折扣、優惠代碼、早鳥回饋；<b>抵用金仍可折抵</b>。只適用日潛，不影響潛旅團費。
+            </p>
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4"
+                checked={cfg.staffTankEnabled ?? false}
+                onChange={(e) => setCfg(c => c ? { ...c, staffTankEnabled: e.target.checked } : c)} />
+              啟用教練／助教氣瓶優惠價
+            </label>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+              <CompactNum label="教練每支價（NT$）" labelW="w-32" value={cfg.staffTankPrice ?? 0}
+                onChange={(n) => setCfg(c => c ? { ...c, staffTankPrice: n } : c)} />
+            </div>
+            <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
+              ※ 教練價若高於原每支氣瓶價，系統會自動以原價計（不會反而變貴）。
+            </p>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("教練氣瓶優惠", {
+                  staffTankEnabled: cfg.staffTankEnabled ?? false,
+                  staffTankPrice: cfg.staffTankPrice ?? 0,
+                })}
+                disabled={saving === "教練氣瓶優惠"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "教練氣瓶優惠" ? "儲存中..." : "儲存教練氣瓶優惠"}
               </Button>
             </div>
           </SectionCard>

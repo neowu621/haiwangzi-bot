@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { authFromRequest } from "@/lib/auth";
+import { authFromRequest, getUserRoles } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKeyAsync } from "@/lib/flex";
 import { notifyCustomer } from "@/lib/notify-template";
@@ -194,6 +194,9 @@ export async function POST(req: NextRequest) {
         tankPromoReason: true,
         tankPromoStart: true,
         tankPromoEnd: true,
+        // v638：教練/助教 氣瓶優惠價
+        staffTankEnabled: true,
+        staffTankPrice: true,
         // v592：日潛早鳥回饋
         earlyBirdEnabled: true,
         earlyBirdMinAmount: true,
@@ -202,9 +205,18 @@ export async function POST(req: NextRequest) {
     })
     .catch(() => null);
 
-  // v392：氣瓶限時折扣（自動,每瓶折抵 NT$,不可使每瓶費變負）
+  // v638：教練/助教 氣瓶優惠價（固定每支價）。下單者 roles 含 coach/assistant 時套用，
+  //   獨佔——不再套氣瓶限時折扣 / 優惠代碼 / 早鳥；抵用金仍可折。只適用日潛。
+  const isStaffDiver = getUserRoles(auth.user).some((r) => r === "coach" || r === "assistant");
+  const staffTankApplied = Boolean(cfg?.staffTankEnabled) && isStaffDiver;
+  // 教練價不可高於原價（避免設定失誤反而變貴）；套用後即為氣瓶單價，不再另折
+  const staffTankUnit = staffTankApplied
+    ? Math.max(0, Math.min(cfg?.staffTankPrice ?? 0, pricing.extraTank))
+    : pricing.extraTank;
+
+  // v392：氣瓶限時折扣（自動,每瓶折抵 NT$,不可使每瓶費變負）；教練價套用時不再疊
   const tankPromo = getActiveTankPromo(cfg);
-  const tankDiscountPerTank = tankPromo.active
+  const tankDiscountPerTank = (!staffTankApplied && tankPromo.active)
     ? Math.min(tankPromo.discount, pricing.extraTank)
     : 0;
 
@@ -224,15 +236,16 @@ export async function POST(req: NextRequest) {
   }
   void gearDiscountPct;
 
-  // v592：未折前總額 + 自動氣瓶折(總)
+  // v592：未折前總額 + 自動氣瓶折(總)；v638：教練價時氣瓶以教練單價計
   const totalTanks = effectiveTanks * data.participants;
-  const baseNoDiscount = pricing.extraTank * totalTanks + extraAmount + gearAmount;
+  const baseNoDiscount = staffTankUnit * totalTanks + extraAmount + gearAmount;
   const autoDiscount = tankDiscountPerTank * totalTanks;
 
   // v592：節慶優惠代碼 —— 與自動氣瓶折「取其優」(不疊加),可疊抵用金
+  // v638：套用教練氣瓶優惠價時，不再吃優惠代碼（獨佔）
   let promoCodeApplied: string | null = null;
   let promoDiscount = 0;
-  if (data.promoCode?.trim()) {
+  if (!staffTankApplied && data.promoCode?.trim()) {
     const vr = await validatePromoCode(data.promoCode, {
       type: "daily",
       orderAmount: baseNoDiscount,
@@ -258,8 +271,9 @@ export async function POST(req: NextRequest) {
   const totalAmount = Math.max(0, baseNoDiscount - finalDiscount);
 
   // v592：日潛早鳥回饋(預計;訂單結案後才實際發放,30 天到期)
+  // v638：套用教練氣瓶優惠價時，不發早鳥（獨佔）
   let earlyBirdReward = 0;
-  if (cfg?.earlyBirdEnabled) {
+  if (!staffTankApplied && cfg?.earlyBirdEnabled) {
     const leadDays = Math.floor((new Date(trip.date).getTime() - Date.now()) / 86400000);
     earlyBirdReward = earlyBirdCredit(
       (cfg.earlyBirdTiers as unknown as EarlyBirdTier[]) ?? [],

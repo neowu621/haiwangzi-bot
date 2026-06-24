@@ -152,6 +152,9 @@ const PatchSchema = z.object({
   tankPromoReason: z.string().max(500).optional(),
   tankPromoStart: z.string().datetime().nullable().optional(),
   tankPromoEnd: z.string().datetime().nullable().optional(),
+  // v638：教練/助教 氣瓶優惠價
+  staffTankEnabled: z.boolean().optional(),
+  staffTankPrice: z.number().int().min(0).max(100000).optional(),
   // v403：首頁「最新動態」影片清單 + 模式
   homeVideosMode: z.enum(["curated", "auto"]).optional(),
   homeVideos: z.array(z.object({
@@ -290,6 +293,9 @@ export async function GET(req: NextRequest) {
       tankPromoReason: (row as unknown as { tankPromoReason?: string }).tankPromoReason ?? "",
       tankPromoStart: (row as unknown as { tankPromoStart?: Date | null }).tankPromoStart ?? null,
       tankPromoEnd: (row as unknown as { tankPromoEnd?: Date | null }).tankPromoEnd ?? null,
+      // v638：教練/助教 氣瓶優惠價
+      staffTankEnabled: (row as unknown as { staffTankEnabled?: boolean }).staffTankEnabled ?? false,
+      staffTankPrice: (row as unknown as { staffTankPrice?: number }).staffTankPrice ?? 0,
       // v590 日潛早鳥回饋
       earlyBirdEnabled: (row as unknown as { earlyBirdEnabled?: boolean }).earlyBirdEnabled ?? false,
       earlyBirdMinAmount: (row as unknown as { earlyBirdMinAmount?: number }).earlyBirdMinAmount ?? 1000,

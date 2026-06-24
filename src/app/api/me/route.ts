@@ -38,6 +38,9 @@ export async function GET(req: NextRequest) {
         tankPromoReason: true,
         tankPromoStart: true,
         tankPromoEnd: true,
+        // v638：教練/助教 氣瓶優惠價
+        staffTankEnabled: true,
+        staffTankPrice: true,
       },
     })
     .catch(() => null);
@@ -45,6 +48,12 @@ export async function GET(req: NextRequest) {
   const gearDiscountPct = getGearDiscountPct(u.vipLevel ?? 1, tiers);
   // v392：氣瓶限時折扣（給下單頁顯示折後價 + 理由）
   const tankPromo = getActiveTankPromo(cfg);
+  // v638：教練/助教 氣瓶優惠價（roles 含 coach/assistant 才 active；給下單頁顯示固定教練價）
+  const meRoles = u.roles && u.roles.length > 0 ? u.roles : [u.role];
+  const staffTank = {
+    active: Boolean(cfg?.staffTankEnabled) && meRoles.some((r) => r === "coach" || r === "assistant"),
+    price: cfg?.staffTankPrice ?? 0,
+  };
   void logCustomerActivity({
     req,
     user: auth.user,
@@ -70,6 +79,7 @@ export async function GET(req: NextRequest) {
     vipLevel: u.vipLevel ?? 1,
     gearDiscountPct, // v388：裝備租借折扣 %（100=不折，80=打 8 折）
     tankPromo, // v392：氣瓶限時折扣 { active, discount, reason }
+    staffTank, // v638：教練/助教 氣瓶優惠價 { active, price }
     totalSpend: u.totalSpend ?? 0,
     birthday: u.birthday,
     creditBalance: creditBalanceNow,

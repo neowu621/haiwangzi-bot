@@ -150,6 +150,8 @@ export default function TripBookingPage({
   const [gearDiscountPct, setGearDiscountPct] = useState(100);
   // v392：氣瓶限時折扣（每支折抵 NT$ + 理由），由 /api/me 回傳
   const [tankPromo, setTankPromo] = useState<{ active: boolean; discount: number; reason: string }>({ active: false, discount: 0, reason: "" });
+  // v638：教練/助教 氣瓶優惠價（固定每支價），由 /api/me 回傳；active 時氣瓶單價改用此價且獨佔
+  const [staffTank, setStaffTank] = useState<{ active: boolean; price: number }>({ active: false, price: 0 });
   const [creditUsed, setCreditUsed] = useState(0);
   // v592：節慶優惠代碼
   const [promoInput, setPromoInput] = useState("");
@@ -246,6 +248,7 @@ export default function TripBookingPage({
         vipLevel: number;
         gearDiscountPct?: number;
         tankPromo?: { active: boolean; discount: number; reason: string };
+        staffTank?: { active: boolean; price: number };
         emergencyContact: {
           name: string;
           phone: string;
@@ -273,6 +276,8 @@ export default function TripBookingPage({
         );
         // v392：氣瓶限時折扣
         if (me.tankPromo) setTankPromo(me.tankPromo);
+        // v638：教練/助教 氣瓶優惠價
+        if (me.staffTank) setStaffTank(me.staffTank);
         // v289：付款方式移到下單後選，這裡不再預設
       })
       .catch(() => {})
@@ -342,14 +347,21 @@ export default function TripBookingPage({
   //   總額 = baseTrip (整單平收) + extraTank × 支數 × 人數 + 夜潛/水推 + 裝備
   //   baseTrip 是「整單共享」基本費（船費分攤），不 ×人數
   //   extraTank 是「每一次潛水（含空氣瓶）」單價，× 支數 × 人數
-  // v392：氣瓶限時折扣 — 每支氣瓶折抵（不可折成負數）
+  // v638：教練/助教 氣瓶優惠價套用判定（獨佔——蓋過氣瓶限時折扣 / 優惠代碼）
+  const staffTankApplied = Boolean(trip) && staffTank.active;
+  // v392：氣瓶限時折扣 — 每支氣瓶折抵（不可折成負數）；教練價套用時不走折抵呈現
   const tankDiscountPerTank = useMemo(
-    () => (trip && tankPromo.active ? Math.min(tankPromo.discount, trip.pricing.extraTank) : 0),
-    [trip, tankPromo],
+    () => (trip && !staffTankApplied && tankPromo.active ? Math.min(tankPromo.discount, trip.pricing.extraTank) : 0),
+    [trip, tankPromo, staffTankApplied],
   );
   const effectiveTankFee = useMemo(
-    () => (trip ? Math.max(0, trip.pricing.extraTank - tankDiscountPerTank) : 0),
-    [trip, tankDiscountPerTank],
+    () => {
+      if (!trip) return 0;
+      // v638：教練/助教固定每支價（不可高於原價）
+      if (staffTankApplied) return Math.max(0, Math.min(staffTank.price, trip.pricing.extraTank));
+      return Math.max(0, trip.pricing.extraTank - tankDiscountPerTank);
+    },
+    [trip, tankDiscountPerTank, staffTankApplied, staffTank],
   );
   const divesAmount = useMemo(
     () => effectiveTankFee * tankCount * participants,
@@ -366,7 +378,8 @@ export default function TripBookingPage({
   // v592：節慶優惠代碼 —— 取其優(代碼折扣 > 自動氣瓶折才生效),可疊抵用金
   const preDiscountTotal = total + tankSaved; // 未折前小計
   const totalTanksAll = tankCount * participants;
-  const codeDiscountEff = promoApplied && promoApplied.discount > tankSaved ? promoApplied.discount : 0;
+  // v638：套用教練氣瓶優惠價時，優惠代碼不生效（獨佔）
+  const codeDiscountEff = !staffTankApplied && promoApplied && promoApplied.discount > tankSaved ? promoApplied.discount : 0;
   const finalTotal = Math.max(0, preDiscountTotal - Math.max(tankSaved, codeDiscountEff));
 
   async function applyPromo() {
@@ -832,7 +845,8 @@ export default function TripBookingPage({
               </div>
             </div>
 
-            {/* v592：節慶優惠代碼 */}
+            {/* v592：節慶優惠代碼（v638：套用教練氣瓶優惠價時隱藏，因不可併用） */}
+            {!staffTankApplied && (
             <div className="rounded-md border border-[var(--color-ocean-deep)]/20 bg-[var(--color-ocean-deep)]/5 p-3">
               <Label className="text-xs">🎏 優惠代碼</Label>
               <div className="mt-1.5 flex gap-2">
@@ -844,6 +858,7 @@ export default function TripBookingPage({
               )}
               {promoMsg && <div className="mt-1.5 text-[11px] text-[var(--color-coral)]">{promoMsg}</div>}
             </div>
+            )}
 
             {/* 抵用金折抵 — 有餘額才顯示 */}
             {creditBalance > 0 && (
@@ -1089,11 +1104,15 @@ export default function TripBookingPage({
         {/* 費用明細 + 送出 */}
         <Card className="sticky bottom-20 z-10 border-2 border-[var(--color-phosphor)]/30">
           <CardContent className="p-4">
-            {tankPromo.active && tankPromo.reason && (
+            {staffTankApplied ? (
+              <div className="mb-2 rounded-md bg-sky-50 px-2 py-1.5 text-[11px] font-semibold text-sky-700">
+                👷 教練/助教氣瓶優惠價（每支 NT$ {effectiveTankFee.toLocaleString()}，恕不併用其他優惠）
+              </div>
+            ) : tankPromo.active && tankPromo.reason ? (
               <div className="mb-2 rounded-md bg-orange-50 px-2 py-1.5 text-[11px] font-semibold text-orange-700">
                 🔥 {tankPromo.reason}
               </div>
-            )}
+            ) : null}
             <div className="space-y-1 text-xs tabular text-[var(--muted-foreground)]">
               {trip.pricing.baseTrip > 0 && (
                 <div className="flex justify-between">
@@ -1104,7 +1123,7 @@ export default function TripBookingPage({
               <div className="flex justify-between">
                 <span>
                   潛水{" "}
-                  {tankSaved > 0 ? (
+                  {tankSaved > 0 || staffTankApplied ? (
                     <>
                       <span className="mr-1 text-[var(--muted-foreground)] line-through">
                         {trip.pricing.extraTank.toLocaleString()}
