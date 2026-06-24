@@ -212,11 +212,62 @@ export default function BroadcastPage() {
   const [dailyPartIds, setDailyPartIds] = useState<string[]>([]);
   const [tourPartIds, setTourPartIds] = useState<string[]>([]);
 
+  // v650：已儲存訊息模組
+  type Preset = { id: string; name: string; channel: string; template: string; altText: string; text: string; emailSubject: string; emailBody: string; params: string; createdAt: string };
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [presetBusy, setPresetBusy] = useState(false);
+
   useEffect(() => {
     adminFetch<{ users: CustomerOption[] }>("/api/admin/users")
       .then((r) => setAllUsers(r.users ?? []))
       .catch(() => {});
+    adminFetch<{ presets: Preset[] }>("/api/admin/broadcast/presets")
+      .then((r) => setPresets(r.presets ?? []))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function savePreset() {
+    const name = presetName.trim();
+    if (!name) { setErr("請先輸入模組名稱"); return; }
+    setPresetBusy(true); setErr(null);
+    try {
+      const r = await adminFetch<{ presets: Preset[] }>("/api/admin/broadcast/presets", {
+        method: "POST",
+        body: JSON.stringify({ name, channel, template, altText, text: textMsg, emailSubject, emailBody, params: paramsJson }),
+      });
+      setPresets(r.presets ?? []);
+      setPresetName("");
+      showToast(`已儲存模組「${name}」✓`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "儲存模組失敗");
+    } finally {
+      setPresetBusy(false);
+    }
+  }
+
+  function loadPreset(p: Preset) {
+    setChannel((p.channel as Channel) || "line");
+    setTemplate(p.template || "text");
+    setAltText(p.altText ?? "");
+    setTextMsg(p.text ?? "");
+    setEmailSubject(p.emailSubject ?? "");
+    setEmailBody(p.emailBody ?? "");
+    setParamsJson(p.params ?? "{}");
+    showToast(`已載入模組「${p.name}」`);
+  }
+
+  async function deletePreset(p: Preset) {
+    if (!confirm(`刪除模組「${p.name}」？`)) return;
+    try {
+      const r = await adminFetch<{ presets: Preset[] }>(`/api/admin/broadcast/presets?id=${encodeURIComponent(p.id)}`, { method: "DELETE" });
+      setPresets(r.presets ?? []);
+      showToast(`已刪除模組「${p.name}」`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "刪除失敗");
+    }
+  }
 
   useEffect(() => {
     if ((sel("daily") || sel("tour")) && trips.length === 0) {
@@ -531,6 +582,19 @@ export default function BroadcastPage() {
             <span className="bcn-sub">可插入變數，發送時自動帶入</span>
           </div>
           <div className="bcn-pane-b">
+            {/* v650：儲存訊息模組 */}
+            <div className="bcn-preset-save">
+              <Input
+                placeholder="📦 輸入模組名稱（如：訂金催繳）"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") savePreset(); }}
+              />
+              <button type="button" className="bcn-btn bcn-btn-ghost" onClick={savePreset} disabled={presetBusy || !presetName.trim()}>
+                {presetBusy ? "儲存中…" : "💾 儲存為模組"}
+              </button>
+            </div>
+
             <div className={`bcn-content-grid ${channel === "line" || channel === "email" ? "single" : ""}`}>
               {(channel === "line" || channel === "both") && (
                 <div className="bcn-col">
@@ -580,6 +644,25 @@ export default function BroadcastPage() {
                       <button key={v} type="button" className="bcn-var" onClick={() => insertVar(v)}>{v}</button>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* v650：已儲存模組清單（點載入、可刪除）*/}
+            <div className="bcn-preset-list">
+              <span className="bcn-lbl" style={{ marginBottom: 8 }}>已儲存模組（點一下載入回編輯區）</span>
+              {presets.length === 0 ? (
+                <div className="bcn-preset-empty">尚無模組。編輯好內容後，上方輸入名稱即可「儲存為模組」。</div>
+              ) : (
+                <div className="bcn-preset-chips">
+                  {presets.map((p) => (
+                    <div key={p.id} className="bcn-preset-chip">
+                      <button type="button" className="bcn-preset-load" onClick={() => loadPreset(p)} title="載入此模組">
+                        📦 {p.name}
+                      </button>
+                      <button type="button" className="bcn-preset-del" onClick={() => deletePreset(p)} title="刪除此模組">✕</button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1033,6 +1116,33 @@ function BroadcastStyles() {
         transform: translateX(-50%) translateY(0); opacity: 1;
       }
       .bcn-toast-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bcn-teal-bright); }
+
+      /* v650：訊息模組 儲存 + 清單 */
+      .bcn-preset-save {
+        display: flex; gap: 8px; align-items: center; margin-bottom: 16px;
+        padding-bottom: 14px; border-bottom: 1px dashed var(--bcn-line);
+      }
+      .bcn-preset-save > :first-child { flex: 1; }
+      .bcn-preset-save .bcn-btn { padding: 9px 14px; white-space: nowrap; }
+      .bcn-preset-list { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--bcn-line); }
+      .bcn-preset-empty { font-size: 12px; color: var(--bcn-mute); line-height: 1.6; }
+      .bcn-preset-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .bcn-preset-chip {
+        display: inline-flex; align-items: stretch; border: 1.5px solid var(--bcn-line);
+        border-radius: 10px; overflow: hidden; background: #fff;
+      }
+      .bcn-preset-chip:hover { border-color: var(--bcn-teal); }
+      .bcn-preset-load {
+        border: none; background: transparent; cursor: pointer;
+        padding: 8px 12px; font-size: 12.5px; font-weight: 700; color: var(--bcn-sea);
+        max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .bcn-preset-load:hover { background: rgba(19,181,166,.08); }
+      .bcn-preset-del {
+        border: none; border-left: 1px solid var(--bcn-line); background: transparent;
+        cursor: pointer; padding: 0 10px; font-size: 12px; color: var(--bcn-mute);
+      }
+      .bcn-preset-del:hover { background: rgba(255,107,94,.1); color: var(--bcn-coral); }
     `}</style>
   );
 }

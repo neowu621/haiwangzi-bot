@@ -816,6 +816,10 @@ model SiteConfig {
   staffTankEnabled Boolean @default(false) @map("staff_tank_enabled")
   staffTankPrice   Int     @default(0) @map("staff_tank_price") // 固定每支氣瓶價 NT$
 
+  // v650：群發「已儲存訊息模組」（命名草稿，不含發送對象）
+  //  [{ id, name, channel, template, altText, text, emailSubject, emailBody, params, createdAt }]
+  broadcastPresets Json @default("[]") @map("broadcast_presets")
+
   // v590：日潛早鳥回饋（提早預約、滿額、結案後送抵用金；越早送越多）
   earlyBirdEnabled   Boolean @default(false) @map("early_bird_enabled")
   earlyBirdMinAmount Int     @default(1000) @map("early_bird_min_amount") // 最低消費門檻
