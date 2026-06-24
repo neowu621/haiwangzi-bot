@@ -105,10 +105,8 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  await prisma.user.update({
-    where: { lineUserId: user.lineUserId },
-    data: { emailVerifyTokenSentAt: new Date() },
-  });
+  // v641：emailVerifyTokenSentAt（驅動 60 秒速率限制）改到「確認寄出成功後」才寫，
+  //   避免寄信失敗時使用者被鎖 60 秒卻收不到信。
 
   // v265 fix：Zeabur 內部 hostname (service-xxx:8080) 不能對外。
   //   優先用 X-Forwarded-Host，fallback PUBLIC_APP_URL，最後 fallback req URL。
@@ -143,10 +141,16 @@ export async function POST(req: NextRequest) {
 
   if (!result.ok && !result.skipped) {
     return NextResponse.json(
-      { error: "send_failed", message: result.error ?? "寄信失敗" },
+      { error: "send_failed", message: result.error ?? "寄信失敗，請稍後再試或聯絡客服" },
       { status: 500 },
     );
   }
+
+  // v641：寄出成功（或 skipped）才記錄發送時間 → 啟動 60 秒速率限制
+  await prisma.user.update({
+    where: { lineUserId: user.lineUserId },
+    data: { emailVerifyTokenSentAt: new Date() },
+  });
 
   return NextResponse.json({
     ok: true,

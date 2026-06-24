@@ -327,20 +327,53 @@ export function LiffShell({
   );
 }
 
-// v312：Email 驗證提醒 banner
+// v641：把 fetchWithAuth 丟出的 `HTTP 429: {json}` 解析成友善訊息 + retryAfter
+function parseApiError(e: unknown): { message?: string; retryAfter?: number } {
+  const raw = e instanceof Error ? e.message : String(e);
+  const i = raw.indexOf("{");
+  if (i >= 0) {
+    try {
+      const o = JSON.parse(raw.slice(i)) as { message?: unknown; retryAfter?: unknown };
+      return {
+        message: typeof o.message === "string" ? o.message : undefined,
+        retryAfter: typeof o.retryAfter === "number" ? o.retryAfter : undefined,
+      };
+    } catch { /* ignore */ }
+  }
+  return {};
+}
+
+// v312：Email 驗證提醒 banner（v641：友善錯誤 + 冷卻倒數）
 function EmailVerifyBanner({ email, onResent }: { email: string; onResent: () => void }) {
   const liff = useLiff();
   const [sending, setSending] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
+  const [cooldown, setCooldown] = React.useState(0);
+
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
   async function resend() {
+    if (sending || cooldown > 0) return;
     setSending(true);
     setMsg(null);
     try {
       await liff.fetchWithAuth("/api/me/send-verify-email", { method: "POST", body: JSON.stringify({}) });
-      setMsg(`✓ 已重寄到 ${email}，請至信箱查收`);
+      setMsg(`✓ 已重寄到 ${email}，請至信箱查收（含垃圾信匣）`);
+      setCooldown(60); // 與後端 60 秒速率限制一致
       onResent();
     } catch (e) {
-      setMsg("重寄失敗：" + (e instanceof Error ? e.message : String(e)));
+      const { message, retryAfter } = parseApiError(e);
+      if (retryAfter && retryAfter > 0) {
+        setCooldown(retryAfter);
+        setMsg(message ?? `請等 ${retryAfter} 秒後再試`);
+      } else {
+        // 非速率限制 → 真正寄送失敗
+        setMsg(message ?? "重寄失敗，請稍後再試或聯絡客服");
+      }
     } finally {
       setSending(false);
     }
@@ -351,10 +384,10 @@ function EmailVerifyBanner({ email, onResent }: { email: string; onResent: () =>
       <button
         type="button"
         onClick={resend}
-        disabled={sending}
+        disabled={sending || cooldown > 0}
         className="ml-auto rounded-full bg-amber-600 px-2.5 py-0.5 text-[11px] font-medium text-white disabled:opacity-50"
       >
-        {sending ? "寄出中…" : "重寄驗證信"}
+        {cooldown > 0 ? `${cooldown} 秒後可重寄` : sending ? "寄出中…" : "重寄驗證信"}
       </button>
       {msg && <div className="basis-full text-[11px] text-amber-700 mt-1">{msg}</div>}
     </div>
