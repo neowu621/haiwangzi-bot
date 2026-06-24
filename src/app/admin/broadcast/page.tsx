@@ -21,16 +21,18 @@ const VARS: Array<[string, string]> = [
   ["{amount}", "金額"],
 ];
 
-type Audience = "all" | "customers" | "coaches" | "admins" | "single" | "trip";
+// v649：多選對象（與角色系統一致）
+type Audience = "all" | "customers" | "staff" | "mgmt" | "single" | "daily" | "tour";
 type Channel = "line" | "email" | "both";
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
   all: "全部",
-  customers: "客戶",
-  coaches: "教練",
-  admins: "管理員",
+  customers: "會員",
+  staff: "教練/助教",
+  mgmt: "老闆/管理員/IT",
   single: "單一客戶",
-  trip: "場次參加者",
+  daily: "日潛場次參加者",
+  tour: "潛旅團參加者",
 };
 const CHANNEL_LABELS: Record<Channel, string> = { line: "LINE", email: "Email", both: "LINE + Email" };
 
@@ -128,7 +130,16 @@ function substituteParams(text: string, params: Record<string, unknown>): string
 }
 
 export default function BroadcastPage() {
-  const [audience, setAudience] = useState<Audience>("customers");
+  const [selected, setSelected] = useState<Audience[]>(["customers"]);
+  // v649：多選切換 —— 「全部」與其他互斥；其餘可任意疊加
+  function toggleAudience(a: Audience) {
+    setSelected((prev) => {
+      if (a === "all") return prev.includes("all") ? [] : ["all"];
+      const next = prev.filter((x) => x !== "all");
+      return next.includes(a) ? next.filter((x) => x !== a) : [...next, a];
+    });
+  }
+  const sel = (a: Audience) => selected.includes(a);
   const [channel, setChannel] = useState<Channel>("line");
   const [template, setTemplate] = useState("booking_confirm");
   const [altText, setAltText] = useState(TEMPLATE_DEFAULTS.booking_confirm.altText);
@@ -194,10 +205,12 @@ export default function BroadcastPage() {
   const [singleUserId, setSingleUserId] = useState<string>("");
   const [customerQuery, setCustomerQuery] = useState("");
 
-  // trip 用
+  // v649：日潛/潛旅 場次參加者
   const [trips, setTrips] = useState<TripOption[]>([]);
-  const [tripRefId, setTripRefId] = useState<string>("");
-  const [tripParticipantCount, setTripParticipantCount] = useState(0);
+  const [dailyRefId, setDailyRefId] = useState<string>("");
+  const [tourRefId, setTourRefId] = useState<string>("");
+  const [dailyPartIds, setDailyPartIds] = useState<string[]>([]);
+  const [tourPartIds, setTourPartIds] = useState<string[]>([]);
 
   useEffect(() => {
     adminFetch<{ users: CustomerOption[] }>("/api/admin/users")
@@ -206,7 +219,7 @@ export default function BroadcastPage() {
   }, []);
 
   useEffect(() => {
-    if (audience === "trip" && trips.length === 0) {
+    if ((sel("daily") || sel("tour")) && trips.length === 0) {
       Promise.all([
         adminFetch<{ trips: { id: string; date: string; startTime: string; status: string; diveSiteIds?: string[] }[] }>("/api/admin/trips"),
         adminFetch<{ tours: { id: string; title: string; dateStart: string; status: string }[] }>("/api/admin/tours"),
@@ -231,35 +244,51 @@ export default function BroadcastPage() {
         })
         .catch(() => {});
     }
-  }, [audience, trips.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, trips.length]);
 
-  // 選定 trip 時抓參加者數量
+  // v649：選定日潛場次 → 抓參加者 userId
   useEffect(() => {
-    if (audience === "trip" && tripRefId) {
-      const sel = trips.find((t) => t.id === tripRefId);
-      if (sel) {
-        adminFetch<{ bookings: { user: { lineUserId: string } }[] }>(`/api/admin/bookings?refId=${tripRefId}`)
-          .then((r) => {
-            const ids = new Set((r.bookings ?? []).map((b) => b.user.lineUserId));
-            setTripParticipantCount(ids.size);
-          })
-          .catch(() => setTripParticipantCount(0));
-      }
+    if (sel("daily") && dailyRefId) {
+      adminFetch<{ bookings: { user: { lineUserId: string } }[] }>(`/api/admin/bookings?refId=${dailyRefId}`)
+        .then((r) => setDailyPartIds(Array.from(new Set((r.bookings ?? []).map((b) => b.user.lineUserId)))))
+        .catch(() => setDailyPartIds([]));
     } else {
-      setTripParticipantCount(0);
+      setDailyPartIds([]);
     }
-  }, [audience, tripRefId, trips]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, dailyRefId]);
 
-  // 預估收件人數
+  // v649：選定潛旅團 → 抓參加者 userId
+  useEffect(() => {
+    if (sel("tour") && tourRefId) {
+      adminFetch<{ bookings: { user: { lineUserId: string } }[] }>(`/api/admin/bookings?refId=${tourRefId}`)
+        .then((r) => setTourPartIds(Array.from(new Set((r.bookings ?? []).map((b) => b.user.lineUserId)))))
+        .catch(() => setTourPartIds([]));
+    } else {
+      setTourPartIds([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, tourRefId]);
+
+  // v649：預估收件人數 —— 把所有選取群組的人用 lineUserId 合併去重
   const recipientCount = useMemo(() => {
-    if (audience === "all") return allUsers.length;
-    if (audience === "customers") return allUsers.filter((u) => u.role === "customer").length;
-    if (audience === "coaches") return allUsers.filter((u) => u.role === "coach" || u.effectiveRoles?.includes("coach")).length;
-    if (audience === "admins") return allUsers.filter((u) => ["admin", "boss", "it"].includes(u.role ?? "") || u.effectiveRoles?.some((r) => r === "admin" || r === "boss" || r === "it")).length;
-    if (audience === "single") return singleUserId ? 1 : 0;
-    if (audience === "trip") return tripParticipantCount;
-    return 0;
-  }, [audience, allUsers, singleUserId, tripParticipantCount]);
+    const ids = new Set<string>();
+    const roleHas = (u: CustomerOption, rs: string[]) =>
+      rs.some((r) => u.role === r || u.effectiveRoles?.includes(r as never));
+    if (sel("all")) {
+      allUsers.forEach((u) => ids.add(u.lineUserId));
+    } else {
+      if (sel("customers")) allUsers.filter((u) => roleHas(u, ["customer"])).forEach((u) => ids.add(u.lineUserId));
+      if (sel("staff")) allUsers.filter((u) => roleHas(u, ["coach", "assistant"])).forEach((u) => ids.add(u.lineUserId));
+      if (sel("mgmt")) allUsers.filter((u) => roleHas(u, ["boss", "admin", "it"])).forEach((u) => ids.add(u.lineUserId));
+    }
+    if (sel("single") && singleUserId) ids.add(singleUserId);
+    if (sel("daily")) dailyPartIds.forEach((id) => ids.add(id));
+    if (sel("tour")) tourPartIds.forEach((id) => ids.add(id));
+    return ids.size;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, allUsers, singleUserId, dailyPartIds, tourPartIds]);
 
   // 選 template 自動填預設
   function selectTemplate(key: string) {
@@ -305,9 +334,18 @@ export default function BroadcastPage() {
     ).slice(0, 50);
   }, [allUsers, customerQuery]);
 
+  // v649：送出前驗證（共用給按鈕與 send）
+  function validateAudience(): string | null {
+    if (selected.length === 0) return "請至少選一個發送對象";
+    if (sel("single") && !singleUserId) return "已勾「單一客戶」，請選一個客戶";
+    if (sel("daily") && !dailyRefId) return "已勾「日潛場次參加者」，請選一個日潛場次";
+    if (sel("tour") && !tourRefId) return "已勾「潛旅團參加者」，請選一個潛旅團";
+    return null;
+  }
+
   async function send() {
-    if (audience === "single" && !singleUserId) { setErr("請選一個客戶"); return; }
-    if (audience === "trip" && !tripRefId) { setErr("請選一個場次"); return; }
+    const ve = validateAudience();
+    if (ve) { setErr(ve); return; }
     if (!altText && template !== "text") { setErr("請填寫 altText"); return; }
     if (template === "text" && !textMsg) { setErr("請填寫訊息內容"); return; }
     // v196: confirm modal replaces window.confirm()
@@ -316,17 +354,15 @@ export default function BroadcastPage() {
     try {
       let params: Record<string, unknown> = {};
       try { params = JSON.parse(paramsJson); } catch { setErr("params JSON 格式錯誤"); setSending(false); return; }
-      const body: Record<string, unknown> = { audience, channel, template, altText: altText || textMsg, params };
+      const body: Record<string, unknown> = { audiences: selected, channel, template, altText: altText || textMsg, params };
       if (template === "text") body.text = textMsg;
       if (channel === "email" || channel === "both") {
         body.emailSubject = emailSubject;
         body.emailBody = emailBody;
       }
-      if (audience === "single") body.singleUserId = singleUserId;
-      if (audience === "trip") {
-        const sel = trips.find((t) => t.id === tripRefId);
-        if (sel) { body.refType = sel.type; body.refId = sel.id; }
-      }
+      if (sel("single")) body.singleUserId = singleUserId;
+      if (sel("daily")) body.dailyRefId = dailyRefId;
+      if (sel("tour")) body.tourRefId = tourRefId;
       const data = await adminFetch<{ ok: boolean; delivered?: number; emailed?: number; dryRun?: boolean; note?: string }>("/api/admin/broadcast", { method: "POST", body: JSON.stringify(body) });
       const parts: string[] = [];
       if ((data.delivered ?? 0) > 0) parts.push(`LINE ${data.delivered} 筆`);
@@ -341,8 +377,8 @@ export default function BroadcastPage() {
       setSending(false);
     }
   }
-  // 預覽用的「發送對象」中文標籤
-  const audienceLabel = AUDIENCE_LABELS[audience];
+  // 預覽用的「發送對象」中文標籤（多選 → 逗號串接）
+  const audienceLabel = selected.length === 0 ? "（未選）" : selected.map((a) => AUDIENCE_LABELS[a]).join("、");
   const channelLabel = CHANNEL_LABELS[channel];
   const templateLabel = TEMPLATES.find((t) => t.key === template)?.label ?? template;
 
@@ -394,23 +430,23 @@ export default function BroadcastPage() {
                 </div>
               </div>
 
-              {/* 對象 chips */}
+              {/* 對象 chips（v649：可複選；同一人自動去重只發一次）*/}
               <div>
-                <span className="bcn-lbl">發送對象</span>
+                <span className="bcn-lbl">發送對象（可複選）</span>
                 <div className="bcn-chips">
                   {(Object.keys(AUDIENCE_LABELS) as Audience[]).map((a) => (
                     <button
                       key={a}
                       type="button"
-                      onClick={() => { setAudience(a); setSingleUserId(""); setTripRefId(""); }}
-                      className={`bcn-chip ${audience === a ? "on" : ""}`}
+                      onClick={() => toggleAudience(a)}
+                      className={`bcn-chip ${sel(a) ? "on" : ""}`}
                     >
                       {AUDIENCE_LABELS[a]}
                     </button>
                   ))}
                 </div>
 
-                {audience === "single" && (
+                {sel("single") && (
                   <div className="bcn-subpick show">
                     <Input
                       placeholder="🔍 搜尋客戶姓名 / 電話 / Email"
@@ -439,14 +475,28 @@ export default function BroadcastPage() {
                   </div>
                 )}
 
-                {audience === "trip" && (
+                {sel("daily") && (
                   <div className="bcn-subpick show">
-                    <select value={tripRefId} onChange={(e) => setTripRefId(e.target.value)}>
-                      <option value="">— 請選擇場次 —</option>
-                      {trips.map((t) => (
-                        <option key={`${t.type}-${t.id}`} value={t.id}>
+                    <select value={dailyRefId} onChange={(e) => setDailyRefId(e.target.value)}>
+                      <option value="">— 請選擇日潛場次 —</option>
+                      {trips.filter((t) => t.type === "daily").map((t) => (
+                        <option key={t.id} value={t.id}>
                           {t.label}
-                          {tripRefId === t.id && tripParticipantCount > 0 ? ` · ${tripParticipantCount} 人` : ""}
+                          {dailyRefId === t.id && dailyPartIds.length > 0 ? ` · ${dailyPartIds.length} 人` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {sel("tour") && (
+                  <div className="bcn-subpick show">
+                    <select value={tourRefId} onChange={(e) => setTourRefId(e.target.value)}>
+                      <option value="">— 請選擇潛旅團 —</option>
+                      {trips.filter((t) => t.type === "tour").map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                          {tourRefId === t.id && tourPartIds.length > 0 ? ` · ${tourPartIds.length} 人` : ""}
                         </option>
                       ))}
                     </select>
@@ -596,8 +646,8 @@ export default function BroadcastPage() {
                 type="button"
                 className="bcn-btn bcn-btn-send"
                 onClick={() => {
-                  if (audience === "single" && !singleUserId) { setErr("請選一個客戶"); return; }
-                  if (audience === "trip" && !tripRefId) { setErr("請選一個場次"); return; }
+                  const ve = validateAudience();
+                  if (ve) { setErr(ve); return; }
                   if (!altText && template !== "text") { setErr("請填寫 altText"); return; }
                   if (template === "text" && !textMsg) { setErr("請填寫訊息內容"); return; }
                   setErr(null);

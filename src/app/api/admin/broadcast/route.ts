@@ -11,11 +11,18 @@ import { logAudit } from "@/lib/audit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// v649：多選對象 —— 角色群組 + 單一客戶 + 日潛/潛旅參加者，最後用 lineUserId 去重(同一人只發一次)
+const AudienceKey = z.enum(["all", "customers", "staff", "mgmt", "single", "daily", "tour"]);
 const BodySchema = z.object({
-  audience: z.enum(["all", "customers", "coaches", "admins", "single", "trip"]).default("all"),
+  // 可複選；空陣列時 fallback 舊欄位 audience（向後相容）
+  audiences: z.array(AudienceKey).default([]),
+  audience: z.enum(["all", "customers", "coaches", "admins", "single", "trip"]).optional(), // 舊版相容
   // single 用：指定 LINE userId
   singleUserId: z.string().optional(),
-  // trip 用：指定 daily trip id 或 tour id（會自動 join booking 找參加者）
+  // 日潛/潛旅參加者
+  dailyRefId: z.string().optional(),
+  tourRefId: z.string().optional(),
+  // 舊版 trip 相容
   refType: z.enum(["daily", "tour"]).optional(),
   refId: z.string().optional(),
   template: z.string(),
@@ -40,44 +47,55 @@ export async function POST(req: NextRequest) {
 
   const data = BodySchema.parse(await req.json());
 
-  // 算 audience userIds（拿完整 user 物件，後面 email 也要用）
-  let targets: Awaited<ReturnType<typeof prisma.user.findMany>> = [];
+  // v649：把舊版單一 audience 正規化成多選陣列(向後相容)
+  const audiences = new Set<string>(data.audiences);
+  if (audiences.size === 0 && data.audience) {
+    const map: Record<string, string> = { all: "all", customers: "customers", coaches: "staff", admins: "mgmt", single: "single", trip: data.refType === "tour" ? "tour" : "daily" };
+    audiences.add(map[data.audience] ?? "customers");
+    if (data.audience === "single") data.singleUserId = data.singleUserId;
+    if (data.audience === "trip") { if (data.refType === "tour") data.tourRefId = data.refId; else data.dailyRefId = data.refId; }
+  }
+  const has = (k: string) => audiences.has(k);
 
-  if (data.audience === "single") {
-    if (!data.singleUserId) {
-      return NextResponse.json({ error: "missing singleUserId" }, { status: 400 });
-    }
-    const u = await prisma.user.findUnique({ where: { lineUserId: data.singleUserId } });
-    if (!u) {
-      return NextResponse.json({ error: "user not found" }, { status: 404 });
-    }
-    targets = [u];
-  } else if (data.audience === "trip") {
-    if (!data.refType || !data.refId) {
-      return NextResponse.json({ error: "missing refType/refId for trip audience" }, { status: 400 });
-    }
-    // 找這個 trip/tour 的所有活躍訂單，拉出 userId 去重，再撈 user
-    const bookings = await prisma.booking.findMany({
-      where: {
-        type: data.refType,
-        refId: data.refId,
-        status: { in: ["pending", "confirmed", "completed"] },
-      },
-      select: { userId: true },
-    });
-    const userIds = Array.from(new Set(bookings.map((b) => b.userId)));
-    if (userIds.length === 0) {
-      return NextResponse.json({ ok: true, delivered: 0, emailed: 0, note: "此場次/潛水團無活躍訂單" });
-    }
-    targets = await prisma.user.findMany({ where: { lineUserId: { in: userIds } } });
+  // 收集所有命中的 lineUserId（Set 去重 → 同一人只發一次）
+  const idSet = new Set<string>();
+
+  if (has("all")) {
+    const us = await prisma.user.findMany({ where: { deletedAt: null }, select: { lineUserId: true } });
+    us.forEach((u) => idSet.add(u.lineUserId));
   } else {
-    const where =
-      data.audience === "all"
-        ? {}
-        : { role: data.audience.slice(0, -1) as "customer" | "coach" | "admin" };
-    targets = await prisma.user.findMany({ where });
+    // 角色群組（roles[] 多重身分 + 舊 role 欄位都比對，才不漏人）
+    const roleOr: Array<Record<string, unknown>> = [];
+    if (has("customers")) roleOr.push({ roles: { has: "customer" } }, { role: "customer" });
+    if (has("staff")) roleOr.push({ roles: { hasSome: ["coach", "assistant"] } }, { role: { in: ["coach", "assistant"] } });
+    if (has("mgmt")) roleOr.push({ roles: { hasSome: ["boss", "admin", "it"] } }, { role: { in: ["boss", "admin", "it"] } });
+    if (roleOr.length > 0) {
+      const us = await prisma.user.findMany({ where: { deletedAt: null, OR: roleOr }, select: { lineUserId: true } });
+      us.forEach((u) => idSet.add(u.lineUserId));
+    }
   }
 
+  // 單一客戶
+  if (has("single") && data.singleUserId) idSet.add(data.singleUserId);
+
+  // 日潛 / 潛旅 參加者（活躍訂單）
+  const partRefs: Array<{ type: "daily" | "tour"; id: string }> = [];
+  if (has("daily") && data.dailyRefId) partRefs.push({ type: "daily", id: data.dailyRefId });
+  if (has("tour") && data.tourRefId) partRefs.push({ type: "tour", id: data.tourRefId });
+  for (const pr of partRefs) {
+    const bookings = await prisma.booking.findMany({
+      where: { type: pr.type, refId: pr.id, status: { in: ["pending", "confirmed", "completed"] } },
+      select: { userId: true },
+    });
+    bookings.forEach((b) => idSet.add(b.userId));
+  }
+
+  if (idSet.size === 0) {
+    return NextResponse.json({ ok: true, delivered: 0, emailed: 0, note: "無符合對象（請確認對象選取）" });
+  }
+
+  // 拿完整 user 物件（後面 LINE / Email 都要用）；findMany by 唯一 lineUserId → 自然去重
+  const targets = await prisma.user.findMany({ where: { lineUserId: { in: Array.from(idSet) } } });
   if (targets.length === 0) {
     return NextResponse.json({ ok: true, delivered: 0, emailed: 0 });
   }
@@ -173,13 +191,13 @@ export async function POST(req: NextRequest) {
     action: "broadcast.send",
     targetType: "broadcast",
     metadata: {
-      audience: data.audience,
+      audiences: Array.from(audiences),
       channel: data.channel,
       template: data.template,
       targets: targets.length,
       singleUserId: data.singleUserId,
-      refType: data.refType,
-      refId: data.refId,
+      dailyRefId: data.dailyRefId,
+      tourRefId: data.tourRefId,
     },
   });
   return NextResponse.json(result);
