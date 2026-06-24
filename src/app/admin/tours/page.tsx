@@ -18,6 +18,8 @@ const LINE = "#E4E8ED";
 const LINE2 = "#D2D9E0";
 const MUTED = "#6B7682";
 const MUTED2 = "#9AA6B2";
+// v634：表單面板放大到 50% 後，內容置中並限制最大寬度，避免在寬螢幕上欄位拉太開
+const FORM_MAXW = 820;
 const thStyle: React.CSSProperties = {
   position: "sticky", top: 0, background: "#EEF1F5", textAlign: "left",
   fontSize: 11, letterSpacing: ".06em", color: "#9AA6B2", textTransform: "uppercase",
@@ -702,7 +704,8 @@ export default function ToursPage() {
 
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 460px",
+          // v634：表單面板放大到約 50%（左列表 / 右表單各半）
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
           gap: 0,
           flex: 1,
           minHeight: 0,
@@ -928,18 +931,20 @@ export default function ToursPage() {
           {/* RIGHT: form */}
           <div className="form-col" style={{ background: "#fff", overflowY: "auto", minHeight: 0, position: "relative" }}>
             <div style={{
-              padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 24px",
               position: "sticky", top: 0, background: "#fff", zIndex: 5, borderBottom: `1px solid ${LINE}`,
             }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700 }}>
-                {editingId ? "編輯行程" : "新增行程"}
-              </h2>
-              <span style={{ fontSize: 12, color: AQUA, fontFamily: "monospace", letterSpacing: ".14em" }}>
-                {editingId ? "EDIT" : "NEW"}
-              </span>
+              <div style={{ maxWidth: FORM_MAXW, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700 }}>
+                  {editingId ? "編輯行程" : "新增行程"}
+                </h2>
+                <span style={{ fontSize: 12, color: AQUA, fontFamily: "monospace", letterSpacing: ".14em" }}>
+                  {editingId ? "EDIT" : "NEW"}
+                </span>
+              </div>
             </div>
 
-            <div style={{ padding: "8px 24px 90px" }}>
+            <div style={{ padding: "8px 24px 90px", maxWidth: FORM_MAXW, margin: "0 auto" }}>
               <FieldSet title="基本資料">
                 <Field label="行程名稱" required>
                   <input
@@ -1151,24 +1156,25 @@ export default function ToursPage() {
             <div style={{
               position: "sticky", bottom: 0, background: "#fff",
               borderTop: `1px solid ${LINE}`, padding: "14px 24px",
-              display: "flex", gap: 10,
             }}>
-              <button onClick={() => (editingId ? loadTour(tours.find((x) => x.id === editingId)!) : newTrip())}
-                style={{
-                  border: `1px solid ${LINE2}`, background: "transparent", color: MUTED,
-                  fontSize: 13, padding: "10px 16px", borderRadius: 9, cursor: "pointer",
-                }}>
-                {editingId ? "重置" : "清空"}
-              </button>
-              <button onClick={save} disabled={saving}
-                style={{
-                  flex: 1, border: "none",
-                  background: `linear-gradient(135deg,${AQUA},${AQUA_DIM})`,
-                  color: "#fff", fontWeight: 700, fontSize: 14,
-                  padding: 12, borderRadius: 10, cursor: saving ? "wait" : "pointer",
-                }}>
-                {saving ? "儲存中..." : "儲存行程"}
-              </button>
+              <div style={{ maxWidth: FORM_MAXW, margin: "0 auto", display: "flex", gap: 10 }}>
+                <button onClick={() => (editingId ? loadTour(tours.find((x) => x.id === editingId)!) : newTrip())}
+                  style={{
+                    border: `1px solid ${LINE2}`, background: "transparent", color: MUTED,
+                    fontSize: 13, padding: "10px 16px", borderRadius: 9, cursor: "pointer",
+                  }}>
+                  {editingId ? "重置" : "清空"}
+                </button>
+                <button onClick={save} disabled={saving}
+                  style={{
+                    flex: 1, border: "none",
+                    background: `linear-gradient(135deg,${AQUA},${AQUA_DIM})`,
+                    color: "#fff", fontWeight: 700, fontSize: 14,
+                    padding: 12, borderRadius: 10, cursor: saving ? "wait" : "pointer",
+                  }}>
+                  {saving ? "儲存中..." : "儲存行程"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
