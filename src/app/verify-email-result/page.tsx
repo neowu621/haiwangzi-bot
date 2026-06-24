@@ -35,7 +35,7 @@ function ResultContent() {
       iconColor: "#06C755",
       title: "Email 驗證成功！",
       message: `${email ? email + " " : ""}已驗證完成。`,
-      hint: "🎁 完成個人資料 + 首單完成後，隔日系統自動發放 100 元抵用金（限 30 天內使用）。",
+      hint: "🎁 Email 驗證成功，50 元註冊禮金已入帳！完成首單後，系統會再自動發放 100 元首單獎勵，直接存進你的抵用金，下單即可折抵。",
       cta: "回到預約 App",
     },
     missing: {
