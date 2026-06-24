@@ -15,7 +15,6 @@ import {
   Users,
   Waves,
   Ship,
-  GraduationCap,
   Star,
   Megaphone,
   BarChart2,
@@ -57,7 +56,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/admin/trips", icon: Waves, label: "日潛場次" },
       { href: "/admin/tours", icon: Ship, label: "潛水旅行" },
-      { href: "/admin/coaches", icon: GraduationCap, label: "教練管理" },
+      // v652：移除「教練管理」選單（頁面已下架；教練名冊/排班底層保留給場次與通知使用，未來改在系統設定處理）
     ],
   },
   {

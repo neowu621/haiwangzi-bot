@@ -387,7 +387,6 @@ export default function AdminGuidePage() {
           <PageRef items={[
             ["/admin/trips", "日潛場次：新增 / 編輯 / Dump 一週、夜潛、預設定價"],
             ["/admin/tours", "潛水旅行團：行程、潛點、費用、繳費期限"],
-            ["/admin/coaches", "教練管理：資料、證照、費用、軟 / 硬刪"],
           ]} />
           <ul className="list-disc space-y-1 pl-5 text-xs">
             <li>潛旅<b>訂金截止＝每位客人下訂後 7 天</b>（動態）；<b>尾款截止＝出發前 30 天</b>（編輯頁可一鍵帶入）。</li>

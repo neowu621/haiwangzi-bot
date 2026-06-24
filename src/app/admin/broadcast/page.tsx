@@ -330,8 +330,15 @@ export default function BroadcastPage() {
     [allUsers],
   );
 
-  // v649：預估收件人數 —— 把所有選取群組的人用 lineUserId 合併去重（v651：扣掉軟刪除/黑名單）
-  const recipientCount = useMemo(() => {
+  // 名字解析表
+  const userNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allUsers.forEach((u) => m.set(u.lineUserId, u.realName || u.displayName || `會員 ${u.lineUserId.slice(0, 6)}`));
+    return m;
+  }, [allUsers]);
+
+  // v649：實際收件人 id 清單 —— 把所有選取群組的人用 lineUserId 合併去重（v651：扣掉軟刪除/黑名單）
+  const recipientIds = useMemo(() => {
     const ids = new Set<string>();
     const roleHas = (u: CustomerOption, rs: string[]) =>
       rs.some((r) => u.role === r || u.effectiveRoles?.includes(r as never));
@@ -348,9 +355,16 @@ export default function BroadcastPage() {
     if (sel("tour")) tourPartIds.forEach((id) => ids.add(id));
     // 扣掉軟刪除/黑名單（涵蓋單一客戶與場次參加者來源）
     blockedIds.forEach((id) => ids.delete(id));
-    return ids.size;
+    return Array.from(ids);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, allUsers, singleUserId, dailyPartIds, tourPartIds, blockedIds]);
+
+  const recipientCount = recipientIds.length;
+  // v652：送出前確認用 —— 解析成名字清單
+  const recipientList = useMemo(
+    () => recipientIds.map((id) => ({ id, name: userNameMap.get(id) ?? `會員 ${id.slice(0, 6)}` })),
+    [recipientIds, userNameMap],
+  );
 
   // 選 template 自動填預設
   function selectTemplate(key: string) {
@@ -811,9 +825,25 @@ export default function BroadcastPage() {
           <div className="bcn-modal-b">
             <div className="bcn-modal-row"><span>發送對象</span><b>{audienceLabel}</b></div>
             <div className="bcn-modal-row"><span>發送管道</span><b>{channelLabel}</b></div>
-            <div className="bcn-modal-row"><span>預估人數</span><b>{recipientCount.toLocaleString()} 人</b></div>
+            <div className="bcn-modal-row"><span>實際發送人數</span><b>{recipientCount.toLocaleString()} 人</b></div>
             <div className="bcn-modal-row"><span>使用模板</span><b>{templateLabel}</b></div>
-            <div className="bcn-modal-warn">⚠️ 將立即對上述真實用戶發送，確定要送出嗎？</div>
+
+            {/* v652：列出實際收件人（已去重、已排除軟刪除/黑名單）*/}
+            <div className="bcn-recip-head">收件名單（{recipientCount.toLocaleString()} 人，已去重 · 不含軟刪除/黑名單）</div>
+            <div className="bcn-recip-list">
+              {recipientList.length === 0 ? (
+                <div className="bcn-recip-empty">無符合對象</div>
+              ) : (
+                recipientList.slice(0, 300).map((r) => (
+                  <span key={r.id} className="bcn-recip-name">{r.name}</span>
+                ))
+              )}
+              {recipientList.length > 300 && (
+                <span className="bcn-recip-more">…等共 {recipientCount.toLocaleString()} 人</span>
+              )}
+            </div>
+
+            <div className="bcn-modal-warn">⚠️ 將立即對上述名單發送，確定要送出嗎？</div>
             {recipientCount > 1 && (
               <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12, fontSize: 13, color: "var(--bcn-ink)", cursor: "pointer", fontWeight: 600 }}>
                 <input type="checkbox" checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16 }} />
@@ -1111,6 +1141,20 @@ function BroadcastStyles() {
         padding: 10px 12px; margin-top: 12px; line-height: 1.5;
       }
       .bcn-modal-f { display: flex; gap: 10px; padding: 0 20px 20px; }
+      /* v652：收件名單 */
+      .bcn-recip-head { font-size: 11.5px; font-weight: 700; color: var(--bcn-mute); margin: 12px 0 7px; }
+      .bcn-recip-list {
+        display: flex; flex-wrap: wrap; gap: 6px;
+        max-height: 150px; overflow-y: auto;
+        background: var(--bcn-soft); border: 1px solid var(--bcn-line);
+        border-radius: 10px; padding: 10px;
+      }
+      .bcn-recip-name {
+        background: #fff; border: 1px solid var(--bcn-line); border-radius: 7px;
+        padding: 3px 9px; font-size: 12px; color: var(--bcn-ink); white-space: nowrap;
+      }
+      .bcn-recip-empty { font-size: 12px; color: var(--bcn-mute); padding: 4px; }
+      .bcn-recip-more { font-size: 12px; color: var(--bcn-mute); align-self: center; padding: 0 4px; }
 
       .bcn-toast {
         position: fixed; bottom: 26px; left: 50%;
