@@ -21,10 +21,17 @@ export function UnreadPopup() {
     try { if (sessionStorage.getItem(SHOWN_KEY)) return; } catch { /* ignore */ }
 
     let cancelled = false;
+    // v639：先確認已完成 onboarding（強制註冊）。未完成時 OnboardingModal（Radix modal）
+    //   會把外部元素設 pointer-events:none，此彈窗會「看得到卻點不到」並把點擊漏給底層表單，
+    //   因此 onboarding 未完成一律不跳。
     liff
-      .fetchWithAuth<{ count: number }>("/api/me/notifications/unread-count")
+      .fetchWithAuth<{ onboardingCompletedAt: string | null }>("/api/me")
+      .then((me) => {
+        if (cancelled || !me || me.onboardingCompletedAt === null) return null;
+        return liff.fetchWithAuth<{ count: number }>("/api/me/notifications/unread-count");
+      })
       .then((d) => {
-        if (cancelled) return;
+        if (cancelled || !d) return;
         const n = d?.count ?? 0;
         if (n > 0) {
           setCount(n);
