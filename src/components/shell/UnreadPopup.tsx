@@ -45,6 +45,14 @@ export function UnreadPopup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liff.ready]);
 
+  // v639：保險 —— 彈窗跳出後 3 秒沒點選就自動退開，避免任何情況下卡住頁面。
+  //   訊息仍保留在訊息中心（🔔），自動關閉只是收起這個提示。
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => setOpen(false), 3000);
+    return () => clearTimeout(t);
+  }, [open]);
+
   if (!open) return null;
 
   return (
