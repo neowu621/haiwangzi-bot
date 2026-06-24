@@ -158,7 +158,8 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [saving, setSaving] = useState(false);
   const [keyword, setKeyword] = useState("");
-  const [filter, setFilter] = useState<"all" | Role | "blacklist" | "vip" | "vip1" | "vip2" | "vip3" | "vip4" | "vip5" | "vip5plus">("all");
+  // v645：staff = 教練/助教（coach|assistant）；mgmt = 老闆/管理員/IT（boss|admin|it）
+  const [filter, setFilter] = useState<"all" | Role | "staff" | "mgmt" | "blacklist" | "vip" | "vip1" | "vip2" | "vip3" | "vip4" | "vip5" | "vip5plus">("all");
   const [sortKey, setSortKey] = useState<SortKey>("lastActiveAt");
   const [sortAsc, setSortAsc] = useState(false);
   const [creditAmount, setCreditAmount] = useState("");
@@ -211,6 +212,9 @@ export default function AdminUsersPage() {
       else if (filter === "vip1" || filter === "vip2" || filter === "vip3" || filter === "vip4" || filter === "vip5") {
         if (u.vipLevel !== Number(filter.slice(3))) return false;
       }
+      // v645：教練/助教 與 老闆/管理員/IT 合併篩選
+      else if (filter === "staff") { if (!u.effectiveRoles?.some((r) => r === "coach" || r === "assistant")) return false; }
+      else if (filter === "mgmt") { if (!u.effectiveRoles?.some((r) => r === "boss" || r === "admin" || r === "it")) return false; }
       else if (filter !== "all") { if (!u.effectiveRoles?.includes(filter)) return false; }
       if (k) {
         const hay = [
@@ -593,16 +597,12 @@ export default function AdminUsersPage() {
                   `會員 (${users.filter((u) => u.effectiveRoles?.includes("customer")).length})`,
                 ],
                 [
-                  "coach",
-                  `教練 (${users.filter((u) => u.effectiveRoles?.includes("coach")).length})`,
+                  "staff",
+                  `教練/助教 (${users.filter((u) => u.effectiveRoles?.some((r) => r === "coach" || r === "assistant")).length})`,
                 ],
                 [
-                  "boss",
-                  `老闆 (${users.filter((u) => u.effectiveRoles?.includes("boss")).length})`,
-                ],
-                [
-                  "admin",
-                  `管理員 (${users.filter((u) => u.effectiveRoles?.includes("admin")).length})`,
+                  "mgmt",
+                  `老闆/管理員/IT (${users.filter((u) => u.effectiveRoles?.some((r) => r === "boss" || r === "admin" || r === "it")).length})`,
                 ],
                 ["vip1", `VIP1 (${users.filter((u) => u.vipLevel === 1).length})`],
                 ["vip2", `VIP2 (${users.filter((u) => u.vipLevel === 2).length})`],
