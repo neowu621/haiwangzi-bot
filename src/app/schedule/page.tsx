@@ -70,28 +70,37 @@ export default async function SchedulePage() {
         </Card>
       ) : (
         <>
-          {trips.length > 0 && (
-            <>
-              <h2 style={hStyle}>🔱 日潛 Fun Dive</h2>
-              {trips.map((t) => {
-                const booked = bookedMap.get(t.id) ?? 0;
-                const a = availLabel(t.capacity, booked);
-                const type = t.isNightDive ? "夜潛" : t.isScooter ? "水推 DPV" : "日潛";
-                const site = t.diveSiteIds.map((id) => siteMap.get(id) ?? id)[0] ?? "東北角";
-                return <Row key={t.id} date={md(t.date)} wd={wd(t.date)} title={`${site}・${type}`} meta={`${t.startTime}　${t.tankCount} 潛`} avail={a} />;
-              })}
-            </>
-          )}
-          {tours.length > 0 && (
-            <>
-              <h2 style={{ ...hStyle, marginTop: 28 }}>⛴️ 潛旅 Dive Trip　<span style={{ fontSize: 12.5, fontWeight: 700, color: "#9aabae" }}>近期開團</span></h2>
-              {tours.map((t) => {
-                const a = availLabel(t.capacity, tourBookedMap.get(t.id) ?? 0);
-                const range = +t.dateStart === +t.dateEnd ? md(t.dateStart) : `${md(t.dateStart)}–${md(t.dateEnd)}`;
-                return <Row key={t.id} date={range} wd={wd(t.dateStart)} title={t.title} meta={t.durationLabel ?? ""} avail={a} label="LINE 報名" />;
-              })}
-            </>
-          )}
+          {/* v636：左右兩欄 —— 左日潛 / 右潛旅；窄螢幕(手機)自動堆疊成單欄 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 22, alignItems: "start" }}>
+            {/* 左：日潛 */}
+            <section>
+              <h2 style={hStyle}>🔱 日潛 Fun Dive　<span style={{ fontSize: 12.5, fontWeight: 700, color: "#9aabae" }}>本月場次</span></h2>
+              {trips.length > 0 ? (
+                trips.map((t) => {
+                  const booked = bookedMap.get(t.id) ?? 0;
+                  const a = availLabel(t.capacity, booked);
+                  const type = t.isNightDive ? "夜潛" : t.isScooter ? "水推 DPV" : "日潛";
+                  const site = t.diveSiteIds.map((id) => siteMap.get(id) ?? id)[0] ?? "東北角";
+                  return <Row key={t.id} date={md(t.date)} wd={wd(t.date)} title={`${site}・${type}`} meta={`${t.startTime}　${t.tankCount} 潛`} avail={a} />;
+                })
+              ) : (
+                <EmptyCol text="本月日潛場次更新中，加 LINE 告訴汪汪想潛的日期。" />
+              )}
+            </section>
+            {/* 右：潛旅 */}
+            <section>
+              <h2 style={hStyle}>⛴️ 潛旅 Dive Trip　<span style={{ fontSize: 12.5, fontWeight: 700, color: "#9aabae" }}>近期開團</span></h2>
+              {tours.length > 0 ? (
+                tours.map((t) => {
+                  const a = availLabel(t.capacity, tourBookedMap.get(t.id) ?? 0);
+                  const range = +t.dateStart === +t.dateEnd ? md(t.dateStart) : `${md(t.dateStart)}–${md(t.dateEnd)}`;
+                  return <Row key={t.id} date={range} wd={wd(t.dateStart)} title={t.title} meta={t.durationLabel ?? ""} avail={a} label="LINE 報名" />;
+                })
+              ) : (
+                <EmptyCol text="近期潛旅規劃中，加 LINE 搶先收到開團通知。" />
+              )}
+            </section>
+          </div>
           <p style={{ textAlign: "center", color: "#9aabae", fontSize: 12.5, marginTop: 18 }}>名額為即時資料，實際以 LINE 確認為準。</p>
         </>
       )}
@@ -101,6 +110,14 @@ export default async function SchedulePage() {
 
 const hStyle: React.CSSProperties = { fontSize: 18, fontWeight: 900, color: "#0A2342", margin: "4px 0 12px" };
 const ctaStyle: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "11px 22px", borderRadius: 999 };
+
+function EmptyCol({ text }: { text: string }) {
+  return (
+    <Card style={{ textAlign: "center", color: "#7c9296", fontSize: 13.5, lineHeight: 1.8 }}>
+      {text}
+    </Card>
+  );
+}
 
 function Row({ date, wd, title, meta, avail, label = "LINE 預約" }: { date: string; wd: string; title: string; meta: string; avail: { t: string; ok: boolean }; label?: string }) {
   return (
