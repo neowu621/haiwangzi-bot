@@ -16,12 +16,33 @@ export async function GET(req: NextRequest) {
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
 
-  const totalBookings = await prisma.booking.count({
+  // v653：預約紀錄=未來要進行的（未取消/未完成/活動日未過）；已完成=過去+已取消+已完成
+  const myBookings = await prisma.booking.findMany({
     where: { userId: auth.user.lineUserId },
+    select: { type: true, refId: true, status: true },
   });
-  const completed = await prisma.booking.count({
-    where: { userId: auth.user.lineUserId, status: "completed" },
-  });
+  let totalBookings = 0; // 即將進行
+  let completed = 0;      // 已結束（過去/取消/完成）
+  {
+    const dailyIds = myBookings.filter((b) => b.type === "daily").map((b) => b.refId);
+    const tourIds = myBookings.filter((b) => b.type === "tour").map((b) => b.refId);
+    const [trips, tours] = await Promise.all([
+      dailyIds.length ? prisma.divingTrip.findMany({ where: { id: { in: dailyIds } }, select: { id: true, date: true } }) : Promise.resolve([]),
+      tourIds.length ? prisma.tourPackage.findMany({ where: { id: { in: tourIds } }, select: { id: true, dateEnd: true } }) : Promise.resolve([]),
+    ]);
+    const tripDate = new Map(trips.map((t) => [t.id, t.date.toISOString().slice(0, 10)]));
+    const tourEnd = new Map(tours.map((t) => [t.id, t.dateEnd.toISOString().slice(0, 10)]));
+    const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+    const CANCELLED = new Set(["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"]);
+    for (const b of myBookings) {
+      const isCancelled = CANCELLED.has(b.status);
+      const isCompleted = b.status === "completed" || b.status === "no_show";
+      const eventDate = b.type === "daily" ? tripDate.get(b.refId) : tourEnd.get(b.refId);
+      const isPast = eventDate ? eventDate < todayStr : false;
+      if (isCancelled || isCompleted || isPast) completed += 1;
+      else totalBookings += 1;
+    }
+  }
 
   const u = auth.user;
   // v592：先清掉已過期抵用金,讓顯示餘額準確(早鳥 30 天短效金到期作廢)

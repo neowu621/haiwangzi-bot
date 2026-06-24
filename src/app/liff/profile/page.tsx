@@ -1093,6 +1093,16 @@ function statusLabel(status: string): { text: string; tone: "ok" | "warn" | "mut
   }
 }
 
+// v653：訂單是否「已結束」=已取消 / 已完成 / 活動日已過。否則為「未來要進行的」。
+const DONE_CANCELLED = new Set(["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"]);
+function isBookingDone(b: BookingHistoryItem, todayStr: string): boolean {
+  if (DONE_CANCELLED.has(b.status)) return true;
+  if (b.status === "completed" || b.status === "no_show") return true;
+  const eventDate = b.type === "daily" ? b.ref?.date : (b.ref?.dateEnd ?? b.ref?.dateStart);
+  if (eventDate && eventDate < todayStr) return true; // 活動日已過
+  return false;
+}
+
 function BookingHistoryList({
   bookings,
   filter,
@@ -1102,19 +1112,19 @@ function BookingHistoryList({
   filter: "bookings" | "completed" | null;
   onClose: () => void;
 }) {
+  // v653：預約紀錄=未來要進行的；已完成=過去 + 已取消 + 已完成
+  const todayStr = useMemo(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }), []);
   const filtered = useMemo(() => {
-    if (filter === "completed") {
-      return bookings.filter((b) => b.status === "completed");
-    }
-    return bookings;
-  }, [bookings, filter]);
+    if (filter === "completed") return bookings.filter((b) => isBookingDone(b, todayStr));
+    return bookings.filter((b) => !isBookingDone(b, todayStr)); // 只留未來要進行的
+  }, [bookings, filter, todayStr]);
 
   if (filtered.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
         {filter === "completed"
-          ? "尚未完成任何潛水紀錄"
-          : "尚無預約紀錄"}
+          ? "尚無已結束 / 已取消的紀錄"
+          : "目前沒有即將進行的預約"}
       </div>
     );
   }
