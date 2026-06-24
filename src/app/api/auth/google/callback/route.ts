@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const roles = u.roles && u.roles.length > 0 ? u.roles : [u.role];
   const adminJwt = await createAdminWebJwt(u.lineUserId);
   const u64 = Buffer.from(JSON.stringify({ lineUserId: u.lineUserId, displayName: u.displayName, realName: u.realName, effectiveRoles: roles })).toString("base64url");
-  await logAudit({ actorId: u.lineUserId, actorName: u.realName ?? u.displayName ?? undefined, action: "auth.login", targetType: "user", targetId: u.lineUserId, targetLabel: u.realName ?? u.displayName ?? u.lineUserId, metadata: { channel: "web_admin", method: "google" } });
+  await logAudit({ actorId: u.lineUserId, actorName: u.realName ?? u.displayName ?? undefined, action: "auth.login.google", targetType: "user", targetId: u.lineUserId, targetLabel: u.realName ?? u.displayName ?? u.lineUserId, metadata: { channel: "web_admin", method: "google" } });
 
   return clearCookie(NextResponse.redirect(`${base}/admin/login#at=${adminJwt}&u=${u64}`));
 }

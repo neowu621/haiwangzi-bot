@@ -38,8 +38,12 @@ interface ApiResponse {
 // 操作類型的中文說明
 const ACTION_LABELS: Record<string, string> = {
   "auth.login": "🔑 登入",
+  "auth.login.web": "🔑 後台密碼登入",
+  "auth.login.google": "🔑 Google 登入",
+  "auth.login.line": "🔑 LINE 登入",
   "auth.password_set": "🔐 設定密碼",
   "auth.password_reset": "🔄 重設密碼",
+  "auth.password_force_reset": "🔄 強制重設密碼",
   "booking.update": "📝 修改訂單",
   "booking.cancel": "❌ 取消訂單",
   "booking.delete": "🗑️ 刪除訂單",

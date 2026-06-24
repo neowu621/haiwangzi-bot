@@ -201,11 +201,7 @@ export default function TripBookingPage({
       method: "POST",
       body: JSON.stringify({ refType: "trip", refId: tripId }),
     }).catch(() => { /* silent */ });
-    // v335：客戶產品瀏覽紀錄（30 分鐘 dedupe，後台「前台活動」可看）
-    void liff.fetchWithAuth("/api/customer-activity/view", {
-      method: "POST",
-      body: JSON.stringify({ type: "daily", id: tripId }),
-    }).catch(() => { /* silent */ });
+    // v647：移除 customer.view.product 記錄點（純瀏覽分析，不需稽核）
     // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripId, liff.ready]);

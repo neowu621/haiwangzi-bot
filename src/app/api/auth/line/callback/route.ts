@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     }
     const adminJwt = await createAdminWebJwt(verified.lineUserId);
     const u64 = Buffer.from(JSON.stringify({ lineUserId: u.lineUserId, displayName: u.displayName, realName: u.realName, effectiveRoles: roles })).toString("base64url");
-    await logAudit({ actorId: u.lineUserId, actorName: u.realName ?? u.displayName ?? undefined, action: "auth.login", targetType: "user", targetId: u.lineUserId, targetLabel: u.realName ?? u.displayName ?? u.lineUserId, metadata: { channel: "web_admin", method: "line" } });
+    await logAudit({ actorId: u.lineUserId, actorName: u.realName ?? u.displayName ?? undefined, action: "auth.login.line", targetType: "user", targetId: u.lineUserId, targetLabel: u.realName ?? u.displayName ?? u.lineUserId, metadata: { channel: "web_admin", method: "line" } });
     return clearOauthCookies(NextResponse.redirect(`${base}/admin/login#at=${adminJwt}&u=${u64}`));
   }
 

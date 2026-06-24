@@ -95,11 +95,7 @@ export default function TourDetailPage({
       .fetchWithAuth<TourDetail>(`/api/tours/${packageId}`)
       .then(setTour)
       .catch((e) => setError(e.message));
-    // v335：客戶產品瀏覽紀錄
-    void liff.fetchWithAuth("/api/customer-activity/view", {
-      method: "POST",
-      body: JSON.stringify({ type: "tour", id: packageId }),
-    }).catch(() => { /* silent */ });
+    // v647：移除 customer.view.product 記錄點（純瀏覽分析，不需稽核）
     fetch("/api/config")
       .then((r) => r.json())
       .then((c) => {

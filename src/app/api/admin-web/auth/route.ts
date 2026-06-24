@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
   await logAudit({
     actorId: user.lineUserId,
     actorName: user.realName ?? user.displayName ?? undefined,
-    action: "auth.login",
+    action: "auth.login.web", // v647：密碼登入後台
     targetType: "user",
     targetId: user.lineUserId,
     targetLabel: user.realName ?? user.displayName ?? user.lineUserId,
