@@ -139,7 +139,7 @@ export default function ToursPage() {
   );
   const [loading, setLoading] = useState(() => getCached(TOURS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "open" | "cancelled">("all");
+  const [filter, setFilter] = useState<"all" | "open" | "completed" | "cancelled">("all");
   const [destFilter, setDestFilter] = useState<"all" | "taiwan" | "overseas">("all");
   const [keyword, setKeyword] = useState("");
   // v194：日期排序
@@ -646,7 +646,8 @@ export default function ToursPage() {
       .filter((t) => {
         if (filter === "all") return true;
         if (filter === "cancelled") return t.status === "cancelled";
-        return t.status !== "cancelled" && t.dateEnd.slice(0, 10) >= todayStr; // open
+        if (filter === "completed") return t.status !== "cancelled" && t.dateEnd.slice(0, 10) < todayStr; // v629：已完成 = 未取消且結束日已過
+        return t.status !== "cancelled" && t.dateEnd.slice(0, 10) >= todayStr; // open 進行中
       })
       .filter((t) => {
         if (destFilter === "all") return true;
@@ -708,6 +709,7 @@ export default function ToursPage() {
               <Seg value={filter} onChange={setFilter} options={[
                 { v: "all", l: "全狀態" },
                 { v: "open", l: "進行中" },
+                { v: "completed", l: "已完成" },
                 { v: "cancelled", l: "已取消" },
               ]} />
               <div style={{ flex: 1, minWidth: 140 }}>
