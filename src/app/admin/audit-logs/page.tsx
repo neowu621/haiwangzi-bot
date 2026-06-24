@@ -65,6 +65,20 @@ const ACTION_LABELS: Record<string, string> = {
   "vip_tiers.update": "⭐ 修改 VIP 設定",
   "vip_tiers.reset": "🔄 還原 VIP 預設",
   "broadcast.send": "📣 群發通知",
+  // v644：會員前台活動（customer.*）友善名稱
+  "customer.login": "🔑 會員登入/開啟 App",
+  "customer.view.product": "👀 瀏覽商品",
+  "customer.booking.create": "🆕 會員下單",
+  "customer.booking.update": "📝 會員改單",
+  "customer.booking.cancel": "❌ 會員取消預約",
+  "customer.payment_proof.upload": "🧾 上傳付款憑證",
+  "customer.profile.update": "👤 會員更新個資",
+  "customer.email.verify": "✉️ Email 驗證完成",
+  "customer.refund.request": "💸 會員申請退款",
+  "customer.refund.decide": "✅ 會員回覆退款方案",
+  "customer.wish.create": "🌟 會員許願",
+  "customer.wish.cancel": "🚫 會員取消願望",
+  "customer.wish.reply": "💬 會員回覆願望單",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {

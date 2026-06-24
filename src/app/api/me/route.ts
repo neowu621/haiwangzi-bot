@@ -54,10 +54,13 @@ export async function GET(req: NextRequest) {
     active: Boolean(cfg?.staffTankEnabled) && meRoles.some((r) => r === "coach" || r === "assistant"),
     price: cfg?.staffTankPrice ?? 0,
   };
+  // v644：/api/me 每次都會被呼叫（LiffShell / 個人中心 / 彈窗…），登入紀錄節流為每人 30 分鐘最多一筆，
+  //   避免 audit_log 被同一 session 的重複登入灌爆，並降低寫入負載。
   void logCustomerActivity({
     req,
     user: auth.user,
     action: "customer.login",
+    throttleMinutes: 30,
   });
   return NextResponse.json({
     lineUserId: u.lineUserId,

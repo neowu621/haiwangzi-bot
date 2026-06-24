@@ -34,6 +34,8 @@ export interface CustomerActivityParams {
   targetId?: string;
   targetLabel?: string;      // 顯示用 (booking.code 等)
   metadata?: Record<string, unknown>;
+  // v644：降噪 —— 同一 actor+action 在此分鐘數內已記過就跳過（如 customer.login 每次 /api/me 都打）
+  throttleMinutes?: number;
 }
 
 /** 從 request headers 抓出 client IP（兼顧 proxy / Zeabur） */
@@ -60,6 +62,19 @@ export function extractUserAgent(req: NextRequest | Request): string | null {
 
 export async function logCustomerActivity(params: CustomerActivityParams): Promise<void> {
   try {
+    // v644：節流。同一 actor + action 在 throttleMinutes 內已記過 → 跳過，避免高頻動作（如登入）灌爆 audit_log。
+    if (params.throttleMinutes && params.throttleMinutes > 0 && params.user?.lineUserId) {
+      const since = new Date(Date.now() - params.throttleMinutes * 60_000);
+      const recent = await prisma.auditLog.findFirst({
+        where: {
+          actorId: params.user.lineUserId,
+          action: params.action,
+          createdAt: { gte: since },
+        },
+        select: { id: true },
+      });
+      if (recent) return; // 近期已記過，跳過
+    }
     const ip = extractIp(params.req);
     const ua = extractUserAgent(params.req);
     await prisma.auditLog.create({
