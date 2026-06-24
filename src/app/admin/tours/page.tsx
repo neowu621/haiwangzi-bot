@@ -139,7 +139,7 @@ export default function ToursPage() {
   );
   const [loading, setLoading] = useState(() => getCached(TOURS_URL) === undefined);
   const [err, setErr] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "open" | "completed" | "cancelled">("all");
+  const [filter, setFilter] = useState<"all" | "open" | "completed" | "cancelled">("open");
   const [destFilter, setDestFilter] = useState<"all" | "taiwan" | "overseas">("all");
   const [keyword, setKeyword] = useState("");
   // v194：日期排序
