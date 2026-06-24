@@ -84,6 +84,17 @@ interface Tour {
 
 const today = new Date().toISOString().split("T")[0];
 
+// v632：依出發日/結束日自動算「N天M夜」（含頭尾兩天）。任一未填回空字串。
+function durFromDates(ds: string, de: string): string {
+  if (!ds || !de) return "";
+  const a = new Date(`${ds.split("T")[0]}T00:00:00`);
+  const b = new Date(`${de.split("T")[0]}T00:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return "";
+  const days = Math.round((b.getTime() - a.getTime()) / 86400000) + 1;
+  if (days < 1) return "";
+  return `${days}天${days - 1}夜`;
+}
+
 // v347：尾款截止日預設 = 出發日 − 30 天
 function startMinusDays(dateStr: string, days: number): string {
   if (!dateStr) return "";
@@ -289,7 +300,7 @@ export default function ToursPage() {
       destination: t.destination,
       dateStart: t.dateStart.split("T")[0],
       dateEnd: t.dateEnd.split("T")[0],
-      durationLabel: t.durationLabel ?? "",
+      durationLabel: durFromDates(t.dateStart.split("T")[0], t.dateEnd.split("T")[0]) || (t.durationLabel ?? ""),
       roomLabel: t.roomLabel ?? "",
       basePrice: t.basePrice,
       deposit: t.deposit,
@@ -746,8 +757,7 @@ export default function ToursPage() {
                       </th>
                       <th style={thStyle}>行程</th>
                       <th style={{ ...thStyle, textAlign: "right" }}>已報/可接受</th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>價格</th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>累計費用</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>價格 / 訂金</th>
                       <th style={thStyle}></th>
                     </tr>
                   </thead>
@@ -826,21 +836,15 @@ export default function ToursPage() {
                                 / {t.capacity ?? "∞"}
                               </div>
                             </td>
-                            {/* 價格 */}
+                            {/* 價格 / 訂金（v632：移除累計費用欄，改顯示訂金）*/}
                             <td className="px-2 py-2 align-top whitespace-nowrap text-right">
                               <span className="font-mono text-[17px] font-bold tabular-nums"
                                 style={{ color: t.destination === "other" ? CORAL : AQUA }}>
                                 {t.basePrice.toLocaleString()}
                               </span>
-                            </td>
-                            {/* 累計費用（總應收 + 實收） */}
-                            <td className="px-2 py-2 align-top whitespace-nowrap text-right">
-                              <div className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: "#1B2733" }}>
-                                NT$ {(t.totalRevenue ?? 0).toLocaleString()}
-                              </div>
-                              <div className="text-[10px] text-slate-500 tabular-nums">
-                                實收 {(t.totalPaid ?? 0).toLocaleString()}
-                              </div>
+                              {t.deposit ? (
+                                <div className="text-[11px] text-slate-500 tabular-nums">訂金 {t.deposit.toLocaleString()}</div>
+                              ) : null}
                             </td>
                             {/* actions */}
                             <td className="px-2 py-2 align-top" onClick={(e) => e.stopPropagation()}>
@@ -957,13 +961,20 @@ export default function ToursPage() {
                       // v347：出發日變更時，尾款截止日若為空（或仍等於舊出發日−30）自動帶入新出發日−30
                       const autoFinal = startMinusDays(ds, 30);
                       const keepFinal = f.finalDeadline && f.finalDeadline !== startMinusDays(f.dateStart, 30);
-                      return { ...f, dateStart: ds, finalDeadline: keepFinal ? f.finalDeadline : autoFinal };
+                      // v632：結束日不可早於出發日 → 自動頂上；天數標籤自動重算
+                      const de = f.dateEnd && f.dateEnd < ds ? ds : f.dateEnd;
+                      return { ...f, dateStart: ds, dateEnd: de, durationLabel: durFromDates(ds, de), finalDeadline: keepFinal ? f.finalDeadline : autoFinal };
                     })} style={inputStyle} /></Field>
-                  <Field label="結束日"><input type="date" value={form.dateEnd}
-                    onChange={(e) => setForm((f) => ({ ...f, dateEnd: e.target.value }))} style={inputStyle} /></Field>
-                  <Field label="天數標籤"><input value={form.durationLabel}
-                    onChange={(e) => setForm((f) => ({ ...f, durationLabel: e.target.value }))}
-                    placeholder="4天3夜" style={inputStyle} /></Field>
+                  <Field label="結束日"><input type="date" value={form.dateEnd} min={form.dateStart || undefined}
+                    onChange={(e) => setForm((f) => {
+                      // v632：結束日釘在出發日之後；天數標籤自動算
+                      const de = f.dateStart && e.target.value < f.dateStart ? f.dateStart : e.target.value;
+                      return { ...f, dateEnd: de, durationLabel: durFromDates(f.dateStart, de) };
+                    })} style={inputStyle} /></Field>
+                  <Field label="天數標籤"><input value={form.durationLabel} readOnly
+                    placeholder="填出發/結束日自動產生"
+                    title="依出發日與結束日自動計算，不需手動填寫"
+                    style={{ ...inputStyle, background: "var(--muted)", color: "var(--muted-foreground)", cursor: "default" }} /></Field>
                 </Row3>
                 <Field label="住宿">
                   <input value={form.roomLabel} onChange={(e) => setForm((f) => ({ ...f, roomLabel: e.target.value }))}
