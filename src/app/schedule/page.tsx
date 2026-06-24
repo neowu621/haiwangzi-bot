@@ -38,7 +38,8 @@ export default async function SchedulePage() {
       ? prisma.booking.groupBy({ by: ["refId"], where: { refId: { in: tripIds }, type: "daily", status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] } }, _sum: { participants: true } }).catch(() => [])
       : Promise.resolve([]),
     prisma.diveSite.findMany({ where: { id: { in: Array.from(new Set(trips.flatMap((t) => t.diveSiteIds))) } } }).catch(() => []),
-    prisma.tourPackage.findMany({ where: { status: { in: ["open", "full"] }, dateStart: { lte: lastD }, dateEnd: { gte: todayD } }, orderBy: { dateStart: "asc" } }).catch(() => []),
+    // v635：潛旅多為未來月份開團，不綁「本月」，顯示所有尚未結束的開放團
+    prisma.tourPackage.findMany({ where: { status: { in: ["open", "full"] }, dateEnd: { gte: todayD } }, orderBy: { dateStart: "asc" } }).catch(() => []),
   ]);
   const bookedMap = new Map(bookings.map((b) => [b.refId, b._sum.participants ?? 0]));
   const siteMap = new Map(sites.map((s) => [s.id, s.name]));
@@ -83,7 +84,7 @@ export default async function SchedulePage() {
           )}
           {tours.length > 0 && (
             <>
-              <h2 style={{ ...hStyle, marginTop: 28 }}>⛴️ 潛旅 Dive Trip</h2>
+              <h2 style={{ ...hStyle, marginTop: 28 }}>⛴️ 潛旅 Dive Trip　<span style={{ fontSize: 12.5, fontWeight: 700, color: "#9aabae" }}>近期開團</span></h2>
               {tours.map((t) => {
                 const a = availLabel(t.capacity, tourBookedMap.get(t.id) ?? 0);
                 const range = +t.dateStart === +t.dateEnd ? md(t.dateStart) : `${md(t.dateStart)}–${md(t.dateEnd)}`;

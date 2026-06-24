@@ -248,8 +248,8 @@ export default function ToursPage() {
       for (const t of open) {
         const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10) ? fmtMD(t.dateStart) : `${fmtMD(t.dateStart)}–${fmtMD(t.dateEnd)}`;
         const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
-        const remain = t.capacity == null ? "" : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
-        lines.push(`${range} ${t.title}${dur}${remain}`);
+        // v635：Dump 不顯示剩餘人數
+        lines.push(`${range} ${t.title}${dur}`);
         const sub: string[] = [];
         if (t.deposit) sub.push(`訂金 $${t.deposit.toLocaleString()}/人`);
         if (t.basePrice) sub.push(`團費 $${t.basePrice.toLocaleString()}/人`);
