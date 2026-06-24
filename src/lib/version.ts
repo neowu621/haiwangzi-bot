@@ -1,3 +1,4 @@
 // 規則: YYYYMMDD_NN, NN 全域累計不歸零 (參考 ~/.claude/CLAUDE.md)
 // 每次 push GitHub / 部署 Zeabur 前必須 bump
 export const APP_VERSION = "20260619_634";
+// rebuild trigger: 20260624 (前次 build 平台暫時性失敗，重新觸發)
