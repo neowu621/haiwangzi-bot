@@ -15,6 +15,8 @@ export const metadata: Metadata = {
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
 const md = (d: Date) => `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
 const wd = (d: Date) => WD[d.getUTCDay()];
+// v637：手機會員登入/預約 LIFF（提醒用手機登入預約）
+const LIFF_BOOK_URL = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
 export default async function SchedulePage() {
   // 台北「今天」→ 本月底
@@ -70,6 +72,15 @@ export default async function SchedulePage() {
         </Card>
       ) : (
         <>
+          {/* v637：預約方式提醒 —— 用手機 LINE 登入會員預約（取代每列重複的 LINE 按鈕） */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#eafaf3", border: "1px solid #bfe9d4", borderRadius: 14, padding: "14px 18px", marginBottom: 20 }}>
+            <div style={{ flex: 1, minWidth: 200, fontSize: 13.5, lineHeight: 1.7, color: "#0a5c3e" }}>
+              📱 <b>預約請用手機操作</b>：在手機上開啟 LINE 登入會員，即可線上預約與查看名額；電腦版請改用手機，或加 LINE 由小編協助。
+            </div>
+            <a href={LIFF_BOOK_URL} target="_blank" rel="noopener" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "10px 18px", borderRadius: 999 }}>
+              <LineIcon s={16} />手機登入預約
+            </a>
+          </div>
           {/* v636：左右兩欄 —— 左日潛 / 右潛旅；窄螢幕(手機)自動堆疊成單欄 */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 22, alignItems: "start" }}>
             {/* 左：日潛 */}
@@ -94,7 +105,7 @@ export default async function SchedulePage() {
                 tours.map((t) => {
                   const a = availLabel(t.capacity, tourBookedMap.get(t.id) ?? 0);
                   const range = +t.dateStart === +t.dateEnd ? md(t.dateStart) : `${md(t.dateStart)}–${md(t.dateEnd)}`;
-                  return <Row key={t.id} date={range} wd={wd(t.dateStart)} title={t.title} meta={t.durationLabel ?? ""} avail={a} label="LINE 報名" />;
+                  return <Row key={t.id} date={range} wd={wd(t.dateStart)} title={t.title} meta={t.durationLabel ?? ""} avail={a} />;
                 })
               ) : (
                 <EmptyCol text="近期潛旅規劃中，加 LINE 搶先收到開團通知。" />
@@ -119,7 +130,7 @@ function EmptyCol({ text }: { text: string }) {
   );
 }
 
-function Row({ date, wd, title, meta, avail, label = "LINE 預約" }: { date: string; wd: string; title: string; meta: string; avail: { t: string; ok: boolean }; label?: string }) {
+function Row({ date, wd, title, meta, avail }: { date: string; wd: string; title: string; meta: string; avail: { t: string; ok: boolean } }) {
   return (
     <Card style={{ marginBottom: 10, opacity: avail.ok ? 1 : 0.6 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -131,10 +142,8 @@ function Row({ date, wd, title, meta, avail, label = "LINE 預約" }: { date: st
           <div style={{ fontSize: 15.5, fontWeight: 800, color: "#1A2330" }}>{title}</div>
           {meta ? <div style={{ fontSize: 12.5, color: "#7c9296" }}>{meta}</div> : null}
         </div>
+        {/* v637：移除每列的 LINE 按鈕，改由上方「手機登入預約」提醒統一導引；此處只留名額標 */}
         <span style={{ flexShrink: 0, background: avail.ok ? "#e3f6ec" : "#f1eef0", color: avail.ok ? "#0a7d4f" : "#9b8a92", fontWeight: 800, fontSize: 12.5, padding: "4px 11px", borderRadius: 999 }}>{avail.t}</span>
-        {avail.ok ? (
-          <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 13, padding: "8px 14px", borderRadius: 9 }}><LineIcon s={15} />{label}</a>
-        ) : null}
       </div>
     </Card>
   );
