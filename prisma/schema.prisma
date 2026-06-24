@@ -177,6 +177,8 @@ model User {
   code                      String?    @unique @map("code") @db.VarChar(12)
   createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz
   lastActiveAt              DateTime   @default(now()) @map("last_active_at") @db.Timestamptz
+  // v648：登入紀錄「原子搶位」用 —— 防止 App 載入時多個 /api/me 並發各寫一筆 customer.login
+  lastLoginLogAt            DateTime?  @map("last_login_log_at") @db.Timestamptz
   // 軟刪除：設值後使用者無法登入 LIFF，但訂單/付款紀錄保留以便查帳
   // null = 正常會員；DateTime = 已刪除的時間
   deletedAt                 DateTime?  @map("deleted_at") @db.Timestamptz

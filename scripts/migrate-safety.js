@@ -15,6 +15,8 @@ const PATCHES = [
   // ── users ─────────────────────────────────────────────────────────
   // v84: 新增 users.code 欄位（會員編號）
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
+  // v648：登入紀錄原子搶位欄位
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_log_at TIMESTAMPTZ`,
   // v112: 軟刪除欄位
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(64)`,

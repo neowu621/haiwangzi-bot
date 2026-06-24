@@ -54,14 +54,28 @@ export async function GET(req: NextRequest) {
     active: Boolean(cfg?.staffTankEnabled) && meRoles.some((r) => r === "coach" || r === "assistant"),
     price: cfg?.staffTankPrice ?? 0,
   };
-  // v644：/api/me 每次都會被呼叫（LiffShell / 個人中心 / 彈窗…），登入紀錄節流為每人 30 分鐘最多一筆，
-  //   避免 audit_log 被同一 session 的重複登入灌爆，並降低寫入負載。
-  void logCustomerActivity({
-    req,
-    user: auth.user,
-    action: "customer.login",
-    throttleMinutes: 30,
-  });
+  // v648：登入紀錄「原子搶位」防並發重複。
+  //   App 載入時多個元件（LiffShell / 個人中心 / 未讀彈窗…）幾乎同時打 /api/me，
+  //   舊的 check-then-insert 節流會競態 → 同一毫秒各寫一筆。改用 updateMany 條件更新：
+  //   只有第一個並發請求能把 lastLoginLogAt 從「>30分前/null」更新成現在（row lock 序列化），
+  //   搶到的人（count=1）才記一筆，其餘 count=0 直接跳過。
+  void (async () => {
+    try {
+      const since = new Date(Date.now() - 30 * 60_000);
+      const claim = await prisma.user.updateMany({
+        where: {
+          lineUserId: auth.user.lineUserId,
+          OR: [{ lastLoginLogAt: null }, { lastLoginLogAt: { lt: since } }],
+        },
+        data: { lastLoginLogAt: new Date() },
+      });
+      if (claim.count > 0) {
+        await logCustomerActivity({ req, user: auth.user, action: "customer.login" });
+      }
+    } catch (e) {
+      console.error("[me login-log]", e);
+    }
+  })();
   return NextResponse.json({
     lineUserId: u.lineUserId,
     displayName: u.displayName,
