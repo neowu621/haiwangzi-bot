@@ -116,6 +116,8 @@ interface CustomerOption {
   phone: string | null;
   role?: string;
   effectiveRoles?: string[];
+  blacklisted?: boolean;
+  deletedAt?: string | null;
 }
 
 interface TripOption {
@@ -322,24 +324,33 @@ export default function BroadcastPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, tourRefId]);
 
-  // v649：預估收件人數 —— 把所有選取群組的人用 lineUserId 合併去重
+  // v651：軟刪除 / 黑名單 一律不寄（與後端一致）
+  const blockedIds = useMemo(
+    () => new Set(allUsers.filter((u) => u.blacklisted || u.deletedAt).map((u) => u.lineUserId)),
+    [allUsers],
+  );
+
+  // v649：預估收件人數 —— 把所有選取群組的人用 lineUserId 合併去重（v651：扣掉軟刪除/黑名單）
   const recipientCount = useMemo(() => {
     const ids = new Set<string>();
     const roleHas = (u: CustomerOption, rs: string[]) =>
       rs.some((r) => u.role === r || u.effectiveRoles?.includes(r as never));
+    const sendable = (u: CustomerOption) => !u.blacklisted && !u.deletedAt;
     if (sel("all")) {
-      allUsers.forEach((u) => ids.add(u.lineUserId));
+      allUsers.filter(sendable).forEach((u) => ids.add(u.lineUserId));
     } else {
-      if (sel("customers")) allUsers.filter((u) => roleHas(u, ["customer"])).forEach((u) => ids.add(u.lineUserId));
-      if (sel("staff")) allUsers.filter((u) => roleHas(u, ["coach", "assistant"])).forEach((u) => ids.add(u.lineUserId));
-      if (sel("mgmt")) allUsers.filter((u) => roleHas(u, ["boss", "admin", "it"])).forEach((u) => ids.add(u.lineUserId));
+      if (sel("customers")) allUsers.filter((u) => sendable(u) && roleHas(u, ["customer"])).forEach((u) => ids.add(u.lineUserId));
+      if (sel("staff")) allUsers.filter((u) => sendable(u) && roleHas(u, ["coach", "assistant"])).forEach((u) => ids.add(u.lineUserId));
+      if (sel("mgmt")) allUsers.filter((u) => sendable(u) && roleHas(u, ["boss", "admin", "it"])).forEach((u) => ids.add(u.lineUserId));
     }
     if (sel("single") && singleUserId) ids.add(singleUserId);
     if (sel("daily")) dailyPartIds.forEach((id) => ids.add(id));
     if (sel("tour")) tourPartIds.forEach((id) => ids.add(id));
+    // 扣掉軟刪除/黑名單（涵蓋單一客戶與場次參加者來源）
+    blockedIds.forEach((id) => ids.delete(id));
     return ids.size;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, allUsers, singleUserId, dailyPartIds, tourPartIds]);
+  }, [selected, allUsers, singleUserId, dailyPartIds, tourPartIds, blockedIds]);
 
   // 選 template 自動填預設
   function selectTemplate(key: string) {

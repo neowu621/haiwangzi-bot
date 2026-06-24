@@ -95,9 +95,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 拿完整 user 物件（後面 LINE / Email 都要用）；findMany by 唯一 lineUserId → 自然去重
-  const targets = await prisma.user.findMany({ where: { lineUserId: { in: Array.from(idSet) } } });
+  // v651：最終一律排除「軟刪除(deletedAt) + 黑名單(blacklisted)」—— 不論來自哪個對象群組都不寄
+  const targets = await prisma.user.findMany({
+    where: { lineUserId: { in: Array.from(idSet) }, deletedAt: null, blacklisted: false },
+  });
   if (targets.length === 0) {
-    return NextResponse.json({ ok: true, delivered: 0, emailed: 0 });
+    return NextResponse.json({ ok: true, delivered: 0, emailed: 0, note: "符合對象都被排除（軟刪除/黑名單）" });
   }
 
   const result: {
