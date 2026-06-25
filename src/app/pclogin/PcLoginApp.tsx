@@ -85,6 +85,7 @@ interface MyBooking {
   status: string;
   paymentStatus: string;
   totalAmount: number;
+  depositAmount?: number; // v672：訂金金額（旅潛）
   paidAmount: number;
   participants: number;
   createdAt: string;
@@ -96,6 +97,7 @@ interface MyBooking {
     dateStart?: string;
     dateEnd?: string;
     activityNote?: string | null; // v664：活動提醒（客戶可見）
+    finalDeadline?: string | null; // v672：尾款截止日（旅潛）
   } | null;
 }
 
@@ -1513,9 +1515,20 @@ function MyOrders() {
             <Tag>{PAY_ZH[b.paymentStatus] ?? b.paymentStatus}</Tag>
           </div>
         )}
-        <div style={{ textAlign: "right", minWidth: 110 }}>
+        <div style={{ textAlign: "right", minWidth: 130 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: cancelled ? C.mute : C.deep }}>{ntd(b.totalAmount)}</div>
-          {!cancelled && unpaid > 0 && <div style={{ fontSize: 12, color: C.coral }}>未付 {ntd(unpaid)}</div>}
+          {/* v672：旅潛訂金/尾款兩段式 → 拆「已付訂金 / 尾款(截止日)」；其餘維持「未付」 */}
+          {!cancelled && b.type === "tour" && b.paidAmount > 0 && unpaid > 0 ? (
+            <div style={{ marginTop: 3, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 11.5, color: "#0a7d4f" }}>已付訂金 {ntd(b.paidAmount)}</div>
+              <div style={{ fontSize: 12, color: C.coral, fontWeight: 700 }}>
+                尾款 {ntd(unpaid)}
+                {b.ref?.finalDeadline && <span style={{ fontWeight: 400, color: C.mute }}>（截止 {b.ref.finalDeadline}）</span>}
+              </div>
+            </div>
+          ) : (
+            !cancelled && unpaid > 0 && <div style={{ fontSize: 12, color: C.coral }}>未付 {ntd(unpaid)}</div>
+          )}
         </div>
         {canPay && (
           <a href={b.payLinkToken ? `/pay/${b.id}?t=${encodeURIComponent(b.payLinkToken)}` : `/pay/${b.id}`} style={{ background: C.coral, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, textDecoration: "none", whiteSpace: "nowrap" }}>

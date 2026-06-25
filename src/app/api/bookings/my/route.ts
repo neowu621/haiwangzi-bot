@@ -113,6 +113,7 @@ export async function GET(req: NextRequest) {
                 dateEnd: (ref as typeof tours[number]).dateEnd.toISOString().slice(0, 10),
                 sites: refSites,
                 activityNote: (ref as typeof tours[number]).activityNote ?? null, // v664
+                finalDeadline: (ref as typeof tours[number]).finalDeadline?.toISOString().slice(0, 10) ?? null, // v672：尾款截止日
               }
           : null,
         paymentProofs: await Promise.all(
