@@ -157,14 +157,26 @@ export async function POST(
   }
 
   // v473：站內通知所有管理者（可在 LIFF 個人中心確認）
-  notifyAdmins({
-    templateKey: "payment_proof_uploaded",
-    title: "💳 新付款證明待核對",
-    body: `訂單 ${id.slice(0, 8)} 上傳了${data.type === "deposit" ? "訂金" : data.type === "final" ? "尾款" : ""}付款證明，金額 NT$${data.amount}、後5碼 ${data.last5 ?? "—"}，點開即可核對。`,
-    // v619：深連結到「這一筆」的核對頁（中轉頁依環境導手機 LIFF / 瀏覽器後台），不再丟到整頁列表。
-    linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/verify-proof/${proof.id}`,
-    icon: "💳",
-  });
+  // v619：深連結到「這一筆」的核對頁（中轉頁依環境導手機 LIFF / 瀏覽器後台），不再丟到整頁列表。
+  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/verify-proof/${proof.id}`;
+  const typeZh = data.type === "deposit" ? "訂金" : data.type === "final" ? "尾款" : "";
+  // v665：訂金 → 走可編輯模板「老闆訂金[確認中]」(deposit_pending)，標題可在訊息模板頁改
+  void (async () => {
+    let templateKey = "payment_proof_uploaded";
+    let title = "💳 新付款證明待核對";
+    if (data.type === "deposit") {
+      templateKey = "deposit_pending";
+      const dp = await prisma.messageTemplate.findUnique({ where: { key: "deposit_pending" } }).catch(() => null);
+      title = dp?.title || "💳 訂金待確認";
+    }
+    notifyAdmins({
+      templateKey,
+      title,
+      body: `訂單 ${id.slice(0, 8)} 上傳了${typeZh}付款證明，金額 NT$${data.amount}、後5碼 ${data.last5 ?? "—"}，點開即可核對。`,
+      linkUrl: verifyUrl,
+      icon: "💳",
+    });
+  })();
 
   // v300：log + LINE 通知都改 fire-and-forget，不擋 response
   try {
@@ -203,10 +215,28 @@ export async function POST(
         }).catch(() => null);
         const customerName = u?.realName ?? u?.displayName ?? "客戶";
         const methodLabel = { bank: "🏦 轉帳", linepay: "💚 LINE Pay", other: "📝 其他" }[data.paymentMethod];
-        const text = `💰 待確認付款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n方式：${methodLabel}\n金額：NT$ ${data.amount.toLocaleString()}\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin/bookings?status=awaiting_verify`;
+        // v665：訂金 → 推可編輯的「老闆訂金[確認中]」Flex；尾款/退款維持原文字推播
+        let message: import("@line/bot-sdk").messagingApi.Message;
+        if (data.type === "deposit") {
+          const { buildFlexByKeyAsync } = await import("@/lib/flex");
+          const tour = booking.type === "tour"
+            ? await prisma.tourPackage.findUnique({ where: { id: booking.refId }, select: { title: true } }).catch(() => null)
+            : null;
+          message = await buildFlexByKeyAsync("deposit_pending", {
+            customerName,
+            tourTitle: tour?.title ?? "潛旅訂單",
+            amount: data.amount,
+            last5: data.last5 ?? "",
+            method: methodLabel,
+            url: verifyUrl,
+          }, "有訂金待確認");
+        } else {
+          const text = `💰 待確認付款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n方式：${methodLabel}\n金額：NT$ ${data.amount.toLocaleString()}\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin/bookings?status=awaiting_verify`;
+          message = { type: "text", text };
+        }
         for (const a of admins) {
           try {
-            await lineClient.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text }] });
+            await lineClient.pushMessage({ to: a.lineUserId, messages: [message] });
           } catch (e) {
             console.error("[push admin payment-proof]", e);
           }

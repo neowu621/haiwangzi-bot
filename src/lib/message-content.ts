@@ -51,6 +51,11 @@ export const MSG_EDITABLE_FIELDS: Record<
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "上傳轉帳截圖" },
     { key: "altText", label: "通知列文字", defaultValue: "請繳訂金" },
   ],
+  deposit_pending: [
+    { key: "title", label: "標題", defaultValue: "💳 訂金待確認" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "前往核對" },
+    { key: "altText", label: "通知列文字", defaultValue: "有訂金待確認" },
+  ],
   deposit_confirm: [
     { key: "title", label: "標題", defaultValue: "✅ 訂金已收到" },
     { key: "subtitle", label: "副標", defaultValue: "謝謝您的繳費，位置已保留 🎉" },
@@ -159,7 +164,7 @@ export function msgField(key: string, field: MsgFieldKey, override?: MsgOverride
 
 // ── 模板固定裝飾（LINE flex / Email / 站內 三通道共用，與 flex builder 同步）──
 export const HERO_EMOJI: Record<string, string> = {
-  welcome: "🌊", booking_confirm: "✅", deposit_notice: "💰", deposit_confirm: "✅",
+  welcome: "🌊", booking_confirm: "✅", deposit_notice: "💰", deposit_pending: "💳", deposit_confirm: "✅",
   final_reminder: "⏰", trip_guide: "📘", d1_reminder: "🔱", weather_cancel: "🌊",
   overcap_alert: "⚠️", admin_weekly: "📊", attendance_confirmed: "🐠",
   first_order_reward_grant: "🎁", refund_request: "💸", payment_reject: "🚫",
@@ -198,6 +203,7 @@ export const MSG_SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
   booking_confirm: { name: "王小明", date: "2026-06-14", time: "08:30", site: "龍洞灣 體驗潛水", total: 2400, url: `${SAMPLE_BASE}/liff/my` },
   d1_reminder: { date: "2026-06-14", time: "08:30", site: "深澳", weather: "晴時多雲", wave: "0.5 m", water: "27°C", vis: "8-12 m", gather: "深澳漁港停車場 07:50" },
   deposit_notice: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", deposit: 8000, deadline: "2026-09-01", bankName: "玉山銀行（808）", bankAccount: "0163-979-251023", holder: "汪○○", refCode: "HW-2409", url: `${SAMPLE_BASE}/liff/my` },
+  deposit_pending: { customerName: "王小明", tourTitle: "蘭嶼四天三夜潛旅（中秋）", amount: 8000, last5: "12345", method: "🏦 轉帳", url: `${SAMPLE_BASE}/admin/bookings?status=awaiting_verify` },
   deposit_confirm: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", paid: 8000, remaining: 9000, finalDeadline: "2026-09-15" },
   final_reminder: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", remaining: 9000, deadline: "2026-09-15", daysLeft: 3, bankAccount: "0163-979-251023", url: `${SAMPLE_BASE}/liff/my` },
   trip_guide: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", gather: "後壁湖碼頭 07:00", transport: "藍鯨號客輪", hotel: "蘭嶼海景民宿", leader: "汪教練", phone: "0988-346-634" },
@@ -244,6 +250,8 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
       return `旅遊團：${s(p.tourTitle)}\n應繳訂金：NT$ ${m(p.deposit)}\n繳費截止：${s(p.deadline)}\n匯款：${s(p.bankName)} ${s(p.bankAccount)}（戶名 ${s(p.holder)}）\n備註碼：${s(p.refCode)}`;
     case "deposit_confirm":
       return `旅遊團：${s(p.tourTitle)}\n已收訂金：NT$ ${m(p.paid)}\n尾款餘額：NT$ ${m(p.remaining)}\n尾款截止：${s(p.finalDeadline)}`;
+    case "deposit_pending":
+      return `客戶：${s(p.customerName)}\n旅遊團：${s(p.tourTitle)}\n上傳訂金：NT$ ${m(p.amount)}${p.last5 ? `\n帳號後5碼：${s(p.last5)}` : ""}${p.method ? `\n付款方式：${s(p.method)}` : ""}`;
     case "final_reminder":
       return `旅遊團：${s(p.tourTitle)}\n應繳尾款：NT$ ${m(p.remaining)}\n繳清截止：${s(p.deadline)}（剩 ${s(p.daysLeft)} 天）\n匯款帳號：${s(p.bankAccount)}`;
     case "trip_guide":

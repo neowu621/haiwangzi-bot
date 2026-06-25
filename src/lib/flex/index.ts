@@ -4,6 +4,7 @@ import type { TemplateOverride } from "./_common";
 import { bookingConfirm } from "./booking-confirm";
 import { d1Reminder } from "./d1-reminder";
 import { depositNotice } from "./deposit-notice";
+import { depositPending } from "./deposit-pending";
 import { depositConfirm } from "./deposit-confirm";
 import { finalReminder } from "./final-reminder";
 import { tripGuide } from "./trip-guide";
@@ -42,6 +43,7 @@ export const FLEX_TEMPLATES: Record<string, FlexFactory> = {
   booking_confirm: bookingConfirm,
   // 收款
   deposit_notice: depositNotice,
+  deposit_pending: depositPending,
   deposit_confirm: depositConfirm,
   final_reminder: finalReminder,
   // 行前
@@ -108,7 +110,8 @@ export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {
   booking_confirm: "預約確認",
   d1_reminder: "D-1 行前提醒",
   deposit_notice: "訂金繳費通知",
-  deposit_confirm: "訂金確認",
+  deposit_pending: "老闆訂金[確認中]",
+  deposit_confirm: "老闆訂金[已確認]",
   final_reminder: "尾款提醒",
   trip_guide: "行前手冊",
   weather_cancel: "天氣取消通知",
@@ -135,6 +138,7 @@ export const FLEX_TEMPLATE_META: Record<
   welcome:         { group: "加入",          icon: "👋", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   booking_confirm: { group: "預約",          icon: "✅", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   deposit_notice:  { group: "收款",          icon: "💰", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
+  deposit_pending: { group: "收款",          icon: "💳", defaultLine: true,  defaultEmail: false, defaultInApp: true  },
   deposit_confirm: { group: "收款",          icon: "✅", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   final_reminder:  { group: "收款",          icon: "🛟", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
   trip_guide:      { group: "行前",          icon: "📘", defaultLine: true,  defaultEmail: true,  defaultInApp: true  },
