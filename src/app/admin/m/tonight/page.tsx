@@ -69,7 +69,6 @@ export default function MobileTonightPage() {
   const { ready } = useAdminAuth();
   const [proofs, setProofs] = useState<ProofRow[]>([]);
   const [pendingUnpaid, setPendingUnpaid] = useState<BookingRow[]>([]); // v674：已下單·待匯款
-  const [attendCount, setAttendCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
@@ -88,22 +87,8 @@ export default function MobileTonightPage() {
       .then(([proofData, bookingData]) => {
         if (!alive) return;
         setProofs(proofData.proofs ?? []);
-        // 待到場 = confirmed 且場次落在今/昨日（台北時區），對齊桌機 /admin/tonight
-        const tw = (d: Date) =>
-          d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
-        const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const from = tw(yesterday);
-        const to = tw(today);
         const allBk = bookingData.bookings ?? [];
-        const count = allBk.filter((b) => {
-          if (b.status !== "confirmed") return false;
-          const refDate = b.ref?.date ?? b.ref?.dateStart;
-          if (!refDate) return false;
-          return refDate >= from && refDate <= to;
-        }).length;
-        setAttendCount(count);
+        // v680：「待到場」已移除（改用獨立「到場點名」），這裡只算「已下單·待匯款」
         // v674：已下單·待匯款（status=pending，尚未上傳付款證明），近的排前
         setPendingUnpaid(
           allBk
@@ -333,30 +318,7 @@ export default function MobileTonightPage() {
         </>
       )}
 
-      {/* ===== Section 2：待到場確認（摘要 + 連手機版到場點名）===== */}
-      <div className="mb-1.5 mt-5 flex items-center justify-between">
-        <span className="text-sm font-bold" style={{ color: "var(--color-ocean-deep)" }}>
-          待到場確認
-        </span>
-      </div>
-
-      <Link
-        href="/admin/m/attendance"
-        className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
-        style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-bold">
-            {attendCount === null ? "—" : `${attendCount} 筆`}
-            <span className="ml-1 text-[11px] font-normal" style={{ color: "var(--muted-foreground)" }}>
-              今／昨日已確認待勾到場
-            </span>
-          </span>
-          <span className="flex flex-shrink-0 items-center gap-1 text-xs" style={{ color: "var(--color-ocean-deep)" }}>
-            去點名到場 →
-          </span>
-        </div>
-      </Link>
+      {/* v680：「待到場確認」已移除（改用獨立「到場點名」/admin/m/attendance），避免與外面重複 */}
 
       {loading && (
         <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
