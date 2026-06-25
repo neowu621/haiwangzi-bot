@@ -154,6 +154,28 @@ function destZh(d?: string | null) {
   return d ? (DEST_ZH[d] ?? d) : "";
 }
 
+// v667：桌機登入後未讀通知彈窗（對齊 LIFF：每 session 跳一次、3 秒自動關）
+const PC_UNREAD_POPUP_KEY = "haiwangzi:pc-unread-popup:v1";
+function UnreadPopupPc({ count, onView, onClose }: { count: number; onView: () => void; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.5)", padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 320, borderRadius: 18, background: "#fff", padding: 22, textAlign: "center", boxShadow: "0 20px 50px rgba(10,35,66,.35)" }}>
+        <div style={{ fontSize: 38, marginBottom: 6 }}>📬</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: C.deep }}>你有 {count} 則未讀訊息</div>
+        <p style={{ marginTop: 4, fontSize: 12.5, color: C.mute }}>有需要你確認 / 處理的通知,點下方查看。</p>
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+          <button onClick={onView} style={{ width: "100%", borderRadius: 12, background: C.coral, padding: "12px 0", fontSize: 14, fontWeight: 800, color: "#fff", border: "none", cursor: "pointer" }}>查看訊息 →</button>
+          <button onClick={onClose} style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, background: "#fff", padding: "10px 0", fontSize: 14, fontWeight: 700, color: C.mute, cursor: "pointer" }}>稍後再看</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type View =
   | { name: "browse" }
   | { name: "bookDaily"; trip: Trip }
@@ -167,6 +189,7 @@ export function PcLoginApp() {
   const [authState, setAuthState] = useState<"loading" | "in" | "out">("loading");
   const [view, setView] = useState<View>({ name: "browse" });
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [unreadPopup, setUnreadPopup] = useState(0); // v667：登入後未讀通知彈窗
 
   const reloadMe = useCallback(async () => {
     try {
@@ -188,6 +211,18 @@ export function PcLoginApp() {
     }
     reloadMe();
   }, [reloadMe]);
+
+  // v667：登入後若有未讀站內通知 → 跳一次彈窗（每 session 一次；已在通知頁不跳）
+  useEffect(() => {
+    if (authState !== "in" || !member) return;
+    if (view.name === "notifications") return;
+    const n = member.stats?.unreadNotifications ?? 0;
+    if (n <= 0) return;
+    try { if (sessionStorage.getItem(PC_UNREAD_POPUP_KEY)) return; } catch { /* ignore */ }
+    setUnreadPopup(n);
+    try { sessionStorage.setItem(PC_UNREAD_POPUP_KEY, "1"); } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authState, member]);
 
   // 未登入 → 獨立全螢幕登入頁（海洋漸層 + Email 使用說明 + 同意條款）
   if (authState === "out") {
@@ -218,6 +253,13 @@ export function PcLoginApp() {
             {view.name === "notifications" && <NotificationsPanel />}
             {view.name === "profile" && <ProfilePanel member={member} onSaved={reloadMe} />}
             <PromoPopup load={() => api<{ items: ActivePromo[] }>("/api/promo/active").then((d) => d.items)} />
+            {unreadPopup > 0 && (
+              <UnreadPopupPc
+                count={unreadPopup}
+                onView={() => { setUnreadPopup(0); setView({ name: "notifications" }); }}
+                onClose={() => setUnreadPopup(0)}
+              />
+            )}
           </>
         )}
       </main>
