@@ -124,6 +124,7 @@ export default function TripBookingPage({
   const [realName, setRealName] = useState("");
   const [phone, setPhone] = useState("");
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
+  const [certNumber, setCertNumber] = useState(""); // v655：下單必填證照號碼
   const [logCount, setLogCount] = useState("");
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
@@ -258,6 +259,7 @@ export default function TripBookingPage({
         setMeEmail(me.email ?? null);
         setMePhone(me.phone ?? null);
         if (me.cert) setCert(me.cert);
+        if (me.certNumber) setCertNumber(me.certNumber);
         if (me.logCount) setLogCount(String(me.logCount));
         if (me.emergencyContact) {
           setEmergencyName(me.emergencyContact.name);
@@ -415,6 +417,8 @@ export default function TripBookingPage({
     emergencyName.trim().length >= 2 &&
     emergencyPhone.trim().length >= 8 &&
     cert !== "" &&
+    certNumber.trim().length >= 1 && // v655：證照號碼必填
+    logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
     companionsValid;
 
   async function submit() {
@@ -435,7 +439,7 @@ export default function TripBookingPage({
           name: realName,
           phone,
           cert: cert || null,
-          certNumber: "",
+          certNumber: certNumber.trim(),
           logCount: logCount ? Number(logCount) : 0,
           relationship: "",
           isSelf: true,
@@ -472,6 +476,7 @@ export default function TripBookingPage({
         realName,
         phone,
         cert: cert || undefined,
+        certNumber: certNumber.trim() || undefined,
         logCount: logCount ? Number(logCount) : undefined,
         emergencyContact: {
           name: emergencyName,
@@ -726,7 +731,7 @@ export default function TripBookingPage({
                 </select>
               </div>
               <div>
-                <Label htmlFor="logs">累計潛水支數</Label>
+                <Label htmlFor="logs">累計潛水支數 *</Label>
                 <Input
                   id="logs"
                   inputMode="numeric"
@@ -734,10 +739,20 @@ export default function TripBookingPage({
                   onChange={(e) =>
                     setLogCount(e.target.value.replace(/\D/g, ""))
                   }
-                  placeholder="例: 25"
+                  placeholder="例: 25（新手填 0）"
                   className="text-center"
                 />
               </div>
+            </div>
+            {/* v655：證照號碼必填（每次下單請確認/更新，方便教練掌握經驗） */}
+            <div className="mt-2">
+              <Label htmlFor="cert-number">證照號碼 *</Label>
+              <Input
+                id="cert-number"
+                value={certNumber}
+                onChange={(e) => setCertNumber(e.target.value)}
+                placeholder="請填證照卡上的號碼"
+              />
             </div>
           </div>
         </CollapsibleCard>

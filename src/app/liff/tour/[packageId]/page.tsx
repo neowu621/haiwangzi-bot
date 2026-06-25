@@ -25,6 +25,9 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
+// v655：證照等級（與日潛一致）
+const TOUR_CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
+
 interface TourDetail {
   id: string;
   title: string;
@@ -63,6 +66,8 @@ export default function TourDetailPage({
   const [realName, setRealName] = useState("");
   const [phone, setPhone] = useState("");
   const [certNumber, setCertNumber] = useState("");
+  const [cert, setCert] = useState<(typeof TOUR_CERTS)[number] | "">(""); // v655：證照等級
+  const [logCount, setLogCount] = useState(""); // v655：自填潛水次數
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
@@ -110,6 +115,9 @@ export default function TourDetailPage({
         realName: string | null;
         phone: string | null;
         email: string | null;
+        cert: (typeof TOUR_CERTS)[number] | null;
+        certNumber: string | null;
+        logCount: number | null;
       }>("/api/me")
       .then((me) => {
         setCreditBalance(me.creditBalance ?? 0);
@@ -117,6 +125,9 @@ export default function TourDetailPage({
         if (me.phone) setPhone(formatPhoneTW(me.phone));
         setMeEmail(me.email ?? null);
         setMePhone(me.phone ?? null);
+        if (me.cert) setCert(me.cert);
+        if (me.certNumber) setCertNumber(me.certNumber);
+        if (me.logCount) setLogCount(String(me.logCount));
       })
       .catch(() => {});
     // v249：deps 改用 liff.ready 避免 init 期間 4 次 setState 連環觸發
@@ -140,7 +151,10 @@ export default function TourDetailPage({
     realName.trim().length >= 2 &&
     phone.trim().length >= 8 &&
     emergencyName.trim().length >= 2 &&
-    emergencyPhone.trim().length >= 8;
+    emergencyPhone.trim().length >= 8 &&
+    cert !== "" &&                   // v655：證照等級必填
+    certNumber.trim().length >= 1 && // v655：證照號碼必填
+    logCount.trim().length >= 1;     // v655：潛水次數必填（新手填 0 也可）
 
   async function submit() {
     if (!tour || !canSubmit) return;
@@ -172,7 +186,9 @@ export default function TourDetailPage({
           signatureDataUrl: signatureDataUrl ?? undefined,
           realName,
           phone,
-          certNumber: certNumber || undefined,
+          certNumber: certNumber.trim() || undefined,
+          cert: cert || undefined,
+          logCount: logCount ? Number(logCount) : undefined,
           emergencyContact: {
             name: emergencyName,
             phone: emergencyPhone,
@@ -386,13 +402,44 @@ export default function TourDetailPage({
                 placeholder="0912-345678"
               />
             </div>
+            {/* v655：潛水經驗 — 證照等級 / 號碼 / 潛次（下單必填，方便教練掌握） */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="tour-cert">證照等級 *</Label>
+                <select
+                  id="tour-cert"
+                  value={cert}
+                  onChange={(e) => setCert(e.target.value as (typeof TOUR_CERTS)[number] | "")}
+                  className={cn(
+                    "mt-0 flex h-11 w-full appearance-none rounded-[var(--radius-card)] border bg-white px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                    cert ? "border-[var(--color-phosphor)] text-[var(--color-ocean-deep)]" : "border-[var(--input)] text-[var(--muted-foreground)]",
+                  )}
+                >
+                  <option value="">請選擇</option>
+                  {TOUR_CERTS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="tour-logs">累計潛水支數 *</Label>
+                <Input
+                  id="tour-logs"
+                  inputMode="numeric"
+                  value={logCount}
+                  onChange={(e) => setLogCount(e.target.value.replace(/\D/g, ""))}
+                  placeholder="例: 25（新手填 0）"
+                  className="text-center"
+                />
+              </div>
+            </div>
             <div>
-              <Label htmlFor="cert">證照編號 (選填)</Label>
+              <Label htmlFor="cert">證照號碼 *</Label>
               <Input
                 id="cert"
                 value={certNumber}
                 onChange={(e) => setCertNumber(e.target.value)}
-                placeholder="如: PADI 12345678"
+                placeholder="請填證照卡上的號碼"
               />
             </div>
             <Separator />

@@ -25,6 +25,8 @@ const BodySchema = z.object({
   realName: z.string().min(1),
   phone: z.string().min(1),
   certNumber: z.string().optional(),
+  cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).optional(), // v655：證照等級
+  logCount: z.number().int().min(0).optional(),      // v655：自填潛水次數
   emergencyContact: z.object({
     name: z.string(),
     phone: z.string(),
@@ -110,6 +112,8 @@ export async function POST(req: NextRequest) {
       realName: data.realName,
       phone: data.phone,
       certNumber: data.certNumber,
+      ...(data.cert ? { cert: data.cert } : {}),                 // v655
+      ...(data.logCount !== undefined ? { logCount: data.logCount } : {}), // v655
       emergencyContact: data.emergencyContact,
     },
   });
