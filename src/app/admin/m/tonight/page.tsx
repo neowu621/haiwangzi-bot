@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { Check, X, ExternalLink, ImageOff } from "lucide-react";
+import { Check, X, ImageOff } from "lucide-react";
 
 interface ProofBooking {
   id: string;
@@ -311,7 +311,7 @@ export default function MobileTonightPage() {
               return (
                 <Link
                   key={b.id}
-                  href="/admin/bookings?status=created"
+                  href="/admin/m/bookings"
                   className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
                   style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
                 >
@@ -333,7 +333,7 @@ export default function MobileTonightPage() {
         </>
       )}
 
-      {/* ===== Section 2：待到場確認（摘要 + 深連桌機）===== */}
+      {/* ===== Section 2：待到場確認（摘要 + 連手機版到場點名）===== */}
       <div className="mb-1.5 mt-5 flex items-center justify-between">
         <span className="text-sm font-bold" style={{ color: "var(--color-ocean-deep)" }}>
           待到場確認
@@ -341,7 +341,7 @@ export default function MobileTonightPage() {
       </div>
 
       <Link
-        href="/admin/tonight"
+        href="/admin/m/attendance"
         className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
         style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
       >
@@ -353,7 +353,7 @@ export default function MobileTonightPage() {
             </span>
           </span>
           <span className="flex flex-shrink-0 items-center gap-1 text-xs" style={{ color: "var(--color-ocean-deep)" }}>
-            去點名到場 <ExternalLink className="h-3 w-3" />
+            去點名到場 →
           </span>
         </div>
       </Link>

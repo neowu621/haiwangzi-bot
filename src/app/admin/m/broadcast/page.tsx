@@ -5,10 +5,9 @@
 //   送出帶 template:"text", text, altText（文字前 N 字）, audience, channel。
 //   複雜模板 / 三欄式引導回 /admin/broadcast。
 import { useState } from "react";
-import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { ExternalLink, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 type Audience = "all" | "customers" | "coaches";
 type Channel = "line" | "email" | "both";
@@ -79,13 +78,6 @@ export default function MobileBroadcastPage() {
     <MobileAdminShell>
       <div className="mb-3 flex items-center justify-between">
         <h1 className="text-base font-bold">📣 快速群發</h1>
-        <Link
-          href="/admin/broadcast"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整模板 <ExternalLink className="h-3 w-3" />
-        </Link>
       </div>
 
       {/* 收件對象 */}

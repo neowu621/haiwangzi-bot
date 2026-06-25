@@ -4,11 +4,10 @@
 //   每場一列：時間・潛點・X 人・教練；點列展開客戶姓名清單（預設收合）。
 //   複雜編輯引導回 /admin/trips。
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { getCached, cachedFetch } from "@/lib/admin-cache";
-import { ChevronDown, ChevronRight, Users, MapPin, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, MapPin } from "lucide-react";
 
 const URL = "/api/admin/m/trips";
 
@@ -74,15 +73,6 @@ export default function MobileTripsPage() {
 
   return (
     <MobileAdminShell title="日潛場次" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/trips"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          編輯場次 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
 
       {error && (
         <div

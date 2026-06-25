@@ -5,11 +5,10 @@
 //   點卡展開 → 才按需抓該團報名名單（/api/admin/bookings?refId=<tourId>）：客戶姓名・人數・付款/訂單狀態。
 //   編輯走桌機：卡內 / 頁首皆有「完整管理 →」深連結回 /admin/tours。
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getCached, cachedFetch } from "@/lib/admin-cache";
-import { ChevronDown, ChevronRight, Users, Calendar, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, Calendar } from "lucide-react";
 import { deriveBookingDisplay } from "@/lib/booking-status"; // v674：roster 中文狀態
 
 const TOURS_URL = "/api/admin/tours";
@@ -317,13 +316,6 @@ export default function MobileToursPage() {
                       })}
                     </div>
                   )}
-                  <Link
-                    href="/admin/tours"
-                    className="mt-2.5 flex items-center justify-end gap-1 text-[11px]"
-                    style={{ color: "var(--color-ocean-deep)" }}
-                  >
-                    編輯此團 <ExternalLink className="h-3 w-3" />
-                  </Link>
                 </div>
               )}
             </div>

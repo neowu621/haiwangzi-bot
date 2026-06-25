@@ -4,7 +4,6 @@
 //         省流量/加速，避免一打開就抓全部會員 + 算每人統計。移除 VIP 等級篩選。
 //   點一筆導去 /admin/users 做細節操作（編輯 / 抵用金 / 潛水紀錄）。
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getVipTier } from "@/lib/vip-tier";
@@ -118,10 +117,9 @@ export default function MobileUsersPage() {
           const name = u.realName ?? u.displayName;
           const tier = getVipTier(u.vipLevel);
           return (
-            <Link
+            <div
               key={u.lineUserId}
-              href="/admin/users"
-              className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
+              className="block rounded-xl border px-3 py-2.5"
               style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
             >
               <div className="flex items-center justify-between gap-2">
@@ -162,7 +160,7 @@ export default function MobileUsersPage() {
                   </span>
                 )}
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
