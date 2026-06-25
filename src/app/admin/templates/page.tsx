@@ -361,7 +361,7 @@ export default function AdminTemplatesPage() {
         )}
 
         {/* 3-column panes */}
-        <div style={{ display: loading && templates.length === 0 ? "none" : "grid", gridTemplateColumns: "256px 1fr 400px", gap: 14, flex: 1, minHeight: 0 }}>
+        <div style={{ display: loading && templates.length === 0 ? "none" : "grid", gridTemplateColumns: "300px 1fr 400px", gap: 14, flex: 1, minHeight: 0 }}>
           {/* === Pane 1: 流程清單 === */}
           <div style={paneStyle}>
             <div style={paneHeadStyle}>
@@ -412,7 +412,7 @@ export default function AdminTemplatesPage() {
                           {step}
                         </span>
                         <span style={{ fontSize: 15, width: 17, textAlign: "center", flex: "none" }}>{t.icon}</span>
-                        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <span style={{ flex: 1, minWidth: 0, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.25 }}>
                           {t.label}
                         </span>
                         <ChannelDot on={t.lineEnabled}>L</ChannelDot>
