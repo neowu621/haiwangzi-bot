@@ -22,8 +22,10 @@ export async function GET(req: NextRequest) {
     ? Math.min(MAX_LIMIT, Math.max(1, Math.floor(limitParamRaw)))
     : DEFAULT_LIMIT;
 
+  // v660：會員端只顯示近 30 天的通知（資料不刪除，後台「通訊紀錄」仍可查全部）
+  const since30d = new Date(Date.now() - 30 * 86400000);
   const rows = await prisma.notification.findMany({
-    where: { userId: auth.user.lineUserId },
+    where: { userId: auth.user.lineUserId, createdAt: { gte: since30d } },
     orderBy: { createdAt: "desc" },
     take: limit + 1, // 多取一筆判斷是否還有下一頁
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

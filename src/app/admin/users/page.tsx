@@ -1343,7 +1343,7 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                <Label className="text-xs pt-1">Admin 備註</Label>
+                <Label className="text-xs pt-1">會員備註（長期・跟著人走）</Label>
                 <textarea
                   className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                   rows={2}
@@ -1351,7 +1351,7 @@ export default function AdminUsersPage() {
                   onChange={(e) =>
                     setEditing({ ...editing, notes: e.target.value || null })
                   }
-                  placeholder="只有 admin 看得到"
+                  placeholder="僅管理員可見。例：VIP 常客 / 耳壓問題 / 偏好早場…（每筆活動的備註請在『訂單管理』各訂單的管理備註填）"
                 />
               </div>
 

@@ -922,6 +922,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
+                    <th className="px-3 py-3 font-medium">備註</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
@@ -1019,6 +1020,23 @@ export default function AdminBookingsPage() {
                           ) : (
                             <span className="font-medium">{b.ref.title ?? "潛水團"}</span>
                           )}
+                        </td>
+                        {/* v660：備註欄（客戶 / 網站 / 管理）*/}
+                        <td className="px-3 py-2.5 text-[11px] max-w-[170px]">
+                          {(() => {
+                            const parts: Array<{ l: string; t: string; c: string }> = [];
+                            if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-slate-600" });
+                            if (b.siteNotes) parts.push({ l: "網", t: b.siteNotes, c: "text-emerald-700" });
+                            if (b.adminNotes) parts.push({ l: "管", t: b.adminNotes, c: "text-violet-700" });
+                            if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
+                            return (
+                              <div className="space-y-0.5">
+                                {parts.map((p, i) => (
+                                  <div key={i} className={`truncate ${p.c}`} title={p.t}><b>{p.l}</b> {p.t}</div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </td>
                         {/* 金額 */}
                         <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
@@ -1152,7 +1170,7 @@ export default function AdminBookingsPage() {
                   })}
                   {pagedBookings.length === 0 && (
                     <tr>
-                      <td colSpan={12} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      <td colSpan={13} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
