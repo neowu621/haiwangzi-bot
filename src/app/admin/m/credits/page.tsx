@@ -4,10 +4,9 @@
 //         省流量/加速，避免一打開就抓全部會員。找到會員後展開卡片發放/調整抵用金。
 //   POST /api/admin/credits（與桌機完整版同 body）。
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { Search, ExternalLink, Coins, Check } from "lucide-react";
+import { Search, Coins, Check } from "lucide-react";
 
 interface MUser {
   lineUserId: string;
@@ -127,16 +126,6 @@ export default function MobileCreditsPage() {
 
   return (
     <MobileAdminShell title="抵用金管理" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/credits"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整版 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* 搜尋框 */}
       <div
         className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2"

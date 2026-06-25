@@ -9,7 +9,7 @@ import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getVipTier } from "@/lib/vip-tier";
 import { toTaipeiDateString } from "@/lib/utils";
-import { Search, ExternalLink } from "lucide-react";
+import { Search } from "lucide-react";
 
 // 只取手機卡片需要的欄位（API 回的是完整 User，多餘欄位忽略即可）
 interface MUser {
@@ -73,16 +73,6 @@ export default function MobileUsersPage() {
 
   return (
     <MobileAdminShell title="會員查詢" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/users"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整版 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* 搜尋框 */}
       <div
         className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2"

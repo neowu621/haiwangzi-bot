@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { Search, ExternalLink } from "lucide-react";
+import { Search } from "lucide-react";
 
 interface MBooking {
   id: string;
@@ -116,16 +116,6 @@ export default function MobileBookingsPage() {
 
   return (
     <MobileAdminShell title="訂單管理" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/bookings"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整管理 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* 搜尋框 */}
       <div
         className="mb-2 flex items-center gap-2 rounded-xl border px-3 py-2"

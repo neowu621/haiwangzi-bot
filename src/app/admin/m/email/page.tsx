@@ -7,10 +7,9 @@
 //   手機顧流量：列表只抓 status=WAITING(待回覆)外加全部過濾、開對話才抓完整 messages；
 //   訊息只渲染純文字 bodyText（不跑 iframe / 不渲染未消毒 HTML），最省、最安全。
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { ExternalLink, ChevronLeft, Send } from "lucide-react";
+import { ChevronLeft, Send } from "lucide-react";
 
 type Status = "WAITING" | "PROCESSING" | "CLOSED";
 
@@ -378,16 +377,6 @@ export default function MobileEmailPage() {
   // ───────── 列表視圖 ─────────
   return (
     <MobileAdminShell title="客服信箱" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/email"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整版 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* 狀態 chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {STATUS_CHIPS.map((c) => {

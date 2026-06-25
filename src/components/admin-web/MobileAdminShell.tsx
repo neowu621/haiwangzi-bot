@@ -7,7 +7,7 @@ import { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { APP_VERSION } from "@/lib/version";
-import { LogOut, Monitor, ChevronLeft } from "lucide-react";
+import { LogOut, ChevronLeft } from "lucide-react";
 import { BrandMark } from "@/components/brand/MantaTrident";
 
 // v576：子頁可帶 title + back —— 顯示「← 標題」頂部列(取代 logo)，
@@ -32,11 +32,6 @@ export function MobileAdminShell({
         </div>
       </div>
     );
-  }
-
-  function toFullVersion() {
-    // v570：用 ?desktop=1 看桌機(無狀態,不會卡住;下次重開 /admin 仍預設手機版)
-    router.push("/admin?desktop=1");
   }
 
   return (
@@ -94,16 +89,7 @@ export function MobileAdminShell({
           </>
         )}
 
-        {/* → 完整版 */}
-        <button
-          type="button"
-          onClick={toFullVersion}
-          className="flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-white/10"
-          style={{ color: "rgba(230,240,255,0.8)" }}
-        >
-          <Monitor className="h-3.5 w-3.5" />
-          完整版
-        </button>
+        {/* v675：移除「完整版」桌機跳轉連結 —— 手機後台自成一套，不再彈去桌機 */}
 
         {/* 登出 */}
         <button

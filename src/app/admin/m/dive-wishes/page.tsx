@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { ExternalLink, MessageSquareReply, Send, X } from "lucide-react";
+import { MessageSquareReply, Send, X } from "lucide-react";
 
 interface WishMessage {
   from: "customer" | "boss";
@@ -145,16 +145,6 @@ export default function MobileDiveWishesPage() {
 
   return (
     <MobileAdminShell title="願望單" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/dive-wishes"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整管理 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* 狀態 chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {STATUS_CHIPS.map((c) => {

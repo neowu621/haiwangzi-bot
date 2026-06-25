@@ -83,7 +83,7 @@ export default function MobileTonightPage() {
     setError(null);
     Promise.all([
       adminFetch<ProofsResp>(`/api/admin/payment-proofs?status=pending`),
-      adminFetch<BookingsResp>(`/api/admin/bookings`),
+      adminFetch<BookingsResp>(`/api/admin/bookings?light=1`),
     ])
       .then(([proofData, bookingData]) => {
         if (!alive) return;
@@ -169,16 +169,6 @@ export default function MobileTonightPage() {
 
   return (
     <MobileAdminShell title="老闆結帳" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/tonight"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整管理 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {error && (
         <div
           className="mb-3 rounded-lg px-3 py-2 text-xs"
@@ -363,7 +353,7 @@ export default function MobileTonightPage() {
             </span>
           </span>
           <span className="flex flex-shrink-0 items-center gap-1 text-xs" style={{ color: "var(--color-ocean-deep)" }}>
-            前往完整結帳 <ExternalLink className="h-3 w-3" />
+            去點名到場 <ExternalLink className="h-3 w-3" />
           </span>
         </div>
       </Link>

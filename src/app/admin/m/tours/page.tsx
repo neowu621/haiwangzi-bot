@@ -160,16 +160,6 @@ export default function MobileToursPage() {
 
   return (
     <MobileAdminShell title="潛水旅行" back="/admin/m">
-      <div className="mb-3 flex items-center justify-end">
-        <Link
-          href="/admin/tours"
-          className="flex items-center gap-1 text-xs"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          完整管理 <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-
       {/* 狀態 chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {CHIPS.map((c) => {
@@ -332,7 +322,7 @@ export default function MobileToursPage() {
                     className="mt-2.5 flex items-center justify-end gap-1 text-[11px]"
                     style={{ color: "var(--color-ocean-deep)" }}
                   >
-                    完整管理 <ExternalLink className="h-3 w-3" />
+                    編輯此團 <ExternalLink className="h-3 w-3" />
                   </Link>
                 </div>
               )}
