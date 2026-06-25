@@ -1093,9 +1093,20 @@ function SummaryPanel({ rows, total, extraRow, note, submitting, onSubmit, submi
 
 // ─── 我的訂單 ──────────────────────────────────────────────────────
 const STATUS_ZH: Record<string, string> = {
-  pending: "待付款", awaiting_verify: "待核款", confirmed: "已確認", completed: "已完成",
-  cancelled_by_user: "已取消", cancelled_by_weather: "天候取消", cancelled_unpaid: "逾期取消", no_show: "未到",
+  pending: "待付款", awaiting_verify: "待核款", confirmed: "已確認", completed: "活動結束",
+  cancelled_by_user: "活動取消（客戶取消）", cancelled_by_weather: "活動取消（天氣）",
+  cancelled_unpaid: "活動取消（逾期）", no_show: "活動取消（未到場）",
 };
+// v657：是否「已結束」=已取消 / 活動結束 / 活動日已過
+const PC_CANCELLED = new Set(["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid", "no_show"]);
+function pcOrderDone(b: MyBooking, todayStr: string): { done: boolean; cancelled: boolean } {
+  const cancelled = PC_CANCELLED.has(b.status);
+  if (cancelled) return { done: true, cancelled: true };
+  if (b.status === "completed") return { done: true, cancelled: false };
+  const ev = b.type === "daily" ? b.ref?.date : (b.ref?.dateEnd ?? b.ref?.dateStart);
+  if (ev && ev < todayStr) return { done: true, cancelled: false };
+  return { done: false, cancelled: false };
+}
 const PAY_ZH: Record<string, string> = {
   unpaid: "未付款", pending: "未付款", deposit_paid: "已付訂金", fully_paid: "已付清", refunded: "已退款",
 };
@@ -1206,40 +1217,70 @@ function MyOrders() {
   }, []);
   if (bookings === null) return <Loading />;
   if (bookings.length === 0) return <Empty>還沒有任何訂單，去「預約」開始第一筆吧 🔱</Empty>;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep }}>我的訂單</h2>
-      {bookings.map((b) => {
-        const title = b.type === "daily"
-          ? `日潛 ${b.ref?.date ?? ""} ${b.ref?.startTime ?? ""}`
-          : (b.ref?.title ?? "潛旅");
-        const sub = b.type === "daily"
-          ? (b.ref?.sites?.join("、") ?? "")
-          : `${b.ref?.dateStart ?? ""} ~ ${b.ref?.dateEnd ?? ""}`;
-        const unpaid = b.totalAmount - b.paidAmount;
-        const canPay = ["pending", "awaiting_verify", "confirmed"].includes(b.status) && unpaid > 0;
-        return (
-          <div key={b.id} style={{ ...card(), flexDirection: "row", alignItems: "center", padding: "14px 18px", gap: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
-              <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{sub} ‧ {b.participants} 人 ‧ 下單 {b.createdAt.slice(0, 10)}</div>
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <Tag>{STATUS_ZH[b.status] ?? b.status}</Tag>
-              <Tag>{PAY_ZH[b.paymentStatus] ?? b.paymentStatus}</Tag>
-            </div>
-            <div style={{ textAlign: "right", minWidth: 110 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: C.deep }}>{ntd(b.totalAmount)}</div>
-              {unpaid > 0 && <div style={{ fontSize: 12, color: C.coral }}>未付 {ntd(unpaid)}</div>}
-            </div>
-            {canPay && (
-              <a href={`/pay/${b.id}`} style={{ background: C.coral, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, textDecoration: "none", whiteSpace: "nowrap" }}>
-                前往付款
-              </a>
-            )}
+  const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const upcoming = bookings.filter((b) => !pcOrderDone(b, todayStr).done);
+  const done = bookings.filter((b) => pcOrderDone(b, todayStr).done);
+
+  const renderRow = (b: MyBooking) => {
+    const title = b.type === "daily"
+      ? `日潛 ${b.ref?.date ?? ""} ${b.ref?.startTime ?? ""}`
+      : (b.ref?.title ?? "潛旅");
+    const sub = b.type === "daily"
+      ? (b.ref?.sites?.join("、") ?? "")
+      : `${b.ref?.dateStart ?? ""} ~ ${b.ref?.dateEnd ?? ""}`;
+    const unpaid = b.totalAmount - b.paidAmount;
+    const canPay = ["pending", "awaiting_verify", "confirmed"].includes(b.status) && unpaid > 0;
+    const cancelled = pcOrderDone(b, todayStr).cancelled;
+    return (
+      <div key={b.id} style={{
+        ...card(), flexDirection: "row", alignItems: "center", padding: "14px 18px", gap: 16,
+        // v657：活動取消 → 灰底、整列淡化
+        ...(cancelled ? { background: "#eef1f3", borderColor: "#d8dfe4", opacity: 0.92 } : {}),
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: cancelled ? C.mute : C.ink }}>{title}</div>
+          <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{sub} ‧ {b.participants} 人 ‧ 下單 {b.createdAt.slice(0, 10)}</div>
+        </div>
+        {cancelled ? (
+          // 已取消：大字灰標
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#7c8a92", whiteSpace: "nowrap" }}>{STATUS_ZH[b.status] ?? "活動取消"}</div>
+        ) : (
+          <div style={{ display: "flex", gap: 6 }}>
+            <Tag>{STATUS_ZH[b.status] ?? b.status}</Tag>
+            <Tag>{PAY_ZH[b.paymentStatus] ?? b.paymentStatus}</Tag>
           </div>
-        );
-      })}
+        )}
+        <div style={{ textAlign: "right", minWidth: 110 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: cancelled ? C.mute : C.deep }}>{ntd(b.totalAmount)}</div>
+          {!cancelled && unpaid > 0 && <div style={{ fontSize: 12, color: C.coral }}>未付 {ntd(unpaid)}</div>}
+        </div>
+        {canPay && (
+          <a href={`/pay/${b.id}`} style={{ background: C.coral, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, textDecoration: "none", whiteSpace: "nowrap" }}>
+            前往付款
+          </a>
+        )}
+      </div>
+    );
+  };
+
+  const groupTitle = (t: string, n: number) => (
+    <div style={{ fontSize: 14, fontWeight: 800, color: C.deep, margin: "6px 0 2px" }}>{t} <span style={{ color: C.mute, fontWeight: 600 }}>（{n}）</span></div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep }}>我的訂單</h2>
+
+      {groupTitle("📌 即將進行的預約", upcoming.length)}
+      {upcoming.length === 0
+        ? <p style={{ fontSize: 12.5, color: C.mute, margin: "2px 0 8px" }}>目前沒有即將進行的預約。</p>
+        : upcoming.map(renderRow)}
+
+      {done.length > 0 && <>
+        {groupTitle("✅ 已結束（活動結束 / 活動取消）", done.length)}
+        {done.map(renderRow)}
+      </>}
+
       <p style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>※ 退款 / 取消 / 上傳付款證明等，請在付款頁或手機 LINE App 操作。</p>
     </div>
   );

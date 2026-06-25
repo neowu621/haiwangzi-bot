@@ -72,14 +72,19 @@ export default async function SchedulePage() {
         </Card>
       ) : (
         <>
-          {/* v637：預約方式提醒 —— 用手機 LINE 登入會員預約（取代每列重複的 LINE 按鈕） */}
+          {/* v637：預約方式提醒；v657：手機 LIFF + 電腦版 /pclogin 雙入口 */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#eafaf3", border: "1px solid #bfe9d4", borderRadius: 14, padding: "14px 18px", marginBottom: 20 }}>
             <div style={{ flex: 1, minWidth: 200, fontSize: 13.5, lineHeight: 1.7, color: "#0a5c3e" }}>
-              📱 <b>預約請用手機操作</b>：在手機上開啟 LINE 登入會員，即可線上預約與查看名額；電腦版請改用手機，或加 LINE 由小編協助。
+              <b>線上預約方式</b>：📱 手機用 LINE 登入會員預約；💻 電腦可用「電腦版預約」登入下單。也可加 LINE 由小編協助。
             </div>
-            <a href={LIFF_BOOK_URL} target="_blank" rel="noopener" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "10px 18px", borderRadius: 999 }}>
-              <LineIcon s={16} />手機登入預約
-            </a>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <a href={LIFF_BOOK_URL} target="_blank" rel="noopener" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "10px 18px", borderRadius: 999 }}>
+                <LineIcon s={16} />手機登入預約
+              </a>
+              <a href="/pclogin" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "#0A2342", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 14, padding: "10px 18px", borderRadius: 999 }}>
+                💻 電腦版預約
+              </a>
+            </div>
           </div>
           {/* v636：左右兩欄 —— 左日潛 / 右潛旅；窄螢幕(手機)自動堆疊成單欄 */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 22, alignItems: "start" }}>

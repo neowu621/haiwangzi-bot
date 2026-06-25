@@ -689,7 +689,7 @@ export default function ProfilePage() {
                   )}
                   {!emailVerifiedAt && email.trim() === savedEmail && (
                     <div className="text-[10px] leading-relaxed text-[var(--muted-foreground)]">
-                      🎁 完整資料 + Email 驗證，首單完成隔日自動發 100 元抵用金（限 30 天內使用）
+                      🎁 完整資料 + Email 驗證，完成首次潛水（到場）後自動發 100 元首潛獎勵
                     </div>
                   )}
                   {verifyMsg && (

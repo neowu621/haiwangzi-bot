@@ -933,7 +933,7 @@ export default function SettingsPage() {
         {/* v345：⭐ VIP — VIP 等級設定（含每等級的升級獎勵 = VIP 升等金額） */}
         <TabsContent value="vip" className="mt-4">
           {/* v346：首單付款獎勵 = LV1 新客禮，整合進 VIP tab */}
-          <SectionCard title="🎁 LV1 新客禮（首單付款獎勵）">
+          <SectionCard title="🎁 LV1 新客禮（首潛獎勵 — 完成首次潛水到場才發）">
             <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
               新客戶第一筆訂單付款完成 + Email 已驗證 → 自動發抵用金（一人僅一次）。視為踏入 VIP LV1 的入會禮。
             </p>

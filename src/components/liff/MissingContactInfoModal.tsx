@@ -127,7 +127,7 @@ export function MissingContactInfoModal({
             />
             <p className="mt-1 text-[10px] text-[var(--muted-foreground)] leading-relaxed">
               ✓ 收預約確認 / 行前通知 / 發票<br />
-              🎁 驗證後首單付款完成可獲 NT$ 100 抵用金（驗證信會自動寄出）
+              🎁 驗證後完成首次潛水（到場）可獲 NT$ 100 首潛獎勵（驗證信會自動寄出）
             </p>
           </div>
         )}

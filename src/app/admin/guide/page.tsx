@@ -267,7 +267,7 @@ export default function AdminGuidePage() {
           </DiagramBox>
           <ul className="list-disc space-y-1 pl-5 text-xs">
             <li>客戶全程在 <b>LINE 內</b>操作，不需另外下載 App。</li>
-            <li>首次完成付款 + Email 已驗證 → 自動再送 <b>100 元首單獎勵</b>（一人一次）。</li>
+            <li>完成首次潛水（教練勾到場）+ Email 已驗證 → 自動再送 <b>100 元首潛獎勵</b>（一人一次）。</li>
           </ul>
         </Section>
 
