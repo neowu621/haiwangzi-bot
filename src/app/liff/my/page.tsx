@@ -116,11 +116,11 @@ function getOrderBadge(status: MyBooking["status"]): { label: string; variant: B
     case "pending":              return { label: "待確認",      variant: "gold" };
     case "awaiting_verify":      return { label: "⏳ 匯款待確認", variant: "gold" };
     case "confirmed":            return { label: "✓ 已確認",    variant: "default" };
-    case "completed":            return { label: "✓ 已完成",    variant: "muted" };
-    case "cancelled_unpaid":     return { label: "訂單未成立",   variant: "muted" };
-    case "cancelled_by_user":    return { label: "已取消",      variant: "coral" };
-    case "cancelled_by_weather": return { label: "天候取消",    variant: "coral" };
-    case "no_show":              return { label: "⚠ 未到場",    variant: "coral" };
+    case "completed":            return { label: "✓ 活動結束",  variant: "muted" };
+    case "cancelled_unpaid":     return { label: "活動取消（訂單不成立）", variant: "muted" };
+    case "cancelled_by_user":    return { label: "活動取消（客戶取消）",   variant: "coral" };
+    case "cancelled_by_weather": return { label: "活動取消（天氣）",       variant: "coral" };
+    case "no_show":              return { label: "⚠ 活動取消（未到場）",  variant: "coral" };
   }
 }
 function getPaymentBadge(p: MyBooking["paymentStatus"]): { label: string; variant: BadgeVariant } {
@@ -359,10 +359,10 @@ export default function MyBookingsPage() {
               )}
             </TabsTrigger>
             <TabsTrigger value="done">
-              已完成 ({grouped.done.length})
+              活動結束 ({grouped.done.length})
             </TabsTrigger>
             <TabsTrigger value="cancelled">
-              已取消 ({grouped.cancelled.length})
+              活動取消 ({grouped.cancelled.length})
             </TabsTrigger>
           </TabsList>
 

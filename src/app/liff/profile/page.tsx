@@ -496,7 +496,7 @@ export default function ProfilePage() {
                 {me.haiwangziLogCount ?? 0}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                海王子累積
+                海王子累積氣瓶數
               </div>
             </div>
             <button
@@ -530,7 +530,7 @@ export default function ProfilePage() {
                 {me.stats.completed}
               </div>
               <div className="text-[10px] text-[var(--muted-foreground)]">
-                已完成{me.stats.completed > 0 && " ▸"}
+                已結束{me.stats.completed > 0 && " ▸"}
               </div>
             </button>
           </CardContent>
@@ -963,7 +963,7 @@ export default function ProfilePage() {
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {statsDialog === "completed" ? "已完成紀錄" : "預約紀錄"}
+              {statsDialog === "completed" ? "已結束 / 已取消" : "即將進行的預約"}
             </DialogTitle>
           </DialogHeader>
           {bookingLoading ? (
@@ -1081,13 +1081,15 @@ function statusLabel(status: string): { text: string; tone: "ok" | "warn" | "mut
     case "confirmed":
       return { text: "已確認", tone: "ok" };
     case "completed":
-      return { text: "已完成", tone: "ok" };
+      return { text: "活動結束", tone: "ok" };
     case "cancelled_by_user":
-      return { text: "已取消", tone: "muted" };
+      return { text: "活動取消（客戶取消）", tone: "muted" };
     case "cancelled_by_weather":
-      return { text: "天氣取消", tone: "muted" };
+      return { text: "活動取消（天氣）", tone: "muted" };
+    case "cancelled_unpaid":
+      return { text: "活動取消（訂單不成立）", tone: "muted" };
     case "no_show":
-      return { text: "未到", tone: "warn" };
+      return { text: "活動取消（未到場）", tone: "warn" };
     default:
       return { text: status, tone: "muted" };
   }

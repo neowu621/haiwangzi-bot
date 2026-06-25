@@ -73,16 +73,17 @@ export function deriveBookingDisplay(b: BookingForDisplay): BookingDisplay {
   }
 
   switch (b.status) {
+    // v654：統一名詞 —— 有參加=活動結束；未參加=活動取消（括號標原因）
     case "completed":
-      return { key: "completed", label: "✅ 客戶活動完成", variant: "muted", priority: 7 };
+      return { key: "completed", label: "✅ 活動結束", variant: "muted", priority: 7 };
     case "no_show":
-      return { key: "no_show", label: "⚠ 客戶未到場", variant: "coral", priority: 6 };
+      return { key: "no_show", label: "⚠ 活動取消（未到場）", variant: "coral", priority: 6 };
     case "cancelled_by_user":
-      return { key: "cancelled_user", label: "⚪ 客戶取消", variant: "muted", priority: 9 };
+      return { key: "cancelled_user", label: "⚪ 活動取消（客戶取消）", variant: "muted", priority: 9 };
     case "cancelled_by_weather":
-      return { key: "cancelled_weather", label: "🌧 天氣取消", variant: "muted", priority: 9 };
+      return { key: "cancelled_weather", label: "🌧 活動取消（天氣）", variant: "muted", priority: 9 };
     case "cancelled_unpaid":
-      return { key: "cancelled_unpaid", label: "⛔ 訂單不成立", variant: "muted", priority: 9 };
+      return { key: "cancelled_unpaid", label: "⛔ 活動取消（訂單不成立）", variant: "muted", priority: 9 };
     case "awaiting_verify":
       return { key: "awaiting_verify", label: "🟠 待確認匯款", variant: "gold", priority: 1 };
     case "confirmed":
@@ -126,16 +127,16 @@ export const BOOKING_STATUS_FILTER_GROUPS: Array<{
       { key: "awaiting_verify", label: "🟠 待確認匯款" },
       { key: "deposit_paid",    label: "🔵 已確認付款（訂金）" },
       { key: "fully_paid",      label: "🟢 已完成付款" },
-      { key: "completed",       label: "✅ 客戶活動完成" },
+      { key: "completed",       label: "✅ 活動結束" },
     ],
   },
   {
     group: "結局 / 取消",
     items: [
-      { key: "no_show",           label: "⚠ 客戶未到場" },
-      { key: "cancelled_user",    label: "⚪ 客戶取消" },
-      { key: "cancelled_weather", label: "🌧 天氣取消" },
-      { key: "cancelled_unpaid",  label: "⛔ 訂單不成立" },
+      { key: "no_show",           label: "⚠ 活動取消（未到場）" },
+      { key: "cancelled_user",    label: "⚪ 活動取消（客戶取消）" },
+      { key: "cancelled_weather", label: "🌧 活動取消（天氣）" },
+      { key: "cancelled_unpaid",  label: "⛔ 活動取消（訂單不成立）" },
     ],
   },
   {
