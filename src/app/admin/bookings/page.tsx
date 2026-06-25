@@ -132,7 +132,8 @@ function fmtEntryDate(iso: string) {
 }
 
 // v609：訂單管理預設篩選 — 正常流程進行中、需關注付款的狀態（紅框那組）
-const DEFAULT_STATUS_FILTER: string[] = ["awaiting_pay", "awaiting_verify", "deposit_paid", "fully_paid"];
+// v662：加入 created（建立訂單）→ 剛下單未滿 1 天的新訂單也要在預設視圖看得到（與「等待付款」同屬未付款）
+const DEFAULT_STATUS_FILTER: string[] = ["created", "awaiting_pay", "awaiting_verify", "deposit_paid", "fully_paid"];
 
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pending: "待付款",
@@ -202,8 +203,8 @@ export default function AdminBookingsPage() {
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   // v294/v329：依 URL ?status= 讀預設值，支援多選（逗號分隔）
   //   filterStatusSet 為 empty Set = "全部"；有東西在 set 內 = 只顯示這些
-  // v609：預設只顯示「正常流程進行中、需關注付款」的訂單（等待付款/待確認匯款/已確認付款訂金/已完成付款）
-  //   建立訂單、客戶活動完成、取消、退款等不在預設視圖內，點「全部」或對應 chip 才看。
+  // v609/v662：預設顯示「正常流程進行中、需關注付款」的訂單（建立訂單/等待付款/待確認匯款/已確認付款訂金/已完成付款）
+  //   活動結束、取消、退款等不在預設視圖內，點「全部」或對應 chip 才看。
   const [filterStatusSet, setFilterStatusSet] = useState<Set<string>>(
     () => new Set(DEFAULT_STATUS_FILTER),
   );
