@@ -52,6 +52,7 @@ interface TripDetail {
   sites: Array<{ id: string; name: string; description: string }>;
   referenceVideoUrl?: string | null;
   coaches: Array<{ id: string; realName: string; cert: string }>;
+  activityNote?: string | null; // v666：活動提醒（客戶可見）
 }
 
 type GearItemType =
@@ -574,6 +575,13 @@ export default function TripBookingPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* v666：活動提醒（場次層級，客戶可見）— 對齊桌機 /pclogin 與我的預約 */}
+        {trip.activityNote && (
+          <div className="rounded-lg bg-[#eafaf3] px-3.5 py-2.5 text-sm leading-relaxed text-[#0a7d4f]">
+            📣 活動提醒：{trip.activityNote}
+          </div>
+        )}
 
         {/* 預約內容：人數 + 潛次 + 裝備 (Dialog) */}
         <Card>

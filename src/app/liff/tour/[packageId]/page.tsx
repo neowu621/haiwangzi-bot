@@ -48,6 +48,7 @@ interface TourDetail {
   excludes: string[];
   addons: Array<{ id: string; label: string; priceDelta: number }>;
   sites: Array<{ id: string; name: string; description: string }>;
+  activityNote?: string | null; // v666：活動提醒（客戶可見）
 }
 
 export default function TourDetailPage({
@@ -256,6 +257,13 @@ export default function TourDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* v666：活動提醒（團層級，客戶可見）— 對齊桌機 /pclogin 與我的預約 */}
+        {tour.activityNote && (
+          <div className="rounded-lg bg-[#eafaf3] px-3.5 py-2.5 text-sm leading-relaxed text-[#0a7d4f]">
+            📣 活動提醒：{tour.activityNote}
+          </div>
+        )}
 
         {/* v347：繳費期限說明 */}
         <div className="rounded-lg border border-[var(--color-coral)]/30 bg-[var(--color-coral)]/5 px-3 py-2 text-[12px] leading-relaxed text-[var(--foreground)]">

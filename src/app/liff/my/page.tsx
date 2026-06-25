@@ -77,8 +77,8 @@ interface MyBooking {
   rentalGear: RentalGear[];
   notes: string | null;
   ref:
-    | { date: string; startTime: string; sites: string[]; tankCount?: number }
-    | { title: string; dateStart: string; dateEnd: string; sites: string[] }
+    | { date: string; startTime: string; sites: string[]; tankCount?: number; activityNote?: string | null }
+    | { title: string; dateStart: string; dateEnd: string; sites: string[]; activityNote?: string | null }
     | null;
   paymentProofs: Array<{
     id: string;
@@ -635,6 +635,13 @@ function BookingCard({
               <CalendarDays className="h-3 w-3" />
               {ref.dateStart} → {ref.dateEnd}
             </div>
+          </div>
+        )}
+
+        {/* v666：活動提醒（場次/團層級，客戶可見）— 對齊桌機 /pclogin */}
+        {ref?.activityNote && (
+          <div className="rounded-md bg-[#eafaf3] px-2.5 py-1.5 text-xs leading-relaxed text-[#0a7d4f]">
+            📣 活動提醒：{ref.activityNote}
           </div>
         )}
 

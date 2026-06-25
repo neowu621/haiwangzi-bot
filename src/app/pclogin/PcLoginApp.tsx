@@ -32,7 +32,7 @@ interface Member {
   tankPromo?: { active: boolean; discount: number; reason?: string };
   creditBalance: number;
   emergencyContact: { name: string; phone: string; relationship: string } | null;
-  stats: { totalBookings: number; completed: number };
+  stats: { totalBookings: number; completed: number; unreadNotifications?: number };
   // v656：補齊手機 LIFF 會員中心的完整欄位
   haiwangziLogCount?: number;
   birthday?: string | null;
@@ -146,6 +146,14 @@ function ntd(n: number) {
   return `NT$ ${Number(n || 0).toLocaleString()}`;
 }
 
+// v666：潛旅目的地 enum → 中文（原本直接顯示 northeast/lanyu/green_island… 英文代碼）
+const DEST_ZH: Record<string, string> = {
+  northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "海外",
+};
+function destZh(d?: string | null) {
+  return d ? (DEST_ZH[d] ?? d) : "";
+}
+
 type View =
   | { name: "browse" }
   | { name: "bookDaily"; trip: Trip }
@@ -222,18 +230,30 @@ export function PcLoginApp() {
 function TopBar({ member, authState, view, setView }: {
   member: Member | null; authState: string; view: View; setView: (v: View) => void;
 }) {
-  const navItem = (name: View["name"], label: string) => (
+  const navItem = (name: View["name"], label: string, badge?: number) => (
     <button
       onClick={() => setView({ name } as View)}
       style={{
+        position: "relative",
         background: "none", border: "none", cursor: "pointer",
         color: view.name === name ? C.phosphor : "#cdd9e3",
         fontWeight: view.name === name ? 800 : 600, fontSize: 14, padding: "6px 4px",
         borderBottom: view.name === name ? `2px solid ${C.phosphor}` : "2px solid transparent",
         fontFamily: "inherit",
+        display: "inline-flex", alignItems: "center", gap: 5,
       }}
     >
       {label}
+      {badge !== undefined && badge > 0 && (
+        <span style={{
+          // v666：nav 數量徽章 — 我的訂單=進行中筆數、通知=未讀數
+          minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999,
+          background: name === "notifications" ? C.coral : C.phosphor,
+          color: name === "notifications" ? "#fff" : C.deep,
+          fontSize: 11, fontWeight: 800, lineHeight: "18px", textAlign: "center",
+          display: "inline-block",
+        }}>{badge > 99 ? "99+" : badge}</span>
+      )}
     </button>
   );
   return (
@@ -246,8 +266,8 @@ function TopBar({ member, authState, view, setView }: {
         {authState === "in" && (
           <nav style={{ display: "flex", gap: 18, marginLeft: 14 }}>
             {navItem("browse", "預約")}
-            {navItem("orders", "我的訂單")}
-            {navItem("notifications", "通知")}
+            {navItem("orders", "我的訂單", member?.stats?.totalBookings)}
+            {navItem("notifications", "通知", member?.stats?.unreadNotifications)}
             {navItem("profile", "會員中心")}
           </nav>
         )}
@@ -547,7 +567,7 @@ function TourCard({ tour, onBook }: { tour: Tour; onBook: () => void }) {
       </div>
       <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ fontSize: 13.5 }}>🗓️ {tour.dateStart} ~ {tour.dateEnd}{tour.durationLabel ? `（${tour.durationLabel}）` : ""}</div>
-        <div style={{ fontSize: 13.5 }}>📍 {tour.destination}</div>
+        <div style={{ fontSize: 13.5 }}>📍 {destZh(tour.destination)}</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {tour.beginnerFriendly && <Tag>新手友善</Tag>}
           {tour.tanksCount != null && <Tag>{tour.tanksCount} 潛</Tag>}
@@ -1005,7 +1025,7 @@ function TourBookingForm({ tourId, member, onBack }: { tourId: string; member: M
       <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
         <div style={formCard()}>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep, marginBottom: 4 }}>{tour.title}</h2>
-          <div style={{ fontSize: 14, color: C.mute }}>🗓️ {tour.dateStart} ~ {tour.dateEnd} ‧ 📍 {tour.destination}</div>
+          <div style={{ fontSize: 14, color: C.mute }}>🗓️ {tour.dateStart} ~ {tour.dateEnd} ‧ 📍 {destZh(tour.destination)}</div>
 
           <SectionTitle>報名人數</SectionTitle>
           {field("人數", <Stepper value={participants} min={1} max={10} onChange={setParticipants} />)}
@@ -1118,7 +1138,7 @@ type Notif = { id: string; title: string; body: string; isRead: boolean; created
 function NotificationsPanel() {
   const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "today" | "date">("all");
+  const [filter, setFilter] = useState<"week" | "all" | "today" | "date">("week"); // v666：預設「近一周」
   const [pickDate, setPickDate] = useState("");
   const [contactMsg, setContactMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -1141,7 +1161,9 @@ function NotificationsPanel() {
 
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   const dOf = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   const filtered = items.filter((n) => {
+    if (filter === "week") return dOf(n.createdAt) >= weekAgo; // v666：近 7 天
     if (filter === "today") return dOf(n.createdAt) === today;
     if (filter === "date") return pickDate ? dOf(n.createdAt) === pickDate : true;
     return true;
@@ -1191,8 +1213,9 @@ function NotificationsPanel() {
 
       {/* 篩選 */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        {chip("all", "全部")}
+        {chip("week", "近一周")}
         {chip("today", "今天")}
+        {chip("all", "全部")}
         {chip("date", "選日期")}
         {filter === "date" && <input type="date" value={pickDate} onChange={(e) => setPickDate(e.target.value)} style={{ ...inp, width: "auto" }} />}
         <button onClick={reload} style={{ marginLeft: "auto", fontSize: 12, color: C.mute, background: "none", border: "none", cursor: "pointer" }}>↻ 重新整理</button>

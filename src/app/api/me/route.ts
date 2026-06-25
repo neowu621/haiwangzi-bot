@@ -44,6 +44,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // v666：未讀站內通知數（給 /pclogin nav 徽章用；與通知列表同 30 天視窗）
+  const since30dNotif = new Date(Date.now() - 30 * 86400000);
+  const unreadNotifications = await prisma.notification
+    .count({ where: { userId: auth.user.lineUserId, isRead: false, createdAt: { gte: since30dNotif } } })
+    .catch(() => 0);
+
   const u = auth.user;
   // v592：先清掉已過期抵用金,讓顯示餘額準確(早鳥 30 天短效金到期作廢)
   await reconcileExpiredCredits(u.lineUserId).catch(() => {});
@@ -128,6 +134,7 @@ export async function GET(req: NextRequest) {
     stats: {
       totalBookings,
       completed,
+      unreadNotifications,
     },
   });
 }
