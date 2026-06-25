@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東北角海王子潛水 — 系統介紹與操作指南</title>
+<style>
+:root{
+  --abyss:#06262e; --deep:#0A2342; --sea:#0e4c5a; --teal:#13b5a6; --teal2:#1ed4c2;
+  --aqua:#7ff0e4; --coral:#ff6b5e; --gold:#f5b945; --ink:#0a2027; --ink2:#41575e;
+  --line:#e1ebeb; --soft:#f5f8f8; --bg:#eef3f6; --white:#fff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;line-height:1.75;}
+a{color:var(--sea);text-decoration:none}
+h1,h2,h3,h4{line-height:1.3;color:var(--deep)}
+code{background:#eaf3f2;color:var(--sea);padding:1px 6px;border-radius:6px;font-size:.9em}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(10,35,66,.96);backdrop-filter:blur(6px);
+  color:#fff;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 18px;box-shadow:0 2px 14px rgba(0,0,0,.18)}
+.nav .brand{font-weight:900;font-size:15px;margin-right:auto;display:flex;align-items:center;gap:8px}
+.nav a{color:#cfe6e2;font-weight:700;font-size:13px;padding:7px 12px;border-radius:999px;transition:.15s}
+.nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+/* hero */
+.hero{background:linear-gradient(160deg,#06262e 0%,#0A2342 45%,#0e7d72 130%);color:#eafffb;padding:54px 20px 60px;text-align:center}
+.hero .eyebrow{letter-spacing:3px;font-size:12px;color:var(--aqua);font-weight:800;text-transform:uppercase}
+.hero h1{color:#fff;font-size:clamp(26px,5vw,40px);margin:12px 0 10px}
+.hero p{max-width:680px;margin:0 auto;color:#cfe6e2;font-size:16px}
+.hero .ver{display:inline-block;margin-top:18px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  border-radius:999px;padding:6px 16px;font-size:12.5px;color:#eafffb;font-family:monospace}
+
+/* sections */
+section{padding:44px 0}
+.sec-h{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.sec-h .n{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;font-weight:900;
+  background:linear-gradient(140deg,var(--teal),var(--sea))}
+.sec-h h2{margin:0;font-size:24px}
+.sec-sub{color:var(--ink2);margin:0 0 22px 50px;font-size:14.5px}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:18px;
+  box-shadow:0 2px 4px rgba(6,38,46,.04),0 14px 30px rgba(6,38,46,.05)}
+.card h3{margin:0 0 12px;font-size:17px;display:flex;align-items:center;gap:8px}
+.card h4{margin:18px 0 8px;font-size:14.5px;color:var(--sea)}
+.card p{margin:8px 0}
+.card ul{margin:8px 0;padding-left:22px}
+.card li{margin:5px 0}
+
+.grid{display:grid;gap:14px}
+@media(min-width:760px){.grid.c2{grid-template-columns:1fr 1fr}.grid.c4{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.grid.c4{grid-template-columns:repeat(4,1fr)}}
+
+.tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.tile .ic{font-size:26px}
+.tile b{display:block;margin:6px 0 4px;color:var(--deep);font-size:15px}
+.tile small{color:var(--ink2);font-size:12.5px;line-height:1.6;display:block}
+
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);color:var(--deep);font-weight:800;white-space:nowrap}
+tbody tr:nth-child(even){background:#fafcfc}
+
+.callout{border-left:4px solid var(--teal);background:#effbf9;border-radius:0 12px 12px 0;padding:12px 16px;margin:14px 0;font-size:13.5px}
+.warn{border-left-color:var(--coral);background:#fff1ef}
+.gold{border-left-color:var(--gold);background:#fff8ea}
+
+.pill{display:inline-block;background:#eafaf6;color:var(--sea);border:1px solid #bfe9e1;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin:2px}
+.warn-card{border-color:#f3c8c3;background:linear-gradient(180deg,#fff6f5,#fff)}
+.warn-card h3{color:var(--coral)}
+.warn-card ol{margin:8px 0;padding-left:22px}.warn-card li{margin:6px 0}
+
+/* journey */
+.journey{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 14px}
+.step{flex:0 0 150px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;position:relative}
+.step .num{width:24px;height:24px;border-radius:50%;background:var(--teal);color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;margin-bottom:8px}
+.step b{font-size:13.5px;color:var(--deep)}
+.step small{display:block;color:var(--ink2);font-size:11.5px;margin-top:4px}
+.step:not(:last-child):after{content:"›";position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:var(--teal);font-size:22px;font-weight:900}
+
+.note{font-size:12px;color:var(--ink2);margin-top:6px}
+footer{background:var(--deep);color:#bcd;padding:28px 20px;text-align:center;font-size:13px;margin-top:30px}
+footer b{color:#fff}
+.diagram{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:8px 0 18px;overflow-x:auto}
+@media print{.nav{position:static}section{padding:20px 0}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="brand">🔱 海王子系統介紹</span>
+  <a href="#arch">① 架構總覽</a>
+  <a href="#user">② 客戶角度</a>
+  <a href="#boss">③ 老闆角度</a>
+  <a href="#coach">④ 教練/助教</a>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">Product Guide</div>
+  <h1>東北角海王子潛水 · 系統介紹與操作指南</h1>
+  <p>一份給老闆看的白話導覽：搞懂這套網站「有哪些部分、各做什麼、三種人怎麼用、要注意什麼」。整套系統大致已 90% 完整，剩微調細節。</p>
+  <div class="ver">版本 20260625_655 · haiwangzi.xyz</div>
+</header>
+
+<!-- ============ 1 架構 ============ -->
+<section id="arch" class="wrap">
+  <div class="sec-h"><span class="n">1</span><h2>基本資訊：系統架構與操作總覽</h2></div>
+  <p class="sec-sub">一句話：客人用手機在 LINE 裡預約潛水、付款；老闆用電腦（或手機）在後台管訂單、會員與收款；系統還會自動幫你催繳、提醒、發通知。</p>
+
+  <div class="card">
+    <h3>🗺️ 整體架構（一個程式、三種人用 + 同一網址自動分流）</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 940 360" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="'Noto Sans TC',sans-serif">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#13b5a6"/><stop offset="1" stop-color="#0e4c5a"/>
+          </linearGradient>
+        </defs>
+        <!-- core -->
+        <rect x="370" y="150" width="200" height="64" rx="14" fill="url(#g1)"/>
+        <text x="470" y="178" fill="#fff" font-size="16" font-weight="800" text-anchor="middle">海王子系統</text>
+        <text x="470" y="199" fill="#d8fff8" font-size="11" text-anchor="middle">Next.js · 資料庫 · LINE</text>
+        <!-- three roles -->
+        <g font-size="13" font-weight="700" text-anchor="middle">
+          <rect x="70" y="40" width="180" height="58" rx="12" fill="#fff" stroke="#e1ebeb"/>
+          <text x="160" y="64" fill="#0A2342">📱 客人</text><text x="160" y="84" fill="#41575e" font-size="11">LINE 會員 App</text>
+          <rect x="380" y="40" width="180" height="58" rx="12" fill="#fff" stroke="#e1ebeb"/>
+          <text x="470" y="64" fill="#0A2342">🤿 教練 / 助教</text><text x="470" y="84" fill="#41575e" font-size="11">今日帶團・勾到場</text>
+          <rect x="690" y="40" width="180" height="58" rx="12" fill="#fff" stroke="#e1ebeb"/>
+          <text x="780" y="64" fill="#0A2342">🛠️ 老闆 / 管理者</text><text x="780" y="84" fill="#41575e" font-size="11">電腦/手機後台</text>
+        </g>
+        <g stroke="#13b5a6" stroke-width="2" fill="none">
+          <path d="M160 98 L160 182 L368 182"/>
+          <path d="M470 98 L470 148"/>
+          <path d="M780 98 L780 182 L572 182"/>
+        </g>
+        <!-- bottom: device split + public + automation -->
+        <g font-size="12.5" font-weight="700" text-anchor="middle">
+          <rect x="60" y="270" width="250" height="62" rx="12" fill="#effbf9" stroke="#bfe9e1"/>
+          <text x="185" y="294" fill="#0e4c5a">🌐 公開官網</text><text x="185" y="314" fill="#41575e" font-size="11">Google 收錄 → 導去加 LINE</text>
+          <rect x="345" y="270" width="250" height="62" rx="12" fill="#fff8ea" stroke="#f3e0b0"/>
+          <text x="470" y="294" fill="#9a6a12">⏰ 自動化排程</text><text x="470" y="314" fill="#41575e" font-size="11">催繳・提醒・天氣取消・清理</text>
+          <rect x="630" y="270" width="250" height="62" rx="12" fill="#eef5ff" stroke="#cfe0f5"/>
+          <text x="755" y="294" fill="#1d5fb8">📨 三種通知</text><text x="755" y="314" fill="#41575e" font-size="11">LINE · Email · 站內</text>
+        </g>
+        <g stroke="#9bb" stroke-width="1.6" fill="none" stroke-dasharray="4 4">
+          <path d="M470 214 L470 268"/><path d="M470 240 L185 240 L185 268"/><path d="M470 240 L755 240 L755 268"/>
+        </g>
+      </svg>
+    </div>
+    <div class="callout"><b>同一個網址會依裝置自動切版面：</b>前台官網 <code>/</code> 手機自動跳手機版 <code>/mobile</code>（Google 爬蟲留原網址收錄）；後台 <code>/admin</code> 手機自動跳 <code>/admin/m</code>（8 大卡），電腦看完整版。</div>
+  </div>
+
+  <h3 style="margin:6px 0 10px">🧩 四大區塊與主要頁面</h3>
+  <div class="grid c4">
+    <div class="tile"><div class="ic">📱</div><b>LINE 會員 App</b><small>給客人：場次月曆報名、潛旅報名、開團許願、我的預約/付款/退款、會員中心（VIP・抵用金）</small></div>
+    <div class="tile"><div class="ic">🛠️</div><b>管理後台</b><small>給老闆：總覽、老闆結帳、訂單管理、會員管理、客服信箱、願望單、場次/潛旅、抵用金、報表、系統設定</small></div>
+    <div class="tile"><div class="ic">🤿</div><b>教練端</b><small>給教練/助教：今日帶團名單 + 勾到場、本期排班、收款核對（金流限管理者）</small></div>
+    <div class="tile"><div class="ic">🌊</div><b>公開官網</b><small>給路人：首頁、日潛場次、課程、價格、潛點、評價、常見問題、安全/保險、線上諮詢</small></div>
+  </div>
+
+  <div class="grid c2" style="margin-top:14px">
+    <div class="card">
+      <h3>📚 核心資料概念（白話）</h3>
+      <ul>
+        <li><b>會員身分（角色）</b>：分「會員」與工作人員（助教/教練/管理者/IT/老闆）。工作人員可兼多身分、權限累加；只有「管理者以上」能進後台。</li>
+        <li><b>訂單</b>：待付款 → 待審核（客人上傳轉帳截圖）→ 已確認 → 活動結束；途中可能取消。每筆都有完整狀態歷史。</li>
+        <li><b>場次 / 潛旅</b>：場次＝某天某時段的日潛（含夜潛）；潛旅＝多天旅行團（有訂金、尾款、繳費期限）。</li>
+        <li><b>抵用金</b>：店內折抵金。註冊送 50、首次付款完成再送 100、生日送、VIP 升等也送。</li>
+        <li class="warn" style="list-style:none;margin-left:-10px"><b>兩個潛水次數別搞混：</b>「<b>海王子累積氣瓶數</b>」＝實際下水、教練勾到場才加，不能自填，<b>VIP 升等只看這個</b>；「個人資料潛水次數」＝會員自填總經驗，僅供參考、不影響 VIP。</li>
+        <li><b>VIP 等級</b>：依累積氣瓶數自動升 🦐LV1 → 🦞LV2(21) → 🐢LV3(51) → 🪼LV4(101) → 🐋LV5(201)，每升一級自動發獎勵金。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🤖 自動化系統（系統會自動幫你做的事）</h3>
+      <ul>
+        <li><b>💰 催繳付款</b>：日潛下訂後 D+2 提醒、D+7 最後通知、<b>D+10 自動取消</b>；潛旅訂金 D+5 催、尾款出發前 33/30 天提醒、出發前 2 天寄行前手冊。每段只發一次。</li>
+        <li><b>🌬️ 天氣取消</b>：風速超標自動取消整場並退費通知。</li>
+        <li><b>🎂 生日抵用金</b>、<b>每日訂單日報</b>、<b>願望單自動關閉</b>、<b>舊憑證自動清理</b>（核可滿 30 天自動刪圖、紀錄留存）。</li>
+        <li><b>📨 三種通知管道</b>：LINE / Email / 站內，對象自動分流（客人收確認/催繳/退款；老闆收待審/新願望；教練收超賣警示）。</li>
+      </ul>
+      <div class="callout gold"><b>確認線上跑哪一版：</b>看後台左下角版號，或開 <code>/api/healthz</code>。</div>
+    </div>
+  </div>
+
+  <div class="card warn-card">
+    <h3>⚠️ 老闆該知道的注意細節</h3>
+    <ol>
+      <li><b>每天打烊看「老闆結帳」+ 清掉待審憑證</b>：客人付款後訂單卡在「待審核」，要盡快核可，否則位子一直懸著。</li>
+      <li><b>教練「勾到場」是 VIP 升級的唯一來源</b>：忘了勾，客人氣瓶數不會加、升不了等。</li>
+      <li><b>刪會員用「軟刪除（封存）」就好</b>：可還原、訂單付款都留；「永久刪除」連訂單憑證一起消失、不可逆。「黑名單」＝能登入但不能預約。</li>
+      <li><b>危險操作（系統設定→危險）</b>：兩種重置都不可復原，需打確認字串才執行。</li>
+      <li><b>群發＝發真實訊息給真人</b>：務必先「試送給自己」。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 2 用戶 ============ -->
+<section id="user" style="background:#e8f1f2">
+<div class="wrap">
+  <div class="sec-h"><span class="n">2</span><h2>客戶（會員）角度 · 操作說明</h2></div>
+  <p class="sec-sub">客人從加入到變 VIP，全程在 LINE 裡操作，不用另外下載 App。</p>
+
+  <h3 style="margin:0 0 10px">🧭 客戶完整旅程</h3>
+  <div class="journey">
+    <div class="step"><div class="num">1</div><b>加 LINE 好友</b><small>自動建會員（🦐LV1）</small></div>
+    <div class="step"><div class="num">2</div><b>完成基本資料</b><small>填 Email 並驗證 → 送 50 元註冊禮金</small></div>
+    <div class="step"><div class="num">3</div><b>瀏覽行程</b><small>日潛場次 / 潛旅團</small></div>
+    <div class="step"><div class="num">4</div><b>下單</b><small>填個資+潛水經驗、簽同意聲明</small></div>
+    <div class="step"><div class="num">5</div><b>付款</b><small>上傳匯款憑證</small></div>
+    <div class="step"><div class="num">6</div><b>老闆審核</b><small>核可 → 訂單確認</small></div>
+    <div class="step"><div class="num">7</div><b>教練到場簽到</b><small>氣瓶數+N，首單再送 100</small></div>
+    <div class="step"><div class="num">8</div><b>累積升 VIP</b><small>自動升等、發獎勵金</small></div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3>📅 三種預約管道</h3>
+      <ul>
+        <li><b>依日期挑場次</b> — 場次月曆先選日期再選場次。</li>
+        <li><b>直接挑場次</b> — 從場次列表點進報名（含夜潛）。</li>
+        <li><b>潛旅團</b> — 看團詳情（行程/潛點/費用/繳費期限）→ 報名付訂金。</li>
+        <li><b>願望單</b> — 找不到合適日期可自己提想潛的日期，老闆回覆後開場。</li>
+      </ul>
+      <div class="callout">日潛場次<b>開始前 2 小時截止</b>，過了會變灰、點不進去。</div>
+    </div>
+    <div class="card">
+      <h3>📝 下單時要填什麼</h3>
+      <p>會帶出既有資料，但每筆訂單都請客人<b>再次確認/更新</b>：</p>
+      <ul>
+        <li>真實姓名、手機、緊急聯絡人（必填）</li>
+        <li><span class="pill">必填</span> 證照等級（OW/AOW/DM/Instructor）</li>
+        <li><span class="pill">必填</span> 證照號碼</li>
+        <li><span class="pill">必填</span> 累計潛水次數（新手填 0 也可）</li>
+        <li>多人同行：每位潛伴資料（可從常用潛伴一鍵帶入）</li>
+        <li><b>同意聲明</b>：須先閱讀取消/安全政策，再<b>手寫簽名</b>才能送出</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3>💳 付款與憑證上傳</h3>
+      <ul>
+        <li>已全面取消現場付款，一律事先付款；到「我的預約 → 付款方式選擇」。</li>
+        <li>三選一：🏦 銀行轉帳（填後 5 碼）／💚 LINE Pay（截圖必填）／📝 其他（須說明）。</li>
+        <li>截圖自動壓縮 &lt;500KB；送出後變「⏳ 待老闆審核」，核可後確認；被駁回會顯示說明可重傳。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📂 我的預約 / 會員中心</h3>
+      <ul>
+        <li><b>即將進行的預約</b> = 未來活動；<b>已結束</b> = 活動結束（有參加）+ 活動取消（含天氣/客戶取消/未付款不成立）。</li>
+        <li>每筆可查當初簽的同意聲明；日潛結束後可看當天潛水照片（7 天）。</li>
+        <li>會員中心：VIP 等級、抵用金/補償金餘額（含明細）、海王子累積氣瓶數、通知偏好（LINE/Email）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card warn-card">
+    <h3>⚠️ 對客戶體驗的注意細節</h3>
+    <ol>
+      <li><b>Email 是兩筆獎勵的鑰匙</b>：沒驗證 Email 拿不到 50 元註冊禮金，首單 100 元也要 Email 已驗證才發 — 提醒新客務必收信點驗證。</li>
+      <li><b>兩個「潛水次數」別搞混</b>：自填經驗不會升 VIP；唯一讓 VIP 升級的是教練當天「到場」勾選。</li>
+      <li><b>每次下單都要重填證照號碼與潛水次數</b>：這是刻意設計（讓教練每場拿到最新經驗），客人覺得「明明填過」是正常的、不是壞掉。</li>
+    </ol>
+  </div>
+</div>
+</section>
+
+<!-- ============ 3 老闆 ============ -->
+<section id="boss" class="wrap">
+  <div class="sec-h"><span class="n">3</span><h2>老闆角度 · 後台操作說明</h2></div>
+  <p class="sec-sub">桌機開 <code>/admin</code> 即進後台；左下角有版號。紅色數字徽章＝該頁有待處理，看到就進去處理。</p>
+
+  <h3 style="margin:0 0 10px">🗂️ 後台六大分類（左側欄）</h3>
+  <div class="grid c4">
+    <div class="tile"><div class="ic">📊</div><b>營運／分析</b><small>總覽、老闆結帳、報表、前台活動、操作說明</small></div>
+    <div class="tile"><div class="ic">📦</div><b>訂單／客戶</b><small>訂單管理、客製開單、願望單、會員管理、抵用金</small></div>
+    <div class="tile"><div class="ic">🏷️</div><b>商品／人員</b><small>日潛場次、潛水旅行（開團的地方）</small></div>
+    <div class="tile"><div class="ic">📨</div><b>客服／通知</b><small>客服信箱、群發通知、訊息模板、通訊紀錄</small></div>
+    <div class="tile"><div class="ic">📣</div><b>行銷</b><small>節慶優惠、業務推廣、最新動態</small></div>
+    <div class="tile"><div class="ic">⚙️</div><b>系統／IT</b><small>（僅老闆/IT）系統設定、操作紀錄</small></div>
+  </div>
+
+  <div class="grid c2" style="margin-top:14px">
+    <div class="card">
+      <h3>🚩 開團（日潛 / 潛旅）</h3>
+      <ul>
+        <li><b>日潛場次</b>：新增/編輯單日場次，可設夜潛、預設定價；<b>「Dump 一週」</b>一鍵生整週貼文/場次。</li>
+        <li><b>潛水旅行</b>：建團填行程、潛點、費用、訂金與繳費期限。規則：訂金截止＝下訂後 7 天、尾款截止＝出發前 30 天。</li>
+        <li>注意：<b>已有訂單的場次/團不能硬刪</b>，要先處理訂單。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧾 訂單與付款</h3>
+      <ul>
+        <li><b>付款憑證審核（最常被漏）</b>：客戶上傳截圖後卡在待審核，<b>核可</b>→確認收款；<b>駁回</b>→請客戶重傳。</li>
+        <li><b>改訂單狀態</b>：用狀態 chips 篩選；每筆有完整狀態歷史。</li>
+        <li><b>退款/退抵用金</b>：兩段式（一方發起→另一方確認→執行），可退現金或轉抵用金。</li>
+        <li><b>老闆結帳（對帳）</b>：打烊前主畫面，先點名「到場」再逐筆/批次「結算收款」。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3>👥 會員與角色</h3>
+      <ul>
+        <li><b>會員管理</b>：篩選 — 會員 / VIP（LV1~LV5+）/ 教練·助教 / 老闆·管理員·IT / 黑名單。</li>
+        <li><b>封存 vs 黑名單 vs 永久刪除</b>：🗃️ 封存（推薦，可還原）／⛔ 黑名單（可登入但不能預約）／🗑 永久刪除（全消失、不可逆）。</li>
+        <li><b>發抵用金</b>：手動發放/調整、查明細。VIP 升等獎勵是<b>系統自動發</b>（🤖）。</li>
+        <li><b>角色制度</b>：老闆與 IT 身分<b>只能由資料庫設定</b>，後台 UI 改不了。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📣 群發通知（請務必小心）</h3>
+      <ul>
+        <li><b>複選對象</b>：會員、教練助教、某場次參加者…可一次勾多個。</li>
+        <li><b>自動去重</b>：同一人落在多群組也<b>只發一次</b>。</li>
+        <li><b>自動排除</b>：軟刪除 + 黑名單一律不寄。</li>
+        <li><b>送出前列收件名單</b>：顯示人數+名單（已去重/排除），核對再送。</li>
+        <li><b>訊息模組</b>：常用內容可存，一鍵載入。</li>
+      </ul>
+      <div class="callout warn"><b>鐵律：</b>先按「📨 試送給自己」確認排版/管道，再正式群發 — 發錯收不回。</div>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3>⚙️ 系統設定（僅老闆/IT）</h3>
+      <p>分頁設定：💰 金額（裝備費率、教練氣瓶優惠價、生日金、風速門檻）、⭐ VIP（級距＋升級獎勵）、早鳥/折扣與抵用金效期、💳 付款（銀行帳號、LINE Pay ID）、🔗 連結（FB/YT/IG，自動附在通知結尾）、📨 發送（自動通知收件人）、🏠 首頁文案、⚠️ 危險（資料重置，需確認字串、不可復原）。</p>
+    </div>
+    <div class="card">
+      <h3>🕵️ 操作紀錄</h3>
+      <p>稽核所有管理動作（誰、何時、做了什麼），含群發歷史與聯絡客戶紀錄。出事或對帳爭議時來查。</p>
+      <div class="note">延伸：詳細圖解在後台「操作說明」頁 <code>/admin/guide</code>；手機版後台 <code>/admin/m</code> 也能就地審單、回客服、發抵用金。</div>
+    </div>
+  </div>
+
+  <div class="card warn-card">
+    <h3>⚠️ 老闆最該注意的 5 件事</h3>
+    <ol>
+      <li><b>群發＝發真實訊息給真人</b>：先試送給自己、核對收件名單人數再送。</li>
+      <li><b>付款憑證要即時審</b>：不審，客戶訂單一直卡待審核、名額被佔。</li>
+      <li><b>天氣取消要「勾通知＋退款」</b>：別讓客人白跑。</li>
+      <li><b>VIP 看「海王子累積氣瓶數」不是自填經驗</b>：靠教練現場勾到場累積。</li>
+      <li><b>刪會員優先用「封存」</b>：永久刪除連訂單憑證一起消失不可逆。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 4 教練 ============ -->
+<section id="coach" style="background:#e8f1f2">
+<div class="wrap">
+  <div class="sec-h"><span class="n">4</span><h2>教練 / 助教角度 · 操作說明</h2></div>
+  <p class="sec-sub">教練/助教用手機 LINE 開「教練端」，現場帶團、勾到場、上傳動態。</p>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3>🚪 怎麼進「教練/助教端」</h3>
+      <ul>
+        <li>LINE 開會員 App → 進「個人中心」。</li>
+        <li>帳號被設「教練」或「助教」身分 → 多出綠框入口卡（教練後台 / 助教後台）。</li>
+        <li>點進去＝教練端首頁（今日場次），下方可切「本期排班」「動態管理」。</li>
+      </ul>
+      <div class="note">一般會員看不到這張卡，不怕客人誤入。</div>
+    </div>
+    <div class="card">
+      <h3>✅ 今日帶團 + 到場簽到（最重要）</h3>
+      <ul>
+        <li>列出今天每場的時間、潛點、夜潛、人數、客人名單（證照/潛伴/備註/可撥電話）。</li>
+        <li>每位客人有 <b>到場 / 缺席</b> 兩顆鈕。按「<b>到場</b>」→ 該客人「海王子累積氣瓶數 += 該場氣瓶數×人數」並自動推 LINE 通知。</li>
+        <li><b>這是 VIP 升等的唯一來源</b> — 客人自填的潛數不算，<b>每場每位當天都要確實勾</b>。</li>
+        <li>勾到場若跨過 VIP 門檻，系統自動升等、發獎勵金、推通知（全自動）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid c2">
+    <div class="card">
+      <h3>🌬️ 天氣取消 / 📸 媒體上傳</h3>
+      <ul>
+        <li><b>天氣取消</b>（老闆或教練決定）：一次完成 — 取消該場所有訂單 + 發天氣取消通知（LINE/Email/站內）+ 自動退還客人折抵的抵用金。<b>助教不能</b>做天氣取消。</li>
+        <li><b>媒體上傳</b>：在「動態管理」貼上已發在 FB/IG/YT/TikTok 的連結、填日期說明、上傳縮圖（建議 1MB 內）→ 發布，客人在「最新動態」就看得到。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔐 權限差異（重要）</h3>
+      <ul>
+        <li><b>金流/付款頁，教練和助教都看不到</b>。收款核對、退款、抵用金核可只有「管理者/老闆/IT」進得去；硬點會顯示 🔒 限管理者/老闆/IT。</li>
+        <li><b>助教</b>：看場次、出團名單、勾到場 — 就這些。</li>
+        <li><b>教練</b>：助教能做的 + 「天氣取消 / 取消改場次」。</li>
+        <li>兩者都<b>沒有</b>金流與後台管理權限。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card warn-card">
+    <h3>⚠️ 注意細節</h3>
+    <ol>
+      <li><b>沒勾到場 = 沒記到</b>：客人氣瓶數不會 +、VIP 不會升、也不收到場通知。當天逐一勾完。</li>
+      <li><b>勾錯難救</b>：到場會即時加潛數並可能觸發升等發錢，確認本人有下水再勾。</li>
+      <li><b>看到「未收 NT$」只是提醒</b>：收款核對是老闆/管理者的事，教練不經手款項。</li>
+    </ol>
+  </div>
+</div>
+</section>
+
+<footer>
+  <b>東北角海王子潛水</b> · 系統介紹與操作指南<br>
+  此文件可離線開啟、可列印。詳細圖解流程見後台「操作說明」頁 <code>/admin/guide</code>。<br>
+  <span style="opacity:.7">產生版本 20260625_655 · 2026-06-25</span>
+</footer>
+
+</body>
+</html>

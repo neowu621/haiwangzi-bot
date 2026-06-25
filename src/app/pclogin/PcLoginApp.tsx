@@ -33,6 +33,12 @@ interface Member {
   creditBalance: number;
   emergencyContact: { name: string; phone: string; relationship: string } | null;
   stats: { totalBookings: number; completed: number };
+  // v656：補齊手機 LIFF 會員中心的完整欄位
+  haiwangziLogCount?: number;
+  birthday?: string | null;
+  notifyByLine?: boolean;
+  notifyByEmail?: boolean;
+  companions?: Array<{ id?: string; name: string; cert: string | null; certNumber?: string; phone?: string; relationship?: string; logCount?: number }>;
 }
 interface Trip {
   id: string;
@@ -1240,17 +1246,48 @@ function MyOrders() {
 }
 
 // ─── 會員中心 ──────────────────────────────────────────────────────
+type PcCompanion = { id?: string; name: string; cert: string; certNumber: string; phone: string; relationship: string };
+// v656：桌機會員中心補齊手機 LIFF 全部個資項目（基本/證照/緊急聯絡人/常用潛伴/生日/通知偏好）
 function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void }) {
   const [realName, setRealName] = useState(member.realName ?? "");
   const [phone, setPhone] = useState(member.phone ?? "");
   const [email, setEmail] = useState(member.email ?? "");
+  const [birthday, setBirthday] = useState((member.birthday ?? "").slice(0, 10));
+  const [cert, setCert] = useState(member.cert ?? "");
+  const [certNumber, setCertNumber] = useState(member.certNumber ?? "");
+  const [logCount, setLogCount] = useState(String(member.logCount ?? ""));
+  const [emName, setEmName] = useState(member.emergencyContact?.name ?? "");
+  const [emPhone, setEmPhone] = useState(member.emergencyContact?.phone ?? "");
+  const [emRel, setEmRel] = useState(member.emergencyContact?.relationship ?? "");
+  const [companions, setCompanions] = useState<PcCompanion[]>(
+    (member.companions ?? []).map((c) => ({ id: c.id, name: c.name ?? "", cert: c.cert ?? "", certNumber: c.certNumber ?? "", phone: c.phone ?? "", relationship: c.relationship ?? "" })),
+  );
+  const [notifyLine, setNotifyLine] = useState(member.notifyByLine ?? true);
+  const [notifyEmail, setNotifyEmail] = useState(member.notifyByEmail ?? true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  function setCompanion(i: number, patch: Partial<PcCompanion>) {
+    setCompanions((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  }
 
   async function save() {
     setSaving(true); setMsg(null);
     try {
-      await api("/api/me", { method: "PATCH", body: JSON.stringify({ realName, phone, email }) });
+      await api("/api/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          realName, phone, email,
+          birthday: birthday || null,
+          cert: cert || null,
+          certNumber,
+          logCount: logCount ? Number(logCount) : 0,
+          emergencyContact: { name: emName, phone: emPhone, relationship: emRel || "其他" },
+          companions: companions.filter((c) => c.name.trim()).map((c) => ({ ...c, logCount: 0 })),
+          notifyByLine: notifyLine,
+          notifyByEmail: notifyEmail,
+        }),
+      });
       setMsg("✓ 已儲存");
       onSaved();
     } catch (e) {
@@ -1259,17 +1296,23 @@ function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void
   }
 
   return (
-    <div style={{ maxWidth: 620 }}>
+    <div style={{ maxWidth: 760 }}>
       <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep, marginBottom: 14 }}>會員中心</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }}>
+      {/* 統計：4 格（與手機 LIFF 一致） */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
         <Stat label="會員等級" value={`LV${member.vipLevel}`} />
         <Stat label="抵用金" value={ntd(member.creditBalance)} />
+        <Stat label="海王子氣瓶數" value={`${member.haiwangziLogCount ?? 0}`} />
         <Stat label="完成潛次" value={`${member.stats.completed}`} />
       </div>
+
+      {/* 基本資料 */}
       <div style={formCard()}>
         <SectionTitle>基本資料</SectionTitle>
-        {field("姓名", <input style={inp} value={realName} onChange={(e) => setRealName(e.target.value)} />)}
-        {field("電話", <input style={inp} value={phone} onChange={(e) => setPhone(e.target.value)} />)}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {field("姓名", <input style={inp} value={realName} onChange={(e) => setRealName(e.target.value)} />)}
+          {field("電話", <input style={inp} value={phone} onChange={(e) => setPhone(e.target.value)} />)}
+        </div>
         {field(
           "Email",
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1279,13 +1322,88 @@ function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void
               : <span style={{ fontSize: 12, color: C.coral, fontWeight: 700, whiteSpace: "nowrap" }}>未驗證</span>}
           </div>
         )}
-        <button onClick={save} disabled={saving} style={{ ...primaryBtn(), background: C.deep, color: "#fff", width: "auto", padding: "11px 24px", marginTop: 6 }}>
-          {saving ? "儲存中…" : "儲存"}
+        {field("生日（生日當月自動送禮金）", <input style={inp} type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />)}
+      </div>
+
+      {/* 潛水證照 */}
+      <div style={formCard()}>
+        <SectionTitle>潛水證照</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          {field("證照等級", (
+            <select style={inp} value={cert} onChange={(e) => setCert(e.target.value)}>
+              <option value="">未選</option>
+              {["OW", "AOW", "Rescue", "DM", "Instructor"].map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          ))}
+          {field("證照號碼", <input style={inp} value={certNumber} onChange={(e) => setCertNumber(e.target.value)} />)}
+          {field("潛水次數（自填總經驗）", <input style={inp} type="number" value={logCount} onChange={(e) => setLogCount(e.target.value.replace(/\D/g, ""))} />)}
+        </div>
+        <p style={{ fontSize: 11.5, color: C.mute, marginTop: 4, lineHeight: 1.6 }}>※ 此為自填總經驗，僅供教練參考；VIP 升等只看「海王子氣瓶數」（教練現場點名累積）。</p>
+      </div>
+
+      {/* 緊急聯絡人 */}
+      <div style={formCard()}>
+        <SectionTitle>緊急聯絡人</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          {field("姓名", <input style={inp} value={emName} onChange={(e) => setEmName(e.target.value)} />)}
+          {field("關係", <input style={inp} value={emRel} onChange={(e) => setEmRel(e.target.value)} placeholder="如：配偶 / 父母" />)}
+          {field("電話", <input style={inp} value={emPhone} onChange={(e) => setEmPhone(e.target.value)} />)}
+        </div>
+      </div>
+
+      {/* 常用潛伴 */}
+      <div style={formCard()}>
+        <SectionTitle>常用潛伴（下單可一鍵帶入）</SectionTitle>
+        {companions.length === 0 && (
+          <p style={{ fontSize: 12.5, color: C.mute, margin: "0 0 10px" }}>尚無常用潛伴，按下方新增。</p>
+        )}
+        {companions.map((c, i) => (
+          <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, marginBottom: 10, background: "#fafdfd" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
+              {field("姓名", <input style={inp} value={c.name} onChange={(e) => setCompanion(i, { name: e.target.value })} />)}
+              {field("關係", <input style={inp} value={c.relationship} onChange={(e) => setCompanion(i, { relationship: e.target.value })} />)}
+              <button onClick={() => setCompanions((p) => p.filter((_, idx) => idx !== i))}
+                style={{ height: 42, padding: "0 14px", border: `1px solid ${C.line}`, borderRadius: 9, background: "#fff", color: C.coral, fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>
+                移除
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              {field("證照等級", (
+                <select style={inp} value={c.cert} onChange={(e) => setCompanion(i, { cert: e.target.value })}>
+                  <option value="">未選</option>
+                  {["OW", "AOW", "Rescue", "DM", "Instructor"].map((x) => <option key={x} value={x}>{x}</option>)}
+                </select>
+              ))}
+              {field("證照號碼", <input style={inp} value={c.certNumber} onChange={(e) => setCompanion(i, { certNumber: e.target.value })} />)}
+              {field("電話", <input style={inp} value={c.phone} onChange={(e) => setCompanion(i, { phone: e.target.value })} />)}
+            </div>
+          </div>
+        ))}
+        <button onClick={() => setCompanions((p) => [...p, { name: "", cert: "", certNumber: "", phone: "", relationship: "" }])}
+          style={{ width: "100%", border: `1px dashed ${C.line}`, background: "transparent", color: C.deep, padding: 11, borderRadius: 9, cursor: "pointer", fontSize: 13.5, fontWeight: 700 }}>
+          ＋ 新增潛伴
         </button>
-        {msg && <span style={{ marginLeft: 12, fontSize: 13, color: msg.startsWith("✓") ? "#0a8f86" : "#c0473b" }}>{msg}</span>}
-        <p style={{ fontSize: 11.5, color: C.mute, marginTop: 14, lineHeight: 1.6 }}>
-          ※ 完整個資（證照、緊急聯絡人、潛伴、生日禮金等）可在手機 LINE App「個人」分頁編輯。
-        </p>
+      </div>
+
+      {/* 通知偏好 */}
+      <div style={formCard()}>
+        <SectionTitle>通知偏好</SectionTitle>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, marginBottom: 8, cursor: "pointer" }}>
+          <input type="checkbox" checked={notifyLine} onChange={(e) => setNotifyLine(e.target.checked)} style={{ width: 18, height: 18 }} />
+          <span>💬 LINE 推播通知（預約確認、催繳、退款等）</span>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, cursor: "pointer" }}>
+          <input type="checkbox" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} style={{ width: 18, height: 18 }} />
+          <span>✉️ Email 通知（需先完成 Email 驗證）</span>
+        </label>
+      </div>
+
+      {/* 儲存（一次存全部） */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
+        <button onClick={save} disabled={saving} style={{ ...primaryBtn(), background: C.deep, color: "#fff", width: "auto", padding: "12px 32px" }}>
+          {saving ? "儲存中…" : "儲存全部"}
+        </button>
+        {msg && <span style={{ fontSize: 13.5, fontWeight: 700, color: msg.startsWith("✓") ? "#0a8f86" : "#c0473b" }}>{msg}</span>}
       </div>
     </div>
   );
