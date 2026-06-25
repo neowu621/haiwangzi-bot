@@ -49,12 +49,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
 
-  // 3. 確認是 admin 或 boss
+  // 3. 確認是可登入後台的角色（v677：加入教練/助教，僅到場點名）
   const effectiveRoles =
     user.roles && user.roles.length > 0 ? user.roles : [user.role];
-  if (!effectiveRoles.includes("admin") && !effectiveRoles.includes("boss") && !effectiveRoles.includes("it")) {
+  const BACKEND_LOGIN_ROLES = ["admin", "boss", "it", "coach", "assistant"];
+  if (!effectiveRoles.some((r) => BACKEND_LOGIN_ROLES.includes(r))) {
     return NextResponse.json(
-      { error: "requires admin or boss role" },
+      { error: "requires backend role" },
       { status: 403 },
     );
   }

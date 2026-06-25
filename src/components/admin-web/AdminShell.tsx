@@ -32,7 +32,16 @@ import {
 // v350：側欄改「功能分組」由上而下（即時營運 → 訂單客戶 → 商品 → 行銷 → 分析 → 系統）
 const NAV_GROUPS = [
   {
+    // v677：現場作業 —— 教練/助教登入後唯一可見的群組（其餘管理群組限 admin/boss/it）
+    label: "現場作業",
+    roles: ["coach", "assistant", "admin", "boss", "it"],
+    items: [
+      { href: "/admin/attendance", icon: ClipboardCheck, label: "🐠 到場點名" },
+    ],
+  },
+  {
     label: "營運 / 分析",
+    roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
       { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
@@ -43,6 +52,7 @@ const NAV_GROUPS = [
   },
   {
     label: "訂單 / 客戶",
+    roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin/bookings", icon: BookOpen, label: "訂單管理" },
       { href: "/admin/custom-orders", icon: BookOpen, label: "🧾 客製開單" },
@@ -53,6 +63,7 @@ const NAV_GROUPS = [
   },
   {
     label: "商品 / 人員",
+    roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin/trips", icon: Waves, label: "日潛場次" },
       { href: "/admin/tours", icon: Ship, label: "潛水旅行" },
@@ -61,6 +72,7 @@ const NAV_GROUPS = [
   },
   {
     label: "客服 / 通知",
+    roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin/email", icon: Mail, label: "📧 客服信箱" },
       { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
@@ -70,6 +82,7 @@ const NAV_GROUPS = [
   },
   {
     label: "行銷",
+    roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin/promo-codes", icon: Ticket, label: "🎏 節慶優惠" },
       { href: "/admin/promotion", icon: ImageIcon, label: "🎨 業務推廣" },
@@ -209,9 +222,19 @@ export function AdminShell({
       try { localStorage.setItem("adminFavs", JSON.stringify(next)); } catch { /* 無痕模式等忽略 */ }
       return next;
     });
+  // v677：依角色算出可見的 nav hrefs（教練/助教只看得到「現場作業」群組）
+  const visibleHrefs = new Set(
+    NAV_GROUPS.filter((g) => {
+      const need = (g as { roles?: string[] }).roles;
+      if (!need) return true;
+      const have = adminUser?.effectiveRoles ?? [];
+      return need.some((r) => have.includes(r));
+    }).flatMap((g) => g.items.map((it) => it.href)),
+  );
   const favItems = favs
     .map((h) => NAV_ITEMS.find((n) => n.href === h))
-    .filter((x): x is (typeof NAV_ITEMS)[number] => Boolean(x));
+    .filter((x): x is (typeof NAV_ITEMS)[number] => Boolean(x))
+    .filter((x) => visibleHrefs.has(x.href)); // 最愛也依角色過濾，避免漏顯示無權限頁
 
   if (!ready) {
     return (

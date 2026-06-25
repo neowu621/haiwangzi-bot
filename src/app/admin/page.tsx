@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
-import { adminFetch } from "@/lib/admin-web-auth";
+import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
 
 const STATS_URL = "/api/admin/stats";
@@ -105,6 +105,15 @@ const PAY_STATUS_COLOR: Record<string, string> = {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { adminUser } = useAdminAuth();
+  // v677：教練/助教（非 admin/boss/it）登入後不看總覽 → 導到「到場點名」
+  useEffect(() => {
+    if (!adminUser) return;
+    const roles = adminUser.effectiveRoles ?? [];
+    if (!roles.some((r) => r === "admin" || r === "boss" || r === "it")) {
+      router.replace("/admin/attendance");
+    }
+  }, [adminUser, router]);
   // v570：手機開後台 → 自動導到手機簡版 /admin/m(?desktop=1 可看完整桌機版)
   const [mRedirect, setMRedirect] = useState(false);
   useEffect(() => {

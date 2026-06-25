@@ -2,6 +2,7 @@
 // 手機簡版後台首頁（/admin/m）— v570：老闆精選 8 項大卡片啟動器。
 //   純 <Link> 導向現有頁(日潛場次走手機版 /admin/m/trips);badge 走輕量 /api/admin/stats/lite。
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth } from "@/lib/admin-web-auth";
@@ -38,7 +39,16 @@ interface VisitStats {
 }
 
 export default function MobileAdminHome() {
-  const { ready } = useAdminAuth();
+  const { ready, adminUser } = useAdminAuth();
+  const router = useRouter();
+  // v677：教練/助教（非 admin/boss/it）→ 不看手機管理首頁，導到「到場點名」
+  useEffect(() => {
+    if (!adminUser) return;
+    const roles = adminUser.effectiveRoles ?? [];
+    if (!roles.some((r) => r === "admin" || r === "boss" || r === "it")) {
+      router.replace("/admin/attendance");
+    }
+  }, [adminUser, router]);
   const [stats, setStats] = useState<LiteStats | undefined>(() => getCached<LiteStats>(LITE_URL));
   const [visits, setVisits] = useState<VisitStats | undefined>(() => getCached<VisitStats>(VISITS_URL));
   const [error, setError] = useState<string | null>(null);

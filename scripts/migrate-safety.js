@@ -632,6 +632,12 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS early_bird_granted BOOLEAN NOT NULL DEFAULT FALSE`,
   // v592：抵用金批次扣抵「先用最近到期」
   `ALTER TABLE credit_txs ADD COLUMN IF NOT EXISTS consumed_amount INT NOT NULL DEFAULT 0`,
+  // v677：會員模糊搜尋加速（後台會員/抵用金 ?q= ILIKE） — pg_trgm GIN 索引
+  `CREATE EXTENSION IF NOT EXISTS pg_trgm`,
+  `CREATE INDEX IF NOT EXISTS users_real_name_trgm_idx ON users USING gin (real_name gin_trgm_ops)`,
+  `CREATE INDEX IF NOT EXISTS users_display_name_trgm_idx ON users USING gin (display_name gin_trgm_ops)`,
+  `CREATE INDEX IF NOT EXISTS users_phone_trgm_idx ON users USING gin (phone gin_trgm_ops)`,
+  `CREATE INDEX IF NOT EXISTS users_code_trgm_idx ON users USING gin (code gin_trgm_ops)`,
 ];
 
 async function main() {
