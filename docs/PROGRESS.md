@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-06-25 — 訂金通知模板 + 活動提醒落地 + 老闆結帳/通知體驗（v665→v670）
+
+目前線上 = **v20260625_670**。（v622–v664 為先前 session，細節見 `git log`；本段只記本 session。）
+
+### 訊息模板（v665）
+- 新增可編輯模板 **`deposit_pending`「老闆訂金[確認中]」**（內部、發老闆）。客戶上傳**訂金**證明時，老闆收到 ① 站內通知 ② LINE Flex（客戶/團名/金額/後5碼/方式 + 「前往核對」深連結 `/verify-proof/<id>`）。可在訊息模板頁編輯標題/按鈕/試送。
+  - 新增 `src/lib/flex/deposit-pending.ts`；註冊 6 處：`flex/index.ts`(import/FLEX_TEMPLATES/LABELS/META)、`message-content.ts`(MSG_EDITABLE_FIELDS/HERO_EMOJI/MSG_SAMPLE_PARAMS/buildDynamicBody)、`admin/templates/page.tsx`(TRIGGER_TIMING/SCOPE_TAGS)。
+  - wiring：`api/bookings/[id]/payment-proofs/route.ts` 的 deposit 分支改用此模板（站內標題讀 override；LINE 改推 Flex）。尾款/退款維持原文字推播。
+- `deposit_confirm` 顯示名 →「老闆訂金[已確認]」（只改 label，客戶看到的是內容不是模板名）。
+
+### 活動提醒（activityNote）落地到客戶端（v666）
+- 來源：`DivingTrip.activityNote` / `TourPackage.activityNote`（v664 已加，場次/團層級、客戶可見）。
+- LIFF：我的預約卡（`liff/my/page.tsx`）+ 日潛下單頁（`liff/dive/trip/[tripId]`）+ 潛旅下單頁（`liff/tour/[packageId]`）顯示綠色 `📣 活動提醒`。detail API（`api/trips/[id]`、`api/tours/[id]`）本就 `...spread` 全欄，不用改後端。
+- 預約確認訊息（v667）：`booking_confirm` 動態主體加 `📣 活動提醒` + `📝 您的備註`。
+
+### 桌機 /pclogin 體驗（v666/668/669）
+- nav 數量徽章：我的訂單=進行中、通知=未讀（`/api/me` 新增 `stats.unreadNotifications`，30 天視窗 count）。
+- 通知篩選加「近一周」並設**預設**。
+- 潛旅目的地 enum 補中文 `destZh`（原本桌機印 lanyu/green_island…英文）。
+- **登入未讀彈窗**（v668）：`UnreadPopupPc`，每 session 一次、3 秒自動關，對齊 LIFF。
+- **客服對話分頁**（v669）：`/api/me/contact` GET 加 `before` 游標、預設 30 則；前端固定高度捲動框 + 自動到最新 + 載入更早。
+
+### 老闆結帳 /admin/tonight（v667）
+- 新增 **🧾 已下單·待匯款** 區（status=pending 未上傳證明）。
+- 待確認匯款卡片重排：出團日期時間移頂、付款方式備註+上傳時間/電話移右側。
+
+### 訊息模板頁版面（v670）
+- 左欄 256→300px + 名稱自動換行（不再 `…` 截斷）。
+
+### 決策 / 注意
+- **「L8ne pay 轉帳」非系統錯字**：是客戶在付款備註 `note` 手打的自由文字（Line→L8ne），程式不可改；要改只能改該筆 DB（訂單 `020260623-4N`，老闆尚未決定）。
+- 雙向客服對話只在桌機 /pclogin；手機客戶走 LINE。
+- 所有版本 tsc 0 error、`/api/healthz` 已驗到對應版本。
+
+---
+
 ## 2026-06-21（續）— 付款核對獨立頁 + 老闆結帳補資訊 + 修付款重複 BUG（v618→v621）
 
 目前線上 = **v20260619_621**。

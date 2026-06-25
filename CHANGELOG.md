@@ -2,6 +2,40 @@
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
+> ⚠️ 註：此 CHANGELOG 自 v621 後曾長時間未補（v622–v664 的細節見 `git log` 與 `docs/PROGRESS.md`）。以下從 v665 起恢復記錄。
+
+## 20260625_670 — 2026-06-25 (訊息模板左欄加寬)
+
+- `/admin/templates` 左欄「依流程選擇」256→300px；模板名稱由 `…` 截斷改**自動換行**，長名（老闆訂金[確認中/已確認]）完整顯示。中間「填寫資料」仍 `1fr` 自動吸收。
+
+## 20260625_669 — 2026-06-25 (客服對話分頁)
+
+- `/api/me/contact` GET 加分頁：預設只回**最近 30 則**（由舊到新）+ `hasMore`/`oldestAt`；`?before=<ISO>` 往上補更早 30 則。減少手機流量。
+- 桌機 `/pclogin` 通知頁對話框：**固定高度 320px 捲動框** + 進入/送出**自動到最新** + 框頂「↑ 載入更早訊息」（載入更早時保持位置）。
+- 註：雙向客服對話只存在桌機 /pclogin；LIFF 客戶走 LINE 對話，無此串。
+
+## 20260625_668 — 2026-06-25 (桌機登入未讀彈窗)
+
+- 桌機 `/pclogin` 登入後若有未讀站內通知 → 自動跳一次彈窗（每 session 一次 sessionStorage、3 秒自動關、對齊 LIFF `UnreadPopup`）。未讀數用 `/api/me` 的 `stats.unreadNotifications`，零額外往返。
+
+## 20260625_667 — 2026-06-25 (預約確認備註 + 老闆結帳待匯款 + 卡片重排)
+
+- 日潛「預約確認」(booking_confirm) 動態主體加 `📣 活動提醒`（場次 activityNote）+ `📝 您的備註`（Booking.notes），有才顯示。改 `bookings/daily/route.ts` params + `message-content.ts`。
+- 老闆結帳 `/admin/tonight` 新增 **🧾 已下單·待匯款** 區（status=pending 未上傳證明），讓老闆知道有單在等收款。
+- 待確認匯款卡片重排：出團日期/時間移到**最上面**；付款方式備註 + 上傳時間/電話移到**右側**（核可/駁回上方）。
+
+## 20260625_666 — 2026-06-25 (LIFF 活動提醒 + 桌機 nav 徽章 + 通知近一周 + 目的地中文)
+
+- LIFF 我的預約卡 + 日潛/潛旅**下單頁**顯示綠色 `📣 活動提醒`（trip/tour.activityNote；detail API 本就 spread 全欄）。
+- 桌機 `/pclogin` nav 徽章：我的訂單=進行中筆數、通知=未讀數（`/api/me` 加 `stats.unreadNotifications`）。
+- 桌機通知篩選加 **近一周** 並設為預設（filter `week`）。
+- 潛旅目的地 enum（northeast/green_island/lanyu/kenting/other）桌機原本印英文代碼 → 補中文（蘭嶼/綠島/墾丁/東北角/海外）；LIFF 本就有對照。
+
+## 20260625_665 — 2026-06-25 (老闆訂金確認中 可編輯模板 + 訂金確認改名)
+
+- 新增可編輯訊息模板 **deposit_pending「老闆訂金[確認中]」**（內部，發老闆）：客戶上傳**訂金**證明 → 站內 + LINE Flex 通知老闆去核對（可在訊息模板頁編輯字句/試送）。新增 `flex/deposit-pending.ts` + 註冊 6 處 + wiring `payment-proofs/route.ts` 訂金分支。
+- `deposit_confirm` 顯示名「訂金確認」→ **「老闆訂金[已確認]」**。
+
 ## 20260619_621 — 2026-06-21 (修付款上傳重複證明 BUG + 氣瓶數 + 上傳按鈕)
 
 - **BUG 根因**：LINE WebView 慢，React 按鈕 disable 來不及生效，客戶連點「送出」→ 多次 submit() → 產生多筆相同付款證明（同款被重複記錄）。
