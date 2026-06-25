@@ -81,6 +81,8 @@ interface MyBooking {
   id: string;
   type: string;
   payLinkToken?: string | null;
+  notes?: string | null;       // v663：客戶備註
+  siteNotes?: string | null;   // v663：給客戶的提醒（客戶可見）
   status: string;
   paymentStatus: string;
   totalAmount: number;
@@ -1241,6 +1243,13 @@ function MyOrders() {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: cancelled ? C.mute : C.ink }}>{title}</div>
           <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{sub} ‧ {b.participants} 人 ‧ 下單 {b.createdAt.slice(0, 10)}</div>
+          {/* v663：給客戶的提醒（店家寫）+ 客戶備註（自己填）— 僅客戶可見的兩種 */}
+          {b.siteNotes && (
+            <div style={{ fontSize: 12, color: "#0a7d4f", background: "#eafaf3", borderRadius: 8, padding: "5px 9px", marginTop: 6, lineHeight: 1.6 }}>📌 {b.siteNotes}</div>
+          )}
+          {b.notes && (
+            <div style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>📝 我的備註：{b.notes}</div>
+          )}
         </div>
         {cancelled ? (
           // 已取消：大字灰標

@@ -280,7 +280,7 @@ export default function AuditLogsPage() {
 // v200：metadata 改用 key-value table + 高對比配色
 const META_KEY_LABELS: Record<string, string> = {
   notes: "客戶備註",
-  siteNotes: "網站備註",
+  siteNotes: "給客戶的提醒",
   adminNotes: "活動備註",
   paidAmount: "已付金額",
   totalAmount: "總金額",

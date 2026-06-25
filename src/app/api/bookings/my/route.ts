@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
         rentalGear: b.rentalGear,
         participantDetails: b.participantDetails,
         notes: b.notes,
+        siteNotes: b.siteNotes, // v663：給客戶的提醒（客戶可見）
         createdAt: b.createdAt,
         // v289：同意聲明資料
         signatureUrl,

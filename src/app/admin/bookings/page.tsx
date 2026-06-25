@@ -78,7 +78,7 @@ interface AdminBooking {
     note: string | null;
     createdAt: string;
   }>;
-  user: { displayName: string; realName: string | null; phone: string | null; email?: string | null; lineUserId: string };
+  user: { displayName: string; realName: string | null; phone: string | null; email?: string | null; lineUserId: string; notes?: string | null };
   ref: {
     date?: string;
     startTime?: string;
@@ -565,7 +565,7 @@ export default function AdminBookingsPage() {
       { key: "paymentMethod", label: "付款方式", format: (v) => PAYMENT_METHOD_LABEL[String(v ?? "")] ?? String(v ?? "—") },
       { key: "status", label: "訂單狀態", format: (v) => BOOKING_STATUS_LABEL[String(v)] ?? String(v) },
       { key: "notes", label: "客戶備註", format: (v) => String(v ?? "（空）") },
-      { key: "siteNotes", label: "網站備註", format: (v) => String(v ?? "（空）") },
+      { key: "siteNotes", label: "給客戶的提醒", format: (v) => String(v ?? "（空）") },
       { key: "adminNotes", label: "活動備註", format: (v) => String(v ?? "（空）") },
     ];
     const diffs: Array<{ key: string; label: string; from: string; to: string }> = [];
@@ -923,7 +923,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
-                    <th className="px-3 py-3 font-medium">備註</th>
+                    <th className="px-3 py-3 font-medium" title="會=會員備註(長期) 客=客戶備註 提=給客戶的提醒 活=活動備註(這次)">備註 ⓘ</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
@@ -1026,8 +1026,9 @@ export default function AdminBookingsPage() {
                         <td className="px-3 py-2.5 text-[11px] max-w-[170px]">
                           {(() => {
                             const parts: Array<{ l: string; t: string; c: string }> = [];
+                            if (b.user?.notes) parts.push({ l: "會", t: b.user.notes, c: "text-pink-700" });
                             if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-slate-600" });
-                            if (b.siteNotes) parts.push({ l: "網", t: b.siteNotes, c: "text-emerald-700" });
+                            if (b.siteNotes) parts.push({ l: "提", t: b.siteNotes, c: "text-emerald-700" });
                             if (b.adminNotes) parts.push({ l: "活", t: b.adminNotes, c: "text-violet-700" });
                             if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
                             return (
@@ -1062,9 +1063,17 @@ export default function AdminBookingsPage() {
                                 activityDate: b.ref?.date ?? b.ref?.dateStart ?? null,
                               });
                               return (
-                                <Badge variant={d.variant} className="text-[10px] whitespace-nowrap">
-                                  {d.label}
-                                </Badge>
+                                <>
+                                  <Badge variant={d.variant} className="text-[10px] whitespace-nowrap">
+                                    {d.label}
+                                  </Badge>
+                                  {/* v663：等待付款 → 已超過 1 天未付，提示催繳 */}
+                                  {d.key === "awaiting_pay" && (
+                                    <span className="inline-flex rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700 whitespace-nowrap">
+                                      ⏰ 已超過 1 天·待催繳
+                                    </span>
+                                  )}
+                                </>
                               );
                             })()}
                             {b.totalAmount > 0 && b.paidAmount > 0 && b.paidAmount < b.totalAmount && (
@@ -1552,10 +1561,10 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                {/* 網站備註（admin 寫，客戶可見） */}
+                {/* 給客戶的提醒（admin 寫，客戶可見） */}
                 <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
                   <Label className="text-xs pt-1.5">
-                    網站備註
+                    給客戶的提醒
                     <span className="block font-normal text-[10px]" style={{ color: "var(--muted-foreground)" }}>客戶可見</span>
                   </Label>
                   <textarea
