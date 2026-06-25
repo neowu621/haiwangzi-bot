@@ -200,7 +200,7 @@ const EMAIL_BUTTON_URL = "https://line.me/R/ti/p/%40894bpmew";
 // ── 試送/預覽用完整樣本參數（正式發送時換成真實資料，欄位名相同）──
 const SAMPLE_BASE = "https://haiwangzi.xyz";
 export const MSG_SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
-  booking_confirm: { name: "王小明", date: "2026-06-14", time: "08:30", site: "龍洞灣 體驗潛水", total: 2400, url: `${SAMPLE_BASE}/liff/my` },
+  booking_confirm: { name: "王小明", date: "2026-06-14", time: "08:30", site: "龍洞灣 體驗潛水", total: 2400, activityNote: "請提早 15 分鐘到場換裝；自備毛巾與泳具", notes: "我會自備電腦錶", url: `${SAMPLE_BASE}/liff/my` },
   d1_reminder: { date: "2026-06-14", time: "08:30", site: "深澳", weather: "晴時多雲", wave: "0.5 m", water: "27°C", vis: "8-12 m", gather: "深澳漁港停車場 07:50" },
   deposit_notice: { tourTitle: "蘭嶼四天三夜潛旅（中秋）", deposit: 8000, deadline: "2026-09-01", bankName: "玉山銀行（808）", bankAccount: "0163-979-251023", holder: "汪○○", refCode: "HW-2409", url: `${SAMPLE_BASE}/liff/my` },
   deposit_pending: { customerName: "王小明", tourTitle: "蘭嶼四天三夜潛旅（中秋）", amount: 8000, last5: "12345", method: "🏦 轉帳", url: `${SAMPLE_BASE}/admin/bookings?status=awaiting_verify` },
@@ -235,7 +235,9 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
   switch (key) {
     // ── 一日潛水（一次付清）/ 預約 ──
     case "booking_confirm":
-      return `預約場次：${s(p.site)}\n出發時間：${s(p.date)} ${s(p.time)}\n應付金額：NT$ ${m(p.total)}（一次付清）`;
+      return `預約場次：${s(p.site)}\n出發時間：${s(p.date)} ${s(p.time)}\n應付金額：NT$ ${m(p.total)}（一次付清）`
+        + (p.activityNote ? `\n📣 活動提醒：${s(p.activityNote)}` : "")
+        + (p.notes ? `\n📝 您的備註：${s(p.notes)}` : "");
     case "d1_reminder": {
       const head = `明日場次：${s(p.date)} ${s(p.time)}・${s(p.site)}`;
       const sea = p.weather ? `\n天氣 ${s(p.weather)}・浪高 ${s(p.wave)}・水溫 ${s(p.water)}・能見度 ${s(p.vis)}` : "";

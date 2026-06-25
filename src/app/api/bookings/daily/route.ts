@@ -509,6 +509,8 @@ async function sendBookingConfirmNotify(args: {
       time: trip.startTime,
       site: sites.map((s) => s.name).join("、") || "東北角",
       total: booking.totalAmount,
+      activityNote: trip.activityNote ?? "", // v667：活動提醒（場次層級，客戶可見）
+      notes: booking.notes ?? "",            // v667：客戶下單備註
       url,
     },
   });

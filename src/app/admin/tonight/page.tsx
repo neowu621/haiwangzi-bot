@@ -82,6 +82,8 @@ export default function TonightPage() {
   // v325：booking.status=awaiting_verify 但無對應 pending PaymentProof
   //   (客戶按了「我已匯款」但跳過附圖、或上傳失敗、或 proof 被駁回後 booking 沒同步)
   const [orphanAwaitingVerify, setOrphanAwaitingVerify] = React.useState<BookingRow[]>([]);
+  // v667：已下單但尚未匯款（status=pending，客戶還沒上傳任何付款證明）— 讓老闆知道有單在等收款
+  const [pendingUnpaid, setPendingUnpaid] = React.useState<BookingRow[]>([]);
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [selectedBookings, setSelectedBookings] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
@@ -121,6 +123,16 @@ export default function TonightPage() {
         (b) => b.status === "awaiting_verify" && !proofBookingIds.has(b.id),
       );
       setOrphanAwaitingVerify(orphans);
+
+      // v667：已下單·待匯款 = status pending（尚未上傳付款證明）；近的排前面
+      const pending = allBookings
+        .filter((b) => b.status === "pending")
+        .sort((a, b) => {
+          const da = a.ref?.date ?? a.ref?.dateStart ?? "";
+          const db = b.ref?.date ?? b.ref?.dateStart ?? "";
+          return da < db ? -1 : da > db ? 1 : 0;
+        });
+      setPendingUnpaid(pending);
 
       setSelectedProofs(new Set());
       setSelectedBookings(new Set());
@@ -252,7 +264,7 @@ export default function TonightPage() {
     void reload();
   }
 
-  const allEmpty = !loading && proofs.length === 0 && groups.length === 0 && orphanAwaitingVerify.length === 0;
+  const allEmpty = !loading && proofs.length === 0 && groups.length === 0 && orphanAwaitingVerify.length === 0 && pendingUnpaid.length === 0;
 
   return (
     <AdminShell>
@@ -264,7 +276,7 @@ export default function TonightPage() {
               老闆結帳
             </h1>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-              💰 待確認匯款（不限日期）＋ ✅ 今／昨日 confirmed 待勾到場。可批次處理。
+              🧾 已下單·待匯款 ＋ 💰 待確認匯款（不限日期）＋ ✅ 今／昨日 confirmed 待勾到場。可批次處理。
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => void reload()} disabled={loading}>
@@ -341,6 +353,56 @@ export default function TonightPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* ===== Section 0: 已下單·待匯款（v667）===== */}
+            {pendingUnpaid.length > 0 && (
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-base font-bold flex items-center gap-1.5">
+                    🧾 已下單·待匯款（{pendingUnpaid.length} 筆）
+                  </h2>
+                  <span className="text-[11px] text-[var(--muted-foreground)]">客戶已下單但尚未上傳付款證明</span>
+                </div>
+                <div className="rounded-xl border bg-white divide-y" style={{ borderColor: "var(--border)" }}>
+                  {pendingUnpaid.map((b) => {
+                    const refDate = b.ref?.date ?? b.ref?.dateStart;
+                    const refLabel = b.ref?.title
+                      ? b.ref.title
+                      : `${refDate ?? ""} ${b.ref?.startTime ?? ""} ${b.ref?.sites?.join("/") ?? ""}`.trim();
+                    return (
+                      <div key={b.id} className="flex items-center justify-between gap-3 p-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[12px] font-semibold text-slate-700">
+                            {b.ref?.title ? "✈️" : "🔱"} {refLabel || "—"}
+                            <span className="ml-1 font-normal text-[var(--muted-foreground)]">· {b.participants} 位</span>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2 text-sm flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setOpenCustomerId(b.userId)}
+                              className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                            >
+                              {b.user.realName ?? b.user.displayName}
+                            </button>
+                            <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
+                              {b.code ?? b.id.slice(0, 8)}
+                            </span>
+                            {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
+                            <span className="font-bold tabular-nums text-[var(--color-coral)]">NT$ {b.totalAmount.toLocaleString()}</span>
+                            <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">待匯款</span>
+                          </div>
+                        </div>
+                        <Link href={`/admin/bookings?status=created`}>
+                          <Button size="sm" variant="outline" className="h-7 text-[11px]">
+                            → 訂單管理催繳
+                          </Button>
+                        </Link>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {/* ===== Section 1: 待確認匯款 ===== */}
             {proofs.length > 0 && (
               <section>
@@ -410,7 +472,17 @@ export default function TonightPage() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-sm flex-wrap">
+                          {/* v667：出團日期/時間/場次 移到最上面（老闆一眼看是哪一場）*/}
+                          {(p.booking.activityDate || p.booking.activitySite) && (
+                            <div className="text-[12px] font-semibold text-slate-700">
+                              🤿 {p.booking.activityDate}{p.booking.activitySite ? `　${p.booking.activitySite}` : ""}
+                              {" ・ "}{p.booking.participants ?? 1} 位
+                              {p.booking.tripBooked != null && (
+                                <span className="ml-1 font-normal text-[var(--muted-foreground)]">（全場 {p.booking.tripBooked}{p.booking.tripCapacity != null ? `/${p.booking.tripCapacity}` : ""}）</span>
+                              )}
+                            </div>
+                          )}
+                          <div className="mt-0.5 flex items-center gap-2 text-sm flex-wrap">
                             <button
                               type="button"
                               onClick={() => setOpenCustomerId(p.booking.userId)}
@@ -436,16 +508,6 @@ export default function TonightPage() {
                             <span className="font-bold text-[var(--color-coral)]">NT$ {p.amount.toLocaleString()}</span>
                             {p.last5 && <span className="ml-2 text-[var(--muted-foreground)]">後5碼 <span className="font-mono">{p.last5}</span></span>}
                           </div>
-                          {/* v620：出團資訊 + 該場次目前已參加人數 */}
-                          {(p.booking.activityDate || p.booking.activitySite) && (
-                            <div className="mt-0.5 text-[11px] text-slate-600">
-                              🤿 {p.booking.activityDate}{p.booking.activitySite ? `　${p.booking.activitySite}` : ""}
-                              {" ・ "}{p.booking.participants ?? 1} 位
-                              {p.booking.tripBooked != null && (
-                                <span className="ml-1 text-[var(--muted-foreground)]">（全場 {p.booking.tripBooked}{p.booking.tripCapacity != null ? `/${p.booking.tripCapacity}` : ""}）</span>
-                              )}
-                            </div>
-                          )}
                           {/* v620：客戶備註 / 管理備註 提醒 */}
                           {p.booking.notes && (
                             <div className="mt-0.5 text-[11px] text-amber-700">📝 客戶：{p.booking.notes}</div>
@@ -453,18 +515,18 @@ export default function TonightPage() {
                           {p.booking.adminNotes && (
                             <div className="mt-0.5 text-[11px] text-slate-500">🔒 管理：{p.booking.adminNotes}</div>
                           )}
+                        </div>
+                        {/* v667：付款方式備註 + 上傳時間/電話 移到右側區塊（核可/駁回上方）*/}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0 text-right">
                           {p.note && (
-                            <div className="mt-1 text-[11px] text-[var(--muted-foreground)] truncate">
+                            <div className="max-w-[150px] truncate text-[11px] text-[var(--muted-foreground)]" title={p.note}>
                               💳 {p.note}
                             </div>
                           )}
-                          <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+                          <div className="text-[10px] text-[var(--muted-foreground)]">
                             {new Date(p.uploadedAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                            {" · "}
-                            {p.booking.user.phone ?? "—"}
+                            {p.booking.user.phone ? ` · ${p.booking.user.phone}` : ""}
                           </div>
-                        </div>
-                        <div className="flex flex-col gap-1.5 shrink-0">
                           <Button
                             size="sm"
                             disabled={acting === p.id || acting === "batch"}
