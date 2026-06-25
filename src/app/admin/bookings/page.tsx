@@ -229,7 +229,9 @@ export default function AdminBookingsPage() {
   }
   const [filterTripKey, setFilterTripKey] = useState<string>("all");
   // v304：場次快捷篩選 — all / today_tomorrow / future / past
-  const [filterTripPeriod, setFilterTripPeriod] = useState<"all" | "today_tomorrow" | "future" | "past">("all");
+  // v681：預設只看「未來場次」（活動尚未開始/未過期）—— 老闆要的「進行中、活動未開始」訂單。
+  //   仍可點「全部 / 今明 / 過期場次」chip 切換。
+  const [filterTripPeriod, setFilterTripPeriod] = useState<"all" | "today_tomorrow" | "future" | "past">("future");
   // v183：訂單管理重構 — 移除『依場次』分頁，加日期區間 filter + 排序 + 分頁
   type SortKey = "date" | "code" | "type" | "customer" | "amount" | "paid" | "status" | "payment" | "method";
   // v338：filterRange 已移除（活動時間範圍 filter 拿掉）
