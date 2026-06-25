@@ -18,6 +18,9 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const filterUserId = url.searchParams.get("userId") ?? undefined;
     const filterRefId = url.searchParams.get("refId") ?? undefined; // v183: 按場次 ID 過濾
+    // v674：light=1 → 只回名單需要的核心欄位，跳過退款/狀態log/退抵用金/簽名presigned URL
+    //   （給「潛旅→展開報名名單」用，避免一團多筆時逐筆 sign R2 → 載入很慢）
+    const light = url.searchParams.get("light") === "1";
 
     const where: Prisma.BookingWhereInput =
       filterUserId ? { userId: filterUserId }
@@ -58,7 +61,7 @@ export async function GET(req: NextRequest) {
     const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss" || r === "it");
 
     // v274：取得每筆 booking 的最新 RefundRequest 狀態
-    const refundReqs = bookings.length
+    const refundReqs = (!light && bookings.length)
       ? await prisma.refundRequest.findMany({
           where: {
             bookingId: { in: bookings.map((b) => b.id) },
@@ -73,7 +76,7 @@ export async function GET(req: NextRequest) {
     }
 
     // v278：取得每筆 booking 的狀態歷史
-    const statusLogs = bookings.length
+    const statusLogs = (!light && bookings.length)
       ? await prisma.bookingStatusLog.findMany({
           where: { bookingId: { in: bookings.map((b) => b.id) } },
           orderBy: { createdAt: "asc" },
@@ -87,7 +90,7 @@ export async function GET(req: NextRequest) {
     }
 
     // v608：每筆 booking 已退還的抵用金（訂單取消自動退/補退；refType=booking_cancel）
-    const refundTxs = bookings.length
+    const refundTxs = (!light && bookings.length)
       ? await prisma.creditTx.findMany({
           where: { reason: "refund", refType: "booking_cancel", refId: { in: bookings.map((b) => b.id) } },
           select: { refId: true, amount: true },
@@ -99,10 +102,10 @@ export async function GET(req: NextRequest) {
       creditRefundedByBooking.set(t.refId, (creditRefundedByBooking.get(t.refId) ?? 0) + t.amount);
     }
 
-    // v262：簽名圖 presigned URL（讓 admin UI 直接顯示）
+    // v262：簽名圖 presigned URL（讓 admin UI 直接顯示）— light 模式跳過（逐筆 sign R2 很慢）
     const { previewUrl, r2Configured } = await import("@/lib/r2");
     const signatureUrls = new Map<string, string>();
-    if (r2Configured()) {
+    if (!light && r2Configured()) {
       await Promise.all(
         bookings.map(async (b) => {
           if (!b.signatureImageKey) return;

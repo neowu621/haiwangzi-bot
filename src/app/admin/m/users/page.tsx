@@ -1,9 +1,9 @@
 "use client";
 // 手機簡版後台「會員快查」（/admin/m/users）
-//   頂部搜尋框 + VIP 篩選 chips + 列表（一次抓全部，本地分頁；滑到底再多顯示 30 筆）。
-//   走既有 /api/admin/users（回 { users: [...] }，含 stats），ready 後抓一次、客戶端篩。
+//   v674：改「打開不查、輸入關鍵字才查」—— 走伺服器端搜尋 /api/admin/users?q=（只回符合的、限 60 筆），
+//         省流量/加速，避免一打開就抓全部會員 + 算每人統計。移除 VIP 等級篩選。
 //   點一筆導去 /admin/users 做細節操作（編輯 / 抵用金 / 潛水紀錄）。
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
@@ -28,58 +28,40 @@ interface Resp {
   users: MUser[];
 }
 
-// 一次只渲染這麼多卡片，滑到底再加一批（手機顧 DOM 量 / 流量）
-const PAGE = 30;
-
-// VIP 篩選 chips。"vip5plus" = 鐵血會員：vipLevel>=5 且 海王子潛次>=300（對齊桌機版）
-type VipFilter = "all" | "vip1" | "vip2" | "vip3" | "vip4" | "vip5" | "vip5plus";
-const VIP_CHIPS: Array<{ key: VipFilter; label: string }> = [
-  { key: "all", label: "全部" },
-  { key: "vip1", label: "VIP1" },
-  { key: "vip2", label: "VIP2" },
-  { key: "vip3", label: "VIP3" },
-  { key: "vip4", label: "VIP4" },
-  { key: "vip5", label: "VIP5" },
-  { key: "vip5plus", label: "VIP5+ 鐵血" },
-];
-
-function matchVip(u: MUser, f: VipFilter): boolean {
-  if (f === "all") return true;
-  // 鐵血：LV5 且潛水 ≥300 支（與 src/app/admin/users/page.tsx 一致）
-  if (f === "vip5plus") return u.vipLevel >= 5 && u.haiwangziLogCount >= 300;
-  return u.vipLevel === Number(f.slice(3));
-}
-
 export default function MobileUsersPage() {
   const { ready } = useAdminAuth();
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [vip, setVip] = useState<VipFilter>("all");
   const [users, setUsers] = useState<MUser[]>([]);
-  const [visible, setVisible] = useState(PAGE);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // 搜尋去抖 300ms
+  // 搜尋去抖 400ms
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q.trim().toLowerCase()), 300);
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 400);
     return () => clearTimeout(t);
   }, [q]);
 
-  // ready 後抓一次全部會員（API 不分頁，回 { users: [...] }）
+  // v674：只有「有關鍵字」才查；打開（空字串）不抓任何資料
   useEffect(() => {
     if (!ready) return;
+    if (!debouncedQ) {
+      setUsers([]);
+      setSearched(false);
+      return;
+    }
     let alive = true;
     setLoading(true);
     setError(null);
-    adminFetch<Resp>("/api/admin/users")
+    adminFetch<Resp>(`/api/admin/users?q=${encodeURIComponent(debouncedQ)}`)
       .then((d) => {
         if (!alive) return;
         setUsers(d.users ?? []);
+        setSearched(true);
       })
       .catch((e) => {
-        if (alive) setError(e instanceof Error ? e.message : "載入失敗");
+        if (alive) setError(e instanceof Error ? e.message : "查詢失敗");
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -87,55 +69,10 @@ export default function MobileUsersPage() {
     return () => {
       alive = false;
     };
-  }, [ready]);
-
-  // 客戶端篩選（VIP + 關鍵字：姓名 / 電話 / 會員編號）
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      if (!matchVip(u, vip)) return false;
-      if (debouncedQ) {
-        const hay = [
-          u.realName ?? "",
-          u.displayName,
-          u.phone ?? "",
-          u.code ?? "",
-        ]
-          .join("|")
-          .toLowerCase();
-        if (!hay.includes(debouncedQ)) return false;
-      }
-      return true;
-    });
-  }, [users, vip, debouncedQ]);
-
-  // 篩選條件變更 → 重置可見數量
-  useEffect(() => {
-    setVisible(PAGE);
-  }, [debouncedQ, vip]);
-
-  const shown = filtered.slice(0, visible);
-  const hasMore = visible < filtered.length;
-
-  const loadMore = useCallback(() => {
-    setVisible((v) => v + PAGE);
-  }, []);
-
-  // 滑到底自動多顯示一批
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
-      },
-      { rootMargin: "200px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [loadMore, hasMore]);
+  }, [ready, debouncedQ]);
 
   return (
-    <MobileAdminShell title="會員管理" back="/admin/m">
+    <MobileAdminShell title="會員查詢" back="/admin/m">
       <div className="mb-3 flex items-center justify-end">
         <Link
           href="/admin/users"
@@ -148,38 +85,23 @@ export default function MobileUsersPage() {
 
       {/* 搜尋框 */}
       <div
-        className="mb-2 flex items-center gap-2 rounded-xl border px-3 py-2"
+        className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2"
         style={{ borderColor: "rgba(0,0,0,0.1)", background: "var(--card, #fff)" }}
       >
         <Search className="h-4 w-4 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="搜尋姓名 / 電話 / 會員編號"
+          placeholder="輸入姓名 / 電話 / 會員編號查詢"
           className="min-w-0 flex-1 bg-transparent text-sm outline-none"
           inputMode="search"
+          autoFocus
         />
-      </div>
-
-      {/* VIP 篩選 chips */}
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {VIP_CHIPS.map((c) => {
-          const active = vip === c.key;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setVip(c.key)}
-              className="rounded-full px-3 py-1 text-xs font-medium transition-colors"
-              style={{
-                background: active ? "var(--color-ocean-deep)" : "rgba(0,0,0,0.05)",
-                color: active ? "#fff" : "var(--foreground)",
-              }}
-            >
-              {c.label}
-            </button>
-          );
-        })}
+        {q && (
+          <button type="button" onClick={() => setQ("")} className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+            清除
+          </button>
+        )}
       </div>
 
       {error && (
@@ -187,13 +109,22 @@ export default function MobileUsersPage() {
           className="mb-3 rounded-lg px-3 py-2 text-xs"
           style={{ background: "rgba(255,107,107,0.12)", color: "var(--color-coral)" }}
         >
-          載入失敗：{error}
+          查詢失敗：{error}
+        </div>
+      )}
+
+      {/* 尚未輸入 → 提示，不查 */}
+      {!debouncedQ && !loading && (
+        <div className="py-12 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <Search className="mx-auto mb-2 h-7 w-7 opacity-40" />
+          輸入關鍵字後開始查詢
+          <div className="mt-1 text-[11px] opacity-70">（姓名 / 電話 / 會員編號）</div>
         </div>
       )}
 
       {/* 列表 */}
       <div className="space-y-2">
-        {shown.map((u) => {
+        {users.map((u) => {
           const name = u.realName ?? u.displayName;
           const tier = getVipTier(u.vipLevel);
           return (
@@ -246,27 +177,21 @@ export default function MobileUsersPage() {
         })}
       </div>
 
-      {/* 載入 / 空狀態 / 載更多 */}
+      {/* 載入 / 空狀態 */}
       {loading && (
         <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
+          查詢中...
         </div>
       )}
-      {!loading && filtered.length === 0 && (
+      {!loading && searched && users.length === 0 && (
         <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
-          沒有符合的會員
+          找不到符合「{debouncedQ}」的會員
         </div>
       )}
-      <div ref={sentinelRef} className="h-1" />
-      {!loading && hasMore && (
-        <button
-          type="button"
-          onClick={loadMore}
-          className="mt-1 w-full py-2 text-center text-[11px]"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          顯示更多（{filtered.length - visible}）
-        </button>
+      {!loading && users.length >= 60 && (
+        <div className="mt-1 py-2 text-center text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+          最多顯示 60 筆，請輸入更完整的關鍵字縮小範圍
+        </div>
       )}
     </MobileAdminShell>
   );

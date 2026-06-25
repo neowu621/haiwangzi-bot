@@ -44,11 +44,16 @@ interface ProofsResp {
   proofs: ProofRow[];
 }
 
-// 桌機 /admin/tonight 的 booking 形狀（這裡只拿來算「待到場」筆數）
+// 桌機 /admin/tonight 的 booking 形狀（算「待到場」筆數 + v674「已下單·待匯款」列表）
 interface BookingRow {
   id: string;
+  code?: string | null;
+  userId?: string;
+  participants?: number;
+  totalAmount?: number;
   status: string;
-  ref?: { date?: string; dateStart?: string };
+  ref?: { date?: string; dateStart?: string; startTime?: string; sites?: string[]; title?: string };
+  user?: { displayName: string; realName: string | null; phone: string | null };
 }
 interface BookingsResp {
   bookings: BookingRow[];
@@ -63,6 +68,7 @@ const TYPE_LABEL: Record<ProofRow["type"], string> = {
 export default function MobileTonightPage() {
   const { ready } = useAdminAuth();
   const [proofs, setProofs] = useState<ProofRow[]>([]);
+  const [pendingUnpaid, setPendingUnpaid] = useState<BookingRow[]>([]); // v674：已下單·待匯款
   const [attendCount, setAttendCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,13 +96,24 @@ export default function MobileTonightPage() {
         yesterday.setDate(yesterday.getDate() - 1);
         const from = tw(yesterday);
         const to = tw(today);
-        const count = (bookingData.bookings ?? []).filter((b) => {
+        const allBk = bookingData.bookings ?? [];
+        const count = allBk.filter((b) => {
           if (b.status !== "confirmed") return false;
           const refDate = b.ref?.date ?? b.ref?.dateStart;
           if (!refDate) return false;
           return refDate >= from && refDate <= to;
         }).length;
         setAttendCount(count);
+        // v674：已下單·待匯款（status=pending，尚未上傳付款證明），近的排前
+        setPendingUnpaid(
+          allBk
+            .filter((b) => b.status === "pending")
+            .sort((a, b) => {
+              const da = a.ref?.date ?? a.ref?.dateStart ?? "";
+              const db = b.ref?.date ?? b.ref?.dateStart ?? "";
+              return da < db ? -1 : da > db ? 1 : 0;
+            }),
+        );
       })
       .catch((e) => {
         if (alive) setError(e instanceof Error ? e.message : "載入失敗");
@@ -284,6 +301,46 @@ export default function MobileTonightPage() {
         <div className="py-6 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
           沒有待確認的匯款
         </div>
+      )}
+
+      {/* ===== Section 1.5：已下單·待匯款（v674，status=pending 未上傳證明）===== */}
+      {pendingUnpaid.length > 0 && (
+        <>
+          <div className="mb-1.5 mt-5 flex items-center justify-between">
+            <span className="text-sm font-bold" style={{ color: "var(--color-ocean-deep)" }}>
+              已下單·待匯款（{pendingUnpaid.length}）
+            </span>
+            <span className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>尚未上傳付款證明</span>
+          </div>
+          <div className="space-y-2">
+            {pendingUnpaid.map((b) => {
+              const refDate = b.ref?.date ?? b.ref?.dateStart;
+              const refLabel = b.ref?.title
+                ? b.ref.title
+                : `${refDate ?? ""} ${b.ref?.startTime ?? ""} ${b.ref?.sites?.join("/") ?? ""}`.trim();
+              return (
+                <Link
+                  key={b.id}
+                  href="/admin/bookings?status=created"
+                  className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
+                  style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-bold">{b.user?.realName ?? b.user?.displayName ?? "客戶"}</span>
+                    <span className="flex-shrink-0 font-mono text-sm font-bold tabular-nums" style={{ color: "var(--color-coral)" }}>
+                      ${(b.totalAmount ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                    {b.ref?.title ? "✈️" : "🔱"} {refLabel || "—"}・{b.participants ?? 1} 位
+                    {b.code ? `・${b.code}` : ""}
+                    <span className="ml-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">待匯款</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* ===== Section 2：待到場確認（摘要 + 深連桌機）===== */}

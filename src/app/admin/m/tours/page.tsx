@@ -10,6 +10,7 @@ import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getCached, cachedFetch } from "@/lib/admin-cache";
 import { ChevronDown, ChevronRight, Users, Calendar, ExternalLink } from "lucide-react";
+import { deriveBookingDisplay } from "@/lib/booking-status"; // v674：roster 中文狀態
 
 const TOURS_URL = "/api/admin/tours";
 
@@ -36,6 +37,9 @@ interface RosterRow {
   participants: number;
   status: string;
   paymentStatus: string;
+  totalAmount: number;
+  paidAmount: number;
+  createdAt: string;
 }
 interface BookingsResp {
   bookings: Array<{
@@ -43,6 +47,9 @@ interface BookingsResp {
     participants: number;
     status: string;
     paymentStatus: string;
+    totalAmount: number;
+    paidAmount: number;
+    createdAt: string;
     user: { displayName: string; realName: string | null };
   }>;
 }
@@ -133,13 +140,17 @@ export default function MobileToursPage() {
     if (Array.isArray(cur)) return;
     setRosters((m) => ({ ...m, [tourId]: "loading" }));
     try {
-      const r = await adminFetch<BookingsResp>(`/api/admin/bookings?refId=${tourId}`);
+      // v674：light=1 跳過簽名 presigned URL 等 → 名單載入快很多
+      const r = await adminFetch<BookingsResp>(`/api/admin/bookings?refId=${tourId}&light=1`);
       const rows: RosterRow[] = r.bookings.map((b) => ({
         id: b.id,
         name: b.user.realName ?? b.user.displayName,
         participants: b.participants,
         status: b.status,
         paymentStatus: b.paymentStatus,
+        totalAmount: b.totalAmount,
+        paidAmount: b.paidAmount,
+        createdAt: b.createdAt,
       }));
       setRosters((m) => ({ ...m, [tourId]: rows }));
     } catch {
@@ -292,26 +303,28 @@ export default function MobileToursPage() {
                   )}
                   {Array.isArray(roster) && roster.length > 0 && (
                     <div className="space-y-1.5">
-                      {roster.map((b) => (
-                        <div key={b.id} className="flex items-center justify-between gap-2 text-[12px]">
-                          <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
-                          <span className="flex-shrink-0 font-mono tabular-nums" style={{ color: "var(--muted-foreground)" }}>
-                            ×{b.participants}
-                          </span>
-                          <span
-                            className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px]"
-                            style={{ background: "rgba(0,0,0,0.05)", color: "var(--muted-foreground)" }}
-                          >
-                            {b.paymentStatus}
-                          </span>
-                          <span
-                            className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px]"
-                            style={{ background: "rgba(0,0,0,0.05)", color: "var(--muted-foreground)" }}
-                          >
-                            {b.status}
-                          </span>
-                        </div>
-                      ))}
+                      {roster.map((b) => {
+                        const unpaid = b.totalAmount - b.paidAmount;
+                        return (
+                          <div key={b.id} className="flex flex-col gap-0.5 border-b border-black/5 pb-1.5 text-[12px] last:border-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
+                              <span className="flex-shrink-0 font-mono tabular-nums" style={{ color: "var(--muted-foreground)" }}>
+                                ×{b.participants}
+                              </span>
+                              {/* v674：英文 → 中文合成狀態 */}
+                              <span className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ background: "rgba(0,0,0,0.05)", color: "var(--color-ocean-deep)" }}>
+                                {deriveBookingDisplay({ status: b.status, paymentStatus: b.paymentStatus, createdAt: b.createdAt }).label}
+                              </span>
+                            </div>
+                            {/* v674：付款資訊 */}
+                            <div className="text-[10px] tabular-nums" style={{ color: "var(--muted-foreground)" }}>
+                              已付 {b.paidAmount.toLocaleString()}
+                              {unpaid > 0 ? <span style={{ color: "var(--color-coral)" }}>・未付 {unpaid.toLocaleString()}</span> : "・已收齊"}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   <Link

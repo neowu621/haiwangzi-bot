@@ -1,9 +1,9 @@
 "use client";
 // 手機簡版後台「抵用金管理」（/admin/m/credits）
-//   一次抓 /api/admin/users（含 creditBalance）、客戶端去抖搜尋（姓名 / 電話 / 會員編號）。
-//   只渲染前 ~30 筆（reveal-more），避免一次塞上千個 DOM。
-//   點一張卡 → 展開「發放/調整抵用金」面板，POST /api/admin/credits（與桌機完整版同 body）。
-import { useCallback, useEffect, useMemo, useState } from "react";
+//   v674：改「打開不查、輸入關鍵字才查」—— 走伺服器端搜尋 /api/admin/users?q=（只回符合的、限 60 筆），
+//         省流量/加速，避免一打開就抓全部會員。找到會員後展開卡片發放/調整抵用金。
+//   POST /api/admin/credits（與桌機完整版同 body）。
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
@@ -21,17 +21,15 @@ interface UsersResp {
   users: MUser[];
 }
 
-const PAGE = 30;
-
 export default function MobileCreditsPage() {
   const { ready } = useAdminAuth();
   const [users, setUsers] = useState<MUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [shown, setShown] = useState(PAGE);
 
   // 展開中的會員 + 表單狀態
   const [openId, setOpenId] = useState<string | null>(null);
@@ -41,29 +39,31 @@ export default function MobileCreditsPage() {
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [formErr, setFormErr] = useState<string | null>(null);
 
-  // 搜尋去抖 300ms
+  // 搜尋去抖 400ms
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q.trim().toLowerCase()), 300);
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 400);
     return () => clearTimeout(t);
   }, [q]);
 
-  // 條件變更 → 回到第一頁
-  useEffect(() => {
-    setShown(PAGE);
-  }, [debouncedQ]);
-
-  // ready 後抓一次完整 user list（含 creditBalance）
+  // v674：只有「有關鍵字」才查；打開（空字串）不抓任何資料
   useEffect(() => {
     if (!ready) return;
+    if (!debouncedQ) {
+      setUsers([]);
+      setSearched(false);
+      return;
+    }
     let alive = true;
     setLoading(true);
     setError(null);
-    adminFetch<UsersResp>("/api/admin/users")
+    adminFetch<UsersResp>(`/api/admin/users?q=${encodeURIComponent(debouncedQ)}`)
       .then((d) => {
-        if (alive) setUsers(d.users ?? []);
+        if (!alive) return;
+        setUsers(d.users ?? []);
+        setSearched(true);
       })
       .catch((e) => {
-        if (alive) setError(e instanceof Error ? e.message : "載入失敗");
+        if (alive) setError(e instanceof Error ? e.message : "查詢失敗");
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -71,19 +71,7 @@ export default function MobileCreditsPage() {
     return () => {
       alive = false;
     };
-  }, [ready]);
-
-  const filtered = useMemo(() => {
-    if (!debouncedQ) return users;
-    return users.filter((u) => {
-      const name = (u.realName ?? u.displayName ?? "").toLowerCase();
-      const phone = (u.phone ?? "").toLowerCase();
-      const code = (u.code ?? "").toLowerCase();
-      return name.includes(debouncedQ) || phone.includes(debouncedQ) || code.includes(debouncedQ);
-    });
-  }, [users, debouncedQ]);
-
-  const visible = filtered.slice(0, shown);
+  }, [ready, debouncedQ]);
 
   function toggle(u: MUser) {
     if (openId === u.lineUserId) {
@@ -158,10 +146,16 @@ export default function MobileCreditsPage() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="搜尋姓名 / 電話 / 會員編號"
+          placeholder="輸入姓名 / 電話 / 會員編號查詢"
           className="min-w-0 flex-1 bg-transparent text-sm outline-none"
           inputMode="search"
+          autoFocus
         />
+        {q && (
+          <button type="button" onClick={() => setQ("")} className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+            清除
+          </button>
+        )}
       </div>
 
       {error && (
@@ -169,13 +163,22 @@ export default function MobileCreditsPage() {
           className="mb-3 rounded-lg px-3 py-2 text-xs"
           style={{ background: "rgba(255,107,107,0.12)", color: "var(--color-coral)" }}
         >
-          載入失敗：{error}
+          查詢失敗：{error}
+        </div>
+      )}
+
+      {/* 尚未輸入 → 提示，不查 */}
+      {!debouncedQ && !loading && (
+        <div className="py-12 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <Search className="mx-auto mb-2 h-7 w-7 opacity-40" />
+          輸入關鍵字後查詢會員，再發放 / 調整抵用金
+          <div className="mt-1 text-[11px] opacity-70">（姓名 / 電話 / 會員編號）</div>
         </div>
       )}
 
       {/* 會員卡列表 */}
       <div className="space-y-2">
-        {visible.map((u) => {
+        {users.map((u) => {
           const open = openId === u.lineUserId;
           return (
             <div
@@ -267,30 +270,21 @@ export default function MobileCreditsPage() {
         })}
       </div>
 
-      {/* 載入 / 空狀態 / reveal-more */}
+      {/* 查詢中 / 空狀態 / 60 上限 */}
       {loading && (
         <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
+          查詢中...
         </div>
       )}
-      {!loading && filtered.length === 0 && (
+      {!loading && searched && users.length === 0 && (
         <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
-          沒有符合的會員
+          找不到符合「{debouncedQ}」的會員
         </div>
       )}
-      {!loading && shown < filtered.length && (
-        <button
-          type="button"
-          onClick={() => setShown((n) => n + PAGE)}
-          className="mt-3 w-full rounded-xl border py-2.5 text-xs font-medium"
-          style={{
-            borderColor: "rgba(0,0,0,0.08)",
-            background: "var(--card, #fff)",
-            color: "var(--muted-foreground)",
-          }}
-        >
-          顯示更多（還有 {filtered.length - shown} 位）
-        </button>
+      {!loading && users.length >= 60 && (
+        <div className="mt-1 py-2 text-center text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+          最多顯示 60 筆，請輸入更完整的關鍵字縮小範圍
+        </div>
       )}
     </MobileAdminShell>
   );

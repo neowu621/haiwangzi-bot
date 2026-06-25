@@ -7,6 +7,7 @@ import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
 const TOURS_URL = "/api/admin/tours";
 import { Trash2, Ban, X, Copy, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { weekdayTW } from "@/lib/utils";
+import { deriveBookingDisplay } from "@/lib/booking-status"; // v674：roster 中文狀態
 import ExcelJS from "exceljs";
 
 // v186 後台「行程資料庫」配色（對應 mockup）
@@ -176,6 +177,7 @@ export default function ToursPage() {
     status: string;
     paymentStatus: string;
     paymentMethod: string;
+    createdAt: string; // v674：給 deriveBookingDisplay 算中文狀態
   }
   const [tourBookings, setTourBookings] = useState<Record<string, TourBookingRow[] | "loading" | "error">>({});
 
@@ -198,10 +200,12 @@ export default function ToursPage() {
           status: string;
           paymentStatus: string;
           paymentMethod?: string | null;
+          createdAt: string;
           user: { displayName: string; realName: string | null; phone: string | null };
         }>;
       }
-      const r = await adminFetch<BkResp>(`/api/admin/bookings?refId=${tourId}`);
+      // v674：light=1 跳過簽名 presigned URL 等 → 名單載入快很多
+      const r = await adminFetch<BkResp>(`/api/admin/bookings?refId=${tourId}&light=1`);
       const rows: TourBookingRow[] = r.bookings.map((b) => ({
         id: b.id,
         code: b.code ?? null,
@@ -213,6 +217,7 @@ export default function ToursPage() {
         status: b.status,
         paymentStatus: b.paymentStatus,
         paymentMethod: b.paymentMethod ?? "",
+        createdAt: b.createdAt,
       }));
       setTourBookings((m) => ({ ...m, [tourId]: rows }));
     } catch {
@@ -893,9 +898,8 @@ export default function ToursPage() {
                                           <th className="px-2 py-1.5 font-semibold text-left">姓名</th>
                                           <th className="px-2 py-1.5 font-semibold text-left">電話</th>
                                           <th className="px-2 py-1.5 font-semibold text-right">人數</th>
-                                          <th className="px-2 py-1.5 font-semibold text-right">已付/總額</th>
-                                          <th className="px-2 py-1.5 font-semibold text-left">付款狀態</th>
-                                          <th className="px-2 py-1.5 font-semibold text-left">訂單狀態</th>
+                                          <th className="px-2 py-1.5 font-semibold text-right">已付 / 未付</th>
+                                          <th className="px-2 py-1.5 font-semibold text-left">狀態</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -909,11 +913,16 @@ export default function ToursPage() {
                                             <td className="px-2 py-1 font-semibold whitespace-nowrap">{b.userName}</td>
                                             <td className="px-2 py-1 tabular-nums whitespace-nowrap text-slate-500">{b.phone ?? "—"}</td>
                                             <td className="px-2 py-1 text-right tabular-nums">×{b.participants}</td>
-                                            <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-slate-600">
-                                              {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
+                                            <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">
+                                              <span className="text-slate-700">{b.paidAmount.toLocaleString()}</span>
+                                              {b.totalAmount - b.paidAmount > 0 && (
+                                                <span className="text-rose-600"> / 未付 {(b.totalAmount - b.paidAmount).toLocaleString()}</span>
+                                              )}
                                             </td>
-                                            <td className="px-2 py-1 text-[10px]">{b.paymentStatus}</td>
-                                            <td className="px-2 py-1 text-[10px]">{b.status}</td>
+                                            {/* v674：英文 status/paymentStatus → 合成中文狀態 */}
+                                            <td className="px-2 py-1 text-[11px] whitespace-nowrap font-medium">
+                                              {deriveBookingDisplay({ status: b.status, paymentStatus: b.paymentStatus, createdAt: b.createdAt }).label}
+                                            </td>
                                           </tr>
                                         ))}
                                       </tbody>

@@ -31,18 +31,27 @@ export async function GET(req: NextRequest) {
     : [];
   const hasRoleFilter = roleFilter.length > 0;
 
+  // v674：?q= 伺服器端關鍵字搜尋（姓名/暱稱/電話/會員編號），只回符合的、限量。
+  //   給手機後台「會員快查」用 —— 打開不抓全部、輸入關鍵字才查，省流量/加速。
+  const q = (new URL(req.url).searchParams.get("q") ?? "").trim();
+  const hasQ = q.length > 0;
+  const roleCond = { OR: [{ role: { in: roleFilter } }, { roles: { hasSome: roleFilter } }] };
+  const searchCond = {
+    OR: [
+      { realName: { contains: q, mode: "insensitive" as const } },
+      { displayName: { contains: q, mode: "insensitive" as const } },
+      { phone: { contains: q } },
+      { code: { contains: q, mode: "insensitive" as const } },
+    ],
+  };
+  const where = hasQ
+    ? (hasRoleFilter ? { deletedAt: null, AND: [searchCond, roleCond] } : { deletedAt: null, ...searchCond })
+    : (hasRoleFilter ? { deletedAt: null, ...roleCond } : undefined);
+
   const users = await prisma.user.findMany({
-    where: hasRoleFilter
-      ? {
-          deletedAt: null,
-          OR: [
-            { role: { in: roleFilter } },
-            { roles: { hasSome: roleFilter } },
-          ],
-        }
-      : undefined,
+    where,
     orderBy: { lastActiveAt: "desc" },
-    take: hasRoleFilter ? 200 : 500,
+    take: hasQ ? 60 : (hasRoleFilter ? 200 : 500),
   });
 
   // 批次計算每個 user 的 LTV
