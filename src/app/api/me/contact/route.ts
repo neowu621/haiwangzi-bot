@@ -8,24 +8,40 @@ import { notifyBossNewInquiry } from "@/lib/notify-boss";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// v596：會員看自己的客服對話(自己發的 + 客服回的)
+// v668：會員看自己的客服對話(自己發的 + 客服回的)
+//   分頁：預設只回「最近 30 則」(由舊到新)；?before=<ISO> 往上補更早的 30 則。
+//   回傳 hasMore(是否還有更早) + oldestAt(本頁最早一則時間，當下一頁的 before 游標)。
+const CONTACT_PAGE = 30;
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+
+  const before = new URL(req.url).searchParams.get("before");
+  const beforeDate = before ? new Date(before) : null;
+
   const threads = await prisma.emailThread.findMany({
     where: { channel: "web", lineUserId: auth.user.lineUserId },
     select: { id: true },
   });
   const ids = threads.map((t) => t.id);
-  const rows = ids.length
-    ? await prisma.emailMessage.findMany({
-        where: { threadId: { in: ids } },
-        orderBy: { createdAt: "asc" },
-        select: { direction: true, bodyText: true, createdAt: true },
-      })
-    : [];
+  if (!ids.length) return NextResponse.json({ messages: [], hasMore: false, oldestAt: null });
+
+  // 由新到舊取 limit+1 筆判斷是否還有更早，再反轉成「由舊到新」給前端顯示
+  const rows = await prisma.emailMessage.findMany({
+    where: {
+      threadId: { in: ids },
+      ...(beforeDate && !isNaN(beforeDate.getTime()) ? { createdAt: { lt: beforeDate } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: CONTACT_PAGE + 1,
+    select: { direction: true, bodyText: true, createdAt: true },
+  });
+  const hasMore = rows.length > CONTACT_PAGE;
+  const page = (hasMore ? rows.slice(0, CONTACT_PAGE) : rows).reverse();
   return NextResponse.json({
-    messages: rows.map((m) => ({ who: m.direction === "OUTBOUND" ? "cs" : "me", body: m.bodyText, createdAt: m.createdAt })),
+    messages: page.map((m) => ({ who: m.direction === "OUTBOUND" ? "cs" : "me", body: m.bodyText, createdAt: m.createdAt })),
+    hasMore,
+    oldestAt: page.length ? page[0].createdAt : null,
   });
 }
 

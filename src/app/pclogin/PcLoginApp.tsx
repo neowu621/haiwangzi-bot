@@ -10,7 +10,7 @@
  *   /api/bookings/daily、/api/bookings/tour、/api/bookings/my、/api/site-config、
  *   /api/me/send-verify-email。下單後導向公開付款頁 /pay/[id]?t=token。
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SignaturePad } from "@/components/ui/SignaturePad";
 import { APP_VERSION } from "@/lib/version";
 import { BrandMark, MantaTridentMark } from "@/components/brand/MantaTrident";
@@ -1185,7 +1185,14 @@ function NotificationsPanel() {
   const [contactMsg, setContactMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
-  const [convo, setConvo] = useState<Array<{ who: "me" | "cs"; body: string; createdAt: string }>>([]);
+  type ChatMsg = { who: "me" | "cs"; body: string; createdAt: string };
+  const [convo, setConvo] = useState<ChatMsg[]>([]);
+  // v668：客服對話分頁 — 預設只載最近 30 則，往上補更早
+  const [convoHasMore, setConvoHasMore] = useState(false);
+  const [convoOldest, setConvoOldest] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const convoScrollRef = useRef<HTMLDivElement>(null);
+  const stickBottomRef = useRef(true); // 下次 convo 更新後是否自動捲到底（載入更早時設 false）
 
   const reload = () => {
     setLoading(true);
@@ -1194,12 +1201,40 @@ function NotificationsPanel() {
       .catch(() => {})
       .finally(() => setLoading(false));
   };
-  const loadConvo = () => { api<{ messages: Array<{ who: "me" | "cs"; body: string; createdAt: string }> }>("/api/me/contact").then((d) => setConvo(d.messages ?? [])).catch(() => {}); };
+  const loadConvo = () => {
+    api<{ messages: ChatMsg[]; hasMore?: boolean; oldestAt?: string | null }>("/api/me/contact")
+      .then((d) => {
+        stickBottomRef.current = true;
+        setConvo(d.messages ?? []);
+        setConvoHasMore(!!d.hasMore);
+        setConvoOldest(d.oldestAt ?? (d.messages?.[0]?.createdAt ?? null));
+      })
+      .catch(() => {});
+  };
+  const loadOlder = () => {
+    if (!convoOldest || loadingOlder) return;
+    setLoadingOlder(true);
+    api<{ messages: ChatMsg[]; hasMore?: boolean; oldestAt?: string | null }>(`/api/me/contact?before=${encodeURIComponent(convoOldest)}`)
+      .then((d) => {
+        stickBottomRef.current = false; // 補在上面，維持目前捲動位置、不要跳到底
+        setConvo((prev) => [...(d.messages ?? []), ...prev]);
+        setConvoHasMore(!!d.hasMore);
+        if (d.oldestAt) setConvoOldest(d.oldestAt);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOlder(false));
+  };
   useEffect(() => {
     reload();
     loadConvo();
     api("/api/me/notifications/read", { method: "POST", body: JSON.stringify({ all: true }) }).catch(() => {});
   }, []);
+  // 對話更新後：初次/送出 → 自動捲到最新；載入更早 → 保持位置
+  useEffect(() => {
+    if (stickBottomRef.current && convoScrollRef.current) {
+      convoScrollRef.current.scrollTop = convoScrollRef.current.scrollHeight;
+    }
+  }, [convo]);
 
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   const dOf = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
@@ -1238,17 +1273,25 @@ function NotificationsPanel() {
           <button onClick={sendContact} disabled={sending || !contactMsg.trim()} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 9, padding: "7px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: sending || !contactMsg.trim() ? 0.5 : 1 }}>送出</button>
         </div>
         {convo.length > 0 && (
-          <div style={{ marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 11.5, color: C.mute }}>對話紀錄</div>
-            {convo.map((m, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
-                <div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: m.who === "me" ? C.deep : "#eef3f6", color: m.who === "me" ? "#fff" : C.ink }}>
-                  {m.who === "cs" && <div style={{ fontSize: 11, fontWeight: 700, color: "#0a8f86", marginBottom: 2 }}>客服</div>}
-                  {m.body}
-                  <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{new Date(m.createdAt).toLocaleString("zh-TW")}</div>
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
+            <div style={{ fontSize: 11.5, color: C.mute, marginBottom: 8 }}>對話紀錄</div>
+            {/* v668：固定高度捲動框 + 自動到最新 + 「載入更早」往上補 */}
+            <div ref={convoScrollRef} style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 4 }}>
+              {convoHasMore && (
+                <button onClick={loadOlder} disabled={loadingOlder} style={{ alignSelf: "center", fontSize: 12, color: C.mute, background: "#eef3f6", border: "none", borderRadius: 999, padding: "4px 14px", cursor: "pointer", opacity: loadingOlder ? 0.5 : 1 }}>
+                  {loadingOlder ? "載入中…" : "↑ 載入更早訊息"}
+                </button>
+              )}
+              {convo.map((m, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
+                  <div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: m.who === "me" ? C.deep : "#eef3f6", color: m.who === "me" ? "#fff" : C.ink }}>
+                    {m.who === "cs" && <div style={{ fontSize: 11, fontWeight: 700, color: "#0a8f86", marginBottom: 2 }}>客服</div>}
+                    {m.body}
+                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{new Date(m.createdAt).toLocaleString("zh-TW")}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
