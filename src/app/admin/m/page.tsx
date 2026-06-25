@@ -41,12 +41,12 @@ interface VisitStats {
 export default function MobileAdminHome() {
   const { ready, adminUser } = useAdminAuth();
   const router = useRouter();
-  // v677：教練/助教（非 admin/boss/it）→ 不看手機管理首頁，導到「到場點名」
+  // v677/678：教練/助教（非 admin/boss/it）→ 不看手機管理首頁，導到「手機版到場點名」（不導桌機）
   useEffect(() => {
     if (!adminUser) return;
     const roles = adminUser.effectiveRoles ?? [];
     if (!roles.some((r) => r === "admin" || r === "boss" || r === "it")) {
-      router.replace("/admin/attendance");
+      router.replace("/admin/m/attendance");
     }
   }, [adminUser, router]);
   const [stats, setStats] = useState<LiteStats | undefined>(() => getCached<LiteStats>(LITE_URL));
@@ -71,6 +71,7 @@ export default function MobileAdminHome() {
   const tripsBadge = stats ? stats.todayTrips.count + stats.tomorrowTrips.count : undefined;
 
   const cards: Array<{ href: string; icon: typeof Wallet; emoji: string; title: string; badge: number | undefined; sub?: string; accent: boolean }> = [
+    { href: "/admin/m/attendance", icon: CalendarDays, emoji: "🐠", title: "到場點名", badge: stats?.tonight.attendance, sub: "今日名單點名", accent: (stats?.tonight.attendance ?? 0) > 0 },
     { href: "/admin/m/tonight", icon: Wallet, emoji: "🧾", title: "老闆結帳", badge: stats ? tonightBadge : undefined, sub: stats ? `待匯款 ${stats.tonight.proofs}・待到場 ${stats.tonight.attendance}` : undefined, accent: tonightBadge > 0 },
     { href: "/admin/m/bookings", icon: BookOpen, emoji: "📖", title: "訂單管理", badge: stats?.pendingProofs, sub: "確認 / 收款", accent: (stats?.pendingProofs ?? 0) > 0 },
     { href: "/admin/m/dive-wishes", icon: MessageSquare, emoji: "📝", title: "願望單", badge: stats?.pendingWishes, sub: "新許願 / 回覆", accent: (stats?.pendingWishes ?? 0) > 0 },

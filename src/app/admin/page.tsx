@@ -106,13 +106,18 @@ const PAY_STATUS_COLOR: Record<string, string> = {
 export default function AdminDashboard() {
   const router = useRouter();
   const { adminUser } = useAdminAuth();
-  // v677：教練/助教（非 admin/boss/it）登入後不看總覽 → 導到「到場點名」
+  // v677/678：教練/助教（非 admin/boss/it）登入後不看總覽 → 導到「到場點名」。
+  //   手機寬度時讓下方的 /admin/m 導向接手（→ /admin/m/attendance 手機版），桌機才導桌機版，避免手機跑到桌機介面。
   useEffect(() => {
     if (!adminUser) return;
     const roles = adminUser.effectiveRoles ?? [];
-    if (!roles.some((r) => r === "admin" || r === "boss" || r === "it")) {
-      router.replace("/admin/attendance");
-    }
+    if (roles.some((r) => r === "admin" || r === "boss" || r === "it")) return;
+    let isMobile = false;
+    try {
+      const forceDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
+      isMobile = window.matchMedia("(max-width: 820px)").matches && !forceDesktop;
+    } catch { /* ignore */ }
+    router.replace(isMobile ? "/admin/m/attendance" : "/admin/attendance");
   }, [adminUser, router]);
   // v570：手機開後台 → 自動導到手機簡版 /admin/m(?desktop=1 可看完整桌機版)
   const [mRedirect, setMRedirect] = useState(false);
