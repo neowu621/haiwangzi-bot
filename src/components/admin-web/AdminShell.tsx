@@ -32,9 +32,9 @@ import {
 // v350：側欄改「功能分組」由上而下（即時營運 → 訂單客戶 → 商品 → 行銷 → 分析 → 系統）
 const NAV_GROUPS = [
   {
-    // v677：現場作業 —— 教練/助教登入後唯一可見的群組（其餘管理群組限 admin/boss/it）
+    // v677：現場作業 —— 教練/助教登入後唯一可見的群組（admin/boss/it 的到場點名改放「營運/分析」）
     label: "現場作業",
-    roles: ["coach", "assistant", "admin", "boss", "it"],
+    roles: ["coach", "assistant"],
     items: [
       { href: "/admin/attendance", icon: ClipboardCheck, label: "🐠 到場點名" },
     ],
@@ -44,6 +44,7 @@ const NAV_GROUPS = [
     roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
+      { href: "/admin/attendance", icon: ClipboardCheck, label: "🐠 到場點名" }, // v677b：老闆/管理者/IT 也看得到
       { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
       { href: "/admin/reports", icon: BarChart2, label: "報表" },
       { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
