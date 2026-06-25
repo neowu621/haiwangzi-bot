@@ -239,6 +239,7 @@ export function PcLoginApp() {
             {!member.emailVerifiedAt && <EmailVerifyBanner member={member} onSent={reloadMe} />}
             {view.name === "browse" && (
               <Browse
+                member={member}
                 onBookDaily={(trip) => setView({ name: "bookDaily", trip })}
                 onBookTour={(tourId) => setView({ name: "bookTour", tourId })}
               />
@@ -512,10 +513,10 @@ function EmailVerifyBanner({ member, onSent }: { member: Member; onSent: () => v
 }
 
 // ─── 瀏覽（日潛 / 潛旅）─────────────────────────────────────────────
-function Browse({ onBookDaily, onBookTour }: {
-  onBookDaily: (t: Trip) => void; onBookTour: (id: string) => void;
+function Browse({ member, onBookDaily, onBookTour }: {
+  member: Member | null; onBookDaily: (t: Trip) => void; onBookTour: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<"daily" | "tour">("daily");
+  const [tab, setTab] = useState<"daily" | "tour" | "contact">("daily");
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [tours, setTours] = useState<Tour[] | null>(null);
 
@@ -528,11 +529,14 @@ function Browse({ onBookDaily, onBookTour }: {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         <TabBtn active={tab === "daily"} onClick={() => setTab("daily")}>🐠 日潛場次</TabBtn>
         <TabBtn active={tab === "tour"} onClick={() => setTab("tour")}>✈️ 潛旅行程</TabBtn>
+        {/* v671：線上洽詢 — 問課程/潛旅、或揪團許願（搬自 /contact，登入會員免填身分/免驗證）*/}
+        <TabBtn active={tab === "contact"} onClick={() => setTab("contact")}>📨 線上洽詢 / 揪團</TabBtn>
       </div>
 
+      {tab === "contact" && <ContactPanel member={member} />}
       {tab === "daily" && (
         <>
           {trips === null && <Loading />}
@@ -566,6 +570,147 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 function Empty({ children }: { children: React.ReactNode }) {
   return <div style={{ background: "#fff", border: `1px dashed ${C.line}`, borderRadius: 12, padding: "44px 0", textAlign: "center", color: C.mute, fontSize: 14 }}>{children}</div>;
+}
+
+// v671：線上洽詢 — 搬自公開 /contact，登入會員版（免填姓名/Email/電話、免 Turnstile，身分由後端用 cookie 自動帶）
+const CONTACT_PRODUCTS = ["體驗潛水", "OW 考證", "AOW 進階", "1對1 私人", "Fun Dive", "潛水團", "包船", "其他"];
+const CONTACT_PLACES = ["綠島", "蘭嶼", "小琉球", "墾丁", "媽媽島", "薄荷島", "其他"];
+const CONTACT_LINE_URL = "https://line.me/R/ti/p/@894bpmew";
+
+function ContactChips({ items, value, onPick, coral }: { items: string[]; value: string; onPick: (v: string) => void; coral?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+      {items.map((it) => {
+        const on = it === value;
+        const bg = on ? (coral ? C.coral : "#0E9AA0") : "#fff";
+        return (
+          <button key={it} type="button" onClick={() => onPick(it)} style={{ fontSize: 13, padding: "6px 13px", borderRadius: 22, border: `1.5px solid ${on ? bg : "#cfe0e0"}`, background: bg, color: on ? "#fff" : "#0e7c8a", fontWeight: on ? 700 : 400, cursor: "pointer", fontFamily: "inherit" }}>{it}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ContactPanel({ member }: { member: Member | null }) {
+  const [aTopic, setATopic] = useState("體驗潛水");
+  const [aSubject, setASubject] = useState("");
+  const [aMsg, setAMsg] = useState("");
+  const [aBusy, setABusy] = useState(false);
+  const [aErr, setAErr] = useState("");
+  const [aSent, setASent] = useState(false);
+
+  const [bTopic, setBTopic] = useState("綠島");
+  const [bSubject, setBSubject] = useState("");
+  const [bWhen, setBWhen] = useState("");
+  const [bPeople, setBPeople] = useState("");
+  const [bNote, setBNote] = useState("");
+  const [bBusy, setBBusy] = useState(false);
+  const [bErr, setBErr] = useState("");
+  const [bSent, setBSent] = useState(false);
+
+  const who = member?.realName ?? member?.displayName ?? "您";
+  const noEmail = !member?.email;
+
+  async function submit(type: "question" | "wish") {
+    if (noEmail) return;
+    const isA = type === "question";
+    if (isA) { setABusy(true); setAErr(""); } else { setBBusy(true); setBErr(""); }
+    const payload = isA
+      ? { type, topic: aTopic, subject: aSubject, message: aMsg }
+      : { type, topic: bTopic, subject: bSubject, message: bNote, when: bWhen, people: bPeople };
+    try {
+      await api("/api/contact", { method: "POST", body: JSON.stringify(payload) });
+      if (isA) setASent(true); else setBSent(true);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "送出失敗";
+      if (isA) setAErr(m); else setBErr(m);
+    } finally {
+      if (isA) setABusy(false); else setBBusy(false);
+    }
+  }
+
+  const cardBase = (bg: string, bc: string): React.CSSProperties => ({ background: bg, border: `1.5px solid ${bc}`, borderRadius: 16, padding: 20 });
+  const lbl: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: C.deep, margin: "13px 0 7px" };
+  const ta: React.CSSProperties = { ...inp, minHeight: 64, resize: "vertical", lineHeight: 1.6 };
+  const sub: React.CSSProperties = { fontSize: 12.5, color: C.mute, lineHeight: 1.6, marginBottom: 4 };
+  const sendBtn = (bg: string, busy: boolean): React.CSSProperties => ({ width: "100%", marginTop: 14, border: "none", borderRadius: 12, padding: 13, fontSize: 15, fontWeight: 800, color: "#fff", background: busy ? "#cdd9d9" : bg, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: noEmail ? 0.5 : 1 });
+  const errBox: React.CSSProperties = { background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 9, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, marginTop: 10 };
+  const doneBox = (color: string, text: string) => (
+    <div style={{ textAlign: "center", padding: "24px 8px" }}>
+      <div style={{ fontSize: 38 }}>✅</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color, marginTop: 6 }}>已送出!</div>
+      <p style={{ fontSize: 13, color: C.mute, marginTop: 8, lineHeight: 1.7 }}>{text}</p>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* 身分提示 */}
+      <div style={{ background: "#eef6f8", border: `1px solid ${C.line}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12.5, color: C.deep }}>
+        將以您的會員身分送出：<b>{who}</b>
+        {member?.email ? <span style={{ color: C.mute }}>（回覆寄 {member.email}）</span> : <span style={{ color: C.coral, fontWeight: 700 }}>　⚠ 您尚未填 Email，請先到「會員中心」補 Email 才能送出</span>}
+        ，免再填姓名 / Email / 電話。
+      </div>
+
+      <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
+        {/* A 疑問 */}
+        <div style={cardBase("#fff6f3", "#f3c6b8")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", fontSize: 22, background: "#ffe2d8" }}>🤔</div>
+            <h3 style={{ fontSize: 18, color: "#c0432a", fontWeight: 800, margin: 0 }}>對課程 / 潛旅有疑問</h3>
+          </div>
+          {aSent ? doneBox("#c0432a", "我們收到你的問題了!會用 Email 回覆你，通常一天內。") : (
+            <>
+              <p style={sub}>還在考慮?選一個方案，把疑問問清楚再決定。</p>
+              <div style={lbl}>你在考慮哪一個?</div>
+              <ContactChips items={CONTACT_PRODUCTS} value={aTopic} onPick={setATopic} coral />
+              <div style={lbl}>主旨（可補充）</div>
+              <input style={inp} value={aSubject} onChange={(e) => setASubject(e.target.value)} placeholder="想問費用與天數…" />
+              <div style={lbl}>想問什麼?</div>
+              <textarea style={ta} value={aMsg} onChange={(e) => setAMsg(e.target.value)} placeholder="例：想帶女友一起體驗，她很怕水，適合嗎?" />
+              {aErr && <div style={errBox}>{aErr}</div>}
+              <button style={sendBtn("linear-gradient(135deg,#FF6B4A,#F5522F)", aBusy)} disabled={aBusy || noEmail} onClick={() => submit("question")}>{aBusy ? "送出中…" : "送出問題 ➤"}</button>
+            </>
+          )}
+        </div>
+
+        {/* B 許願 */}
+        <div style={cardBase("#eef9f8", "#bfe5e2")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", fontSize: 22, background: "#d6f0ee" }}>🌊</div>
+            <h3 style={{ fontSize: 18, color: "#0e7c8a", fontWeight: 800, margin: 0 }}>想去某地 / 想揪團</h3>
+          </div>
+          {bSent ? doneBox("#0e7c8a", "許願收到了!湊到人或排好行程，我們會優先通知你。") : (
+            <>
+              <p style={sub}>想去但目前沒團?留個許願，湊到人就開、優先通知你。</p>
+              <div style={lbl}>想去哪?</div>
+              <ContactChips items={CONTACT_PLACES} value={bTopic} onPick={setBTopic} />
+              <div style={lbl}>主旨（可補充）</div>
+              <input style={inp} value={bSubject} onChange={(e) => setBSubject(e.target.value)} placeholder="想揪 7 月中的團…" />
+              <div style={lbl}>大概什麼時候?幾個人?</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <input style={inp} value={bWhen} onChange={(e) => setBWhen(e.target.value)} placeholder="例：7 月中" />
+                <input style={inp} value={bPeople} onChange={(e) => setBPeople(e.target.value)} placeholder="人數 例：2" />
+              </div>
+              <div style={lbl}>備註（選填）</div>
+              <textarea style={ta} value={bNote} onChange={(e) => setBNote(e.target.value)} placeholder="例：都有 OW，想看大香菇，住宿幫忙安排" />
+              {bErr && <div style={errBox}>{bErr}</div>}
+              <button style={sendBtn("linear-gradient(135deg,#0E9AA0,#0a6e73)", bBusy)} disabled={bBusy || noEmail} onClick={() => submit("wish")}>{bBusy ? "送出中…" : "送出許願 ➤"}</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 真人管道 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#f4f8f9", border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 20px", marginTop: 18, flexWrap: "wrap", justifyContent: "center" }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: C.deep }}>急著問?直接找真人 →</span>
+        <a href={CONTACT_LINE_URL} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#06C755", color: "#fff", borderRadius: 11, padding: "10px 18px", fontSize: 14.5, fontWeight: 700, textDecoration: "none" }}>
+          <span style={{ width: 20, height: 20, background: "#fff", borderRadius: 5, color: "#06C755", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800 }}>L</span>LINE 問汪汪教練（最快）
+        </a>
+        <span style={{ fontSize: 13, color: C.mute }}>或 Email：<b style={{ color: "#0e7c8a", fontFamily: "monospace" }}>service@haiwangzi.xyz</b></span>
+      </div>
+    </div>
+  );
 }
 function card(): React.CSSProperties {
   return { background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 10px rgba(10,35,66,.05)", display: "flex", flexDirection: "column" };

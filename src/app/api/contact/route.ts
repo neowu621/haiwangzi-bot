@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyBossNewInquiry, sendCustomerAck } from "@/lib/notify-boss";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { authFromRequest } from "@/lib/auth"; // v671：已登入會員(/pclogin)走快速通道
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,16 +69,22 @@ export async function POST(req: NextRequest) {
   // honeypot：機器人才會填
   if (b.hp && b.hp.trim()) return NextResponse.json({ ok: true }); // 假裝成功，不入庫
 
-  // Cloudflare Turnstile 機器人驗證
-  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  if (!(await verifyTurnstile(b.turnstileToken, ip))) {
-    return NextResponse.json({ error: "機器人驗證未通過，請重試" }, { status: 400 });
+  // v671：已登入會員(/pclogin)走快速通道 — 免 Turnstile、姓名/Email/電話自動帶會員資料。
+  const auth = await authFromRequest(req).catch(() => ({ ok: false } as const));
+  const member = auth.ok ? auth.user : null;
+
+  // Cloudflare Turnstile 機器人驗證（未登入訪客才需要；登入會員已有身分驗證）
+  if (!member) {
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    if (!(await verifyTurnstile(b.turnstileToken, ip))) {
+      return NextResponse.json({ error: "機器人驗證未通過，請重試" }, { status: 400 });
+    }
   }
 
   const type = b.type === "wish" ? "wish" : "question";
-  const name = (b.name ?? "").trim().slice(0, 60);
-  const email = (b.email ?? "").trim().slice(0, 120);
-  const phone = (b.phone ?? "").trim().slice(0, 40);
+  const name = ((b.name ?? "") || member?.realName || member?.displayName || "").trim().slice(0, 60);
+  const email = ((b.email ?? "") || member?.email || "").trim().slice(0, 120);
+  const phone = ((b.phone ?? "") || member?.phone || "").trim().slice(0, 40);
   const topic = (b.topic ?? "").trim().slice(0, 20);
   const subjRaw = (b.subject ?? "").trim().slice(0, 120);
   const message = (b.message ?? "").trim().slice(0, 2000);
@@ -122,7 +129,9 @@ export async function POST(req: NextRequest) {
           customerEmail: email,
           customerName: phone ? `${name}（☎ ${phone}）` : name,
           status: "WAITING",
-          tags: ["網站詢問", tag],
+          // v671：登入會員洽詢加註記 + 綁 lineUserId（方便後台連到會員；不設 channel=web，故不混入會員端雙向對話）
+          tags: member ? ["網站詢問", tag, "會員洽詢"] : ["網站詢問", tag],
+          ...(member ? { lineUserId: member.lineUserId } : {}),
           lastMessageAt: new Date(),
         },
       });
