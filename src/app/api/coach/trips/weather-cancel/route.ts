@@ -17,7 +17,7 @@ const BodySchema = z.object({
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "admin"]);
+  const role = requireRole(auth.user, ["coach", "assistant", "admin"]);
   if (!role.ok) return NextResponse.json({ error: role.message }, { status: role.status });
 
   const data = BodySchema.parse(await req.json());

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "admin"]);
+  const role = requireRole(auth.user, ["coach", "assistant", "admin"]);
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "admin"]);
+  const role = requireRole(auth.user, ["coach", "assistant", "admin"]);
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 

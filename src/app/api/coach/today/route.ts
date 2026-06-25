@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["coach", "boss", "admin"]);
+  const role = requireRole(auth.user, ["coach", "assistant", "boss", "admin"]);
   if (!role.ok) return NextResponse.json({ error: role.message }, { status: role.status });
 
   const today = new Date();
