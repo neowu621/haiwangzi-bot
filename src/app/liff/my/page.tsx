@@ -731,6 +731,13 @@ function BookingCard({
                 </div>
               ))}
             </div>
+            {/* v672：明確拆「已付訂金 / 尾款」金額（對齊桌機 /pclogin；截止日見上方付款鈕旁 ⏰）*/}
+            {b.paidAmount > 0 && b.totalAmount - b.paidAmount > 0 && (
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="font-medium text-[#0a7d4f]">已付訂金 NT$ {b.paidAmount.toLocaleString()}</span>
+                <span className="font-bold text-[var(--color-coral)]">尾款 NT$ {(b.totalAmount - b.paidAmount).toLocaleString()}</span>
+              </div>
+            )}
           </div>
         )}
 
