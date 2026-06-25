@@ -565,7 +565,7 @@ export default function AdminBookingsPage() {
       { key: "status", label: "訂單狀態", format: (v) => BOOKING_STATUS_LABEL[String(v)] ?? String(v) },
       { key: "notes", label: "客戶備註", format: (v) => String(v ?? "（空）") },
       { key: "siteNotes", label: "網站備註", format: (v) => String(v ?? "（空）") },
-      { key: "adminNotes", label: "管理備註", format: (v) => String(v ?? "（空）") },
+      { key: "adminNotes", label: "活動備註", format: (v) => String(v ?? "（空）") },
     ];
     const diffs: Array<{ key: string; label: string; from: string; to: string }> = [];
     for (const c of cmp) {
@@ -1027,7 +1027,7 @@ export default function AdminBookingsPage() {
                             const parts: Array<{ l: string; t: string; c: string }> = [];
                             if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-slate-600" });
                             if (b.siteNotes) parts.push({ l: "網", t: b.siteNotes, c: "text-emerald-700" });
-                            if (b.adminNotes) parts.push({ l: "管", t: b.adminNotes, c: "text-violet-700" });
+                            if (b.adminNotes) parts.push({ l: "活", t: b.adminNotes, c: "text-violet-700" });
                             if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
                             return (
                               <div className="space-y-0.5">
@@ -1242,7 +1242,7 @@ export default function AdminBookingsPage() {
                     {locked && (
                       <div className="rounded-md border-2 px-3 py-2 text-xs font-semibold"
                         style={{ borderColor: "rgba(255,123,90,0.5)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
-                        🔒 此訂單已退款 {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「管理備註」
+                        🔒 此訂單已退款 {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「活動備註」
                       </div>
                     )}
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
@@ -1571,8 +1571,8 @@ export default function AdminBookingsPage() {
                 {isAdminOrBoss && (
                   <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
                     <Label className="text-xs pt-1.5">
-                      管理備註
-                      <span className="block font-normal text-[10px]" style={{ color: "var(--color-coral)" }}>僅管理員可見</span>
+                      活動備註
+                      <span className="block font-normal text-[10px]" style={{ color: "var(--color-coral)" }}>這次活動・僅管理員可見</span>
                     </Label>
                     <textarea
                       className="w-full rounded-md border px-2 py-1.5 text-sm"

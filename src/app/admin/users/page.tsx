@@ -1351,7 +1351,7 @@ export default function AdminUsersPage() {
                   onChange={(e) =>
                     setEditing({ ...editing, notes: e.target.value || null })
                   }
-                  placeholder="僅管理員可見。例：VIP 常客 / 耳壓問題 / 偏好早場…（每筆活動的備註請在『訂單管理』各訂單的管理備註填）"
+                  placeholder="僅管理員可見。例：VIP 常客 / 耳壓問題 / 偏好早場…（每筆活動的備註請在『訂單管理』各訂單的活動備註填）"
                 />
               </div>
 

@@ -38,10 +38,12 @@ interface CustomerData {
     notifyByEmail: boolean;
     birthday: string | null;
     role: string;
+    notes: string | null; // v661：會員層長期備註
     createdAt: string;
     lastActiveAt: string;
   };
   stats: { bookingCount: number; wishCount: number };
+  activityNotes?: Array<{ bookingId: string; note: string; label: string; at: string }>; // v661：各活動備註
 }
 
 interface ContactLogEntry {
@@ -220,6 +222,34 @@ export function CustomerDetailDialog({
                     {data.user.notifyByLine ? "LINE✓" : "LINE✗"} · {data.user.notifyByEmail ? "Email✓" : "Email✗"}
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* v661：管理備註彙整 — 會員層長期備註 + 各活動備註 */}
+            <section className="rounded-xl border border-[var(--border)] p-3">
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                📝 管理備註（僅內部）
+              </div>
+              <div className="mb-2">
+                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">會員備註（長期・跟著人走）</div>
+                {data.user.notes
+                  ? <div className="whitespace-pre-wrap rounded-md bg-violet-50 px-2.5 py-2 text-xs text-violet-900">{data.user.notes}</div>
+                  : <div className="text-xs text-[var(--muted-foreground)]">（無，可在「會員管理 → 編輯」填寫）</div>}
+              </div>
+              <div>
+                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">各活動備註（每筆訂單）</div>
+                {data.activityNotes && data.activityNotes.length > 0 ? (
+                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                    {data.activityNotes.map((a) => (
+                      <div key={a.bookingId} className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs">
+                        <div className="font-semibold text-[var(--foreground)]">{a.label}</div>
+                        <div className="whitespace-pre-wrap text-[var(--muted-foreground)] mt-0.5">{a.note}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-[var(--muted-foreground)]">（無，可在「訂單管理 → 各訂單 → 活動備註」填寫）</div>
+                )}
               </div>
             </section>
 
