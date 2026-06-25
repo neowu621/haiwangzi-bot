@@ -1409,60 +1409,71 @@ function NotificationsPanel() {
 
   return (
     <div style={formCard()}>
-      <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep, marginBottom: 12 }}>通知</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: C.deep, marginBottom: 16 }}>通知</h2>
 
-      {/* 聯絡客服(雙向) */}
-      <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14, background: "#f8fbfc" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.deep, marginBottom: 8 }}>💬 有問題?傳訊息給客服</div>
-        <textarea value={contactMsg} onChange={(e) => setContactMsg(e.target.value)} rows={2} placeholder="輸入您的問題或需求…" style={{ ...inp, width: "100%", resize: "vertical" }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <span style={{ fontSize: 11.5, color: sent?.startsWith("✅") ? "#0a8f86" : "#c0473b" }}>{sent}</span>
-          <button onClick={sendContact} disabled={sending || !contactMsg.trim()} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 9, padding: "7px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: sending || !contactMsg.trim() ? 0.5 : 1 }}>送出</button>
+      {/* v673：兩欄 — 左:訊息通知(列表) / 右:訊息反饋(客服對話)。窄畫面自動疊回單欄 */}
+      <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", alignItems: "start" }}>
+        {/* ===== 左欄：訊息通知 ===== */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.deep }}>📥 訊息通知</div>
+            <button onClick={reload} style={{ fontSize: 12, color: C.mute, background: "none", border: "none", cursor: "pointer" }}>↻ 重新整理</button>
+          </div>
+          {/* 篩選 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            {chip("week", "近一周")}
+            {chip("today", "今天")}
+            {chip("all", "全部")}
+            {chip("date", "選日期")}
+            {filter === "date" && <input type="date" value={pickDate} onChange={(e) => setPickDate(e.target.value)} style={{ ...inp, width: "auto" }} />}
+          </div>
+          {loading && <div style={{ color: C.mute, fontSize: 14 }}>載入中…</div>}
+          {!loading && filtered.length === 0 && <div style={{ color: C.mute, fontSize: 14, padding: "24px 0", textAlign: "center" }}>{filter === "all" ? "目前沒有通知" : "這個範圍沒有通知"}</div>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filtered.map((n) => (
+              <div key={n.id} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", background: n.isRead ? "#fff" : "#f0fbfa" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.deep }}>{n.title}</div>
+                <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.7, marginTop: 4, whiteSpace: "pre-wrap" }}>{n.body}</div>
+                <div style={{ fontSize: 11, color: C.mute, marginTop: 6 }}>{new Date(n.createdAt).toLocaleString("zh-TW")}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        {convo.length > 0 && (
-          <div style={{ marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
-            <div style={{ fontSize: 11.5, color: C.mute, marginBottom: 8 }}>對話紀錄</div>
-            {/* v668：固定高度捲動框 + 自動到最新 + 「載入更早」往上補 */}
-            <div ref={convoScrollRef} style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 4 }}>
-              {convoHasMore && (
-                <button onClick={loadOlder} disabled={loadingOlder} style={{ alignSelf: "center", fontSize: 12, color: C.mute, background: "#eef3f6", border: "none", borderRadius: 999, padding: "4px 14px", cursor: "pointer", opacity: loadingOlder ? 0.5 : 1 }}>
-                  {loadingOlder ? "載入中…" : "↑ 載入更早訊息"}
-                </button>
-              )}
-              {convo.map((m, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
-                  <div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: m.who === "me" ? C.deep : "#eef3f6", color: m.who === "me" ? "#fff" : C.ink }}>
-                    {m.who === "cs" && <div style={{ fontSize: 11, fontWeight: 700, color: "#0a8f86", marginBottom: 2 }}>客服</div>}
-                    {m.body}
-                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{new Date(m.createdAt).toLocaleString("zh-TW")}</div>
-                  </div>
-                </div>
-              ))}
+
+        {/* ===== 右欄：訊息反饋（雙向客服） ===== */}
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: C.deep, marginBottom: 10 }}>💬 訊息反饋（客服）</div>
+          <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", background: "#f8fbfc" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.deep, marginBottom: 8 }}>有問題?傳訊息給客服</div>
+            <textarea value={contactMsg} onChange={(e) => setContactMsg(e.target.value)} rows={2} placeholder="輸入您的問題或需求…" style={{ ...inp, width: "100%", resize: "vertical" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+              <span style={{ fontSize: 11.5, color: sent?.startsWith("✅") ? "#0a8f86" : "#c0473b" }}>{sent}</span>
+              <button onClick={sendContact} disabled={sending || !contactMsg.trim()} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 9, padding: "7px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: sending || !contactMsg.trim() ? 0.5 : 1 }}>送出</button>
             </div>
+            {convo.length > 0 && (
+              <div style={{ marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
+                <div style={{ fontSize: 11.5, color: C.mute, marginBottom: 8 }}>對話紀錄</div>
+                {/* v668：固定高度捲動框 + 自動到最新 + 「載入更早」往上補 */}
+                <div ref={convoScrollRef} style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingRight: 4 }}>
+                  {convoHasMore && (
+                    <button onClick={loadOlder} disabled={loadingOlder} style={{ alignSelf: "center", fontSize: 12, color: C.mute, background: "#eef3f6", border: "none", borderRadius: 999, padding: "4px 14px", cursor: "pointer", opacity: loadingOlder ? 0.5 : 1 }}>
+                      {loadingOlder ? "載入中…" : "↑ 載入更早訊息"}
+                    </button>
+                  )}
+                  {convo.map((m, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
+                      <div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", background: m.who === "me" ? C.deep : "#eef3f6", color: m.who === "me" ? "#fff" : C.ink }}>
+                        {m.who === "cs" && <div style={{ fontSize: 11, fontWeight: 700, color: "#0a8f86", marginBottom: 2 }}>客服</div>}
+                        {m.body}
+                        <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3, textAlign: "right" }}>{new Date(m.createdAt).toLocaleString("zh-TW")}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* 篩選 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        {chip("week", "近一周")}
-        {chip("today", "今天")}
-        {chip("all", "全部")}
-        {chip("date", "選日期")}
-        {filter === "date" && <input type="date" value={pickDate} onChange={(e) => setPickDate(e.target.value)} style={{ ...inp, width: "auto" }} />}
-        <button onClick={reload} style={{ marginLeft: "auto", fontSize: 12, color: C.mute, background: "none", border: "none", cursor: "pointer" }}>↻ 重新整理</button>
-      </div>
-
-      {loading && <div style={{ color: C.mute, fontSize: 14 }}>載入中…</div>}
-      {!loading && filtered.length === 0 && <div style={{ color: C.mute, fontSize: 14, padding: "24px 0", textAlign: "center" }}>{filter === "all" ? "目前沒有通知" : "這個範圍沒有通知"}</div>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {filtered.map((n) => (
-          <div key={n.id} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 14px", background: n.isRead ? "#fff" : "#f0fbfa" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.deep }}>{n.title}</div>
-            <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.7, marginTop: 4, whiteSpace: "pre-wrap" }}>{n.body}</div>
-            <div style={{ fontSize: 11, color: C.mute, marginTop: 6 }}>{new Date(n.createdAt).toLocaleString("zh-TW")}</div>
-          </div>
-        ))}
+        </div>
       </div>
     </div>
   );
