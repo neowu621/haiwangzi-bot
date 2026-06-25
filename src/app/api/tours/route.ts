@@ -5,10 +5,13 @@ import { PUBLIC_LIST_CACHE_HEADERS } from "@/lib/http-cache";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/tours - 列出開放中的潛水團
+// GET /api/tours - 列出開放中的潛水團（v658：只顯示尚未結束的，過期不顯示）
 export async function GET() {
+  // 今天起算（Asia/Taipei 當日 00:00）；dateEnd >= 今天 → 仍進行中/未來才列出
+  const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const todayStart = new Date(`${todayStr}T00:00:00+08:00`);
   const tours = await prisma.tourPackage.findMany({
-    where: { status: { in: ["open", "full"] } },
+    where: { status: { in: ["open", "full"] }, dateEnd: { gte: todayStart } },
     orderBy: { dateStart: "asc" },
   });
 

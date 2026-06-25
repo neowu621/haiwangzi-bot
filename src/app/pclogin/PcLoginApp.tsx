@@ -1363,7 +1363,17 @@ function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void
               : <span style={{ fontSize: 12, color: C.coral, fontWeight: 700, whiteSpace: "nowrap" }}>未驗證</span>}
           </div>
         )}
-        {field("生日（生日當月自動送禮金）", <input style={inp} type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />)}
+        {field("生日（生日當月自動送禮金）", (
+          <div>
+            <input
+              style={{ ...inp, ...(member.birthday ? { background: "#eef1f3", color: C.mute, cursor: "not-allowed" } : {}) }}
+              type="date" value={birthday}
+              readOnly={Boolean(member.birthday)}
+              onChange={(e) => { if (!member.birthday) setBirthday(e.target.value); }}
+            />
+            {member.birthday && <div style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>🔒 生日只能填一次、已鎖定；如需更正請洽客服。</div>}
+          </div>
+        ))}
       </div>
 
       {/* 潛水證照 */}
