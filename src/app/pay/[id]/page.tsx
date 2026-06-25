@@ -259,19 +259,21 @@ export default function PublicPayPage({
 
       <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
         <div className="text-sm font-semibold mb-2">選擇付款方式</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           {(["bank", "linepay", "other"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setPaymentMethod(m)}
               className={
-                paymentMethod === m
-                  ? "rounded-md border-2 border-cyan-600 bg-cyan-50 px-2 py-2 text-sm font-bold"
-                  : "rounded-md border border-gray-300 px-2 py-2 text-sm hover:bg-gray-50"
+                "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-4 transition " +
+                (paymentMethod === m
+                  ? "border-2 border-cyan-600 bg-cyan-50 shadow-sm"
+                  : "border border-gray-300 bg-white hover:bg-gray-50")
               }
             >
-              {m === "bank" ? "🏦 轉帳" : m === "linepay" ? "💚 LINE Pay" : "📝 其他"}
+              <span className="text-2xl leading-none">{m === "bank" ? "🏦" : m === "linepay" ? "💚" : "📝"}</span>
+              <span className="text-[13px] font-bold text-gray-800">{m === "bank" ? "銀行轉帳" : m === "linepay" ? "LINE Pay" : "其他"}</span>
             </button>
           ))}
         </div>
@@ -355,12 +357,16 @@ export default function PublicPayPage({
           </div>
 
           <div>
-            <label className="text-xs text-gray-600 block mb-1">
+            <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               {paymentMethod === "linepay"
-                ? <><span className="text-rose-600">＊</span> 轉帳截圖</>
-                : "截圖（選填）"}
+                ? <><span className="text-rose-600">＊</span> 上傳付款證明截圖</>
+                : "上傳付款證明截圖（選填）"}
             </label>
-            <input type="file" accept="image/*" onChange={onPickFile} className="text-xs" />
+            <label className="flex items-center justify-center gap-2 w-full cursor-pointer rounded-xl border-2 border-dashed border-cyan-400 bg-cyan-50 px-4 py-5 text-sm font-bold text-cyan-800 hover:bg-cyan-100 transition">
+              <span className="text-xl">📷</span>
+              {preview ? "已選擇截圖 — 點此重新選擇" : "點此選擇 / 拍照上傳截圖"}
+              <input type="file" accept="image/*" onChange={onPickFile} className="hidden" />
+            </label>
             {preview && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={preview} alt="預覽" className="mt-2 w-full max-h-60 object-contain rounded border border-gray-200" />

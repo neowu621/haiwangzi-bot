@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
         id: b.id,
         type: b.type,
         refId: b.refId, // 給 client 拼 photo gallery URL 用
+        payLinkToken: b.payLinkToken, // v659：桌機 /pclogin「前往付款」要帶安全 token
         status: b.status,
         paymentStatus: b.paymentStatus,
         paymentMethod: b.paymentMethod,  // v289

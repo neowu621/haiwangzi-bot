@@ -80,6 +80,7 @@ interface TourDetail extends Tour {
 interface MyBooking {
   id: string;
   type: string;
+  payLinkToken?: string | null;
   status: string;
   paymentStatus: string;
   totalAmount: number;
@@ -1255,7 +1256,7 @@ function MyOrders() {
           {!cancelled && unpaid > 0 && <div style={{ fontSize: 12, color: C.coral }}>未付 {ntd(unpaid)}</div>}
         </div>
         {canPay && (
-          <a href={`/pay/${b.id}`} style={{ background: C.coral, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, textDecoration: "none", whiteSpace: "nowrap" }}>
+          <a href={b.payLinkToken ? `/pay/${b.id}?t=${encodeURIComponent(b.payLinkToken)}` : `/pay/${b.id}`} style={{ background: C.coral, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, textDecoration: "none", whiteSpace: "nowrap" }}>
             前往付款
           </a>
         )}
@@ -1344,7 +1345,7 @@ function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void
         <Stat label="會員等級" value={`LV${member.vipLevel}`} />
         <Stat label="抵用金" value={ntd(member.creditBalance)} />
         <Stat label="海王子氣瓶數" value={`${member.haiwangziLogCount ?? 0}`} />
-        <Stat label="完成潛次" value={`${member.stats.completed}`} />
+        <Stat label="已結束預約" value={`${member.stats.completed}`} />
       </div>
 
       {/* 基本資料 */}
