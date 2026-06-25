@@ -462,6 +462,9 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_enabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_discount INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_reason TEXT NOT NULL DEFAULT ''`,
+  // v664：活動提醒事項（場次/團層級、客戶可見）
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS activity_note TEXT`,
+  `ALTER TABLE tour_packages ADD COLUMN IF NOT EXISTS activity_note TEXT`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_start TIMESTAMPTZ`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_end TIMESTAMPTZ`,
   // v638：教練/助教 氣瓶優惠價

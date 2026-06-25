@@ -237,7 +237,7 @@ export function CustomerDetailDialog({
                   : <div className="text-xs text-[var(--muted-foreground)]">（無，可在「會員管理 → 編輯」填寫）</div>}
               </div>
               <div>
-                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">各活動備註（每筆訂單）</div>
+                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">客戶備註（客人各筆訂單自己填的）</div>
                 {data.activityNotes && data.activityNotes.length > 0 ? (
                   <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
                     {data.activityNotes.map((a) => (
@@ -248,7 +248,7 @@ export function CustomerDetailDialog({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-[var(--muted-foreground)]">（無，可在「訂單管理 → 各訂單 → 活動備註」填寫）</div>
+                  <div className="text-xs text-[var(--muted-foreground)]">（客人下單時未填備註）</div>
                 )}
               </div>
             </section>

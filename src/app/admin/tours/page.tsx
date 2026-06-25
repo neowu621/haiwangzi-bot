@@ -73,6 +73,7 @@ interface Tour {
   siteList?: string | null;
   pricingNotes?: string | null;
   extraNote?: string | null;
+  activityNote?: string | null;
   itinerary?: ItineraryDay[];
   diveSiteIds?: string[];
   includes?: string[];
@@ -128,6 +129,7 @@ interface FormState {
   siteList: string;
   pricingNotes: string;
   extraNote: string;
+  activityNote: string;
   includes: string;
   excludes: string;
   itinerary: ItineraryDay[];
@@ -141,7 +143,7 @@ const BLANK: FormState = {
   depositDueDays: 7, finalDeadline: "",
   depositReminderDays: 7, finalReminderDays: 30, guideReminderDays: 2,
   diveStyles: [], beginnerFriendly: false, tanksCount: 0,
-  siteList: "", pricingNotes: "", extraNote: "",
+  siteList: "", pricingNotes: "", extraNote: "", activityNote: "",
   includes: "", excludes: "",
   itinerary: [],
 };
@@ -318,6 +320,7 @@ export default function ToursPage() {
       siteList: t.siteList ?? (t.diveSiteIds ?? []).join("\n"),
       pricingNotes: t.pricingNotes ?? "",
       extraNote: t.extraNote ?? "",
+      activityNote: t.activityNote ?? "",
       includes: (t.includes ?? []).join("\n"),
       excludes: (t.excludes ?? []).join("\n"),
       itinerary: t.itinerary ?? [],
@@ -356,6 +359,7 @@ export default function ToursPage() {
         diveSiteIds: form.siteList.split("\n").map((s) => s.trim()).filter(Boolean),
         pricingNotes: form.pricingNotes || null,
         extraNote: form.extraNote || null,
+        activityNote: form.activityNote || null,
         includes: form.includes.split("\n").map((s) => s.trim()).filter(Boolean),
         excludes: form.excludes.split("\n").map((s) => s.trim()).filter(Boolean),
         itinerary: form.itinerary.filter((d) => d.t || d.c),
@@ -1142,12 +1146,21 @@ export default function ToursPage() {
                 }}>＋ 新增一天</button>
               </FieldSet>
 
-              <FieldSet title="備註">
+              <FieldSet title="備註（內部）">
                 <Field label="">
                   <textarea value={form.extraNote}
                     onChange={(e) => setForm((f) => ({ ...f, extraNote: e.target.value }))}
-                    placeholder="新手可參加；潛點視海況安排；船票教練代訂..."
+                    placeholder="新手可參加；潛點視海況安排；船票教練代訂...(僅內部)"
                     style={{ ...inputStyle, minHeight: 80, fontFamily: "inherit", resize: "vertical" }} />
+                </Field>
+              </FieldSet>
+              {/* v664：活動提醒事項（客戶可見） */}
+              <FieldSet title="📣 活動提醒事項（客戶可見・這團全員都看得到）">
+                <Field label="">
+                  <textarea value={form.activityNote}
+                    onChange={(e) => setForm((f) => ({ ...f, activityNote: e.target.value }))}
+                    placeholder="例：請攜帶有效潛水證照與保險；出發前一天會再發行前手冊"
+                    style={{ ...inputStyle, minHeight: 80, fontFamily: "inherit", resize: "vertical", borderColor: "#bfe9d4", background: "#f0fbf6" }} />
                 </Field>
               </FieldSet>
             </div>

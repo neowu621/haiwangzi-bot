@@ -30,6 +30,7 @@ const PatchSchema = z.object({
   // 接受 null（client 載入既有資料時欄位可能是 null）
   weatherNote: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  activityNote: z.string().nullable().optional(), // v664
   meetingPoint: z.string().nullable().optional(),
   meetingPointUrl: z.string().nullable().optional(),
   referenceVideoUrl: z.string().nullable().optional(),
@@ -95,6 +96,7 @@ export async function PATCH(
   if (data.status) patch.status = data.status;
   if (data.weatherNote !== undefined) patch.weatherNote = data.weatherNote;
   if (data.notes !== undefined) patch.notes = data.notes === "" ? null : data.notes;
+  if (data.activityNote !== undefined) patch.activityNote = data.activityNote === "" ? null : data.activityNote;
   if (data.meetingPoint !== undefined)
     patch.meetingPoint = data.meetingPoint === "" ? null : data.meetingPoint;
   if (data.meetingPointUrl !== undefined)

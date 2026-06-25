@@ -105,12 +105,14 @@ export async function GET(req: NextRequest) {
                 startTime: (ref as typeof trips[number]).startTime,
                 sites: refSites,
                 tankCount: (ref as typeof trips[number]).tankCount,
+                activityNote: (ref as typeof trips[number]).activityNote ?? null, // v664：活動提醒
               }
             : {
                 title: (ref as typeof tours[number]).title,
                 dateStart: (ref as typeof tours[number]).dateStart.toISOString().slice(0, 10),
                 dateEnd: (ref as typeof tours[number]).dateEnd.toISOString().slice(0, 10),
                 sites: refSites,
+                activityNote: (ref as typeof tours[number]).activityNote ?? null, // v664
               }
           : null,
         paymentProofs: await Promise.all(

@@ -81,8 +81,7 @@ interface MyBooking {
   id: string;
   type: string;
   payLinkToken?: string | null;
-  notes?: string | null;       // v663：客戶備註
-  siteNotes?: string | null;   // v663：給客戶的提醒（客戶可見）
+  notes?: string | null;       // v663：客戶備註（客人自己填）
   status: string;
   paymentStatus: string;
   totalAmount: number;
@@ -96,6 +95,7 @@ interface MyBooking {
     title?: string;
     dateStart?: string;
     dateEnd?: string;
+    activityNote?: string | null; // v664：活動提醒（客戶可見）
   } | null;
 }
 
@@ -1243,9 +1243,9 @@ function MyOrders() {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: cancelled ? C.mute : C.ink }}>{title}</div>
           <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{sub} ‧ {b.participants} 人 ‧ 下單 {b.createdAt.slice(0, 10)}</div>
-          {/* v663：給客戶的提醒（店家寫）+ 客戶備註（自己填）— 僅客戶可見的兩種 */}
-          {b.siteNotes && (
-            <div style={{ fontSize: 12, color: "#0a7d4f", background: "#eafaf3", borderRadius: 8, padding: "5px 9px", marginTop: 6, lineHeight: 1.6 }}>📌 {b.siteNotes}</div>
+          {/* v664：活動提醒（場次/團層級，客戶可見）+ 客戶備註（自己填）*/}
+          {b.ref?.activityNote && (
+            <div style={{ fontSize: 12, color: "#0a7d4f", background: "#eafaf3", borderRadius: 8, padding: "5px 9px", marginTop: 6, lineHeight: 1.6 }}>📣 活動提醒：{b.ref.activityNote}</div>
           )}
           {b.notes && (
             <div style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>📝 我的備註：{b.notes}</div>

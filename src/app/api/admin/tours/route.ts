@@ -38,6 +38,7 @@ const CreateSchema = z.object({
   siteList: z.string().nullable().optional(),
   pricingNotes: z.string().nullable().optional(),
   extraNote: z.string().nullable().optional(),
+  activityNote: z.string().nullable().optional(), // v664：活動提醒（客戶可見）
 });
 
 // GET /api/admin/tours
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest) {
         siteList: data.siteList ?? null,
         pricingNotes: data.pricingNotes ?? null,
         extraNote: data.extraNote ?? null,
+        activityNote: data.activityNote ?? null,
       },
     });
     await logAudit({

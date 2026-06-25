@@ -360,6 +360,8 @@ model DivingTrip {
   status            TripStatus    @default(open)
   cancelReason      CancelReason? @map("cancel_reason")
   weatherNote       String?       @map("weather_note")
+  // v664：活動提醒事項（針對這一次活動、客戶可見；取代原 Booking.siteNotes/adminNotes）
+  activityNote      String?       @map("activity_note") @db.Text
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([status, date, startTime]) // v356：行事曆/場次列查詢
@@ -403,6 +405,8 @@ model TourPackage {
   depositReminderDays Int        @default(7) @map("deposit_reminder_days") // 訂金截止前 N 天推
   finalReminderDays   Int        @default(30) @map("final_reminder_days") // 尾款截止前 N 天推
   guideReminderDays   Int        @default(2) @map("guide_reminder_days") // 出發前 N 天推手冊
+  // v664：活動提醒事項（針對這一團、客戶可見）
+  activityNote        String?    @map("activity_note") @db.Text
   createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([status, dateStart]) // v356：潛旅列表查詢

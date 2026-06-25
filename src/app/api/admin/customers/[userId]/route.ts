@@ -47,10 +47,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
     prisma.diveWish.count({ where: { userId } }),
   ]);
 
-  // v661：彙整該會員「各活動的活動備註」(Booking.adminNotes)，附活動標籤
+  // v664：彙整該會員「各筆訂單的客戶備註」(Booking.notes，客人下單自己填的)，附活動標籤
   const noted = await prisma.booking.findMany({
-    where: { userId, adminNotes: { not: null } },
-    select: { id: true, type: true, refId: true, adminNotes: true, createdAt: true },
+    where: { userId, notes: { not: null } },
+    select: { id: true, type: true, refId: true, notes: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
     const label = b.type === "daily"
       ? `日潛 ${tripMap.get(b.refId)?.date?.toISOString().slice(0, 10) ?? ""} ${tripMap.get(b.refId)?.startTime ?? ""}`.trim()
       : (tourMap.get(b.refId)?.title ?? "潛旅");
-    return { bookingId: b.id, note: b.adminNotes, label, at: b.createdAt };
+    return { bookingId: b.id, note: b.notes, label, at: b.createdAt };
   });
 
   return NextResponse.json({

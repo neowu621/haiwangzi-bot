@@ -52,6 +52,7 @@ interface Trip {
   coachIds: string[];
   pricing: Pricing;
   notes: string | null;
+  activityNote?: string | null;
   meetingPoint: string | null;
   meetingPointUrl: string | null;
   referenceVideoUrl?: string | null;
@@ -194,6 +195,7 @@ const BLANK_FORM = {
   coachIds: [] as string[],
   pricing: BLANK_PRICING_DEFAULT,
   notes: "",
+  activityNote: "",
   meetingPoint: "",
   meetingPointUrl: "",
   referenceVideoUrl: "",
@@ -402,6 +404,7 @@ export default function AdminTripsPage() {
       coachIds: [...trip.coachIds],
       pricing: { ...BLANK_PRICING_DEFAULT, ...trip.pricing },
       notes: trip.notes ?? "",
+      activityNote: trip.activityNote ?? "",
       meetingPoint: trip.meetingPoint ?? "",
       meetingPointUrl: trip.meetingPointUrl ?? "",
       referenceVideoUrl: trip.referenceVideoUrl ?? "",
@@ -426,6 +429,7 @@ export default function AdminTripsPage() {
         ...trip.pricing,
       },
       notes: trip.notes ?? "",
+      activityNote: trip.activityNote ?? "",
       meetingPoint: trip.meetingPoint ?? "",
       meetingPointUrl: trip.meetingPointUrl ?? "",
       referenceVideoUrl: trip.referenceVideoUrl ?? "",
@@ -446,6 +450,7 @@ export default function AdminTripsPage() {
         ...form,
         capacity: form.capacity === 0 ? null : form.capacity,
         notes: form.notes || null,
+        activityNote: form.activityNote || null,
         meetingPoint: form.meetingPoint || null,
         meetingPointUrl: form.meetingPointUrl || null,
         referenceVideoUrl: form.referenceVideoUrl || null,
@@ -1791,13 +1796,25 @@ export default function AdminTripsPage() {
 
             {/* 日潛水備註 */}
             <div>
-              <Label className="mb-1 block text-xs">日潛水備註</Label>
+              <Label className="mb-1 block text-xs">日潛水備註<span className="ml-1 text-[10px] text-[var(--muted-foreground)]">(內部)</span></Label>
               <textarea
                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                 rows={2}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="天氣/裝備/注意事項..."
+                placeholder="天氣/裝備/注意事項...(僅內部)"
+              />
+            </div>
+            {/* v664：活動提醒事項（客戶可見，全部參加者都看得到）*/}
+            <div>
+              <Label className="mb-1 block text-xs">📣 活動提醒事項<span className="ml-1 text-[10px]" style={{ color: "#0a7d4f" }}>客戶可見・這場全員都看得到</span></Label>
+              <textarea
+                className="w-full rounded-md border px-2 py-1.5 text-sm"
+                style={{ borderColor: "#bfe9d4", background: "#f0fbf6" }}
+                rows={2}
+                value={form.activityNote}
+                onChange={(e) => setForm({ ...form, activityNote: e.target.value })}
+                placeholder="例：本場水溫偏低，建議厚防寒衣；集合後先做裝備檢查"
               />
             </div>
             </div>

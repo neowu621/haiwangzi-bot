@@ -96,6 +96,7 @@ const CreateSchema = z.object({
   }),
   status: z.enum(["open", "full", "cancelled", "completed"]).optional(),
   notes: z.string().nullable().optional().or(z.literal("")),
+  activityNote: z.string().nullable().optional().or(z.literal("")), // v664：活動提醒事項（客戶可見）
   meetingPoint: z.string().nullable().optional().or(z.literal("")),
   meetingPointUrl: z.string().nullable().optional().or(z.literal("")),
   referenceVideoUrl: z.string().nullable().optional().or(z.literal("")),
@@ -149,6 +150,7 @@ export async function POST(req: NextRequest) {
         coachIds: data.coachIds,
         pricing: data.pricing,
         notes: data.notes || null,
+        activityNote: data.activityNote || null,
         meetingPoint: data.meetingPoint || null,
         meetingPointUrl: data.meetingPointUrl || null,
         referenceVideoUrl: data.referenceVideoUrl || null,

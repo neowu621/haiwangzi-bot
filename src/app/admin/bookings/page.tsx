@@ -923,7 +923,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
-                    <th className="px-3 py-3 font-medium" title="會=會員備註(長期) 客=客戶備註 提=給客戶的提醒 活=活動備註(這次)">備註 ⓘ</th>
+                    <th className="px-3 py-3 font-medium" title="會=會員備註(長期·內部) 客=客戶下單填的備註。活動提醒請在『日潛場次/潛旅』編輯，客戶可見。">備註 ⓘ</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
@@ -1028,8 +1028,6 @@ export default function AdminBookingsPage() {
                             const parts: Array<{ l: string; t: string; c: string }> = [];
                             if (b.user?.notes) parts.push({ l: "會", t: b.user.notes, c: "text-pink-700" });
                             if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-slate-600" });
-                            if (b.siteNotes) parts.push({ l: "提", t: b.siteNotes, c: "text-emerald-700" });
-                            if (b.adminNotes) parts.push({ l: "活", t: b.adminNotes, c: "text-violet-700" });
                             if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
                             return (
                               <div className="space-y-0.5">
@@ -1561,39 +1559,11 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                {/* 給客戶的提醒（admin 寫，客戶可見） */}
-                <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                  <Label className="text-xs pt-1.5">
-                    給客戶的提醒
-                    <span className="block font-normal text-[10px]" style={{ color: "var(--muted-foreground)" }}>客戶可見</span>
-                  </Label>
-                  <textarea
-                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
-                    rows={2}
-                    placeholder="顯示給客戶的公開備註（如：注意帶泳衣）"
-                    value={editing.siteNotes ?? ""}
-                    disabled={editing.paymentStatus === "refunded"}
-                    onChange={(e) => setEditing({ ...editing, siteNotes: e.target.value })}
-                  />
+                {/* v664：原「給客戶的提醒 / 活動備註」已整合為「場次/團」層級的活動提醒 */}
+                <div className="rounded-md px-3 py-2 text-[11px] leading-relaxed"
+                  style={{ background: "#f0fbf6", border: "1px solid #bfe9d4", color: "#0a5c3e" }}>
+                  📣 <b>活動提醒事項</b>（給客戶看、這場全員適用）請到「<b>日潛場次 / 潛水旅行</b>」編輯該場次/團的「活動提醒事項」，不再逐筆訂單填寫。
                 </div>
-
-                {/* 管理備註（admin/boss only） */}
-                {isAdminOrBoss && (
-                  <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                    <Label className="text-xs pt-1.5">
-                      活動備註
-                      <span className="block font-normal text-[10px]" style={{ color: "var(--color-coral)" }}>這次活動・僅管理員可見</span>
-                    </Label>
-                    <textarea
-                      className="w-full rounded-md border px-2 py-1.5 text-sm"
-                      style={{ borderColor: "rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.04)" }}
-                      rows={2}
-                      placeholder="內部備註（客戶不可見）"
-                      value={editing.adminNotes ?? ""}
-                      onChange={(e) => setEditing({ ...editing, adminNotes: e.target.value })}
-                    />
-                  </div>
-                )}
 
                 {/* v280：客戶發起的退款申請（pending_admin）— 審核按鈕 */}
                 {editing.refundRequest?.status === "pending_admin" && editing.refundRequest.initiatedBy === "customer" && (

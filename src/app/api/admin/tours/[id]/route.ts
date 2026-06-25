@@ -40,6 +40,7 @@ const PatchSchema = z.object({
   siteList: z.string().nullable().optional(),
   pricingNotes: z.string().nullable().optional(),
   extraNote: z.string().nullable().optional(),
+  activityNote: z.string().nullable().optional(), // v664
 });
 
 // PATCH /api/admin/tours/[id]
@@ -101,6 +102,7 @@ export async function PATCH(
   if (data.siteList !== undefined) patch.siteList = data.siteList;
   if (data.pricingNotes !== undefined) patch.pricingNotes = data.pricingNotes;
   if (data.extraNote !== undefined) patch.extraNote = data.extraNote;
+  if (data.activityNote !== undefined) patch.activityNote = data.activityNote === "" ? null : data.activityNote;
 
   try {
     const tour = await prisma.tourPackage.update({ where: { id }, data: patch });
