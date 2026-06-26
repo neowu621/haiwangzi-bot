@@ -6,6 +6,15 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260627_697 — 2026-06-27 (LIFF 底部導覽重構:首頁/訊息通知/潛水預約整合)
+
+- **底部 5 分頁**改為 **首頁 / 訊息通知 / 潛水預約 / 我的預約 / 個人中心**(`BottomNav` NAV 重寫;未讀紅點移到訊息通知)。
+- **潛水預約整合頁** `/liff/booking`:一日潛水 / 旅行潛水 / 預約潛水 三合一,頂部三選項**即時切換**(lazy 掛載 + 保留狀態,不重載)。抽出 `CalendarContent` / `TourContent` / `WishesContent`(`src/components/liff/`)。願望單送出改 **inline 成功狀態**(不再跳出頁面)。
+- **首頁** `/liff/home`:移植 m2 `HomeIntro`(手機版官網介紹,沿用 `_home/data`)。
+- **訊息通知** `/liff/messages`:複製 m2 `MsgTab`(通知 + 客服對話),改用 `liff.fetchWithAuth`(`/api/me/notifications`、`/api/me/contact` 後端本就雙認證)。共用色盤 `src/components/liff/mobileShared.tsx`。
+- 舊路由 `/liff/calendar`、`/liff/tour`、`/liff/wishes/new` → **轉址**到 `/liff/booking` 對應子分頁(舊書籤/連結仍可用)。
+- 不動 m2、後端 API、我的預約/個人中心內容、場次/願望詳情與下單流程。
+
 ## 20260626_696 — 2026-06-26 (LIFF 頂部 logo 改連官網手機首頁 /)
 
 - `LiffShell` 左上品牌列(Wordmark：logo+版本)點擊由 `/liff/welcome` 改為 `/` —— 從任何 LIFF 頁點 logo 都回到官網手機首頁(MobileHome)。

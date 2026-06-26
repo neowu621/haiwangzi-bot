@@ -1,7 +1,7 @@
 # STATUS — 海王子潛水團 LIFF App
 
 **Last update：** 2026-06-21
-**Version（線上 prod）：** `20260626_696`
+**Version（線上 prod）：** `20260627_697`
 **Phase：** ✅ 已上線營運中 — `https://haiwangzi.xyz`（Zeabur 自動部署）
 **部署驗證：** `curl https://haiwangzi.xyz/api/healthz` 回的 version 即線上版本。
 **近期重點（詳見 docs/PROGRESS.md）：** 抵用金取消自動退 + 異動通知、簽名 DB-buffer（秒回不掉）、cron 全站救回（舊網域失效）、安全硬化（密碼雜湊不外送 / 22 路由 timing-safe / 限流）、清死碼、天氣取消手動觸發（場次管理一鍵取消+通知+退款）。

@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-27 — LIFF 底部導覽重構(首頁/訊息通知/潛水預約整合)（v696→v697）
+
+目前線上 = **v20260627_697**。
+
+- **v696**:LIFF 頂部品牌列(`LiffShell` Wordmark)點擊由 `/liff/welcome` → `/`(官網手機首頁)。
+- **v697 — 底部 5 分頁重構**(老闆要對齊 m2 的分頁概念):
+  - `BottomNav` NAV 重寫 → 首頁(`/liff/home`)/ 訊息通知(`/liff/messages`,未讀紅點移此)/ 潛水預約(`/liff/booking`)/ 我的預約(`/liff/my`)/ 個人中心(`/liff/profile`)。
+  - **潛水預約整合頁** `/liff/booking`:把原本三個分頁(一日潛水/旅行潛水/預約潛水)合一,頂部三選項**即時切換**。做法:抽出 `CalendarContent`/`TourContent`/`WishesContent`(`src/components/liff/`,把原頁 body 移出、去掉 LiffShell 外框),booking 頁用單一 LiffShell + 三按鈕切換;**lazy 掛載(首次點到才載)+ 切換只切 display(保留狀態、不重抓)**。願望單送出成功改 inline `done` 畫面(原本 `router.push` 跳出)。
+  - **首頁** `/liff/home` 移植 m2 `HomeIntro`;**訊息通知** `/liff/messages` 複製 m2 `MsgTab` 但改 `liff.fetchWithAuth`(LINE Bearer)。共用色盤 `src/components/liff/mobileShared.tsx`(C/Sect/SPOT_IMG,**不動 m2**)。
+  - 舊路由 `/liff/calendar`·`/liff/tour`·`/liff/wishes/new` 改成 server `redirect()` 到 `/liff/booking?tab=...`。場次/願望**詳情頁**與下單流程不變。
+- **決策/注意**:m2 與 LIFF 各自獨立(刻意不共用元件,只共用 `_home/data` 與後端 API);`/api/me/notifications`·`/api/me/contact` 後端 `authFromRequest` 同吃 cookie 與 LINE Bearer,所以 LIFF 端直接用 `fetchWithAuth` 即可。`/liff/welcome` 暫留(LINE 進入/好友閘),日後可轉址到 `/liff/home` 收斂。
+- **延續(載入慢)**:v694 已證實瓶頸是前端 JS bundle(226KB gzip)在 webview 的 hydration,非 DB/API;本重構讓潛水三頁切換**不再整頁重載**,間接改善體感。見 [[data-read-tiering]]。
+
+---
+
 ## 2026-06-26（續4）— m2 後台管理接真實資料 + 截圖延後載入（v695）
 
 目前線上 = **v20260626_695**。
