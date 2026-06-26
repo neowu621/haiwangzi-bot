@@ -6,6 +6,12 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260626_695 — 2026-06-26 (m2 後台管理接真實資料 + 轉帳截圖點擊才載入)
+
+- **m2 後台管理(Admin)有功能了**：`今日營運`移到最上面並接真實 `/api/admin/stats`(今日新訂單/待確認匯款/待結算/未付款);新增「待確認客戶訂單」清單(真實 `pendingProofsDetails`,**預設縮起、點擊展開**);「到場點名」磚 → 切教練畫面、「老闆結帳」磚 → 展開待確認訂單;其餘磚標示「桌機後台處理」。neowu62=admin,`/api/admin/stats` 用 `authFromRequest`(同顆 `hwz_member` cookie)+ `requireRole(["admin","coach"])` 可存取。
+- **轉帳截圖改點擊才載入(會員 OrderCard)**：不再預載縮圖,改 icon(類型+金額+待核/已核),點擊才開全螢幕視窗載入大圖 —— 省流量/加速,符合手機鐵則。
+- 待辦:m2 後台完整結帳/訂單/團務「寫入動作」(確認到帳/取消等)尚未移植,目前在桌機後台。
+
 ## 20260626_694 — 2026-06-26 (效能探針：定位場次/潛旅載入慢的環節 — 證實非 DB)
 
 - **量測結論**：curl 實測 `/api/trips`·`/api/tours` = server+DB 僅 ~50ms、含連線握手 TTFB ~280ms(三次一致);`/api/healthz?db=1` 回 **`dbPingMs` 1ms(暖)/33ms(冷首連)**。→ **DB 與 API 都不是瓶頸,v693 快取有效**。載入久發生在「裝置端」(LINE webview JS 載入/hydration、或手機網路首連)。
