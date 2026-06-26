@@ -15,6 +15,9 @@ import { SignaturePad } from "@/components/ui/SignaturePad";
 import { PolicyText } from "@/components/ui/PolicyText";
 import { formatPhoneTW } from "@/lib/phone";
 import { isBookingClosed } from "@/lib/utils";
+// v692：訂單=完整複製 LIFF 我的預約；個人=各項可點進子頁（沿用純函式 helper）
+import { deriveBookingDisplay } from "@/lib/booking-status";
+import { computePaymentDeadline, activityStartFromTaipei } from "@/lib/payment-deadline";
 
 const SPOT_IMG: Record<string, string> = {
   "bg-reeffish": "/home/src-04.webp", "bg-coraldiver": "/home/src-02.webp", "bg-blue": "/home/src-08.webp",
@@ -81,15 +84,18 @@ function Sess({ time, title, sub, tags, who, onClick }: { time: string; title: s
   );
 }
 const Sect = ({ t }: { t: string }) => <div style={{ fontSize: 13, fontWeight: 500, color: C.mute, margin: "16px 0 6px" }}>{t}</div>;
-function LRow({ Icon, label, right }: { Icon: typeof Home; label: string; right?: string }) {
+function LRow({ Icon, label, right, onClick }: { Icon: typeof Home; label: string; right?: string; onClick?: () => void }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}` }}>
+    <button onClick={onClick} disabled={!onClick} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, background: "none", border: "none", borderBottomWidth: "0.5px", textAlign: "left", color: C.ink, cursor: onClick ? "pointer" : "default" }}>
       <Icon size={19} color={C.mute} />
       <span style={{ flex: 1, fontSize: 14 }}>{label}</span>
       {right && <span style={{ fontSize: 13, color: C.mute }}>{right}</span>}
       <ChevronRight size={16} color={C.mute} />
-    </div>
+    </button>
   );
+}
+function SubHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, fontWeight: 600, border: "none", background: "none", color: C.ink, padding: "0 0 12px" }}><ArrowLeft size={17} color={C.accFg} />{title}</button>;
 }
 
 // ===================== 下單系統（v691，移植自 LIFF 一日潛水 / 旅遊潛水）=====================
@@ -264,12 +270,10 @@ function Member({ tab, cat, setTab, setCat, me, isAdmin, setRole }: { tab: Tab; 
       ))}
     </>
   );
-  if (tab === "orders") return <OrdersTab />;
-  return <MeTab me={me} isAdmin={isAdmin} setRole={setRole} />;
+  if (tab === "orders") return <OrdersTab setTab={setTab} goCustom={() => { setTab("dive"); setCat("custom"); }} />;
+  return <MeTab me={me} isAdmin={isAdmin} setRole={setRole} setTab={setTab} />;
 }
 
-const ORDER_DONE = new Set(["completed", "no_show", "cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"]);
-const ST_ZH: Record<string, string> = { pending: "待付款", awaiting_verify: "待確認匯款", confirmed: "已確認", deposit_paid: "已付訂金", fully_paid: "已付清", completed: "活動結束", no_show: "未到場", cancelled_by_user: "已取消", cancelled_by_weather: "天氣取消", cancelled_unpaid: "訂單不成立" };
 const ntd = (n: number) => `NT$ ${Number(n || 0).toLocaleString()}`;
 
 interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean }
@@ -323,46 +327,172 @@ function MsgTab() {
   );
 }
 
-interface MyBk { id: string; type: string; payLinkToken?: string | null; status: string; paymentStatus: string; totalAmount: number; depositAmount?: number; paidAmount: number; participants: number; createdAt: string; ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; dateEnd?: string; finalDeadline?: string | null } | null }
-function OrdersTab() {
+interface MyGear { itemType: GearT; price: number; qty?: number }
+interface MyProof { id: string; type: "deposit" | "final" | "refund"; amount: number; verifiedAt: string | null; url: string | null; thumb?: string | null }
+interface MyRef { date?: string; startTime?: string; sites?: string[]; tankCount?: number; title?: string; dateStart?: string; dateEnd?: string; activityNote?: string | null }
+interface MyBk { id: string; type: "daily" | "tour"; payLinkToken?: string | null; status: string; paymentStatus: string; totalAmount: number; depositAmount: number; paidAmount: number; participants: number; rentalGear: MyGear[]; notes?: string | null; createdAt: string; signatureUrl?: string | null; signedAt?: string | null; agreedToTermsAt?: string | null; paymentProofs: MyProof[]; ref: MyRef | null }
+interface Wish { id: string; type: string; preferredDate: string; diveSiteIds: string[]; otherSites: string | null; participants: number; status: string; lastActivityAt: string; convertedTripId: string | null; convertedTourId: string | null }
+const GEAR_LBL = (t: GearT) => GEAR_DEF.find((g) => g.t === t)?.label ?? t;
+const CANCELLED = new Set(["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"]);
+const ENDED = new Set(["completed", "no_show"]);
+function vchip(variant: string): [string, string] {
+  return ({ default: [C.okBg, C.okFg], muted: [C.page, C.mute], coral: [C.dangBg, C.dangFg], gold: [C.warnBg, C.warnFg] } as Record<string, [string, string]>)[variant] ?? [C.page, C.mute];
+}
+function isUpcomingBk(b: MyBk) {
+  if (CANCELLED.has(b.status) || ENDED.has(b.status) || !b.ref) return false;
+  const d = b.ref.date ?? b.ref.dateStart; return d ? new Date(d) >= new Date(new Date().toDateString()) : false;
+}
+
+function OrdersTab({ setTab, goCustom }: { setTab: (t: Tab) => void; goCustom: () => void }) {
   const [bookings, setBookings] = useState<MyBk[] | null>(null);
-  const [seg, setSeg] = useState<"up" | "done">("up");
-  useEffect(() => { fetch("/api/bookings/my", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setBookings(d.bookings ?? [])).catch(() => setBookings([])); }, []);
+  const [wishes, setWishes] = useState<Wish[]>([]);
+  const [seg, setSeg] = useState<"up" | "wishes" | "done" | "cancelled">("up");
+  const [pol, setPol] = useState<{ cancellation: string; safety: string }>({ cancellation: "", safety: "" });
+  const [agreeBk, setAgreeBk] = useState<MyBk | null>(null);
+  const load = () => { fetch("/api/bookings/my", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setBookings(d.bookings ?? [])).catch(() => setBookings([])); };
+  useEffect(() => { load(); fetch("/api/dive-wishes", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setWishes(d.wishes ?? [])).catch(() => {}); fetch("/api/config").then((r) => r.json()).then((c) => setPol({ cancellation: c.cancellationPolicy ?? "", safety: c.safetyPolicy ?? "" })).catch(() => {}); }, []);
+  async function cancelBk(b: MyBk) {
+    const msg = b.paidAmount > 0 ? `確定取消這筆訂單？\n已付 NT$ ${b.paidAmount.toLocaleString()}，取消後需另外申請退款。` : "確定取消這筆訂單？\n尚未付款，取消後訂單不成立。";
+    if (!window.confirm(msg)) return;
+    try { await fetch(`/api/bookings/${b.id}`, { method: "DELETE", credentials: "include" }); load(); } catch { window.alert("取消失敗，請稍後再試"); }
+  }
   if (bookings === null) return <div style={{ color: C.mute, fontSize: 13, padding: "20px 0", textAlign: "center" }}>載入中…</div>;
-  const list = bookings.filter((b) => seg === "done" ? ORDER_DONE.has(b.status) : !ORDER_DONE.has(b.status));
-  const segBtn = (k: "up" | "done", l: string) => <button onClick={() => setSeg(k)} style={{ fontSize: 12, padding: "6px 13px", borderRadius: 999, border: "none", background: seg === k ? C.navy : C.page, color: seg === k ? "#fff" : C.mute }}>{l}</button>;
+  const up: MyBk[] = [], done: MyBk[] = [], cancelled: MyBk[] = [];
+  for (const b of bookings) { if (CANCELLED.has(b.status)) cancelled.push(b); else if (ENDED.has(b.status) || !isUpcomingBk(b)) done.push(b); else up.push(b); }
+  const wishActive = wishes.filter((w) => w.status !== "cancelled").length;
+  const segBtn = (k: typeof seg, l: string, n?: number) => <button onClick={() => setSeg(k)} style={{ flex: 1, fontSize: 11.5, padding: "7px 4px", borderRadius: 8, border: "none", background: seg === k ? C.navy : C.page, color: seg === k ? "#fff" : C.mute, whiteSpace: "nowrap" }}>{l}{n != null ? ` ${n}` : ""}</button>;
   return (
     <>
-      <div style={{ display: "flex", gap: 7, marginBottom: 11 }}>{segBtn("up", "即將進行")}{segBtn("done", "已結束")}</div>
-      {list.length === 0 && <div style={{ color: C.mute, fontSize: 13, padding: "30px 0", textAlign: "center" }}>{seg === "up" ? "目前沒有進行中的訂單" : "沒有已結束的訂單"}</div>}
-      {list.map((b) => {
-        const title = b.type === "daily" ? `日潛 ${b.ref?.date ?? ""} ${b.ref?.startTime ?? ""}` : (b.ref?.title ?? "潛旅");
-        const sub = b.type === "daily" ? (b.ref?.sites?.join("、") ?? "") : `${b.ref?.dateStart ?? ""}~${b.ref?.dateEnd ?? ""}`;
-        const unpaid = b.totalAmount - b.paidAmount;
-        const cancelled = b.status.startsWith("cancelled") || b.status === "no_show";
-        const canPay = ["pending", "awaiting_verify", "confirmed"].includes(b.status) && unpaid > 0;
-        return (
-          <div key={b.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 10, opacity: cancelled ? 0.7 : 1 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{title}</div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{ntd(b.totalAmount)}</div>
-            </div>
-            <div style={{ fontSize: 12, color: C.mute, margin: "2px 0 7px" }}>{sub} · {b.participants} 人</div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                <Badge t={ST_ZH[b.status] ?? b.status} k={cancelled ? "full" : b.status === "fully_paid" || b.status === "completed" ? "ok" : "wait"} />
-                {b.type === "tour" && b.paidAmount > 0 && unpaid > 0 && <span style={{ fontSize: 11, color: C.coral }}>尾款 {ntd(unpaid)}{b.ref?.finalDeadline ? `（截止 ${b.ref.finalDeadline}）` : ""}</span>}
+      <button onClick={() => setTab("msg")} style={{ display: "flex", width: "100%", alignItems: "center", gap: 9, border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", background: C.card, marginBottom: 11 }}>
+        <Bell size={16} color={C.coral} /><span style={{ flex: 1, textAlign: "left", fontSize: 13.5, fontWeight: 500 }}>通知中心</span><ChevronRight size={16} color={C.mute} />
+      </button>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>{segBtn("up", "即將前往", up.length)}{segBtn("wishes", "📝 願望", wishActive)}{segBtn("done", "已結束", done.length)}{segBtn("cancelled", "已取消", cancelled.length)}</div>
+
+      {seg === "wishes" ? (
+        <>
+          <div style={{ background: C.okBg, color: C.okFg, borderRadius: 9, padding: "9px 12px", fontSize: 12, lineHeight: 1.6, marginBottom: 10 }}>💡 找不到喜歡的場次？告訴汪汪你想潛的日期、潛點、人數，老闆會回覆討論並開專屬場次。</div>
+          <button onClick={goCustom} style={{ width: "100%", height: 44, background: C.accFg, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, marginBottom: 11 }}>📝 提出新需求 / 願望單</button>
+          {wishes.length === 0 && <div style={{ color: C.mute, fontSize: 13, padding: "24px 0", textAlign: "center" }}>還沒有願望單</div>}
+          {wishes.map((w) => {
+            const tl: Record<string, string> = { boat: "🚤 船潛", shore: "🏖 岸潛", night: "🌙 夜潛", tour: "✈️ 潛水團" };
+            const sm: Record<string, [string, string]> = { pending: ["🟡 待回覆", "gold"], discussing: ["💬 討論中", "gold"], converted: ["🟢 場次已開", "default"], cancelled: ["⚪ 已取消", "muted"] };
+            const [sl, sv] = sm[w.status] ?? [w.status, "muted"]; const [bg, fg] = vchip(sv);
+            return (
+              <div key={w.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 12, marginBottom: 9 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                  <div style={{ display: "flex", gap: 7, alignItems: "center" }}><span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: bg, color: fg }}>{sl}</span><span style={{ fontSize: 13.5, fontWeight: 600 }}>{tl[w.type] ?? w.type}</span></div>
+                  <span style={{ fontSize: 10, color: C.mute }}>{new Date(w.lastActivityAt).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.mute, lineHeight: 1.6 }}>📅 {w.preferredDate.slice(0, 10)} · 👥 ×{w.participants}<br />📍 {[...w.diveSiteIds, w.otherSites ?? ""].filter(Boolean).join("、") || "—"}</div>
+                {w.status === "converted" && (w.convertedTripId || w.convertedTourId) && <div style={{ fontSize: 11.5, color: C.okFg, fontWeight: 600, marginTop: 6 }}>🎉 已開場次，到「潛水」分頁預約</div>}
               </div>
-              {canPay && <a href={b.payLinkToken ? `/pay/${b.id}?t=${encodeURIComponent(b.payLinkToken)}` : `/pay/${b.id}`} style={{ background: C.coral, color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 13, textDecoration: "none" }}>前往付款</a>}
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </>
+      ) : (() => {
+        const list = seg === "up" ? up : seg === "done" ? done : cancelled;
+        if (list.length === 0) return <div style={{ color: C.mute, fontSize: 13, padding: "30px 0", textAlign: "center" }}>{seg === "up" ? "目前沒有即將前往的訂單" : seg === "done" ? "還沒有完成紀錄" : "沒有已取消的訂單"}</div>;
+        return list.map((b) => <OrderCard key={b.id} b={b} onCancel={() => cancelBk(b)} onAgreement={() => setAgreeBk(b)} setTab={setTab} />);
+      })()}
+
+      {agreeBk && <AgreementModal bk={agreeBk} pol={pol} onClose={() => setAgreeBk(null)} />}
     </>
   );
 }
 
-function MeTab({ me, isAdmin, setRole }: { me: MeData | null; isAdmin: boolean; setRole: (r: Role) => void }) {
+function OrderCard({ b, onCancel, onAgreement, setTab }: { b: MyBk; onCancel: () => void; onAgreement: () => void; setTab: (t: Tab) => void }) {
+  const isDaily = b.type === "daily"; const ref = b.ref;
+  const d = deriveBookingDisplay({ status: b.status as Parameters<typeof deriveBookingDisplay>[0]["status"], paymentStatus: b.paymentStatus as Parameters<typeof deriveBookingDisplay>[0]["paymentStatus"], createdAt: b.createdAt, activityDate: ref?.date ?? ref?.dateStart ?? null });
+  const [cbg, cfg] = vchip(d.variant);
+  const needsPay = b.paymentStatus !== "fully_paid" && b.paymentStatus !== "refunded" && b.totalAmount > 0;
+  const upcoming = isUpcomingBk(b);
+  const cancellable = upcoming && !ENDED.has(b.status) && !b.status.startsWith("cancelled") && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding";
+  const unpaid = b.totalAmount - b.paidAmount;
+  const deadline = (() => { if (!needsPay || b.paymentStatus !== "pending") return null; const start = ref?.date ? activityStartFromTaipei(ref.date, ref.startTime ?? null) : ref?.dateStart ? activityStartFromTaipei(ref.dateStart, null) : null; return computePaymentDeadline(b.createdAt, start); })();
+  const daysLeft = deadline ? Math.ceil((deadline.getTime() - Date.now()) / 86400000) : null;
+  const progress = b.totalAmount > 0 ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100)) : 0;
+  const payHref = b.payLinkToken ? `/pay/${b.id}?t=${encodeURIComponent(b.payLinkToken)}` : `/pay/${b.id}`;
+  async function refund() { if (!window.confirm("要申請退款嗎？將送出退款申請給客服，客服會在「訊息」與你聯繫。")) return; try { await fetch("/api/me/contact", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ message: `【退款申請】訂單 ${b.id}（已付 NT$ ${b.paidAmount.toLocaleString()}）` }) }); window.alert("已送出退款申請，請到「訊息」分頁查看回覆。"); setTab("msg"); } catch { window.alert("送出失敗，請稍後再試"); } }
+  return (
+    <div style={{ border: `0.5px solid ${C.line}`, borderLeft: b.type === "tour" ? `3px solid ${C.coral}` : `0.5px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+        {isDaily ? <Receipt size={15} /> : <Plane size={15} />}
+        <span style={{ fontSize: 14, fontWeight: 700 }}>{isDaily ? "日潛" : "旅遊潛水"}</span>
+        <span style={{ fontSize: 10.5, padding: "1px 7px", borderRadius: 999, background: C.page, color: C.mute }}>×{b.participants} 人</span>
+        {isDaily && ref?.tankCount ? <span style={{ fontSize: 10.5, padding: "1px 7px", borderRadius: 999, background: C.page, color: C.mute }}>×{b.participants * ref.tankCount} 支</span> : null}
+      </div>
+      {ref?.date && <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", fontSize: 13, marginTop: 5 }}>{ref.sites?.length ? <span style={{ fontSize: 12, color: C.mute }}>📍 {ref.sites.join(" · ")}</span> : null}<span style={{ fontWeight: 700 }}>{ref.date} {ref.startTime}</span></div>}
+      {ref?.title && <div style={{ marginTop: 5 }}><div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{ref.title}</div><div style={{ fontSize: 12, color: C.mute, marginTop: 1 }}>📅 {ref.dateStart} → {ref.dateEnd}</div></div>}
+      {ref?.activityNote && <div style={{ background: "#eafaf3", color: "#0a7d4f", borderRadius: 8, padding: "7px 10px", fontSize: 12, marginTop: 7 }}>📣 活動提醒：{ref.activityNote}</div>}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+        <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 999, background: cbg, color: cfg }}>{d.label}</span>
+        {cancellable && <button onClick={onCancel} style={{ fontSize: 11, border: `1px solid ${C.coral}`, color: C.coral, background: "none", borderRadius: 7, padding: "4px 9px" }}>✕ 取消訂單</button>}
+        <button onClick={onAgreement} style={{ marginLeft: "auto", fontSize: 11, color: C.navy, background: "none", border: "none", textDecoration: "underline" }}>📜 同意聲明</button>
+      </div>
+
+      {b.rentalGear.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>{b.rentalGear.map((g) => <span key={g.itemType} style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 999, background: C.page, color: C.mute }}>{GEAR_LBL(g.itemType)}{(g.qty ?? 1) > 1 ? ` ×${g.qty}` : ""}</span>)}</div>}
+
+      {b.type === "tour" && b.totalAmount > 0 && (
+        <div style={{ marginTop: 11 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 4 }}><span style={{ color: C.mute }}>付款進度</span><span style={{ fontWeight: 600 }}>{b.paidAmount.toLocaleString()} / {b.totalAmount.toLocaleString()}</span></div>
+          <div style={{ height: 6, borderRadius: 999, background: C.page, overflow: "hidden" }}><div style={{ height: "100%", width: `${progress}%`, background: C.okFg }} /></div>
+          <div style={{ display: "flex", gap: 4, marginTop: 8 }}>{[["預約", true], ["訂金", b.paidAmount >= b.depositAmount], ["尾款", b.paymentStatus === "fully_paid"], ["出發", b.status === "completed"]].map(([l, ok], i) => (
+            <div key={i} style={{ flex: 1, textAlign: "center" }}><div style={{ width: 20, height: 20, borderRadius: "50%", margin: "0 auto 2px", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, background: ok ? C.okFg : C.page, color: ok ? "#fff" : C.mute }}>{ok ? <Check size={12} /> : i + 1}</div><span style={{ fontSize: 10, color: C.mute }}>{l}</span></div>
+          ))}</div>
+          {b.paidAmount > 0 && unpaid > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 8 }}><span style={{ color: "#0a7d4f", fontWeight: 500 }}>已付訂金 NT$ {b.paidAmount.toLocaleString()}</span><span style={{ color: C.coral, fontWeight: 700 }}>尾款 NT$ {unpaid.toLocaleString()}</span></div>}
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", borderTop: `0.5px solid ${C.line}`, marginTop: 11, paddingTop: 11 }}>
+        {needsPay ? (
+          <>
+            <a href={payHref} style={{ background: C.coral, color: "#fff", borderRadius: 999, padding: "8px 15px", fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>付款方式選擇</a>
+            {deadline && daysLeft !== null && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 7, background: daysLeft <= 3 ? C.dangBg : C.warnBg, color: daysLeft <= 3 ? C.dangFg : C.warnFg }}>⏰ {deadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清{daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期）"}</span>}
+          </>
+        ) : <span style={{ fontSize: 10.5, color: C.mute }}>總金額</span>}
+        <div style={{ marginLeft: "auto", textAlign: "right" }}>{needsPay && <div style={{ fontSize: 10, color: C.mute }}>應付金額</div>}<div style={{ fontSize: 15, fontWeight: 700, color: C.coral }}>NT$ {b.totalAmount.toLocaleString()}</div></div>
+        {(b.paymentStatus === "fully_paid" || b.paymentStatus === "deposit_paid") && <button onClick={refund} style={{ fontSize: 11, border: `1px solid ${C.coral}`, color: C.coral, background: "none", borderRadius: 999, padding: "6px 11px", width: "100%", marginTop: 2 }}>💸 申請退款</button>}
+      </div>
+
+      {b.paymentProofs.length > 0 && (
+        <div style={{ borderTop: `0.5px solid ${C.line}`, marginTop: 10, paddingTop: 8 }}>
+          <div style={{ fontSize: 11, color: C.mute, marginBottom: 5 }}>我上傳的轉帳截圖（{b.paymentProofs.length} 張）</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{b.paymentProofs.map((p) => (
+            <div key={p.id} style={{ position: "relative", width: 50, height: 50, borderRadius: 8, overflow: "hidden", border: `0.5px solid ${C.line}`, background: C.page }}>
+              {(p.thumb ?? p.url) ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.thumb ?? p.url ?? ""} alt={p.type} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "grid", placeItems: "center", height: "100%", fontSize: 9, color: C.mute }}>無預覽</div>}
+              {p.verifiedAt && <div style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 15, background: C.okFg, display: "grid", placeItems: "center", borderTopLeftRadius: 6 }}><Check size={10} color="#fff" /></div>}
+            </div>
+          ))}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgreementModal({ bk, pol, onClose }: { bk: MyBk; pol: { cancellation: string; safety: string }; onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: "#fff", borderRadius: "16px 16px 0 0", maxHeight: "88vh", overflowY: "auto", padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><span style={{ fontSize: 15, fontWeight: 600 }}>同意聲明</span><button onClick={onClose} style={{ border: "none", background: "none", color: C.mute }}><X size={20} /></button></div>
+        <div style={{ fontSize: 12, color: C.mute, marginBottom: 4 }}>您的簽名</div>
+        {bk.signatureUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={bk.signatureUrl} alt="簽名" style={{ width: "100%", borderRadius: 8, border: `0.5px solid ${C.line}`, background: "#fff" }} /> : <div style={{ border: `1px dashed ${C.line}`, borderRadius: 8, padding: 16, textAlign: "center", fontSize: 12, color: C.mute }}>此訂單無簽名紀錄（可能為較早版本建立）</div>}
+        <div style={{ fontSize: 11, color: C.mute, margin: "6px 0 14px" }}>簽署時間：{bk.signedAt ? new Date(bk.signedAt).toLocaleString("zh-TW") : bk.agreedToTermsAt ? new Date(bk.agreedToTermsAt).toLocaleString("zh-TW") : "—"}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>📜 取消政策</div>
+        <div style={{ background: C.page, borderRadius: 8, padding: 11, marginBottom: 14 }}><PolicyText>{pol.cancellation || "（尚未設定取消政策）"}</PolicyText></div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>🛟 潛水安全注意事項</div>
+        <div style={{ background: C.page, borderRadius: 8, padding: 11 }}><PolicyText>{pol.safety || "（尚未設定安全政策）"}</PolicyText></div>
+      </div>
+    </div>
+  );
+}
+
+type MeView = null | "info" | "certs" | "notif" | "logs" | "credits";
+function MeTab({ me, isAdmin, setRole, setTab }: { me: MeData | null; isAdmin: boolean; setRole: (r: Role) => void; setTab: (t: Tab) => void }) {
+  const [view, setView] = useState<MeView>(null);
+  if (view === "credits") return <CreditsView onBack={() => setView(null)} />;
+  if (view && view !== "logs") return <ProfileView view={view} onBack={() => setView(null)} />;
+  if (view === "logs") return <LogsView me={me} onBack={() => setView(null)} />;
   const name = me?.realName ?? me?.displayName ?? "會員";
   const stats: Array<[string, string]> = [
     [String(me?.haiwangziLogCount ?? 0), "海王子潛次"],
@@ -382,13 +512,13 @@ function MeTab({ me, isAdmin, setRole }: { me: MeData | null; isAdmin: boolean; 
         {stats.map(([a, b]) => <div key={b} style={{ flex: 1 }}><div style={{ fontSize: 18, fontWeight: 500 }}>{a}</div><div style={{ fontSize: 11, color: C.mute }}>{b}</div></div>)}
       </div>
       <Sect t="帳戶" />
-      <LRow Icon={User} label="個人資訊" right={me?.phone ?? ""} />
-      <LRow Icon={School} label="證照 / 潛伴" right={me?.cert ?? "未填"} />
-      <LRow Icon={Bell} label="通知偏好" />
+      <LRow Icon={User} label="個人資訊" right={me?.phone ?? ""} onClick={() => setView("info")} />
+      <LRow Icon={School} label="證照 / 潛伴" right={me?.cert ?? "未填"} onClick={() => setView("certs")} />
+      <LRow Icon={Bell} label="通知偏好" onClick={() => setView("notif")} />
       <Sect t="紀錄" />
-      <LRow Icon={Receipt} label="預約紀錄" right={String(me?.stats?.completed ?? 0)} />
-      <LRow Icon={Waves} label="潛水紀錄" right={`${me?.haiwangziLogCount ?? 0} 潛`} />
-      <LRow Icon={SlidersHorizontal} label="抵用金明細" right={ntd(me?.creditBalance ?? 0)} />
+      <LRow Icon={Receipt} label="預約紀錄" right={String(me?.stats?.completed ?? 0)} onClick={() => setTab("orders")} />
+      <LRow Icon={Waves} label="潛水紀錄" right={`${me?.haiwangziLogCount ?? 0} 潛`} onClick={() => setView("logs")} />
+      <LRow Icon={SlidersHorizontal} label="抵用金明細" right={ntd(me?.creditBalance ?? 0)} onClick={() => setView("credits")} />
       {isAdmin && (<>
         <Sect t="管理" />
         <button onClick={() => setRole("coach")} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", borderBottom: `0.5px solid ${C.line}`, background: "none", textAlign: "left" }}>
@@ -402,6 +532,135 @@ function MeTab({ me, isAdmin, setRole }: { me: MeData | null; isAdmin: boolean; 
       <button onClick={logout} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", color: C.dangFg }}>
         <ArrowLeft size={19} /><span style={{ flex: 1, fontSize: 14 }}>登出</span>
       </button>
+    </>
+  );
+}
+
+// 個人資訊 / 證照·潛伴 / 通知偏好 —— 皆 PATCH /api/me（沿用 LIFF profile 欄位）
+interface ProfileMe { realName: string | null; phone: string | null; email: string | null; emailVerifiedAt: string | null; notifyByLine: boolean; notifyByEmail: boolean; cert: Cert | null; certNumber: string | null; logCount: number | null; birthday: string | null; emergencyContact: { name: string; phone: string; relationship: string } | null; companions: Companion2[] }
+function ProfileView({ view, onBack }: { view: "info" | "certs" | "notif"; onBack: () => void }) {
+  const [m, setM] = useState<ProfileMe | null>(null);
+  const [saved, setSaved] = useState(0); const [saving, setSaving] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState("");
+  useEffect(() => { fetch("/api/me", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((u) => setM({ realName: u.realName, phone: u.phone ? formatPhoneTW(u.phone) : "", email: u.email ?? "", emailVerifiedAt: u.emailVerifiedAt ?? null, notifyByLine: u.notifyByLine ?? true, notifyByEmail: u.notifyByEmail ?? true, cert: u.cert ?? null, certNumber: u.certNumber ?? "", logCount: u.logCount ?? 0, birthday: u.birthday ? String(u.birthday).slice(0, 10) : "", emergencyContact: u.emergencyContact ?? null, companions: u.companions ?? [] })).catch(() => {}); }, []);
+  function up(p: Partial<ProfileMe>) { setM((s) => s ? { ...s, ...p } : s); }
+  async function save(extra?: Partial<{ companions: Companion2[] }>) {
+    if (!m) return; setSaving(true);
+    try {
+      await fetch("/api/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({
+        realName: m.realName || null, phone: m.phone || null, email: m.email?.trim() || null, notifyByLine: m.notifyByLine, notifyByEmail: m.notifyByEmail, cert: m.cert || null, certNumber: m.certNumber || null, logCount: Number(m.logCount) || 0, birthday: m.birthday || null, emergencyContact: m.emergencyContact?.name && m.emergencyContact?.phone ? m.emergencyContact : null, ...(extra?.companions ? { companions: extra.companions.filter((c) => c.name.trim().length >= 1) } : {}),
+      }) });
+      setSaved(Date.now());
+    } catch { window.alert("儲存失敗，請稍後再試"); } finally { setSaving(false); }
+  }
+  async function sendVerify() { setVerifyMsg(""); try { const r = await fetch("/api/me/send-verify-email", { method: "POST", credentials: "include" }); const d = await r.json().catch(() => ({})); setVerifyMsg(r.ok ? "✓ 驗證信已寄出，請至信箱點擊連結" : (d.error || "寄送失敗")); } catch { setVerifyMsg("寄送失敗，請稍後再試"); } }
+  const title = view === "info" ? "個人資訊" : view === "certs" ? "證照 / 潛伴" : "通知偏好";
+  if (!m) return <><SubHeader title={title} onBack={onBack} /><div style={{ color: C.mute, fontSize: 13, padding: "20px 0", textAlign: "center" }}>載入中…</div></>;
+  const saveBtn = (extra?: Partial<{ companions: Companion2[] }>) => <button onClick={() => save(extra)} disabled={saving} style={{ width: "100%", height: 46, background: C.accFg, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 600, marginTop: 14, opacity: saving ? 0.6 : 1 }}>{saving ? "儲存中…" : saved ? "✓ 已儲存" : "儲存"}</button>;
+  return (
+    <>
+      <SubHeader title={title} onBack={onBack} />
+      {view === "info" && (
+        <BCard>
+          <Lab>姓名</Lab><input value={m.realName ?? ""} onChange={(e) => up({ realName: e.target.value })} placeholder="本名" style={INP} />
+          <div style={{ marginTop: 10 }}><Lab>手機</Lab><input value={m.phone ?? ""} onChange={(e) => up({ phone: formatPhoneTW(e.target.value) })} inputMode="numeric" maxLength={11} placeholder="0912-345678" style={INP} /></div>
+          <div style={{ marginTop: 10 }}><Lab>Email（收預約確認 / 行前通知 / 發票）</Lab><input value={m.email ?? ""} onChange={(e) => up({ email: e.target.value })} inputMode="email" placeholder="you@example.com" style={INP} />
+            <div style={{ marginTop: 6 }}>{m.emailVerifiedAt ? <span style={{ fontSize: 11.5, color: C.okFg }}>✓ Email 已驗證</span> : <button onClick={sendVerify} style={{ fontSize: 11.5, border: `1px solid ${C.accFg}`, color: C.accFg, background: "none", borderRadius: 999, padding: "4px 12px" }}>發送驗證信 🎁 完成首潛得 100 元獎勵</button>}{verifyMsg && <div style={{ fontSize: 11.5, color: C.okFg, marginTop: 5 }}>{verifyMsg}</div>}</div>
+          </div>
+          <div style={{ marginTop: 10 }}><Lab>生日（生日當月發放抵用金 🎂・填寫後不可自行修改）</Lab><input type="date" value={m.birthday ?? ""} disabled={!!m.birthday} onChange={(e) => up({ birthday: e.target.value })} style={{ ...INP, opacity: m.birthday ? 0.6 : 1 }} /></div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, margin: "14px 0 6px" }}>緊急聯絡人</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <input value={m.emergencyContact?.name ?? ""} onChange={(e) => up({ emergencyContact: { name: e.target.value, phone: m.emergencyContact?.phone ?? "", relationship: m.emergencyContact?.relationship ?? "" } })} placeholder="姓名" style={INP} />
+            <input value={m.emergencyContact?.relationship ?? ""} onChange={(e) => up({ emergencyContact: { name: m.emergencyContact?.name ?? "", phone: m.emergencyContact?.phone ?? "", relationship: e.target.value } })} placeholder="關係" style={INP} />
+          </div>
+          <input value={m.emergencyContact?.phone ?? ""} onChange={(e) => up({ emergencyContact: { name: m.emergencyContact?.name ?? "", phone: formatPhoneTW(e.target.value), relationship: m.emergencyContact?.relationship ?? "" } })} inputMode="numeric" maxLength={11} placeholder="0912-345678" style={{ ...INP, marginTop: 8 }} />
+          {saveBtn()}
+        </BCard>
+      )}
+      {view === "certs" && (
+        <>
+          <BCard title="我的證照">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div><Lab>證照等級</Lab><select value={m.cert ?? ""} onChange={(e) => up({ cert: (e.target.value || null) as Cert | null })} style={SELP}><option value="">未填</option>{M2_CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+              <div><Lab>累計潛水支數</Lab><input value={m.logCount ?? 0} onChange={(e) => up({ logCount: Number(e.target.value.replace(/\D/g, "")) || 0 })} inputMode="numeric" style={{ ...INP, textAlign: "center" }} /></div>
+            </div>
+            <div style={{ marginTop: 8 }}><Lab>證照編號</Lab><input value={m.certNumber ?? ""} onChange={(e) => up({ certNumber: e.target.value })} placeholder="證照卡上的號碼" style={INP} /></div>
+          </BCard>
+          <BCard title={`常用潛伴（${m.companions.length}）`} sub="下單時可一鍵帶入">
+            {m.companions.map((c, i) => (
+              <div key={c.id ?? i} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 12, fontWeight: 600 }}>潛伴 #{i + 1}</span><button onClick={() => { if (window.confirm("確定刪除這位潛伴？")) up({ companions: m.companions.filter((_, j) => j !== i) }); }} style={{ fontSize: 11, color: C.coral, background: "none", border: "none" }}>刪除</button></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <input value={c.name} onChange={(e) => up({ companions: m.companions.map((x, j) => j === i ? { ...x, name: e.target.value } : x) })} placeholder="姓名 *" style={INP} />
+                  <input value={c.phone} onChange={(e) => up({ companions: m.companions.map((x, j) => j === i ? { ...x, phone: formatPhoneTW(e.target.value) } : x) })} inputMode="numeric" maxLength={11} placeholder="手機" style={INP} />
+                  <select value={c.cert ?? ""} onChange={(e) => up({ companions: m.companions.map((x, j) => j === i ? { ...x, cert: (e.target.value || null) as Cert | null } : x) })} style={SELP}><option value="">證照</option>{M2_CERTS.map((cc) => <option key={cc} value={cc}>{cc}</option>)}</select>
+                  <input value={c.relationship} onChange={(e) => up({ companions: m.companions.map((x, j) => j === i ? { ...x, relationship: e.target.value } : x) })} placeholder="關係" style={INP} />
+                </div>
+              </div>
+            ))}
+            <button onClick={() => up({ companions: [...m.companions, { id: undefined, name: "", phone: "", cert: null, certNumber: "", logCount: 0, relationship: "" }] })} style={{ width: "100%", border: `1px dashed ${C.line}`, background: "none", color: C.accFg, borderRadius: 10, padding: "10px 0", fontSize: 13 }}>＋ 新增潛伴</button>
+          </BCard>
+          {saveBtn({ companions: m.companions })}
+        </>
+      )}
+      {view === "notif" && (
+        <BCard title="通知偏好" sub="選擇用哪些管道接收預約確認、行前提醒與重要通知">
+          {([["notifyByLine", "LINE 通知", "透過官方帳號推播（最即時）"], ["notifyByEmail", "Email 通知", "寄到你的信箱（需先驗證 Email）"]] as const).map(([k, t, s]) => (
+            <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderBottom: `0.5px solid ${C.line}` }}>
+              <span style={{ flex: 1 }}><span style={{ fontSize: 14, display: "block" }}>{t}</span><span style={{ fontSize: 11.5, color: C.mute }}>{s}</span></span>
+              <input type="checkbox" checked={m[k]} onChange={(e) => up({ [k]: e.target.checked } as Partial<ProfileMe>)} style={{ width: 20, height: 20 }} />
+            </label>
+          ))}
+          {saveBtn()}
+        </BCard>
+      )}
+    </>
+  );
+}
+
+// 潛水紀錄（海王子累積氣瓶數 / 個人累計潛次）
+function LogsView({ me, onBack }: { me: MeData | null; onBack: () => void }) {
+  return (
+    <>
+      <SubHeader title="潛水紀錄" onBack={onBack} />
+      <div style={{ display: "flex", gap: 9, marginBottom: 12 }}>
+        <div style={{ flex: 1, background: C.page, borderRadius: 12, padding: 14, textAlign: "center" }}><div style={{ fontSize: 26, fontWeight: 700, color: C.accFg }}>{me?.haiwangziLogCount ?? 0}</div><div style={{ fontSize: 11.5, color: C.mute, marginTop: 2 }}>海王子累積氣瓶</div></div>
+        <div style={{ flex: 1, background: C.page, borderRadius: 12, padding: 14, textAlign: "center" }}><div style={{ fontSize: 26, fontWeight: 700, color: C.okFg }}>{me?.stats?.completed ?? 0}</div><div style={{ fontSize: 11.5, color: C.mute, marginTop: 2 }}>已完成活動</div></div>
+      </div>
+      <div style={{ fontSize: 12.5, color: C.mute, lineHeight: 1.8, background: C.page, borderRadius: 10, padding: "12px 14px" }}>「海王子累積氣瓶」是你在海王子完成的潛水支數,會累積成 VIP 等級與獎勵。每次與汪汪教練下水並完成到場點名後,系統會自動累計。</div>
+    </>
+  );
+}
+
+// 抵用金明細（/api/me/credits）
+interface CreditTx2 { id: string; amount: number; reason: string; note?: string | null; refCode?: string | null; balanceAfter?: number; createdAt: string }
+const CREDIT_REASON: Record<string, [string, string]> = { birthday: ["🎂", "生日抵用金"], vip_upgrade: ["✨", "升等獎勵"], refund: ["🔄", "退費補償"], used: ["💸", "訂單折抵"], admin_adjust: ["🛠", "管理員調整"], first_order_reward: ["🎉", "首單獎勵"], signup_reward: ["🎁", "註冊禮金"], vip_overflow: ["🏆", "VIP 滿級回饋"] };
+function CreditsView({ onBack }: { onBack: () => void }) {
+  const [data, setData] = useState<{ balance: number; totalIn: number; totalOut: number; txs: CreditTx2[] } | null>(null);
+  useEffect(() => { fetch("/api/me/credits", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setData({ balance: d.balance ?? 0, totalIn: d.totalIn ?? 0, totalOut: d.totalOut ?? 0, txs: d.txs ?? [] })).catch(() => setData({ balance: 0, totalIn: 0, totalOut: 0, txs: [] })); }, []);
+  return (
+    <>
+      <SubHeader title="抵用金明細" onBack={onBack} />
+      {!data ? <div style={{ color: C.mute, fontSize: 13, padding: "20px 0", textAlign: "center" }}>載入中…</div> : (<>
+        <div style={{ background: C.dangBg, borderRadius: 12, padding: "14px 0", textAlign: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 11.5, color: C.mute }}>目前餘額</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: C.coral }}>NT$ {data.balance.toLocaleString()}</div>
+          <div style={{ display: "flex", gap: 9, padding: "10px 14px 0" }}>
+            <div style={{ flex: 1, background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "6px 0" }}><div style={{ fontSize: 10, color: C.mute }}>累計收入</div><div style={{ fontSize: 13, fontWeight: 700, color: C.okFg }}>+{data.totalIn.toLocaleString()}</div></div>
+            <div style={{ flex: 1, background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "6px 0" }}><div style={{ fontSize: 10, color: C.mute }}>累計支出</div><div style={{ fontSize: 13, fontWeight: 700, color: C.coral }}>-{data.totalOut.toLocaleString()}</div></div>
+          </div>
+        </div>
+        {data.txs.length === 0 ? <div style={{ color: C.mute, fontSize: 13, padding: "24px 0", textAlign: "center", lineHeight: 1.7 }}>尚無紀錄。<br />生日當天或會員升等時系統會自動發放抵用金。</div>
+          : data.txs.map((t) => { const [emoji, label] = CREDIT_REASON[t.reason] ?? ["·", t.reason]; const pos = t.amount >= 0; const main = t.reason === "admin_adjust" && t.note ? t.note : label;
+            return (
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>{emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13.5, fontWeight: 500 }}>{main}{t.refCode && <span style={{ fontSize: 9.5, fontFamily: "monospace", background: C.okBg, color: C.okFg, borderRadius: 5, padding: "1px 5px", marginLeft: 5 }}>{t.refCode}</span>}</div><div style={{ fontSize: 10.5, color: C.mute }}>{new Date(t.createdAt).toLocaleString("zh-TW")}</div></div>
+                <div style={{ textAlign: "right" }}><div style={{ fontSize: 14, fontWeight: 700, color: pos ? C.okFg : C.coral }}>{pos ? "+" : ""}{t.amount.toLocaleString()}</div>{t.balanceAfter != null && <div style={{ fontSize: 10, color: C.mute }}>餘 {t.balanceAfter.toLocaleString()}</div>}</div>
+              </div>
+            );
+          })}
+      </>)}
     </>
   );
 }
