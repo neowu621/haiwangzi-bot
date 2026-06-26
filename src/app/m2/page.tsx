@@ -99,7 +99,7 @@ export default function M2Page() {
 
   const frame = (inner: React.ReactNode) => (
     <div style={{ minHeight: "100vh", background: C.page, display: "flex", justifyContent: "center", fontFamily: "'Noto Sans TC',system-ui,sans-serif", color: C.ink }}>
-      <div style={{ width: "100%", maxWidth: 430, background: C.card, minHeight: "100vh", display: "flex", flexDirection: "column" }}>{inner}</div>
+      <div style={{ width: "100%", maxWidth: 430, background: C.card, height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>{inner}</div>
     </div>
   );
 
@@ -132,20 +132,20 @@ export default function M2Page() {
 
   return frame(
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: `0.5px solid ${C.line}` }}>
+      <div style={{ display: "flex", flex: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: `0.5px solid ${C.line}` }}>
         <button onClick={() => setScreen("roles")} aria-label="切換身分" style={{ border: "none", background: "none", color: C.mute }}><ArrowLeft size={19} /></button>
         <span style={{ fontSize: 15, fontWeight: 500 }}>{title}</span>
         <span style={{ display: "flex", gap: 12, color: C.mute }}><Bell size={18} /><ShoppingCart size={18} /></span>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "13px 14px" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "13px 14px" }}>
         {role === "member" && <Member tab={tab} cat={cat} setTab={setTab} setCat={setCat} />}
         {role === "coach" && <Coach />}
         {role === "admin" && <Admin />}
       </div>
 
       {role === "member" && (
-        <nav style={{ display: "flex", borderTop: `0.5px solid ${C.line}`, padding: "5px 2px 6px" }}>
+        <nav style={{ display: "flex", flex: "none", borderTop: `0.5px solid ${C.line}`, background: C.card, padding: "5px 2px calc(6px + env(safe-area-inset-bottom))" }}>
           {([["home", "首頁", Home], ["msg", "訊息", MessageCircle], ["dive", "潛水", Waves], ["orders", "訂單", Receipt], ["me", "個人", UserCircle]] as const).map(([k, l, Icon]) => {
             const on = k === tab;
             return (
