@@ -174,22 +174,27 @@ export function AdminShell({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // v508：側欄待處理數量徽章（老闆結帳 / 訂單管理 / 願望單）
-  const [counts, setCounts] = useState({ tonight: 0, bookings: 0, wishes: 0, emails: 0 });
+  // v508：側欄待處理數量徽章（老闆結帳 / 訂單管理 / 願望單 / 到場點名）
+  const [counts, setCounts] = useState({ tonight: 0, attendance: 0, bookings: 0, wishes: 0, emails: 0 });
   useEffect(() => {
     if (!ready) return;
     let alive = true;
-    adminFetch<{ tonight: { proofs: number; attendance: number }; pendingProofs: number; pendingWishes: number; pendingEmails: number }>(
+    adminFetch<{ tonight: { proofs: number; attendance: number; pendingOrders?: number }; pendingProofs: number; pendingWishes: number; pendingEmails: number }>(
       "/api/admin/stats/lite",
     )
       .then((d) => {
-        if (alive) setCounts({ tonight: (d.tonight?.proofs ?? 0) + (d.tonight?.attendance ?? 0), bookings: d.pendingProofs ?? 0, wishes: d.pendingWishes ?? 0, emails: d.pendingEmails ?? 0 });
+        if (alive) setCounts({
+          // v683b：老闆結帳=收款相關（待確認憑證+已下單待匯款）；到場另算給「到場點名」
+          tonight: (d.tonight?.proofs ?? 0) + (d.tonight?.pendingOrders ?? 0),
+          attendance: d.tonight?.attendance ?? 0,
+          bookings: d.pendingProofs ?? 0, wishes: d.pendingWishes ?? 0, emails: d.pendingEmails ?? 0,
+        });
       })
       .catch(() => {});
     return () => { alive = false; };
   }, [ready, pathname]);
   const badgeFor = (href: string) =>
-    href === "/admin/tonight" ? counts.tonight : href === "/admin/bookings" ? counts.bookings : href === "/admin/dive-wishes" ? counts.wishes : href === "/admin/email" ? counts.emails : 0;
+    href === "/admin/tonight" ? counts.tonight : href === "/admin/attendance" ? counts.attendance : href === "/admin/bookings" ? counts.bookings : href === "/admin/dive-wishes" ? counts.wishes : href === "/admin/email" ? counts.emails : 0;
 
   // v521：側欄群組可收合 — 預設只展開「目前所在頁」的群組，其餘收起省 Y 空間
   const isItemActive = (it: { href: string; exact?: boolean }) =>

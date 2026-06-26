@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
     attendanceTrips,
     attendanceTours,
     pendingEmails,
+    pendingOrders,
   ] = await Promise.all([
     // 待確認匯款：未審核 + booking 仍存在（DISTINCT booking_id，與完整 stats 一致）
     prisma.$queryRaw<Array<{ count: bigint }>>`
@@ -104,6 +105,8 @@ export async function GET(req: NextRequest) {
     }),
     // v533：客服信箱待回覆數（側欄徽章用）
     prisma.emailThread.count({ where: { status: "WAITING" } }),
+    // v683b：已下單·待匯款（status=pending，還沒上傳付款證明）— 老闆結帳卡片要算進去
+    prisma.booking.count({ where: { status: "pending" } }),
   ]);
 
   const attTripIds = attendanceTrips.map((t) => t.id);
@@ -124,7 +127,7 @@ export async function GET(req: NextRequest) {
   const proofs = Number(pendingProofsResult[0]?.count ?? BigInt(0));
 
   return NextResponse.json({
-    tonight: { proofs, attendance },
+    tonight: { proofs, attendance, pendingOrders },
     pendingProofs: awaitingVerify,
     todayTrips: { count: todayTripIds.length, people: todayPeopleAgg?._sum.participants ?? 0 },
     tomorrowTrips: { count: tomorrowTripIds.length, people: tomorrowPeopleAgg?._sum.participants ?? 0 },

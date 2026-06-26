@@ -23,7 +23,7 @@ const LITE_URL = "/api/admin/stats/lite";
 const VISITS_URL = "/api/admin/stats/visits";
 
 interface LiteStats {
-  tonight: { proofs: number; attendance: number };
+  tonight: { proofs: number; attendance: number; pendingOrders?: number };
   pendingProofs: number;
   todayTrips: { count: number; people: number };
   tomorrowTrips: { count: number; people: number };
@@ -67,12 +67,13 @@ export default function MobileAdminHome() {
 
   const maxVisitors = visits ? Math.max(1, ...visits.days.map((d) => d.visitors)) : 1;
 
-  const tonightBadge = (stats?.tonight.proofs ?? 0) + (stats?.tonight.attendance ?? 0);
+  // v683b：老闆結帳 = 收款相關（待確認匯款憑證 + 已下單·待匯款）。到場已搬「到場點名」卡，不再算進來。
+  const tonightBadge = (stats?.tonight.proofs ?? 0) + (stats?.tonight.pendingOrders ?? 0);
   const tripsBadge = stats ? stats.todayTrips.count + stats.tomorrowTrips.count : undefined;
 
   const cards: Array<{ href: string; icon: typeof Wallet; emoji: string; title: string; badge: number | undefined; sub?: string; accent: boolean }> = [
     { href: "/admin/m/attendance", icon: CalendarDays, emoji: "🐠", title: "到場點名", badge: stats?.tonight.attendance, sub: "今日名單點名", accent: (stats?.tonight.attendance ?? 0) > 0 },
-    { href: "/admin/m/tonight", icon: Wallet, emoji: "🧾", title: "老闆結帳", badge: stats ? tonightBadge : undefined, sub: stats ? `待匯款 ${stats.tonight.proofs}・待到場 ${stats.tonight.attendance}` : undefined, accent: tonightBadge > 0 },
+    { href: "/admin/m/tonight", icon: Wallet, emoji: "🧾", title: "老闆結帳", badge: stats ? tonightBadge : undefined, sub: stats ? `待確認 ${stats.tonight.proofs}・待匯款 ${stats.tonight.pendingOrders ?? 0}` : undefined, accent: tonightBadge > 0 },
     { href: "/admin/m/bookings", icon: BookOpen, emoji: "📖", title: "訂單管理", badge: stats?.pendingProofs, sub: "確認 / 收款", accent: (stats?.pendingProofs ?? 0) > 0 },
     { href: "/admin/m/dive-wishes", icon: MessageSquare, emoji: "📝", title: "願望單", badge: stats?.pendingWishes, sub: "新許願 / 回覆", accent: (stats?.pendingWishes ?? 0) > 0 },
     { href: "/admin/m/email", icon: Mail, emoji: "📧", title: "客服信箱", badge: stats?.pendingEmails, sub: "回客人 / LINE", accent: (stats?.pendingEmails ?? 0) > 0 },
