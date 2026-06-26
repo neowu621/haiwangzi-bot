@@ -51,6 +51,10 @@ export default function CalendarPage() {
   const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  // v694：效能探針 — 量「裝置實際感受」的耗時(查詢往返 f、進頁到開查 s)。?debug=1 才顯示。
+  const [perf, setPerf] = useState<{ f: number; s: number } | null>(null);
+  const [showPerf, setShowPerf] = useState(false);
+  useEffect(() => { try { setShowPerf(new URLSearchParams(window.location.search).has("debug")); } catch { /* noop */ } }, []);
   // v375：改兩週檢視（2 列）+ ‹ › 翻頁。pageOffset=0 為本兩週，不可往過去（< 0）
   const [pageOffset, setPageOffset] = useState(0);
 
@@ -73,11 +77,14 @@ export default function CalendarPage() {
   useEffect(() => {
     setLoading(true);
     // v267：/api/trips 公開 endpoint，原生 fetch 立即發送，不必等 LIFF token
+    // v694：量測裝置實際耗時 — s=進頁到此刻(JS/hydration), f=查詢往返
+    const s = Math.round(performance.now());
+    const t0 = performance.now();
     fetch(`/api/trips?from=${fmtISODate(winStart)}&to=${fmtISODate(winEnd)}`)
       .then((r) => r.json())
       .then((d: { trips?: Trip[] }) => setTrips(d.trips ?? []))
       .catch(() => setTrips([]))
-      .finally(() => setLoading(false));
+      .finally(() => { setPerf({ f: Math.round(performance.now() - t0), s }); setLoading(false); });
   }, [winStart, winEnd]);
 
   // v358/v371：客戶端只顯示「可預約」場次；過期（開始前2hr已截止 / 過去）整筆隱藏
@@ -215,6 +222,9 @@ export default function CalendarPage() {
       <section className="mt-3 px-4">
         <div className="space-y-2">
           {loading && <LiffLoading variant="ring" label="正在查詢場次..." />}
+          {showPerf && perf && (
+            <div className="text-center text-[10px] text-[var(--muted-foreground)]">⏱ 查詢往返 {perf.f}ms · 進頁→開查 {perf.s}ms</div>
+          )}
           {!loading && openTrips.length === 0 && (
             <div className="text-center text-sm text-[var(--muted-foreground)]">
               {pageOffset === 0 ? "兩週內暫無可預約場次" : "此區間暫無可預約場次"}

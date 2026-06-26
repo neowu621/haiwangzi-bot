@@ -52,14 +52,21 @@ export default function TourListPage() {
   const liff = useLiff();
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  // v694：效能探針（?debug=1 顯示）
+  const [perf, setPerf] = useState<{ f: number; s: number } | null>(null);
+  const [showPerf, setShowPerf] = useState(false);
+  useEffect(() => { try { setShowPerf(new URLSearchParams(window.location.search).has("debug")); } catch { /* noop */ } }, []);
 
   useEffect(() => {
     // v267：/api/tours 公開不需要 auth → 用原生 fetch 立即發送，不等 LIFF init
+    // v694：量測裝置實際耗時 — s=進頁到此刻(JS/hydration), f=查詢往返
+    const s = Math.round(performance.now());
+    const t0 = performance.now();
     fetch("/api/tours")
       .then((r) => r.json())
       .then((d: { tours?: TourSummary[] }) => setTours(d.tours ?? []))
       .catch(() => setTours([]))
-      .finally(() => setLoading(false));
+      .finally(() => { setPerf({ f: Math.round(performance.now() - t0), s }); setLoading(false); });
   }, []);
 
   // v339：篩選條件已移除，直接顯示所有行程
@@ -112,6 +119,9 @@ export default function TourListPage() {
           boxShadow: "0 1px 3px rgba(20,30,40,.05)",
         }}>
           {loading && <LiffLoading variant="bubbles" label="正在載入潛水團行程..." />}
+          {showPerf && perf && (
+            <div style={{ textAlign: "center", fontSize: 10, color: SUB2 }}>⏱ 查詢往返 {perf.f}ms · 進頁→開查 {perf.s}ms</div>
+          )}
           {!loading && filtered.length === 0 && (
             <div style={{ padding: "30px 10px", textAlign: "center", color: SUB2, fontSize: 13 }}>
               <div style={{ fontSize: 34, marginBottom: 6 }}>🌊</div>

@@ -760,10 +760,13 @@ function ApiList({ cat, onBooked }: { cat: "daily" | "tour"; onBooked: () => voi
   const [items, setItems] = useState<Array<M2Trip | M2Tour> | null>(null);
   const [err, setErr] = useState(false);
   const [sel, setSel] = useState<M2Trip | M2Tour | null>(null);
+  const [perf, setPerf] = useState<{ f: number; s: number } | null>(null); // v694：效能探針(?debug=1 顯示)
+  const showPerf = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("debug");
   useEffect(() => {
     let alive = true; setItems(null); setErr(false); setSel(null);
     const url = cat === "daily" ? `/api/trips?from=${m2Today()}&to=${m2Plus(60)}` : "/api/tours";
-    fetch(url).then((r) => r.json()).then((d) => { if (alive) setItems(cat === "daily" ? (d.trips ?? []) : (d.tours ?? [])); }).catch(() => { if (alive) setErr(true); }); // v693：公開資料走快取(後端版本號失效),不再強制 no-store
+    const s = Math.round(performance.now()); const t0 = performance.now(); // v694：s=進頁到開查, f=查詢往返
+    fetch(url).then((r) => r.json()).then((d) => { if (alive) setItems(cat === "daily" ? (d.trips ?? []) : (d.tours ?? [])); }).catch(() => { if (alive) setErr(true); }).finally(() => { if (alive) setPerf({ f: Math.round(performance.now() - t0), s }); }); // v693：公開資料走快取(後端版本號失效),不再強制 no-store
     return () => { alive = false; };
   }, [cat]);
   if (sel) return cat === "daily"
@@ -775,6 +778,7 @@ function ApiList({ cat, onBooked }: { cat: "daily" | "tour"; onBooked: () => voi
   if (items.length === 0) return note(cat === "daily" ? "目前沒有開放的日潛場次" : "目前沒有開放的潛旅");
   return (
     <>
+      {showPerf && perf && <div style={{ textAlign: "center", fontSize: 10, color: C.mute, marginBottom: 6 }}>⏱ 查詢往返 {perf.f}ms · 進頁→開查 {perf.s}ms</div>}
       {items.map((it) => cat === "daily"
         ? ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={t.startTime} title={`${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}`} sub={`${mdShort(t.date)} · ${t.tankCount} 潛`} tags={availBadge(t.available)} />)(it as M2Trip)
         : ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={mdShort(t.dateStart)} title={t.title} sub={`${DEST_ZH[t.destination] ?? t.destination} · ${mdShort(t.dateStart)}~${mdShort(t.dateEnd)}`} tags={<>{availBadge(t.available)}{t.deposit ? <span style={{ fontSize: 11, color: C.mute }}>訂金 {t.deposit.toLocaleString()}</span> : null}</>} />)(it as M2Tour))}
