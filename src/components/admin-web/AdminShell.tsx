@@ -97,6 +97,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/admin/settings", icon: Settings, label: "系統設定" },
       { href: "/admin/audit-logs", icon: ClipboardCheck, label: "操作紀錄" },
+      { href: "/m2", icon: Settings, label: "🆕 New UI (m2)" }, // v685：第二版手機 UI 預覽（獨立路由）
     ],
   },
 ];
