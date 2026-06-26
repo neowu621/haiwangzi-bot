@@ -2,10 +2,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Plane, ListChecks, User, Sparkles } from "lucide-react";
+import { Home, MessageCircle, Waves, ListChecks, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLiff } from "@/lib/liff/LiffProvider";
 
+// v697：底部 5 分頁重構 — 首頁 / 訊息通知 / 潛水預約(整合一日/旅行/預約) / 我的預約 / 個人中心
 const NAV: Array<{
   href: string;
   label: string;
@@ -14,11 +15,11 @@ const NAV: Array<{
   /** 在此 icon 掛站內通知未讀紅點 */
   unreadBadge?: boolean;
 }> = [
-  { href: "/liff/calendar", label: "一日潛水", match: /^\/liff\/(calendar|dive)/, Icon: CalendarDays },
-  { href: "/liff/tour", label: "旅行潛水", match: /^\/liff\/tour/, Icon: Plane },
-  { href: "/liff/wishes/new", label: "預約潛水", match: /^\/liff\/wishes/, Icon: Sparkles },
+  { href: "/liff/home", label: "首頁", match: /^\/liff\/(home|welcome)/, Icon: Home },
+  { href: "/liff/messages", label: "訊息通知", match: /^\/liff\/(messages|notifications)/, Icon: MessageCircle, unreadBadge: true },
+  { href: "/liff/booking", label: "潛水預約", match: /^\/liff\/(booking|calendar|tour|dive|wishes)/, Icon: Waves },
   { href: "/liff/my", label: "我的預約", match: /^\/liff\/my/, Icon: ListChecks },
-  { href: "/liff/profile", label: "個人中心", match: /^\/liff\/(profile|notifications)/, Icon: User, unreadBadge: true },
+  { href: "/liff/profile", label: "個人中心", match: /^\/liff\/profile/, Icon: User },
 ];
 
 const UNREAD_CACHE_KEY = "haiwangzi:notifications:unread:v1";
