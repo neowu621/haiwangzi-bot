@@ -224,7 +224,7 @@ export default function M2Page() {
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "13px 14px" }}>
         {role === "member" && <Member tab={tab} cat={cat} setTab={setTab} setCat={setCat} me={me} isAdmin={isAdmin} setRole={setRole} />}
         {role === "coach" && <Coach />}
-        {role === "admin" && <Admin />}
+        {role === "admin" && <Admin setRole={setRole} />}
       </div>
 
       {role === "member" && (
@@ -412,6 +412,7 @@ function OrderCard({ b, onCancel, onAgreement, setTab }: { b: MyBk; onCancel: ()
   const daysLeft = deadline ? Math.ceil((deadline.getTime() - Date.now()) / 86400000) : null;
   const progress = b.totalAmount > 0 ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100)) : 0;
   const payHref = b.payLinkToken ? `/pay/${b.id}?t=${encodeURIComponent(b.payLinkToken)}` : `/pay/${b.id}`;
+  const [viewImg, setViewImg] = useState<string | null>(null); // v695：截圖點擊才載入
   async function refund() { if (!window.confirm("要申請退款嗎？將送出退款申請給客服，客服會在「訊息」與你聯繫。")) return; try { await fetch("/api/me/contact", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ message: `【退款申請】訂單 ${b.id}（已付 NT$ ${b.paidAmount.toLocaleString()}）` }) }); window.alert("已送出退款申請，請到「訊息」分頁查看回覆。"); setTab("msg"); } catch { window.alert("送出失敗，請稍後再試"); } }
   return (
     <div style={{ border: `0.5px solid ${C.line}`, borderLeft: b.type === "tour" ? `3px solid ${C.coral}` : `0.5px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 10 }}>
@@ -457,13 +458,20 @@ function OrderCard({ b, onCancel, onAgreement, setTab }: { b: MyBk; onCancel: ()
 
       {b.paymentProofs.length > 0 && (
         <div style={{ borderTop: `0.5px solid ${C.line}`, marginTop: 10, paddingTop: 8 }}>
-          <div style={{ fontSize: 11, color: C.mute, marginBottom: 5 }}>我上傳的轉帳截圖（{b.paymentProofs.length} 張）</div>
+          <div style={{ fontSize: 11, color: C.mute, marginBottom: 5 }}>轉帳截圖（{b.paymentProofs.length} 張，點擊查看）</div>
+          {/* v695：不預載圖片,只放 icon;點擊才開視窗載入大圖,省流量/加速 */}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{b.paymentProofs.map((p) => (
-            <div key={p.id} style={{ position: "relative", width: 50, height: 50, borderRadius: 8, overflow: "hidden", border: `0.5px solid ${C.line}`, background: C.page }}>
-              {(p.thumb ?? p.url) ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.thumb ?? p.url ?? ""} alt={p.type} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "grid", placeItems: "center", height: "100%", fontSize: 9, color: C.mute }}>無預覽</div>}
-              {p.verifiedAt && <div style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 15, background: C.okFg, display: "grid", placeItems: "center", borderTopLeftRadius: 6 }}><Check size={10} color="#fff" /></div>}
-            </div>
+            <button key={p.id} onClick={() => { const u = p.url ?? p.thumb; if (u) setViewImg(u); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: `1px solid ${C.line}`, background: C.page, borderRadius: 8, padding: "6px 10px", fontSize: 11.5, color: C.ink }}>
+              🧾 {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"} {ntd(p.amount)}
+              {p.verifiedAt ? <Check size={12} color={C.okFg} /> : <span style={{ fontSize: 10, color: C.warnFg }}>待核</span>}
+            </button>
           ))}</div>
+        </div>
+      )}
+      {viewImg && (
+        <div onClick={() => setViewImg(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.82)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={viewImg} alt="轉帳截圖" style={{ maxWidth: "100%", maxHeight: "90%", borderRadius: 8 }} />
         </div>
       )}
     </div>
@@ -1190,25 +1198,77 @@ function Coach() {
   );
 }
 
-function Admin() {
-  const tiles: Array<[typeof Home, string, string, string]> = [
-    [ShieldCheck, "到場點名", "今日 7 待點", C.okFg], [Receipt, "老闆結帳", "待確認 2 · 待匯款 1", C.accFg],
-    [Receipt, "訂單管理", "未來場次 9", C.ink], [User, "會員管理", "查詢 / 抵用金", C.ink],
-    [Waves, "潛水旅行", "團況 3", C.ink], [Lock, "系統設定", "IT / 老闆", C.proFg],
+interface AdminStats {
+  bookings?: { todayNew?: number };
+  users?: { todayNew?: number };
+  pendingProofs?: number;
+  pendingSettlement?: number;
+  unpaidCount?: number;
+  pendingProofsDetails?: Array<{ id: string; bookingId: string; bookingCode?: string | null; name: string | null; phone: string | null; amount: number; type: string; uploadedAt: string }>;
+}
+function Admin({ setRole }: { setRole: (r: Role) => void }) {
+  const [st, setSt] = useState<AdminStats | null>(null);
+  const [loadErr, setLoadErr] = useState(false);
+  const [openOrders, setOpenOrders] = useState(false);
+  useEffect(() => { fetch("/api/admin/stats", { credentials: "include", cache: "no-store" }).then((r) => r.ok ? r.json() : Promise.reject()).then((d) => setSt(d)).catch(() => setLoadErr(true)); }, []);
+  const ops: Array<[string, number | string, string]> = [
+    ["今日新訂單", st?.bookings?.todayNew ?? "—", C.accFg],
+    ["待確認匯款", st?.pendingProofs ?? "—", C.warnFg],
+    ["待結算", st?.pendingSettlement ?? "—", C.coral],
+    ["未付款", st?.unpaidCount ?? "—", C.mute],
+  ];
+  const proofs = st?.pendingProofsDetails ?? [];
+  // v695：到場點名可切換到教練畫面;其餘為總覽(完整管理動作另接)
+  const tiles: Array<[typeof Home, string, string, string, (() => void) | undefined]> = [
+    [ShieldCheck, "到場點名", "現場點名", C.okFg, () => setRole("coach")],
+    [Receipt, "老闆結帳", `待確認 ${st?.pendingProofs ?? 0}`, C.accFg, () => setOpenOrders(true)],
+    [Receipt, "訂單管理", "桌機後台處理", C.ink, undefined],
+    [User, "會員管理", "查詢 / 抵用金", C.ink, undefined],
+    [Waves, "潛水旅行", "桌機後台處理", C.ink, undefined],
+    [Lock, "系統設定", "IT / 老闆", C.proFg, undefined],
   ];
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 11 }}>
-        {tiles.map(([Icon, t, s, col]) => (
-          <div key={t} style={{ background: C.card, border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 12 }}>
-            <Icon size={22} color={col} /><div style={{ fontSize: 13, fontWeight: 500, marginTop: 5 }}>{t}</div><div style={{ fontSize: 11, color: C.mute }}>{s}</div>
+      {/* v695：今日營運移到最上面 + 接真實數字(/api/admin/stats) */}
+      <Sect t="今日營運" />
+      <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+        {ops.map(([l, v, c]) => (
+          <div key={l} style={{ flex: 1, background: C.page, borderRadius: 10, padding: "10px 4px", textAlign: "center" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: c }}>{v}</div>
+            <div style={{ fontSize: 10, color: C.mute, marginTop: 2 }}>{l}</div>
           </div>
         ))}
       </div>
-      <div style={{ background: C.page, borderRadius: 10, padding: "11px 13px" }}>
-        <div style={{ fontSize: 12, color: C.mute, marginBottom: 3 }}>今日營運</div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>訪客 4</span><span>新訂單 3</span><span>待回客服 1</span></div>
+      {loadErr && <div style={{ fontSize: 11.5, color: C.dangFg, marginBottom: 6 }}>讀取營運資料失敗(需 admin 權限)</div>}
+
+      {/* v695：待確認客戶訂單 — 預設縮起,點擊才展開 */}
+      <button onClick={() => setOpenOrders((o) => !o)} style={{ display: "flex", width: "100%", alignItems: "center", gap: 9, border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "11px 12px", background: C.card, marginTop: 6 }}>
+        <Receipt size={17} color={C.warnFg} />
+        <span style={{ flex: 1, textAlign: "left", fontSize: 14, fontWeight: 600 }}>待確認客戶訂單</span>
+        <span style={{ fontSize: 12, color: C.coral, fontWeight: 600 }}>{proofs.length}</span>
+        <ChevronRight size={16} color={C.mute} style={{ transform: openOrders ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+      </button>
+      {openOrders && (proofs.length === 0
+        ? <div style={{ fontSize: 12.5, color: C.mute, padding: "16px 0", textAlign: "center" }}>目前沒有待確認匯款的訂單</div>
+        : proofs.map((p) => (
+          <div key={p.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", marginTop: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name ?? "—"}</span>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: C.coral }}>{ntd(p.amount)}</span>
+            </div>
+            <div style={{ fontSize: 11.5, color: C.mute, marginTop: 3 }}>{p.phone ?? ""} · {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"} · {new Date(p.uploadedAt).toLocaleString("zh-TW")}{p.bookingCode ? ` · ${p.bookingCode}` : ""}</div>
+          </div>
+        )))}
+
+      <Sect t="管理功能" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+        {tiles.map(([Icon, t, s, col, onClick]) => (
+          <button key={t} onClick={onClick} disabled={!onClick} style={{ textAlign: "left", background: C.card, border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 12, opacity: onClick ? 1 : 0.6 }}>
+            <Icon size={22} color={col} /><div style={{ fontSize: 13, fontWeight: 500, marginTop: 5 }}>{t}</div><div style={{ fontSize: 11, color: C.mute }}>{s}</div>
+          </button>
+        ))}
       </div>
+      <div style={{ fontSize: 11, color: C.mute, textAlign: "center", marginTop: 10, lineHeight: 1.6 }}>完整結帳/訂單/團務管理動作目前在桌機後台;手機版逐步移植中。</div>
     </>
   );
 }
