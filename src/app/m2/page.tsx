@@ -2,10 +2,10 @@
 // v685：第二版手機 UI（m2）—— 完全獨立的新「皮」，不 import 任何現有 /admin /liff /pclogin 程式。
 //   流程：密碼閘（msi@22178368）→ 三角色模擬 → 會員 5 分頁 / 教練點名 / IT 管理。
 //   目前為 UAT 靜態版（假資料）；之後再接既有 API（/api/trips、/api/tours、/api/me…）。
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Home, MessageCircle, Waves, Receipt, User, Lock, ArrowLeft, Bell, ShoppingCart,
-  ChevronRight, ChevronLeft, Filter, Sailboat, Plane, SlidersHorizontal, School,
+  ChevronRight, Sailboat, Plane, SlidersHorizontal, School,
   UserCircle, ShieldCheck, LifeBuoy,
 } from "lucide-react";
 // v686：首頁 = 手機版官網內容 —— 沿用官網首頁同一份資料常數（純資料檔，只讀，不影響既有頁面）
@@ -15,6 +15,21 @@ const SPOT_IMG: Record<string, string> = {
   "bg-reeffish": "/home/src-04.webp", "bg-coraldiver": "/home/src-02.webp", "bg-blue": "/home/src-08.webp",
   "bg-macro": "/home/src-09.webp", "bg-coral": "/home/src-05.webp", "bg-boat": "/home/src-06.webp",
 };
+
+// v686b：潛水分頁接真實場次（公開 API /api/trips、/api/tours）
+const DEST_ZH: Record<string, string> = { northeast: "東北角", green_island: "綠島", lanyu: "蘭嶼", kenting: "墾丁", other: "海外" };
+const tw = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+const m2Today = () => tw(new Date());
+const m2Plus = (days: number) => tw(new Date(Date.now() + days * 86400000));
+const mdShort = (iso: string) => { const p = iso.slice(5, 10).split("-"); return `${+p[0]}/${+p[1]}`; };
+function availBadge(a: number | null) {
+  if (a === null) return <Badge t="可預約" k="ok" />;
+  if (a <= 0) return <><Badge t="已額滿" k="full" /><Badge t="候補" k="wait" /></>;
+  if (a <= 3) return <Badge t={`剩 ${a} 位`} k="warn" />;
+  return <Badge t="有空位" k="ok" />;
+}
+interface M2Trip { id: string; date: string; startTime: string; isNightDive: boolean; tankCount: number; available: number | null; sites: Array<{ name: string }> }
+interface M2Tour { id: string; title: string; destination: string; dateStart: string; dateEnd: string; deposit: number; available: number | null; subtitle: string | null }
 
 const C = {
   navy: "#0A2342", page: "#F4F6F8", card: "#FFFFFF", line: "rgba(10,35,66,.08)",
@@ -150,13 +165,10 @@ function Member({ tab, cat, setTab, setCat }: { tab: Tab; cat: string | null; se
     const meta = DIVE_CATS.find((d) => d.c === cat)!;
     return (
       <>
-        <button onClick={() => setCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, border: "none", background: "none", color: C.accFg, padding: "0 0 8px" }}><ArrowLeft size={15} />{meta.name}</button>
-        {(cat === "daily" || cat === "tour") && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: `0.5px solid ${C.line}`, fontSize: 13 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ChevronLeft size={15} color={C.mute} />六月 2026<ChevronRight size={15} color={C.mute} /></span>
-            <span style={{ color: C.accFg, display: "flex", alignItems: "center", gap: 4 }}><Filter size={14} />篩選</span>
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <button onClick={() => setCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, border: "none", background: "none", color: C.accFg, padding: 0 }}><ArrowLeft size={15} />{meta.name}</button>
+          {(cat === "daily" || cat === "tour") && <span style={{ fontSize: 12, color: C.mute }}>近期開放場次</span>}
+        </div>
         <DiveList cat={cat} />
       </>
     );
@@ -316,17 +328,30 @@ function HomeIntro({ goDive }: { goDive: () => void }) {
   );
 }
 
+function ApiList({ cat }: { cat: "daily" | "tour" }) {
+  const [items, setItems] = useState<Array<M2Trip | M2Tour> | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let alive = true; setItems(null); setErr(false);
+    const url = cat === "daily" ? `/api/trips?from=${m2Today()}&to=${m2Plus(60)}` : "/api/tours";
+    fetch(url, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (alive) setItems(cat === "daily" ? (d.trips ?? []) : (d.tours ?? [])); }).catch(() => { if (alive) setErr(true); });
+    return () => { alive = false; };
+  }, [cat]);
+  const note = (t: string) => <div style={{ padding: "30px 0", textAlign: "center", color: C.mute, fontSize: 13 }}>{t}</div>;
+  if (err) return note("載入失敗，請稍後再試");
+  if (items === null) return note("載入中…");
+  if (items.length === 0) return note(cat === "daily" ? "目前沒有開放的日潛場次" : "目前沒有開放的潛旅");
+  return (
+    <>
+      {items.map((it) => cat === "daily"
+        ? ((t) => <Sess key={t.id} time={t.startTime} title={`${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}`} sub={`${mdShort(t.date)} · ${t.tankCount} 潛`} tags={availBadge(t.available)} />)(it as M2Trip)
+        : ((t) => <Sess key={t.id} time={mdShort(t.dateStart)} title={t.title} sub={`${DEST_ZH[t.destination] ?? t.destination} · ${mdShort(t.dateStart)}~${mdShort(t.dateEnd)}`} tags={<>{availBadge(t.available)}{t.deposit ? <span style={{ fontSize: 11, color: C.mute }}>訂金 {t.deposit.toLocaleString()}</span> : null}</>} />)(it as M2Tour))}
+    </>
+  );
+}
+
 function DiveList({ cat }: { cat: string }) {
-  if (cat === "daily") return (<>
-    <Sess time="08:00" title="日潛 · 鶯歌石＋石城" sub="3 潛 · 龍洞出發" tags={<><Badge t="有空位" k="ok" /><span style={{ fontSize: 11, color: C.mute }}>剩 6</span></>} who="汪汪" />
-    <Sess time="08:00" title="日潛 · 82.8 氣導花園" sub="3 潛 · 進階" tags={<Badge t="剩 1 位" k="warn" />} who="Lemon" />
-    <Sess time="16:00" title="夜潛 · 深澳" sub="2 潛 · 需 AOW" tags={<><Badge t="已額滿" k="full" /><Badge t="候補" k="wait" /></>} who="Una" />
-  </>);
-  if (cat === "tour") return (<>
-    <Sess time="9/25" title="蘭嶼四天三夜潛旅" sub="中秋團 · 4天3夜" tags={<><Badge t="報名中" k="ok" /><span style={{ fontSize: 11, color: C.mute }}>訂金 8,000</span></>} who="汪汪" />
-    <Sess time="10/02" title="綠島三天兩夜" sub="水攝團" tags={<Badge t="剩 8 位" k="warn" />} who="Una" />
-    <Sess time="12/09" title="媽媽島六天五夜" sub="虎鯊+長尾鯊" tags={<Badge t="報名中" k="ok" />} who="Lemon" />
-  </>);
+  if (cat === "daily" || cat === "tour") return <ApiList cat={cat} />;
   if (cat === "custom") return (
     <div style={{ background: C.page, borderRadius: 12, padding: 16, textAlign: "center" }}>
       <MessageCircle size={26} color={C.warnFg} />
