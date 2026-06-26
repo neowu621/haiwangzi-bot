@@ -6,6 +6,16 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260626_693 — 2026-06-26 (公開資料「版本號失效」快取：場次/潛旅/設定平時零 DB)
+
+- **目的**：消費者「純看」共享資料(場次/潛旅/營業設定/政策/裝備價)時不必每次重打 DB，降延遲、抗尖峰;個人資料維持即時。
+- **`src/lib/cache.ts`**：進程內記憶體快取 + 每 domain 版本計數器(`config`/`trips`/`tours`)+ backstop TTL 安全網(`cached(key, domain, backstopMs, load)`)。
+- **`src/lib/prisma.ts`**：Prisma `$extends` 集中蓋章 —— `divingTrip`/`tourPackage`/`booking`/`siteConfig` 任何寫入自動 `bumpVersion()`。因所有寫入都過 Prisma，後台 CRUD/seed/bulk-import/下單/取消全涵蓋、不漏勾;預約會改空位 → 同時失效 `trips`+`tours`。
+- **`src/lib/site-config-cache.ts`**：`/api/config`、`/api/site-config` 共用 `siteConfig` 整列快取(6h backstop)。
+- **`/api/trips`·`/api/trips/[id]`·`/api/tours`·`/api/tours/[id]`**：包 `cached`(10min backstop)。
+- **m2 前端**：公開 fetch(場次/潛旅 清單·詳情)移除 `cache:"no-store"` 改吃快取;個人 API(`/api/me`·`bookings/my`·`notifications`·`credits`)維持 `no-store` 即時。
+- **效果**：命中快取時零重查詢;後台按儲存或有人下單 → 版本 +1，下個讀取自動更新(空位即時準)。⚠️ 前提=單一容器(Zeabur 單實例);多實例日後把版本號改放共用儲存(DB 一列/Redis)即可,讀寫介面不變。
+
 ## 20260626_692 — 2026-06-26 (m2 訂單=複製我的預約；個人各項可點進子頁)
 
 - **訂單分頁 = 完整複製 LIFF「我的預約」(`/liff/my`)**：通知中心入口、4 分段（即將前往/📝願望單/已結束/已取消）、願望單清單（`/api/dive-wishes`，新需求→客製）。訂單卡用 `deriveBookingDisplay` 衍生狀態徽章、人數/氣瓶、裝備 chips、旅潛付款進度條 + 預約/訂金/尾款/出發 4 步 + 訂金/尾款金額、付款方式選擇（`/pay/[id]?t=token`）、付款截止日（`computePaymentDeadline`）、取消訂單（`DELETE /api/bookings/[id]`）、同意聲明 modal（簽名圖 + 取消/安全政策）、申請退款（送 `/api/me/contact`）、轉帳截圖縮圖。

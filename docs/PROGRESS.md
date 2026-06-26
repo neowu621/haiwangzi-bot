@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-26（續2）— 公開資料「版本號失效」快取（v693）
+
+目前線上 = **v20260626_693**。
+
+> 老闆反映「手機載入久 = 一直讀 DB」。把「大家都一樣、有人改才變」的共享資料(場次/潛旅/營業設定/政策/裝備價)加上**進程內快取 + 版本號失效**;個人資料維持即時。
+
+- **引擎 `src/lib/cache.ts`**：`cached(key, domain, backstopMs, load)` + `bumpVersion(domain)`。每個 domain(`config`/`trips`/`tours`)一個整數版本;讀取記下版本,版本沒變且未過 backstop → 回快取(零 DB)。
+- **集中蓋章 `src/lib/prisma.ts`**：`$extends` 攔截 `divingTrip`/`tourPackage`/`booking`/`siteConfig` 的寫入 → 自動 `bumpVersion`。**所有寫入都過 Prisma,所以不可能漏勾**(後台 CRUD/seed/bulk/下單/取消全涵蓋)。預約改空位 → 同時 bump trips+tours。
+- **讀取端**：`/api/config`+`/api/site-config` 共用 `getSiteConfigRow()`(`src/lib/site-config-cache.ts`,6h backstop);`/api/trips`·`[id]`·`/api/tours`·`[id]` 包 `cached`(10min backstop)。m2 前端公開 fetch 移除 `no-store`。
+- **決策/注意**：
+  - 不新增資料表、不動 schema(部署用 `db push`,零變更最安全);版本號放記憶體 → **前提是 Zeabur 單一容器**。多實例會各自有計數器 → 需改放共用儲存(DB 一列 / Redis),`cache.ts` 介面不變。
+  - backstop TTL 是安全網(萬一未來改用 interactive `$transaction` 導致蓋章沒觸發,也會自癒)。
+  - 個人資料一律不快取:`/api/me`、`/api/bookings/my`、`/api/me/notifications`、`/api/me/contact`、`/api/me/credits` 維持 `no-store`。
+  - ⚠️ **首屏仍受個人資料即時讀取影響**——共享快取救的是「純看共享頁 / 尖峰多人」,不是「第一次進場等個人資料」。若要再快,下一步可做「先顯示靜態殼、個人資料背景載入」。
+
+---
+
 ## 2026-06-26（續）— 第二版手機 UI /m2（獨立路由·完整下單·訂單/個人複製 LIFF）（v684→v692）
 
 目前線上 = **v20260626_692**。
