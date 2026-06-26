@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-26（續3）— 效能探針 / 載入慢診斷（v694）
+
+目前線上 = **v20260626_694**。
+
+> 老闆反映「日潛/旅遊潛水仍很慢、轉很久」,問「不是已經靜態快取了?」。先量測再修。
+
+- **實測結論(重要)**：
+  - curl `/api/trips`·`/api/tours` ⇒ server+DB ~50ms、含 DNS+TCP+TLS 的 TTFB ~280ms,**三次一致**(快取生效)。
+  - `/api/healthz?db=1` ⇒ `dbPingMs` = **1ms(暖)/ 33ms(冷首連)**。
+  - → **DB 與 API 都不是瓶頸**。LIFF calendar/tour 早就用原生 `fetch` 在 mount 立即發(不等 LINE token)。所以「轉很久」在**裝置端**:LINE webview 的 JS bundle 載入/hydration,或手機網路首連。
+- **加了量測點(`?debug=1` 才顯示)**：`/liff/calendar`、`/liff/tour`、m2 `ApiList` 顯示「查詢往返 X / 進頁→開查 Y」;`/api/healthz?db=1` 回 `dbPingMs`。檔案:`src/app/liff/calendar/page.tsx`、`src/app/liff/tour/page.tsx`、`src/app/m2/page.tsx`、`src/app/api/healthz/route.ts`。
+- **判讀**:Y 大 → JS/hydration 慢(拆 bundle/首屏輕量/骨架);X 大但 curl 才 280ms → 裝置網路慢(預連線/骨架/樂觀 UI);X、Y 都小仍慢 → 慢在進這頁之前(LiffShell + LINE SDK init)。
+- **下次先看**:等老闆用手機在 LINE 開 `?debug=1` 回報 X/Y 數字 → 才決定優化方向。不要再往 DB/快取找(已證實非瓶頸)。見 [[data-read-tiering]]。
+
+---
+
 ## 2026-06-26（續2）— 公開資料「版本號失效」快取（v693）
 
 目前線上 = **v20260626_693**。

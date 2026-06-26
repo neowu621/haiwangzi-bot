@@ -6,6 +6,13 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260626_694 — 2026-06-26 (效能探針：定位場次/潛旅載入慢的環節 — 證實非 DB)
+
+- **量測結論**：curl 實測 `/api/trips`·`/api/tours` = server+DB 僅 ~50ms、含連線握手 TTFB ~280ms(三次一致);`/api/healthz?db=1` 回 **`dbPingMs` 1ms(暖)/33ms(冷首連)**。→ **DB 與 API 都不是瓶頸,v693 快取有效**。載入久發生在「裝置端」(LINE webview JS 載入/hydration、或手機網路首連)。
+- **可視化探針(`?debug=1` 才顯示,一般使用者無感)**：`/liff/calendar`、`/liff/tour`、m2 潛水清單顯示「⏱ 查詢往返 Xms · 進頁→開查 Yms」。Y 大=JS/hydration 慢;X 大=裝置網路/server 慢。
+- **`/api/healthz?db=1`**：回 `dbPingMs`(`SELECT 1` 往返),預設不打 DB 維持健康檢查輕量。
+- 下一步:依手機端 `?debug=1` 實測數字決定優化方向(首屏輕量化 / 骨架 / 預連線)。
+
 ## 20260626_693 — 2026-06-26 (公開資料「版本號失效」快取：場次/潛旅/設定平時零 DB)
 
 - **目的**：消費者「純看」共享資料(場次/潛旅/營業設定/政策/裝備價)時不必每次重打 DB，降延遲、抗尖峰;個人資料維持即時。
