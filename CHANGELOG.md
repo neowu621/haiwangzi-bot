@@ -6,6 +6,10 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260626_696 — 2026-06-26 (LIFF 頂部 logo 改連官網手機首頁 /)
+
+- `LiffShell` 左上品牌列(Wordmark：logo+版本)點擊由 `/liff/welcome` 改為 `/` —— 從任何 LIFF 頁點 logo 都回到官網手機首頁(MobileHome)。
+
 ## 20260626_695 — 2026-06-26 (m2 後台管理接真實資料 + 轉帳截圖點擊才載入)
 
 - **m2 後台管理(Admin)有功能了**：`今日營運`移到最上面並接真實 `/api/admin/stats`(今日新訂單/待確認匯款/待結算/未付款);新增「待確認客戶訂單」清單(真實 `pendingProofsDetails`,**預設縮起、點擊展開**);「到場點名」磚 → 切教練畫面、「老闆結帳」磚 → 展開待確認訂單;其餘磚標示「桌機後台處理」。neowu62=admin,`/api/admin/stats` 用 `authFromRequest`(同顆 `hwz_member` cookie)+ `requireRole(["admin","coach"])` 可存取。
