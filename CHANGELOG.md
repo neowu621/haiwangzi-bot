@@ -6,6 +6,10 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260627_699 — 2026-06-27 (訊息通知:站內訊息/發送訊息各佔一半 Y 軸)
+
+- `/liff/messages` 改為上下 50/50:上半「站內訊息」(通知列表,獨立捲動)、下半「發送訊息給客服」(對話獨立捲動 + 輸入框釘在下半底部)。容器 `height: calc(100dvh - 152px)`,兩半 `flex:1`。
+
 ## 20260627_698 — 2026-06-27 (LIFF 微調:移除找不到日期/通知中心、我的預約卡片可收合)
 
 - 一日潛水 / 旅行潛水:移除頂部「找不到日期？」入口(`CalendarContent`/`TourContent`,並移除 onGoWishes prop)。
