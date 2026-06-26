@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-06-26 — 到場點名 + 角色化後台 + 手機/桌機區隔 + /pclogin 強化（v671→v683）
+
+目前線上 = **v20260626_683**。
+
+### 到場點名 + 後台角色（v677/678/679/683，重點）
+- **教練/助教可登入後台**：`/api/admin-web/auth` + `set-password` 的 `BACKEND_LOGIN_ROLES = [admin,boss,it,coach,assistant]`。`AdminShell` NAV_GROUPS 每組加 `roles` 白名單 → **教練/助教只看「到場點名」**，其餘群組限 admin/boss/it。我的最愛(favItems)也要依 `visibleHrefs` 過濾。教練/助教登入後 `/admin` 與 `/admin/m` 都 redirect 到到場點名。
+- **到場點名頁**：桌機 `/admin/attendance`、手機 `/admin/m/attendance`（兩套，手機不跑桌機）。API `GET /api/admin/attendance/today`（requireRole coach/assistant/boss/admin，回今日場次/潛旅 confirmed/completed/no_show 名單）；點名走既有 `POST /api/coach/bookings/[id]/attendance`。到場點名也放進「營運/分析」給 admin/boss/it。
+- **v683 修助教 403**：`/api/coach/*`（today/media/trip-photos/weather-cancel）原本只 `coach|...`，補上 `assistant`。**款項類 `/api/coach/payment-proofs` 維持只給老闆/admin**（教練助教不碰款項）。見 [[admin-roles-attendance]]。
+
+### 手機後台不導桌機（v676/679/680，鐵則）
+- 移除 `MobileAdminShell` 頂部「完整版」+ 各頁所有導向桌機 `/admin/*`(非 `/admin/m`)的連結。卡片 drill-in（訂單/會員/訪客）改純顯示 `div`。驗證 `grep href="/admin/` 非 m 為空。見 [[mobile-no-desktop-bounce]]。
+
+### /admin/m 速度（v675/676）
+- 會員查詢/抵用金「搜尋才查」（後端 `/api/admin/users?q=` 限 60；移除 VIP 篩選）。潛旅名單/老闆結帳 `/api/admin/bookings?light=1`（跳過簽名 presigned URL/狀態log/退款）。潛旅名單英文狀態→`deriveBookingDisplay` 中文 + 已付/未付。pg_trgm 索引（v677）。
+
+### 老闆結帳精簡（v675/681/682）
+- 加「🧾 已下單·待匯款」。移除「待到場確認」（改用到場點名）。訂單管理 `/admin/bookings` 預設 `filterTripPeriod=future`（只看活動未開始）。
+
+### /pclogin（v671/672/674）
+- 加「📨 線上洽詢/揪團」分頁（搬自 /contact，登入會員免填身分/免 Turnstile，`/api/contact` 加會員快速通道）。我的訂單 旅潛拆「已付訂金/尾款(截止日)」（LIFF v673 同步）。通知頁改兩欄（左通知/右客服對話）。見 [[pclogin-notes-pay]]。
+
+### 注意
+- 版本日期 2026-06-26 起 NN 接續累計（v676 起 date=20260626）。所有版本 tsc 0、build 通過、healthz 已驗。
+
+---
+
 ## 2026-06-25 — 訂金通知模板 + 活動提醒落地 + 老闆結帳/通知體驗（v665→v670）
 
 目前線上 = **v20260625_670**。（v622–v664 為先前 session，細節見 `git log`；本段只記本 session。）

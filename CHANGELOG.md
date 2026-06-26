@@ -4,6 +4,61 @@
 
 > ⚠️ 註：此 CHANGELOG 自 v621 後曾長時間未補（v622–v664 的細節見 `git log` 與 `docs/PROGRESS.md`）。以下從 v665 起恢復記錄。
 
+## 20260626_683 — 2026-06-26 (修教練 LIFF 助教 403)
+
+- `/api/coach/today` 等教練 API 補上 `assistant` 角色（與教練同權限做現場作業：今日場次/到場/照片/天氣取消）。款項類 `/api/coach/payment-proofs` 維持只給老闆/admin（教練助教不碰款項）。
+
+## 20260626_682 — 2026-06-26 (訂單管理預設未來場次)
+
+- `/admin/bookings` 預設 `filterTripPeriod` 由 `all` → **`future`**：預設只顯示「活動未開始/未過期」+ 進行中付款狀態的訂單，濾掉活動已過的舊單。仍可點「全部/今明/過期場次」chip 切換。
+
+## 20260626_681 — 2026-06-26 (老闆結帳移除待到場確認)
+
+- 桌機 `/admin/tonight` + 手機 `/admin/m/tonight` 移除「待到場確認」區（含批次到場邏輯/狀態/計算）。已由獨立「到場點名」取代，避免重複。老闆結帳專注收款。
+
+## 20260626_680 — 2026-06-26 (手機後台徹底不導桌機)
+
+- 鐵則：手機後台不可有導向桌機 `/admin/*` 的連結。清掉 8 個漏網：頭部完整版/完整模板/編輯場次/編輯此團、訂單/會員卡 drill-in（改純顯示）、訪客卡（改純顯示）、老闆結帳到場/待匯款改連 `/admin/m/*`。驗證 `grep href="/admin/` 非 m 為空。
+
+## 20260626_679 — 2026-06-26 (手機/桌機到場點名區隔)
+
+- 新增手機版 `/admin/m/attendance`（MobileAdminShell）。手機端到場點名導向全改手機頁（不再跑桌機介面）；`/admin/m` 首頁加「🐠 到場點名」卡。`/admin` 登入導向依寬度分流（手機→手機版、桌機→桌機版）。
+
+## 20260626_678 — 2026-06-26 (到場點名也給老闆/管理者/IT)
+
+- 「到場點名」加進「營運/分析」群組（緊鄰老闆結帳，admin/boss/it 可見）；「現場作業」群組改只給 coach/assistant，避免重複。
+
+## 20260626_677 — 2026-06-26 (到場點名功能 + 角色登入 + pg_trgm)
+
+- **到場點名**：新頁 `/admin/attendance` + `GET /api/admin/attendance/today`（今日場次/潛旅的 confirmed/completed/no_show 名單，依場次分組），點名走既有 `POST /api/coach/bookings/[id]/attendance`。
+- **後台登入開放教練/助教**：`/api/admin-web/auth` + `set-password` 的 `BACKEND_LOGIN_ROLES` 加 coach/assistant。`AdminShell` NAV_GROUPS 角色白名單（教練/助教只看到場點名，其餘群組限 admin/boss/it）；我的最愛也依角色過濾；登入後自動導到 /admin/attendance。
+- **pg_trgm**：`migrate-safety.js` 加 users real_name/display_name/phone/code 的 GIN trgm 索引（會員 `?q=` 搜尋加速）。
+
+## 20260626_676 — 2026-06-26 (/admin/m 載入優化 + 移除完整版)
+
+- `/admin/m/tonight` 的 `/api/admin/bookings` 改 `?light=1`。移除 `MobileAdminShell` 頂部「完整版」桌機跳轉鈕 + 各頁 header 跳轉連結。
+
+## 20260625_675 — 2026-06-25 (手機後台多項)
+
+- 老闆結帳加「🧾 已下單·待匯款」（桌機+手機）。會員查詢/抵用金改「搜尋才查」（後端 `/api/admin/users?q=` 限 60 筆，打開不抓全部）+ 移除 VIP 篩選。潛旅展開名單修中文狀態（deriveBookingDisplay）+ 已付/未付 + `?light=1` 加速。
+- `/api/admin/bookings?light=1`：跳過簽名 presigned URL/狀態log/退款查詢（名單載入快）。
+
+## 20260625_674 — 2026-06-25 (/pclogin 通知頁兩欄)
+
+- 桌機通知頁改兩欄：左=訊息通知列表、右=訊息反饋（客服對話）；窄畫面 `auto-fit` 自動疊回單欄。
+
+## 20260625_673 — 2026-06-25 (LIFF 旅潛金額明細)
+
+- 手機 LIFF 我的預約 旅潛卡顯示「已付訂金 / 尾款」明細（對齊桌機）。
+
+## 20260625_672 — 2026-06-25 (/pclogin 旅潛金額拆分)
+
+- `/pclogin` 我的訂單 旅潛拆「已付訂金 / 尾款（截止日）」；`/api/bookings/my` 回 `finalDeadline`。
+
+## 20260625_671 — 2026-06-25 (/pclogin 線上洽詢分頁)
+
+- `/pclogin` 預約頁加「📨 線上洽詢/揪團」分頁（搬自公開 /contact，兩張卡：疑問→客服信箱、揪團→願望單）。登入會員免填姓名/Email/電話、免 Turnstile（`/api/contact` 加會員快速通道：authed 跳過 turnstile + 用會員身分 + 綁 lineUserId tag「會員洽詢」）。
+
 ## 20260625_670 — 2026-06-25 (訊息模板左欄加寬)
 
 - `/admin/templates` 左欄「依流程選擇」256→300px；模板名稱由 `…` 截斷改**自動換行**，長名（老闆訂金[確認中/已確認]）完整顯示。中間「填寫資料」仍 `1fr` 自動吸收。
