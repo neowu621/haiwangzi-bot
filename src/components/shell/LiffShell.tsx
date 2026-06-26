@@ -216,10 +216,10 @@ export function LiffShell({
       {/* <SplashOverlay /> */}
 
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur">
-        {/* 左側：Wordmark (含版本)，點按回首頁 */}
+        {/* 左側：Wordmark (含版本)，點按回手機首頁(官網 /) — v696 */}
         <Link
-          href="/liff/welcome"
-          aria-label="回首頁"
+          href="/"
+          aria-label="回手機首頁"
           className="flex-shrink-0 rounded-full active:scale-95"
         >
           <Wordmark />
