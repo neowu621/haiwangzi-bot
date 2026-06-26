@@ -40,8 +40,9 @@ const C = {
 };
 
 type Role = "member" | "coach" | "admin";
-type Screen = "login" | "roles" | "app";
+type Screen = "login" | "app";
 type Tab = "home" | "msg" | "dive" | "orders" | "me";
+type MeData = { lineUserId: string; realName: string | null; displayName: string; email: string | null; phone: string | null; cert: string | null; certNumber: string | null; birthday?: string | null; creditBalance: number; haiwangziLogCount?: number; logCount?: number | null; vipLevel?: number; roles?: string[]; role?: string; stats?: { totalBookings: number; completed: number; unreadNotifications?: number } };
 
 function Badge({ t, k }: { t: string; k: "ok" | "full" | "wait" | "warn" }) {
   const m = { ok: [C.okBg, C.okFg], full: [C.dangBg, C.dangFg], wait: [C.accBg, C.accFg], warn: [C.warnBg, C.warnFg] }[k];
@@ -90,12 +91,30 @@ export default function M2Page() {
   const [screen, setScreen] = useState<Screen>("login");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const [role, setRole] = useState<Role>("member");
   const [tab, setTab] = useState<Tab>("home");
   const [cat, setCat] = useState<string | null>(null);
+  const [me, setMe] = useState<MeData | null>(null);
 
-  const go = () => { if (pw === "msi@22178368") { setErr(""); setScreen("roles"); } else setErr("密碼錯誤"); };
-  const pick = (r: Role) => { setRole(r); setTab("home"); setCat(null); setScreen("app"); };
+  const go = async () => {
+    if (busy) return;
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/m2/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }), credentials: "include" });
+      if (!r.ok) { setErr("密碼錯誤"); return; }
+      setRole("member"); setTab("home"); setCat(null); setScreen("app");
+    } catch { setErr("連線失敗，請重試"); }
+    finally { setBusy(false); }
+  };
+
+  useEffect(() => {
+    if (screen !== "app") return;
+    let alive = true;
+    fetch("/api/me", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d) setMe(d); }).catch(() => {});
+    return () => { alive = false; };
+  }, [screen]);
+  const isAdmin = !!me && ((me.roles ?? [me.role ?? ""]).some((r) => ["admin", "boss", "it", "coach", "assistant"].includes(r)));
 
   const frame = (inner: React.ReactNode) => (
     <div style={{ minHeight: "100vh", background: C.page, display: "flex", justifyContent: "center", fontFamily: "'Noto Sans TC',system-ui,sans-serif", color: C.ink }}>
@@ -107,39 +126,28 @@ export default function M2Page() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 26px", gap: 14 }}>
       <div style={{ width: 56, height: 56, borderRadius: 16, background: C.accBg, color: C.accFg, display: "grid", placeItems: "center" }}><Lock size={28} /></div>
       <div style={{ textAlign: "center" }}><div style={{ fontSize: 19, fontWeight: 500 }}>海王子潛水 · m2</div><div style={{ fontSize: 13, color: C.mute, marginTop: 2 }}>第二版手機介面（測試）</div></div>
-      <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()} placeholder="輸入管理密碼"
+      <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()} placeholder="輸入密碼"
         style={{ width: "100%", height: 44, textAlign: "center", border: `1px solid ${C.line}`, borderRadius: 10, fontSize: 15 }} />
-      <button onClick={go} style={{ width: "100%", height: 44, background: C.accFg, color: "#fff", border: "none", borderRadius: 10, fontSize: 15 }}>進入</button>
+      <button onClick={go} disabled={busy} style={{ width: "100%", height: 44, background: C.accFg, color: "#fff", border: "none", borderRadius: 10, fontSize: 15, opacity: busy ? 0.6 : 1 }}>{busy ? "登入中…" : "進入"}</button>
       <div style={{ fontSize: 12, color: C.dangFg, minHeight: 16 }}>{err}</div>
     </div>
   );
 
-  if (screen === "roles") return frame(
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "30px 22px", gap: 13 }}>
-      <div style={{ textAlign: "center", marginBottom: 4 }}><div style={{ fontSize: 18, fontWeight: 500 }}>選擇身分（模擬）</div><div style={{ fontSize: 12, color: C.mute, marginTop: 2 }}>測試用，正式版依登入角色自動帶入</div></div>
-      {([["member", "會員", "首頁 · 訊息 · 潛水 · 訂單 · 個人", User, C.accBg, C.accFg],
-        ["coach", "教練 / 助教", "今日場次 · 到場點名", LifeBuoy, C.okBg, C.okFg],
-        ["admin", "IT / 老闆", "結帳 · 訂單 · 會員 · 設定", ShieldCheck, C.proBg, C.proFg]] as const).map(([r, name, sub, Icon, bg, fg]) => (
-        <button key={r} onClick={() => pick(r as Role)} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 14, borderRadius: 12, border: `0.5px solid ${C.line}`, background: C.card }}>
-          <span style={{ width: 40, height: 40, borderRadius: 11, background: bg, color: fg, display: "grid", placeItems: "center" }}><Icon size={20} /></span>
-          <span><span style={{ fontSize: 15, fontWeight: 500, display: "block" }}>{name}</span><span style={{ fontSize: 12, color: C.mute }}>{sub}</span></span>
-        </button>
-      ))}
-    </div>
-  );
-
   const title = role === "coach" ? "今日場次 · 點名" : role === "admin" ? "管理後台" : { home: "海王子潛水", msg: "訊息", dive: "潛水", orders: "我的訂單", me: "個人" }[tab];
+  const backToMember = () => { setRole("member"); setTab("me"); setCat(null); };
 
   return frame(
     <>
       <div style={{ display: "flex", flex: "none", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderBottom: `0.5px solid ${C.line}` }}>
-        <button onClick={() => setScreen("roles")} aria-label="切換身分" style={{ border: "none", background: "none", color: C.mute }}><ArrowLeft size={19} /></button>
+        {role !== "member"
+          ? <button onClick={backToMember} aria-label="返回會員" style={{ border: "none", background: "none", color: C.mute }}><ArrowLeft size={19} /></button>
+          : <span style={{ width: 19 }} />}
         <span style={{ fontSize: 15, fontWeight: 500 }}>{title}</span>
         <span style={{ display: "flex", gap: 12, color: C.mute }}><Bell size={18} /><ShoppingCart size={18} /></span>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "13px 14px" }}>
-        {role === "member" && <Member tab={tab} cat={cat} setTab={setTab} setCat={setCat} />}
+        {role === "member" && <Member tab={tab} cat={cat} setTab={setTab} setCat={setCat} me={me} isAdmin={isAdmin} setRole={setRole} />}
         {role === "coach" && <Coach />}
         {role === "admin" && <Admin />}
       </div>
@@ -160,7 +168,7 @@ export default function M2Page() {
   );
 }
 
-function Member({ tab, cat, setTab, setCat }: { tab: Tab; cat: string | null; setTab: (t: Tab) => void; setCat: (c: string | null) => void }) {
+function Member({ tab, cat, setTab, setCat, me, isAdmin, setRole }: { tab: Tab; cat: string | null; setTab: (t: Tab) => void; setCat: (c: string | null) => void; me: MeData | null; isAdmin: boolean; setRole: (r: Role) => void }) {
   if (tab === "dive" && cat) {
     const meta = DIVE_CATS.find((d) => d.c === cat)!;
     return (
@@ -174,18 +182,7 @@ function Member({ tab, cat, setTab, setCat }: { tab: Tab; cat: string | null; se
     );
   }
   if (tab === "home") return <HomeIntro goDive={() => { setTab("dive"); setCat(null); }} />;
-  if (tab === "msg") return (
-    <>
-      <Sect t="通知" />
-      <div style={{ background: C.okBg, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: C.okFg, marginBottom: 8 }}>活動提醒：6/27 鶯歌石場次，請提早 15 分鐘到場換裝</div>
-      <div style={{ border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px" }}><div style={{ fontSize: 13, fontWeight: 500 }}>預約成功</div><div style={{ fontSize: 12, color: C.mute }}>您的日潛預約已確認 · 6/25</div></div>
-      <Sect t="客服" />
-      <div style={{ border: `0.5px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
-        <div style={{ fontSize: 12, color: C.mute, marginBottom: 8 }}>有問題？直接傳訊息給客服</div>
-        <div style={{ display: "flex", gap: 8 }}><input placeholder="輸入訊息…" style={{ flex: 1, height: 34, border: `1px solid ${C.line}`, borderRadius: 8, padding: "0 10px" }} /><button style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "0 14px" }}>送出</button></div>
-      </div>
-    </>
-  );
+  if (tab === "msg") return <MsgTab />;
   if (tab === "dive") return (
     <>
       <div style={{ fontSize: 15, fontWeight: 500, margin: "2px 0 10px" }}>選擇潛水類型</div>
@@ -198,41 +195,144 @@ function Member({ tab, cat, setTab, setCat }: { tab: Tab; cat: string | null; se
       ))}
     </>
   );
-  if (tab === "orders") return (
-    <>
-      <div style={{ display: "flex", gap: 7, marginBottom: 11 }}>
-        <span style={{ fontSize: 12, padding: "6px 13px", borderRadius: 999, background: C.navy, color: "#fff" }}>即將進行</span>
-        <span style={{ fontSize: 12, padding: "6px 13px", borderRadius: 999, background: C.page, color: C.mute }}>已結束</span>
+  if (tab === "orders") return <OrdersTab />;
+  return <MeTab me={me} isAdmin={isAdmin} setRole={setRole} />;
+}
+
+const ORDER_DONE = new Set(["completed", "no_show", "cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"]);
+const ST_ZH: Record<string, string> = { pending: "待付款", awaiting_verify: "待確認匯款", confirmed: "已確認", deposit_paid: "已付訂金", fully_paid: "已付清", completed: "活動結束", no_show: "未到場", cancelled_by_user: "已取消", cancelled_by_weather: "天氣取消", cancelled_unpaid: "訂單不成立" };
+const ntd = (n: number) => `NT$ ${Number(n || 0).toLocaleString()}`;
+
+interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean }
+interface Convo { who: "me" | "cs"; body: string; createdAt: string }
+function MsgTab() {
+  const [notifs, setNotifs] = useState<Notif[] | null>(null);
+  const [convo, setConvo] = useState<Convo[]>([]);
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const loadConvo = () => fetch("/api/me/contact", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setConvo(d.messages ?? [])).catch(() => {});
+  useEffect(() => {
+    fetch("/api/me/notifications?limit=30", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setNotifs(d.items ?? [])).catch(() => setNotifs([]));
+    loadConvo();
+  }, []);
+  async function send() {
+    if (!msg.trim() || sending) return;
+    setSending(true);
+    try { await fetch("/api/me/contact", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ message: msg }) }); setMsg(""); loadConvo(); } catch { /* ignore */ } finally { setSending(false); }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <Sect t="通知" />
+        {notifs === null && <div style={{ color: C.mute, fontSize: 13, padding: "10px 0" }}>載入中…</div>}
+        {notifs?.length === 0 && <div style={{ color: C.mute, fontSize: 13, padding: "24px 0", textAlign: "center" }}>目前沒有通知</div>}
+        {notifs?.map((n) => (
+          <div key={n.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, background: n.isRead ? C.card : "#f0fbfa" }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
+            <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.6, marginTop: 3, whiteSpace: "pre-wrap" }}>{n.body}</div>
+            <div style={{ fontSize: 11, color: C.mute, marginTop: 5 }}>{new Date(n.createdAt).toLocaleString("zh-TW")}</div>
+          </div>
+        ))}
       </div>
-      <div style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}><div style={{ fontSize: 14, fontWeight: 500 }}>日潛 6/27 08:00</div><div style={{ fontSize: 14, fontWeight: 500 }}>NT$ 1,875</div></div>
-        <div style={{ fontSize: 12, color: C.mute, margin: "2px 0 7px" }}>鶯歌石＋石城 · 1 人</div>
-        <div style={{ display: "flex", gap: 6 }}><Badge t="已確認" k="ok" /><Badge t="已付清" k="wait" /></div>
-      </div>
-      <div style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 13 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}><div style={{ fontSize: 14, fontWeight: 500 }}>綠島三天兩夜</div><div style={{ fontSize: 14, fontWeight: 500 }}>NT$ 29,000</div></div>
-        <div style={{ fontSize: 12, color: C.mute, margin: "2px 0 7px" }}>10/02~10/04 · 2 人</div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><div style={{ fontSize: 11, color: C.okFg }}>已付訂金 14,000</div><div style={{ fontSize: 12, color: C.coral, fontWeight: 500 }}>尾款 15,000（截止 9/15）</div></div>
-          <button style={{ background: C.coral, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 13 }}>前往付款</button>
+      <div style={{ flex: "none", borderTop: `0.5px solid ${C.line}`, background: C.card, paddingTop: 10, marginTop: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: C.navy, marginBottom: 6 }}>有問題？傳訊息給客服</div>
+        {convo.length > 0 && (
+          <div style={{ maxHeight: 130, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+            {convo.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "80%", padding: "6px 10px", borderRadius: 10, fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap", background: m.who === "me" ? C.navy : C.page, color: m.who === "me" ? "#fff" : C.ink }}>{m.who === "cs" ? `客服：${m.body}` : m.body}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={msg} onChange={(e) => setMsg(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="輸入訊息…" style={{ flex: 1, height: 36, border: `1px solid ${C.line}`, borderRadius: 8, padding: "0 10px", fontSize: 14 }} />
+          <button onClick={send} disabled={sending || !msg.trim()} style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", opacity: sending || !msg.trim() ? 0.5 : 1 }}>送出</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface MyBk { id: string; type: string; payLinkToken?: string | null; status: string; paymentStatus: string; totalAmount: number; depositAmount?: number; paidAmount: number; participants: number; createdAt: string; ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; dateEnd?: string; finalDeadline?: string | null } | null }
+function OrdersTab() {
+  const [bookings, setBookings] = useState<MyBk[] | null>(null);
+  const [seg, setSeg] = useState<"up" | "done">("up");
+  useEffect(() => { fetch("/api/bookings/my", { credentials: "include", cache: "no-store" }).then((r) => r.json()).then((d) => setBookings(d.bookings ?? [])).catch(() => setBookings([])); }, []);
+  if (bookings === null) return <div style={{ color: C.mute, fontSize: 13, padding: "20px 0", textAlign: "center" }}>載入中…</div>;
+  const list = bookings.filter((b) => seg === "done" ? ORDER_DONE.has(b.status) : !ORDER_DONE.has(b.status));
+  const segBtn = (k: "up" | "done", l: string) => <button onClick={() => setSeg(k)} style={{ fontSize: 12, padding: "6px 13px", borderRadius: 999, border: "none", background: seg === k ? C.navy : C.page, color: seg === k ? "#fff" : C.mute }}>{l}</button>;
+  return (
+    <>
+      <div style={{ display: "flex", gap: 7, marginBottom: 11 }}>{segBtn("up", "即將進行")}{segBtn("done", "已結束")}</div>
+      {list.length === 0 && <div style={{ color: C.mute, fontSize: 13, padding: "30px 0", textAlign: "center" }}>{seg === "up" ? "目前沒有進行中的訂單" : "沒有已結束的訂單"}</div>}
+      {list.map((b) => {
+        const title = b.type === "daily" ? `日潛 ${b.ref?.date ?? ""} ${b.ref?.startTime ?? ""}` : (b.ref?.title ?? "潛旅");
+        const sub = b.type === "daily" ? (b.ref?.sites?.join("、") ?? "") : `${b.ref?.dateStart ?? ""}~${b.ref?.dateEnd ?? ""}`;
+        const unpaid = b.totalAmount - b.paidAmount;
+        const cancelled = b.status.startsWith("cancelled") || b.status === "no_show";
+        const canPay = ["pending", "awaiting_verify", "confirmed"].includes(b.status) && unpaid > 0;
+        return (
+          <div key={b.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 10, opacity: cancelled ? 0.7 : 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{title}</div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{ntd(b.totalAmount)}</div>
+            </div>
+            <div style={{ fontSize: 12, color: C.mute, margin: "2px 0 7px" }}>{sub} · {b.participants} 人</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <Badge t={ST_ZH[b.status] ?? b.status} k={cancelled ? "full" : b.status === "fully_paid" || b.status === "completed" ? "ok" : "wait"} />
+                {b.type === "tour" && b.paidAmount > 0 && unpaid > 0 && <span style={{ fontSize: 11, color: C.coral }}>尾款 {ntd(unpaid)}{b.ref?.finalDeadline ? `（截止 ${b.ref.finalDeadline}）` : ""}</span>}
+              </div>
+              {canPay && <a href={b.payLinkToken ? `/pay/${b.id}?t=${encodeURIComponent(b.payLinkToken)}` : `/pay/${b.id}`} style={{ background: C.coral, color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 13, textDecoration: "none" }}>前往付款</a>}
+            </div>
+          </div>
+        );
+      })}
     </>
   );
+}
+
+function MeTab({ me, isAdmin, setRole }: { me: MeData | null; isAdmin: boolean; setRole: (r: Role) => void }) {
+  const name = me?.realName ?? me?.displayName ?? "會員";
+  const stats: Array<[string, string]> = [
+    [String(me?.haiwangziLogCount ?? 0), "海王子潛次"],
+    [String(me?.creditBalance ?? 0), "抵用金"],
+    [String(me?.stats?.totalBookings ?? 0), "進行中"],
+    [me?.vipLevel ? `LV${me.vipLevel}` : "會員", "等級"],
+  ];
+  async function logout() { try { await fetch("/api/m2/session", { method: "DELETE", credentials: "include" }); } catch { /* ignore */ } window.location.reload(); }
   return (
     <>
       <div style={{ textAlign: "center", padding: "6px 0 12px" }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, margin: "0 auto" }} />
-        <div style={{ fontSize: 16, fontWeight: 500, marginTop: 8 }}>王小明</div>
-        <div style={{ fontSize: 12, color: C.mute }}>neowu62@gmail.com</div>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center", margin: "0 auto" }}><User size={30} /></div>
+        <div style={{ fontSize: 16, fontWeight: 500, marginTop: 8 }}>{name}</div>
+        <div style={{ fontSize: 12, color: C.mute }}>{me?.email ?? ""}</div>
       </div>
       <div style={{ display: "flex", background: C.page, borderRadius: 12, padding: "12px 0", textAlign: "center", marginBottom: 6 }}>
-        {[["38", "海王子潛次"], ["300", "抵用金"], ["2", "進行中"], ["LV2", "會員"]].map(([a, b]) => (
-          <div key={b} style={{ flex: 1 }}><div style={{ fontSize: 18, fontWeight: 500 }}>{a}</div><div style={{ fontSize: 11, color: C.mute }}>{b}</div></div>
-        ))}
+        {stats.map(([a, b]) => <div key={b} style={{ flex: 1 }}><div style={{ fontSize: 18, fontWeight: 500 }}>{a}</div><div style={{ fontSize: 11, color: C.mute }}>{b}</div></div>)}
       </div>
-      <Sect t="帳戶" /><LRow Icon={User} label="個人資訊" /><LRow Icon={ShieldCheck} label="證照 / 潛伴" /><LRow Icon={Receipt} label="抵用金" right="300" />
-      <Sect t="紀錄" /><LRow Icon={Home} label="預約紀錄" right="38" /><LRow Icon={Waves} label="潛水紀錄" /><LRow Icon={ArrowLeft} label="登出" />
+      <Sect t="帳戶" />
+      <LRow Icon={User} label="個人資訊" right={me?.phone ?? ""} />
+      <LRow Icon={School} label="證照 / 潛伴" right={me?.cert ?? "未填"} />
+      <LRow Icon={Bell} label="通知偏好" />
+      <Sect t="紀錄" />
+      <LRow Icon={Receipt} label="預約紀錄" right={String(me?.stats?.completed ?? 0)} />
+      <LRow Icon={Waves} label="潛水紀錄" right={`${me?.haiwangziLogCount ?? 0} 潛`} />
+      <LRow Icon={SlidersHorizontal} label="抵用金明細" right={ntd(me?.creditBalance ?? 0)} />
+      {isAdmin && (<>
+        <Sect t="管理" />
+        <button onClick={() => setRole("coach")} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", borderBottom: `0.5px solid ${C.line}`, background: "none", textAlign: "left" }}>
+          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>教練到場點名</span><ChevronRight size={16} color={C.mute} />
+        </button>
+        <button onClick={() => setRole("admin")} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", borderBottom: `0.5px solid ${C.line}`, background: "none", textAlign: "left" }}>
+          <ShieldCheck size={19} color={C.proFg} /><span style={{ flex: 1, fontSize: 14 }}>後台管理</span><ChevronRight size={16} color={C.mute} />
+        </button>
+      </>)}
+      <Sect t="其他" />
+      <button onClick={logout} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", color: C.dangFg }}>
+        <ArrowLeft size={19} /><span style={{ flex: 1, fontSize: 14 }}>登出</span>
+      </button>
     </>
   );
 }
