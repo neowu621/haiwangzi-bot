@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PUBLIC_LIST_CACHE_HEADERS } from "@/lib/http-cache";
+import { cached, TTL_LISTING } from "@/lib/cache"; // v693：版本號快取
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
+
+  // v693：命中快取時零 DB；場次/潛旅/預約一有寫入(經 Prisma 蓋章)版本即 +1 自動失效
+  const payload = await cached(`trips:${from ?? ""}|${to ?? ""}`, "trips", TTL_LISTING, async () => {
 
   const where: Parameters<typeof prisma.divingTrip.findMany>[0] = {
     where: { status: { in: ["open", "full"] } },
@@ -48,7 +52,7 @@ export async function GET(req: NextRequest) {
   const sites = await prisma.diveSite.findMany({ where: { id: { in: allSiteIds } } });
   const siteMap = new Map(sites.map((s) => [s.id, s]));
 
-  return NextResponse.json({
+  return {
     trips: trips.map((t) => {
       const booked = bookingMap.get(t.id) ?? 0;
       // capacity null = 無上限（available 給 null，UI 顯示「可預約」不顯示數字）
@@ -74,5 +78,7 @@ export async function GET(req: NextRequest) {
         status: t.status,
       };
     }),
-  }, { headers: PUBLIC_LIST_CACHE_HEADERS });
+  };
+  });
+  return NextResponse.json(payload, { headers: PUBLIC_LIST_CACHE_HEADERS });
 }

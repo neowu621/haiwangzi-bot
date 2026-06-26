@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getSiteConfigRow } from "@/lib/site-config-cache"; // v693：版本號快取（共用 siteConfig 整列）
 import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 import { PUBLIC_STATIC_CACHE_HEADERS } from "@/lib/http-cache";
 
@@ -30,7 +30,7 @@ export async function GET() {
   let homeTestimonials: Array<{ name: string; avatar: string; activity: string; title: string; text: string }> = [];
   let homeReviewsNote = "";
   try {
-    const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
+    const cfg = await getSiteConfigRow(); // v693：命中快取時零 DB；siteConfig 一存檔自動失效
     if (cfg?.externalLinks) {
       externalLinks = cfg.externalLinks as Record<string, string>;
     }

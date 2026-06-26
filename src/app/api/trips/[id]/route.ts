@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PUBLIC_LIST_CACHE_HEADERS } from "@/lib/http-cache";
+import { cached, TTL_LISTING } from "@/lib/cache"; // v693：版本號快取
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,8 +13,10 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
+  // v693：命中快取時零 DB；場次/預約寫入版本即 +1 自動失效（含空位數）
+  const payload = await cached(`trip:${id}`, "trips", TTL_LISTING, async () => {
   const trip = await prisma.divingTrip.findUnique({ where: { id } });
-  if (!trip) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!trip) return null;
 
   const foundSites = await prisma.diveSite.findMany({
     where: { id: { in: trip.diveSiteIds } },
@@ -35,7 +38,7 @@ export async function GET(
     _sum: { participants: true },
   });
 
-  return NextResponse.json({
+  return {
     ...trip,
     date: trip.date.toISOString().slice(0, 10),
     booked: booked._sum.participants ?? 0,
@@ -46,5 +49,8 @@ export async function GET(
         : Math.max(0, trip.capacity - (booked._sum.participants ?? 0)),
     sites,
     coaches,
-  }, { headers: PUBLIC_LIST_CACHE_HEADERS });
+  };
+  });
+  if (!payload) return NextResponse.json({ error: "not found" }, { status: 404 });
+  return NextResponse.json(payload, { headers: PUBLIC_LIST_CACHE_HEADERS });
 }

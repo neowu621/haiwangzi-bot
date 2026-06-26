@@ -763,7 +763,7 @@ function ApiList({ cat, onBooked }: { cat: "daily" | "tour"; onBooked: () => voi
   useEffect(() => {
     let alive = true; setItems(null); setErr(false); setSel(null);
     const url = cat === "daily" ? `/api/trips?from=${m2Today()}&to=${m2Plus(60)}` : "/api/tours";
-    fetch(url, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (alive) setItems(cat === "daily" ? (d.trips ?? []) : (d.tours ?? [])); }).catch(() => { if (alive) setErr(true); });
+    fetch(url).then((r) => r.json()).then((d) => { if (alive) setItems(cat === "daily" ? (d.trips ?? []) : (d.tours ?? [])); }).catch(() => { if (alive) setErr(true); }); // v693：公開資料走快取(後端版本號失效),不再強制 no-store
     return () => { alive = false; };
   }, [cat]);
   if (sel) return cat === "daily"
@@ -829,7 +829,7 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
   const [agree, setAgree] = useState<{ ok: boolean; signatureDataUrl: string | null }>({ ok: false, signatureDataUrl: null });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
 
-  useEffect(() => { fetch(`/api/trips/${item.id}`, { cache: "no-store" }).then((r) => r.json()).then((t) => { setTrip(t); setTank(t.tankCount); }).catch(() => {}); }, [item.id]);
+  useEffect(() => { fetch(`/api/trips/${item.id}`).then((r) => r.json()).then((t) => { setTrip(t); setTank(t.tankCount); }).catch(() => {}); }, [item.id]); // v693：公開資料走快取
   useEffect(() => { if (!me) return; if (me.realName) setRealName(me.realName); if (me.phone) setPhone(formatPhoneTW(me.phone)); if (me.cert) setCert(me.cert); if (me.certNumber) setCertNo(me.certNumber); if (me.logCount != null) setLogc(String(me.logCount)); if (me.emergencyContact) { setEName(me.emergencyContact.name); setEPhone(formatPhoneTW(me.emergencyContact.phone)); setERel(me.emergencyContact.relationship); } }, [me]);
   useEffect(() => { setCompanions((prev) => { const want = Math.max(0, pax - 1); const next = prev.slice(0, want); while (next.length < want) next.push({ name: "", phone: "", cert: null, certNumber: "", logCount: 0, relationship: "" }); return next; }); }, [pax]);
 
@@ -1009,7 +1009,7 @@ function TourBook({ item, onBack, onBooked }: { item: M2Tour; onBack: () => void
   const [agree, setAgree] = useState<{ ok: boolean; signatureDataUrl: string | null }>({ ok: false, signatureDataUrl: null });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
 
-  useEffect(() => { fetch(`/api/tours/${item.id}`, { cache: "no-store" }).then((r) => r.json()).then(setTour).catch(() => {}); }, [item.id]);
+  useEffect(() => { fetch(`/api/tours/${item.id}`).then((r) => r.json()).then(setTour).catch(() => {}); }, [item.id]); // v693：公開資料走快取
   useEffect(() => { if (!me) return; if (me.realName) setRealName(me.realName); if (me.phone) setPhone(formatPhoneTW(me.phone)); if (me.cert) setCert(me.cert); if (me.certNumber) setCertNo(me.certNumber); if (me.logCount != null) setLogc(String(me.logCount)); if (me.emergencyContact) { setEName(me.emergencyContact.name); setEPhone(formatPhoneTW(me.emergencyContact.phone)); setERel(me.emergencyContact.relationship); } }, [me]);
 
   const credit = me?.creditBalance ?? 0;

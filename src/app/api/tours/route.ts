@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PUBLIC_LIST_CACHE_HEADERS } from "@/lib/http-cache";
+import { cached, TTL_LISTING } from "@/lib/cache"; // v693：版本號快取
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,8 @@ export async function GET() {
   // 今天起算（Asia/Taipei 當日 00:00）；dateEnd >= 今天 → 仍進行中/未來才列出
   const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   const todayStart = new Date(`${todayStr}T00:00:00+08:00`);
+  // v693：命中快取時零 DB（key 含當日，跨日自動換鍵）；潛旅/預約寫入版本即 +1 自動失效
+  const payload = await cached(`tours:${todayStr}`, "tours", TTL_LISTING, async () => {
   const tours = await prisma.tourPackage.findMany({
     where: { status: { in: ["open", "full"] }, dateEnd: { gte: todayStart } },
     orderBy: { dateStart: "asc" },
@@ -24,7 +27,7 @@ export async function GET() {
   });
   const bookedMap = new Map(bookings.map((b) => [b.refId, b._sum.participants ?? 0]));
 
-  return NextResponse.json({
+  return {
     tours: tours.map((t) => ({
       id: t.id,
       title: t.title,
@@ -48,5 +51,7 @@ export async function GET() {
       tanksCount: t.tanksCount,
       extraNote: t.extraNote,
     })),
-  }, { headers: PUBLIC_LIST_CACHE_HEADERS });
+  };
+  });
+  return NextResponse.json(payload, { headers: PUBLIC_LIST_CACHE_HEADERS });
 }
