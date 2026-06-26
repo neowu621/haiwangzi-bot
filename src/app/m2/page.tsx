@@ -42,7 +42,7 @@ const C = {
 type Role = "member" | "coach" | "admin";
 type Screen = "login" | "app";
 type Tab = "home" | "msg" | "dive" | "orders" | "me";
-type MeData = { lineUserId: string; realName: string | null; displayName: string; email: string | null; phone: string | null; cert: string | null; certNumber: string | null; birthday?: string | null; creditBalance: number; haiwangziLogCount?: number; logCount?: number | null; vipLevel?: number; roles?: string[]; role?: string; stats?: { totalBookings: number; completed: number; unreadNotifications?: number } };
+type MeData = { lineUserId: string; realName: string | null; displayName: string; email: string | null; phone: string | null; cert: string | null; certNumber: string | null; birthday?: string | null; creditBalance: number; haiwangziLogCount?: number; logCount?: number | null; vipLevel?: number; roles?: string[]; role?: string; emailVerifiedAt?: string | null; emergencyContact?: { name: string; phone: string; relationship: string } | null; stats?: { totalBookings: number; completed: number; unreadNotifications?: number } };
 
 function Badge({ t, k }: { t: string; k: "ok" | "full" | "wait" | "warn" }) {
   const m = { ok: [C.okBg, C.okFg], full: [C.dangBg, C.dangFg], wait: [C.accBg, C.accFg], warn: [C.warnBg, C.warnFg] }[k];
@@ -56,9 +56,9 @@ const DIVE_CATS: Array<{ c: string; name: string; sub: string; Icon: typeof Home
   { c: "course", name: "潛水課程", sub: "OW / AOW / 進階考證", Icon: School, col: C.proFg },
 ];
 
-function Sess({ time, title, sub, tags, who }: { time: string; title: string; sub: string; tags: React.ReactNode; who?: string }) {
+function Sess({ time, title, sub, tags, who, onClick }: { time: string; title: string; sub: string; tags: React.ReactNode; who?: string; onClick?: () => void }) {
   return (
-    <div style={{ display: "flex", gap: 11, alignItems: "flex-start", padding: "11px 2px", borderBottom: `0.5px solid ${C.line}` }}>
+    <div onClick={onClick} style={{ display: "flex", gap: 11, alignItems: "flex-start", padding: "11px 2px", borderBottom: `0.5px solid ${C.line}`, cursor: onClick ? "pointer" : "default" }}>
       <div style={{ width: 50, flex: "none", fontSize: 14, fontWeight: 500 }}>{time}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 500 }}>{title}</div>
@@ -175,9 +175,9 @@ function Member({ tab, cat, setTab, setCat, me, isAdmin, setRole }: { tab: Tab; 
       <>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <button onClick={() => setCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, border: "none", background: "none", color: C.accFg, padding: 0 }}><ArrowLeft size={15} />{meta.name}</button>
-          {(cat === "daily" || cat === "tour") && <span style={{ fontSize: 12, color: C.mute }}>近期開放場次</span>}
+          {(cat === "daily" || cat === "tour") && <span style={{ fontSize: 12, color: C.mute }}>點場次即可預約</span>}
         </div>
-        <DiveList cat={cat} />
+        <DiveList cat={cat} me={me} onBooked={() => { setCat(null); setTab("orders"); }} />
       </>
     );
   }
@@ -428,15 +428,17 @@ function HomeIntro({ goDive }: { goDive: () => void }) {
   );
 }
 
-function ApiList({ cat }: { cat: "daily" | "tour" }) {
+function ApiList({ cat, me, onBooked }: { cat: "daily" | "tour"; me: MeData | null; onBooked: () => void }) {
   const [items, setItems] = useState<Array<M2Trip | M2Tour> | null>(null);
   const [err, setErr] = useState(false);
+  const [sel, setSel] = useState<M2Trip | M2Tour | null>(null);
   useEffect(() => {
-    let alive = true; setItems(null); setErr(false);
+    let alive = true; setItems(null); setErr(false); setSel(null);
     const url = cat === "daily" ? `/api/trips?from=${m2Today()}&to=${m2Plus(60)}` : "/api/tours";
     fetch(url, { cache: "no-store" }).then((r) => r.json()).then((d) => { if (alive) setItems(cat === "daily" ? (d.trips ?? []) : (d.tours ?? [])); }).catch(() => { if (alive) setErr(true); });
     return () => { alive = false; };
   }, [cat]);
+  if (sel) return <BookSheet kind={cat} item={sel} me={me} onBack={() => setSel(null)} onBooked={onBooked} />;
   const note = (t: string) => <div style={{ padding: "30px 0", textAlign: "center", color: C.mute, fontSize: 13 }}>{t}</div>;
   if (err) return note("載入失敗，請稍後再試");
   if (items === null) return note("載入中…");
@@ -444,22 +446,88 @@ function ApiList({ cat }: { cat: "daily" | "tour" }) {
   return (
     <>
       {items.map((it) => cat === "daily"
-        ? ((t) => <Sess key={t.id} time={t.startTime} title={`${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}`} sub={`${mdShort(t.date)} · ${t.tankCount} 潛`} tags={availBadge(t.available)} />)(it as M2Trip)
-        : ((t) => <Sess key={t.id} time={mdShort(t.dateStart)} title={t.title} sub={`${DEST_ZH[t.destination] ?? t.destination} · ${mdShort(t.dateStart)}~${mdShort(t.dateEnd)}`} tags={<>{availBadge(t.available)}{t.deposit ? <span style={{ fontSize: 11, color: C.mute }}>訂金 {t.deposit.toLocaleString()}</span> : null}</>} />)(it as M2Tour))}
+        ? ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={t.startTime} title={`${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}`} sub={`${mdShort(t.date)} · ${t.tankCount} 潛`} tags={availBadge(t.available)} />)(it as M2Trip)
+        : ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={mdShort(t.dateStart)} title={t.title} sub={`${DEST_ZH[t.destination] ?? t.destination} · ${mdShort(t.dateStart)}~${mdShort(t.dateEnd)}`} tags={<>{availBadge(t.available)}{t.deposit ? <span style={{ fontSize: 11, color: C.mute }}>訂金 {t.deposit.toLocaleString()}</span> : null}</>} />)(it as M2Tour))}
     </>
   );
 }
 
-function DiveList({ cat }: { cat: string }) {
-  if (cat === "daily" || cat === "tour") return <ApiList cat={cat} />;
-  if (cat === "custom") return (
-    <div style={{ background: C.page, borderRadius: 12, padding: 16, textAlign: "center" }}>
-      <MessageCircle size={26} color={C.warnFg} />
-      <div style={{ fontSize: 14, fontWeight: 500, marginTop: 6 }}>告訴我們你想怎麼潛</div>
-      <div style={{ fontSize: 12, color: C.mute, margin: "4px 0 12px" }}>包船 / 私人教練 / 指定潛點 / 揪團開團</div>
-      <button style={{ background: C.accFg, color: "#fff", border: "none", borderRadius: 999, padding: "9px 22px", fontSize: 13 }}>送出客製需求</button>
+function BookSheet({ kind, item, me, onBack, onBooked }: { kind: "daily" | "tour"; item: M2Trip | M2Tour; me: MeData | null; onBack: () => void; onBooked: () => void }) {
+  const [pax, setPax] = useState(1);
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const t = item as M2Trip, tr = item as M2Tour;
+  const title = kind === "daily" ? `${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}` : tr.title;
+  const sub = kind === "daily" ? `${t.date} ${t.startTime} · ${t.tankCount} 潛` : `${DEST_ZH[tr.destination] ?? tr.destination} · ${tr.dateStart}~${tr.dateEnd}`;
+  const noEmail = me ? !me.emailVerifiedAt : false;
+  async function submit() {
+    if (kind === "daily" && !agree) { setErr("請先勾選同意活動同意聲明"); return; }
+    if (busy) return;
+    setBusy(true); setErr("");
+    try {
+      const url = kind === "daily" ? "/api/bookings/daily" : "/api/bookings/tour";
+      const body = kind === "daily"
+        ? { tripId: t.id, participants: pax, agreedToTerms: true, ...(me?.cert ? { cert: me.cert } : {}), ...(me?.certNumber ? { certNumber: me.certNumber } : {}) }
+        : { tourId: tr.id, participants: pax, emergencyContact: me?.emergencyContact ?? { name: me?.realName ?? me?.displayName ?? "", phone: me?.phone ?? "", relationship: "本人" }, ...(me?.cert ? { cert: me.cert } : {}) };
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(d.error || "預約失敗，請稍後再試"); return; }
+      onBooked();
+    } catch { setErr("連線失敗，請重試"); } finally { setBusy(false); }
+  }
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, border: "none", background: "none", color: C.accFg, padding: "0 0 10px" }}><ArrowLeft size={15} />返回</button>
+      <div style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+        <div style={{ fontSize: 15, fontWeight: 500 }}>{title}</div>
+        <div style={{ fontSize: 12.5, color: C.mute, margin: "3px 0 7px" }}>{sub}</div>
+        {availBadge(kind === "daily" ? t.available : tr.available)}
+      </div>
+      <Sect t="預約人數" />
+      <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "4px 0 8px" }}>
+        <button onClick={() => setPax((p) => Math.max(1, p - 1))} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, fontSize: 18 }}>−</button>
+        <span style={{ fontSize: 18, fontWeight: 500, minWidth: 22, textAlign: "center" }}>{pax}</span>
+        <button onClick={() => setPax((p) => Math.min(10, p + 1))} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, fontSize: 18 }}>＋</button>
+        <span style={{ fontSize: 12, color: C.mute }}>人</span>
+      </div>
+      {kind === "daily" && (
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 0", fontSize: 13, lineHeight: 1.5 }}>
+          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 2 }} />
+          <span>我已閱讀並同意潛水活動同意聲明與安全須知</span>
+        </label>
+      )}
+      {noEmail && <div style={{ background: C.warnBg, color: C.warnFg, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginTop: 4 }}>⚠ 此帳號尚未完成 Email 驗證，可能無法下單。請先至會員中心驗證。</div>}
+      {err && <div style={{ background: C.dangBg, color: C.dangFg, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+      <button onClick={submit} disabled={busy} style={{ width: "100%", marginTop: 14, height: 46, background: C.coral, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, opacity: busy ? 0.6 : 1 }}>{busy ? "送出中…" : "送出預約"}</button>
+      <div style={{ fontSize: 11.5, color: C.mute, textAlign: "center", marginTop: 8, lineHeight: 1.6 }}>送出後可在「訂單」分頁查看並前往付款{kind === "tour" ? "（潛旅採訂金 + 尾款）" : ""}。</div>
     </div>
   );
+}
+
+function CustomRequest() {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function send() {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    try { await fetch("/api/me/contact", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ message: `【客製潛水需求】${text}` }) }); setDone(true); } catch { /* ignore */ } finally { setBusy(false); }
+  }
+  if (done) return <div style={{ textAlign: "center", padding: "30px 10px" }}><div style={{ fontSize: 38 }}>✅</div><div style={{ fontSize: 15, fontWeight: 500, marginTop: 6 }}>需求已送出！</div><div style={{ fontSize: 12.5, color: C.mute, marginTop: 6 }}>客服會在「訊息」分頁與你聯繫安排。</div></div>;
+  return (
+    <div>
+      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>告訴我們你想怎麼潛</div>
+      <div style={{ fontSize: 12, color: C.mute, marginBottom: 10 }}>包船 / 私人教練 / 指定潛點 / 揪團開團，留下需求即可。</div>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="例：想揪 7 月中包船去基隆嶼，4 人，都有 OW…" style={{ width: "100%", minHeight: 110, border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, fontSize: 14, lineHeight: 1.6, resize: "vertical", boxSizing: "border-box" }} />
+      <button onClick={send} disabled={busy || !text.trim()} style={{ width: "100%", marginTop: 12, height: 44, background: C.accFg, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, opacity: busy || !text.trim() ? 0.5 : 1 }}>{busy ? "送出中…" : "送出客製需求"}</button>
+    </div>
+  );
+}
+
+function DiveList({ cat, me, onBooked }: { cat: string; me: MeData | null; onBooked: () => void }) {
+  if (cat === "daily" || cat === "tour") return <ApiList cat={cat} me={me} onBooked={onBooked} />;
+  if (cat === "custom") return <CustomRequest />;
   return (<>
     <Sess time="課程" title="Open Water 初級開放水域" sub="4 天 · 含證照" tags={<Badge t="開課中" k="ok" />} who="汪汪" />
     <Sess time="課程" title="Advanced AOW 進階" sub="深潛 / 導航" tags={<Badge t="可預約" k="ok" />} who="Una" />
