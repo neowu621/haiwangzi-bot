@@ -4,6 +4,47 @@
 
 > ⚠️ 註：此 CHANGELOG 自 v621 後曾長時間未補（v622–v664 的細節見 `git log` 與 `docs/PROGRESS.md`）。以下從 v665 起恢復記錄。
 
+> 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
+
+## 20260626_692 — 2026-06-26 (m2 訂單=複製我的預約；個人各項可點進子頁)
+
+- **訂單分頁 = 完整複製 LIFF「我的預約」(`/liff/my`)**：通知中心入口、4 分段（即將前往/📝願望單/已結束/已取消）、願望單清單（`/api/dive-wishes`，新需求→客製）。訂單卡用 `deriveBookingDisplay` 衍生狀態徽章、人數/氣瓶、裝備 chips、旅潛付款進度條 + 預約/訂金/尾款/出發 4 步 + 訂金/尾款金額、付款方式選擇（`/pay/[id]?t=token`）、付款截止日（`computePaymentDeadline`）、取消訂單（`DELETE /api/bookings/[id]`）、同意聲明 modal（簽名圖 + 取消/安全政策）、申請退款（送 `/api/me/contact`）、轉帳截圖縮圖。
+- **個人分頁各項可點進子頁**：個人資訊（姓名/手機/Email+發驗證信/生日/緊急聯絡人）、證照·潛伴（證照等級/編號/潛次 + 常用潛伴 CRUD）→ `PATCH /api/me`；通知偏好（LINE/Email）；預約紀錄→訂單分頁；潛水紀錄（海王子累積氣瓶/已完成）；抵用金明細（`/api/me/credits`：餘額/收支/逐筆 + 原因圖示）。全沿用 m2 既有 `C` 色系。
+
+## 20260626_691 — 2026-06-26 (m2 潛水四類完整下單系統移植自 LIFF)
+
+- 一日潛水 `DailyBook`：接 `/api/trips/[id]` 計價 + `/api/me` 預填/抵用金/VIP裝備折/氣瓶折/教練價。完整欄位：人數·潛次 stepper、裝備租借（數量+VIP折）、個人資料（姓名/手機/證照等級/號碼/累計潛次）、緊急聯絡人、潛伴（人數>1）、優惠代碼（`/api/promo/validate`）、抵用金、政策同意+手寫簽名（沿用 `SignaturePad`/`PolicyText`）、費用明細 → `POST /api/bookings/daily`（完整 payload）。
+- 旅遊潛水 `TourBook`：接 `/api/tours/[id]`：人數/加購/含不含/報名資料/緊急聯絡人/抵用金/政策簽名/訂金 → `POST /api/bookings/tour`。
+- 潛水課程 `CourseList`：沿用官網 `COURSES`（體驗/OW/AOW/Fun Dive）+ LINE 報名；客製維持送需求。金額後端權威重算，client 計價僅顯示。
+
+## 20260626_690 — 2026-06-26 (m2 可運作下單)
+
+- 點場次 → 預約表單（人數 + 同意聲明）→ `POST /api/bookings/daily|tour` 產生真實訂單 → 自動跳訂單分頁。客製潛水送需求 → 客服（`/api/me/contact`）；email 未驗證提示（後端會擋 403）。
+
+## 20260626_689 — 2026-06-26 (m2 接真實帳號 neowu62)
+
+- 密碼改 `msi`；新增 `/api/m2/session`（POST 驗密碼 → 以 `M2_DEFAULT_EMAIL` 查到的帳號用 `createMemberWebJwt` 發 **會員** session，set `hwz_member` cookie；與 `/pclogin` 同一顆，DELETE 為登出）。訊息/訂單/個人接 `/api/me`·`/api/me/notifications`·`/api/me/contact`·`/api/bookings/my`；訊息客服框釘底；教練/IT 入口移到個人→管理。⚠️ UAT backdoor，上線前要移除。
+
+## 20260626_688 — 2026-06-26 (m2 底部 5 分頁固定釘底)
+
+- 容器改 `height:100dvh` 固定高、中間區 `flex:1;minHeight:0;overflowY:auto` 內捲、頂列/底列 `flex-none`、加 `env(safe-area-inset-bottom)` padding —— 底部分頁列不再隨內容捲走。
+
+## 20260626_687 — 2026-06-26 (m2 潛水分頁接真實場次)
+
+- 一日潛水 → `/api/trips`、旅遊潛水 → `/api/tours`（空位/額滿/候補/訂金徽章 + 載入態）。客製/課程暫維持靜態。
+
+## 20260626_686 — 2026-06-26 (m2 首頁=手機版官網/產品介紹)
+
+- 沿用官網 `src/app/_home/data` 同一份資料常數（課程 COURSES / 潛點 SPOTS / 評價 BUILTIN_REVIEWS / FAQ / 社群 + LINE）於 m2 首頁呈現濃縮版官網內容；主視覺 + 「看場次」切到潛水分頁。只動 m2 首頁分頁，不影響官網。
+
+## 20260626_685 — 2026-06-26 (第二版手機 UI m2 骨架)
+
+- 新增完全獨立路由 `/m2`（`src/app/m2/page.tsx`，純 inline-style 新「皮」）：密碼閘 → 三角色（會員/教練助教/IT老闆）→ 會員 5 分頁 / 教練點名 / IT 管理（靜態 UAT 版）。`/admin` 系統/IT 加「🆕 New UI (m2)」入口。不動既有架構。
+
+## 20260626_684 — 2026-06-26 (老闆結帳卡片數字修正)
+
+- 老闆結帳卡片加「已下單·待匯款」計數（`pendingOrders`）、移除已搬走的「待到場」；到場點名改顯示「待到場」徽章（桌機側欄 + 手機卡）。*(非 m2)*
+
 ## 20260626_683 — 2026-06-26 (修教練 LIFF 助教 403)
 
 - `/api/coach/today` 等教練 API 補上 `assistant` 角色（與教練同權限做現場作業：今日場次/到場/照片/天氣取消）。款項類 `/api/coach/payment-proofs` 維持只給老闆/admin（教練助教不碰款項）。

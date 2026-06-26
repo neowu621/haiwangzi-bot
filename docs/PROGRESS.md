@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-06-26（續）— 第二版手機 UI /m2（獨立路由·完整下單·訂單/個人複製 LIFF）（v684→v692）
+
+目前線上 = **v20260626_692**。
+
+> 老闆要做一個「第二版 LINE LIFF 手機 UI」當作未來主介面的雛形。**整條 v685→v692 都在 `src/app/m2/page.tsx` 一個檔**（純 inline-style 新「皮」），完全獨立、不碰 `/admin`·`/liff`·`/pclogin`·官網 `/`；後端**全沿用既有 API、不新增**（除了一支 UAT 登入 `/api/m2/session`）。
+
+### m2 是什麼 / 為何獨立（v685）
+- 新增路由 `/m2`：密碼閘 → 會員身分 → 底部 5 分頁（首頁/訊息/潛水/訂單/個人）；isAdmin 才在「個人→管理」顯示教練點名/IT 後台內嵌畫面。`/admin` 系統/IT 加「🆕 New UI (m2)」入口。
+- 用 inline-style + 自有色盤 `C`（navy/accent/teal/coral…），不引入 shadcn，刻意與既有介面解耦，方便獨立演進。
+
+### 首頁=官網內容 / 潛水接真實場次 / 底部釘底（v686/687/688）
+- 首頁沿用官網 `src/app/_home/data`（COURSES/SPOTS/BUILTIN_REVIEWS/FAQ/社群+LINE）呈現手機版官網介紹（資料同源，官網改 m2 同步）。
+- 潛水分頁接 `/api/trips`（一日）、`/api/tours`（旅遊）真實場次。
+- 版面改 `height:100dvh` 固定外框、中間內捲、頂/底列 `flex-none` + safe-area，底部分頁列釘底不隨內容捲走。
+
+### 接真實帳號 + ⚠️ UAT backdoor（v689）
+- 密碼改 `msi`；`/api/m2/session` POST 驗密碼 → 以 `M2_DEFAULT_EMAIL`(neowu62) 查帳號用 `createMemberWebJwt` 發**會員** session，set `hwz_member` cookie（**與 `/pclogin` 同一顆**，path=/，30 天；DELETE=登出）。
+- 訊息/訂單/個人改接 `/api/me`·`/api/me/notifications`·`/api/me/contact`·`/api/bookings/my`。教練/IT 入口移到個人→管理。
+
+### 完整下單系統，移植自 LIFF（v690→v691）
+- 一日潛水 `DailyBook`（對齊 `/liff/dive/trip`）：`/api/trips/[id]` 計價 + `/api/me` 預填。欄位齊全：人數·潛次 stepper、裝備租借（數量+VIP折）、個人資料（證照等級/號碼/潛次）、緊急聯絡人、潛伴、優惠代碼（`/api/promo/validate`）、抵用金、政策同意+手寫簽名（沿用 `SignaturePad`/`PolicyText`）、費用明細 → `POST /api/bookings/daily`（完整 payload：tankCount/rentalGear/participantDetails/signatureDataUrl/creditUsed/promoCode…）。
+- 旅遊潛水 `TourBook`（對齊 `/liff/tour`）：`/api/tours/[id]` + 加購/含不含/報名資料/抵用金/政策簽名/訂金 → `POST /api/bookings/tour`。
+- 課程 `CourseList`（沿用官網 COURSES + LINE 報名）；客製送需求 → 客服。**金額一律後端權威重算，client 計價僅顯示。** 詳情端點是 `/api/trips/[id]`、`/api/tours/[id]`（public，LIFF 用 `${tripId}` 對應 `[id]`）。
+
+### 訂單=複製「我的預約」+ 個人各項可點進子頁（v692）
+- 訂單 `OrdersTab` 對齊 `/liff/my`：通知中心入口、4 分段（即將前往/📝願望單/已結束/已取消）、願望單（`/api/dive-wishes`）。訂單卡：`deriveBookingDisplay` 衍生狀態、人數/氣瓶、裝備 chips、旅潛付款進度條+4步+訂金/尾款、付款方式選擇（`/pay/[id]?t=token`）、付款截止日（`computePaymentDeadline`）、取消（`DELETE /api/bookings/[id]`）、同意聲明 modal、申請退款（送 `/api/me/contact`）、轉帳截圖縮圖。
+- 個人 `MeTab` 各列可點進子頁：個人資訊 / 證照·潛伴（含潛伴 CRUD）/ 通知偏好 → `PATCH /api/me`；預約紀錄→訂單分頁；潛水紀錄；抵用金明細 → `/api/me/credits`（餘額/收支/逐筆）。
+
+### 決策 / 注意
+- 一切建在「沿用既有後端」之上：能複用就不新增 API；`booking-status`/`payment-deadline` 是純函式，`SignaturePad`/`PolicyText` 無 LIFF 相依，直接 import。
+- 只動 `src/app/m2/page.tsx`（其餘檔案皆只讀）。所有版本 `tsc 0`、`build 通過`、`healthz` 已驗（v692 LIVE）。
+- v684（非 m2）：老闆結帳卡片加「已下單·待匯款」計數，移除已搬走的待到場；到場點名改顯示待到場徽章。
+
+### ⚠️ 下次先看 / 上線前必做
+- **移除 UAT backdoor**：`/api/m2/session` 弱密碼 `msi` → 以 neowu62 發會員 session，且**與 `/pclogin` 共用 `hwz_member` cookie**。正式上線前**務必換成正規 LINE 登入並移除此端點**。
+- 潛水課程目前只是 LINE 連結（未做線上報名）；coach/admin 內嵌畫面仍為示意（靜態），待接 `/api/admin/attendance/today` 等真實資料。
+- 細節見記憶 [[m2-second-ui]]；手機不導桌機鐵則見 [[mobile-no-desktop-bounce]]、角色見 [[admin-roles-attendance]]。
+
+---
+
 ## 2026-06-26 — 到場點名 + 角色化後台 + 手機/桌機區隔 + /pclogin 強化（v671→v683）
 
 目前線上 = **v20260626_683**。
