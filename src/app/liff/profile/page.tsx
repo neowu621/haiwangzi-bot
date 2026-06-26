@@ -1,1545 +1,250 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+// v700：個人中心改 m2 風格 — 主清單只載入一次 /api/me;子頁點進去才呈現(個人資訊/證照/通知用已載資料即時開啟,
+//   抵用金明細才另外即時讀 /api/me/credits)→ 減少讀取次數。移除「預約紀錄/潛水紀錄」。
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Edit3,
-  Phone,
-  Award,
-  Plus,
-  Trash2,
-  Check,
-  X,
-  Anchor,
-  Calendar,
-  ChevronUp,
-  Settings,
-  Bell,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight } from "lucide-react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
-import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
-import { getVipTier, VIP_TIERS, type VipTier } from "@/lib/vip-tier";
-import { cn } from "@/lib/utils";
+import { C, Sect } from "@/components/liff/mobileShared";
 
-interface Companion {
-  id: string;
-  name: string;
-  phone: string;
-  cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
-  certNumber: string;
-  logCount: number;
-  relationship: string;
-}
-
-interface BookingHistoryItem {
-  id: string;
-  type: "daily" | "tour";
-  status: string;
-  paymentStatus: string;
-  totalAmount: number;
-  participants: number;
-  createdAt: string;
-  // ref 可能為 null（對應的 trip/tour 被刪掉的孤兒訂單）
-  ref: {
-    date?: string;
-    dateStart?: string;
-    dateEnd?: string;
-    startTime?: string;
-    title?: string;
-    sites?: string[];
-  } | null;
-}
-
-interface Me {
-  lineUserId: string;
-  displayName: string;
-  realName: string | null;
-  phone: string | null;
-  email: string | null;
-  emailVerifiedAt?: string | null; // v258
-  notifyByLine: boolean;
-  notifyByEmail: boolean;
-  cert: "OW" | "AOW" | "Rescue" | "DM" | "Instructor" | null;
-  certNumber: string | null;
-  logCount: number;
-  haiwangziLogCount: number;
-  role: string;
-  // 多重身分
-  roles: Array<"customer" | "coach" | "boss" | "admin" | "assistant" | "it">;
-  vipLevel: number;
-  totalSpend: number;
-  // 生日 — 用於生日抵用金
-  birthday: string | null;
-  // 補償金 / 抵用金 餘額
-  creditBalance: number;
-  notes: string | null;
-  emergencyContact: { name: string; phone: string; relationship: string } | null;
-  companions: Companion[];
-  stats: { totalBookings: number; completed: number };
-}
-
-// v211：UI picker 移除 Rescue（既有資料仍可顯示）
 const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
+type Cert = (typeof CERTS)[number];
+interface Companion { id?: string; name: string; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string }
+interface Me {
+  displayName: string; realName: string | null; phone: string | null; email: string | null; emailVerifiedAt?: string | null;
+  notifyByLine: boolean; notifyByEmail: boolean; cert: Cert | null; certNumber: string | null; logCount: number;
+  haiwangziLogCount: number; roles?: string[]; role?: string; vipLevel: number; birthday: string | null;
+  creditBalance: number; emergencyContact: { name: string; phone: string; relationship: string } | null;
+  companions: Companion[]; stats: { totalBookings: number; completed: number };
+}
+const ntd = (n: number) => `NT$ ${Number(n || 0).toLocaleString()}`;
+const INP: React.CSSProperties = { width: "100%", height: 40, border: `1px solid ${C.line}`, borderRadius: 9, padding: "0 11px", fontSize: 14, boxSizing: "border-box", background: "#fff", color: C.ink };
+const SELP: React.CSSProperties = { ...INP, appearance: "none", WebkitAppearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%237C8A99' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" };
+function Lab({ children }: { children: React.ReactNode }) { return <div style={{ fontSize: 12, color: C.mute, marginBottom: 4 }}>{children}</div>; }
+function BCard({ title, sub, children }: { title?: string; sub?: string; children: React.ReactNode }) {
+  return <div style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 11 }}>{title && <div style={{ fontSize: 14, fontWeight: 600, marginBottom: sub ? 2 : 9 }}>{title}</div>}{sub && <div style={{ fontSize: 11, color: C.mute, marginBottom: 9 }}>{sub}</div>}{children}</div>;
+}
+function LRow({ Icon, label, right, onClick }: { Icon: typeof User; label: string; right?: string; onClick?: () => void }) {
+  return (
+    <button onClick={onClick} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, background: "none", border: "none", borderBottomWidth: "0.5px", textAlign: "left", color: C.ink, cursor: "pointer" }}>
+      <Icon size={19} color={C.mute} /><span style={{ flex: 1, fontSize: 14 }}>{label}</span>
+      {right && <span style={{ fontSize: 13, color: C.mute }}>{right}</span>}<ChevronRight size={16} color={C.mute} />
+    </button>
+  );
+}
+function SubHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, fontWeight: 600, border: "none", background: "none", color: C.ink, padding: "0 0 12px" }}><ArrowLeft size={17} color={C.accFg} />{title}</button>;
+}
+
+type View = null | "info" | "certs" | "notif" | "credits";
 
 export default function ProfilePage() {
   const liff = useLiff();
   const [me, setMe] = useState<Me | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [err, setErr] = useState(false);
+  const [view, setView] = useState<View>(null);
 
-  // 本人資料
-  const [realName, setRealName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  // v258：Email 驗證狀態
+  // 表單狀態(由 me 帶入,子頁共用、儲存一次 PATCH)
+  const [realName, setRealName] = useState(""); const [phone, setPhone] = useState(""); const [email, setEmail] = useState("");
   const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | null>(null);
-  const [savedEmail, setSavedEmail] = useState<string>(""); // 上次成功儲存的 email（用來判斷是否有未儲存的編輯）
-  const [verifyBusy, setVerifyBusy] = useState(false);
-  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
-  const [notifyByLine, setNotifyByLine] = useState(true);
-  const [notifyByEmail, setNotifyByEmail] = useState(true);
-  // v211：state 允許 Rescue（legacy 資料）但 UI 不提供選項
-  const [cert, setCert] = useState<"OW" | "AOW" | "Rescue" | "DM" | "Instructor" | "">("");
-  const [certNumber, setCertNumber] = useState("");
-  const [logCount, setLogCount] = useState("");
-  const [birthday, setBirthday] = useState(""); // YYYY-MM-DD
-  const [birthdayLocked, setBirthdayLocked] = useState(false); // v388：填過就鎖定，僅 admin 可改
-  const [emergencyName, setEmergencyName] = useState("");
-  const [emergencyPhone, setEmergencyPhone] = useState("");
-  const [emergencyRel, setEmergencyRel] = useState("");
-  const [notes, setNotes] = useState("");
-
-  // 潛伴 (companions)
+  const [notifyByLine, setNotifyByLine] = useState(true); const [notifyByEmail, setNotifyByEmail] = useState(true);
+  const [cert, setCert] = useState<Cert | "">(""); const [certNumber, setCertNumber] = useState(""); const [logCount, setLogCount] = useState("");
+  const [birthday, setBirthday] = useState(""); const [birthdayLocked, setBirthdayLocked] = useState(false);
+  const [eName, setEName] = useState(""); const [ePhone, setEPhone] = useState(""); const [eRel, setERel] = useState("");
   const [companions, setCompanions] = useState<Companion[]>([]);
+  const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(0);
+  const [verifyMsg, setVerifyMsg] = useState("");
 
-  // 折疊狀態
-  const [personalOpen, setPersonalOpen] = useState(false);
-  const [emergencyOpen, setEmergencyOpen] = useState(false);
-  const [notifyOpen, setNotifyOpen] = useState(false);
-  const [companionsOpen, setCompanionsOpen] = useState(false);
-  const [autoExpanded, setAutoExpanded] = useState(false);
-
-  // 統計卡的點擊 dialog
-  const [statsDialog, setStatsDialog] = useState<
-    null | "bookings" | "completed"
-  >(null);
-  const [bookingHistory, setBookingHistory] = useState<BookingHistoryItem[]>([]);
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-
-  async function openBookingDialog(filter: "bookings" | "completed") {
-    setStatsDialog(filter);
-    setBookingError(null);
-    if (bookingHistory.length === 0) {
-      setBookingLoading(true);
-      try {
-        const res = await liff.fetchWithAuth<{ bookings: BookingHistoryItem[] }>(
-          "/api/bookings/my",
-        );
-        setBookingHistory(res.bookings || []);
-      } catch (e) {
-        setBookingError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setBookingLoading(false);
-      }
-    }
+  function fill(u: Me) {
+    setMe(u);
+    setRealName(u.realName ?? ""); setPhone(formatPhoneTW(u.phone ?? "")); setEmail(u.email ?? "");
+    setEmailVerifiedAt(u.emailVerifiedAt ? String(u.emailVerifiedAt) : null);
+    setNotifyByLine(u.notifyByLine ?? true); setNotifyByEmail(u.notifyByEmail ?? true);
+    setCert(u.cert ?? ""); setCertNumber(u.certNumber ?? ""); setLogCount(String(u.logCount ?? 0));
+    setBirthday(u.birthday ? String(u.birthday).slice(0, 10) : ""); setBirthdayLocked(!!u.birthday);
+    setEName(u.emergencyContact?.name ?? ""); setEPhone(formatPhoneTW(u.emergencyContact?.phone ?? "")); setERel(u.emergencyContact?.relationship ?? "");
+    setCompanions(u.companions ?? []);
   }
-
-  // 必填驗證 (email 用 simple regex 過濾)
-  const emailValid =
-    email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const personalComplete =
-    realName.trim().length >= 2 &&
-    phone.trim().length >= 8 &&
-    email.trim().length >= 5 &&
-    emailValid &&
-    cert !== "";
-  const emergencyComplete =
-    emergencyName.trim().length >= 2 &&
-    emergencyPhone.trim().length >= 8 &&
-    emergencyRel.trim().length >= 1;
-
-  // v258：發送 Email 驗證信
-  async function sendVerifyEmail() {
-    setVerifyBusy(true);
-    setVerifyMsg(null);
-    try {
-      const r = await liff.fetchWithAuth<{
-        ok?: boolean;
-        sent?: boolean;
-        skipped?: boolean;
-        alreadyVerified?: boolean;
-        error?: string;
-        message?: string;
-        retryAfter?: number;
-      }>("/api/me/send-verify-email", { method: "POST" });
-      if (r.alreadyVerified) {
-        setVerifyMsg("✓ 此 Email 已經驗證過了");
-        // 重抓 me 同步狀態
-        await reloadMe();
-      } else if (r.skipped) {
-        setVerifyMsg("⚠️ 寄信尚未設定（聯絡 admin）");
-      } else if (r.ok && r.sent) {
-        setVerifyMsg(`📧 驗證信已發送至 ${email}，請收信後點連結驗證`);
-      } else {
-        setVerifyMsg(r.message ?? r.error ?? "發送失敗，請稍後再試");
-      }
-    } catch (e) {
-      // fetchWithAuth 對 429 也會 throw（看 message 有 "429" 字樣）
-      const m = e instanceof Error ? e.message : String(e);
-      if (m.includes("429")) {
-        setVerifyMsg("⏱ 請等 60 秒後再重發");
-      } else {
-        setVerifyMsg("發送失敗：" + m);
-      }
-    } finally {
-      setVerifyBusy(false);
-    }
-  }
-
-  function reloadMe() {
-    setLoadError(null);
-    return liff
-      .fetchWithAuth<Me>("/api/me")
-      .then((u) => {
-        setMe(u);
-        setRealName(u.realName ?? "");
-        setPhone(formatPhoneTW(u.phone ?? ""));
-        setEmail(u.email ?? "");
-        setSavedEmail(u.email ?? "");
-        // v258：API 回傳的 emailVerifiedAt 是 Date | string | null（JSON 序列化會變字串）
-        setEmailVerifiedAt(
-          u.emailVerifiedAt ? String(u.emailVerifiedAt) : null,
-        );
-        setNotifyByLine(u.notifyByLine ?? true);
-        setNotifyByEmail(u.notifyByEmail ?? true);
-        setCert(u.cert ?? "");
-        setCertNumber(u.certNumber ?? "");
-        setLogCount(String(u.logCount ?? 0));
-        // birthday 從 ISO 切 YYYY-MM-DD（HTML date input 格式）
-        setBirthday(u.birthday ? String(u.birthday).slice(0, 10) : "");
-        setBirthdayLocked(!!u.birthday); // v388：已填過 → 鎖定不可自行修改
-        setEmergencyName(u.emergencyContact?.name ?? "");
-        setEmergencyPhone(formatPhoneTW(u.emergencyContact?.phone ?? ""));
-        setEmergencyRel(u.emergencyContact?.relationship ?? "");
-        setNotes(u.notes ?? "");
-        setCompanions(u.companions ?? []);
-      })
-      .catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        setLoadError(msg);
-        // 401 (idToken 過期) → 觸發 LIFF re-login，瀏覽器會跳轉
-        if (msg.includes("401") || msg.toLowerCase().includes("idtoken")) {
-          // 等 1 秒讓 user 看到錯誤訊息再 logout/login
-          setTimeout(() => liff.login(), 1000);
-        }
-      });
-  }
-
   useEffect(() => {
-    // 等 LIFF init 完成才呼叫 API，避免 race 觸發 fetchWithAuth 3 秒乾等
     if (!liff.ready) return;
-    reloadMe();
+    liff.fetchWithAuth<Me>("/api/me").then(fill).catch(() => setErr(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liff.ready]);
 
-  // 載完後自動展開未填齊全的卡
-  useEffect(() => {
-    if (!me || autoExpanded) return;
-    if (!personalComplete) setPersonalOpen(true);
-    if (!emergencyComplete) setEmergencyOpen(true);
-    setAutoExpanded(true);
-  }, [me, personalComplete, emergencyComplete, autoExpanded]);
-
-  // 自動儲存個人資料（debounce 600ms）
-  useEffect(() => {
-    if (!me) return;
-    const t = setTimeout(() => {
-      saveSelf();
-    }, 600);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    realName,
-    phone,
-    email,
-    notifyByLine,
-    notifyByEmail,
-    cert,
-    certNumber,
-    logCount,
-    birthday,
-    notes,
-    emergencyName,
-    emergencyPhone,
-    emergencyRel,
-  ]);
-
-  async function saveSelf() {
-    if (!me) return;
-    // email 格式不對就不送（避免 server 500）
-    if (email.trim().length > 0 && !emailValid) {
-      setSaving(false);
-      return;
-    }
+  async function save(extra?: { companions?: Companion[] }) {
     setSaving(true);
     try {
       await liff.fetchWithAuth("/api/me", {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          realName: realName || null,
-          phone: phone || null,
-          email: email.trim() || null,
-          notifyByLine,
-          notifyByEmail,
-          cert: cert || null,
-          certNumber: certNumber || null,
-          logCount: Number(logCount) || 0,
-          birthday: birthday || null,
-          notes: notes || null,
-          emergencyContact:
-            emergencyName && emergencyPhone
-              ? {
-                  name: emergencyName,
-                  phone: emergencyPhone,
-                  relationship: emergencyRel || "其他",
-                }
-              : null,
+          realName: realName || null, phone: phone || null, email: email.trim() || null,
+          notifyByLine, notifyByEmail, cert: cert || null, certNumber: certNumber || null,
+          logCount: Number(logCount) || 0, birthday: birthday || null,
+          emergencyContact: eName && ePhone ? { name: eName, phone: ePhone, relationship: eRel || "其他" } : null,
+          ...(extra?.companions ? { companions: extra.companions.filter((c) => c.name.trim().length >= 1) } : {}),
         }),
       });
-      setSavedAt(Date.now());
-    } finally {
-      setSaving(false);
-    }
+      setSaved(Date.now());
+    } catch { window.alert("儲存失敗，請稍後再試"); } finally { setSaving(false); }
   }
-
-  async function persistCompanions(next: Companion[]) {
-    // 取消任何 pending debounce 寫入，避免覆寫掉這次的明確操作
-    if (saveCompTimer) {
-      clearTimeout(saveCompTimer);
-      saveCompTimer = undefined;
-    }
-    // 樂觀更新：UI 立即響應
-    setCompanions(next);
-    // 只把名字非空的潛伴送到後端（後端 zod 要求 name.min(1)）
-    // 新增但還沒填名字的潛伴會留在 local state，等使用者填完名字才存 DB
-    const toSave = next.filter((c) => c.name.trim().length >= 1);
+  async function sendVerify() {
+    setVerifyMsg("");
     try {
-      await liff.fetchWithAuth("/api/me", {
-        method: "PATCH",
-        body: JSON.stringify({ companions: toSave }),
-      });
-      setSavedAt(Date.now());
-    } catch (err) {
-      // 失敗時回滾並顯示錯誤
-      console.error("[persistCompanions]", err);
-      alert(
-        "儲存失敗：" + (err instanceof Error ? err.message : String(err)),
-      );
-      // 重新從伺服器拉回，避免狀態不一致
-      reloadMe();
-    }
+      const r = await liff.fetchWithAuth<{ ok?: boolean; sent?: boolean; alreadyVerified?: boolean; message?: string; error?: string }>("/api/me/send-verify-email", { method: "POST" });
+      if (r.alreadyVerified) setVerifyMsg("✓ 此 Email 已驗證");
+      else if (r.ok && r.sent) setVerifyMsg(`📧 驗證信已寄至 ${email}，請收信點連結`);
+      else setVerifyMsg(r.message ?? r.error ?? "發送失敗，請稍後再試");
+    } catch (e) { setVerifyMsg((e instanceof Error && e.message.includes("429")) ? "⏱ 請等 60 秒後再重發" : "發送失敗，請稍後再試"); }
   }
 
-  function addCompanion() {
-    const c: Companion = {
-      id: crypto.randomUUID(),
-      name: "",
-      phone: "",
-      cert: null,
-      certNumber: "",
-      logCount: 0,
-      relationship: "",
-    };
-    // 不立即 PATCH（避免送一個空白同伴到後端）；等使用者開始填寫才會 debounce 儲存
-    setCompanions([...companions, c]);
-    setCompanionsOpen(true);
+  const isStaff = !!me && (me.roles ?? [me.role ?? ""]).some((r) => ["admin", "boss", "it", "coach", "assistant"].includes(r));
+  const saveBtn = (extra?: { companions?: Companion[] }) => <button onClick={() => save(extra)} disabled={saving} style={{ width: "100%", height: 46, background: C.accFg, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 600, marginTop: 14, opacity: saving ? 0.6 : 1 }}>{saving ? "儲存中…" : saved ? "✓ 已儲存" : "儲存"}</button>;
+
+  function frame(inner: React.ReactNode) {
+    return <LiffShell title="個人中心" backHref="/liff/home" bottomNav={<BottomNav />}><div style={{ padding: "13px 14px", color: C.ink, fontFamily: "'Noto Sans TC',system-ui,sans-serif" }}>{inner}</div></LiffShell>;
   }
+  if (err) return frame(<div style={{ color: C.mute, fontSize: 13, padding: "30px 0", textAlign: "center" }}>載入失敗，請重新整理</div>);
+  if (!me) return <LiffShell title="個人中心" backHref="/liff/home" bottomNav={<BottomNav />}><LiffLoading variant="ring" label="載入個人中心..." /></LiffShell>;
 
-  function updateCompanion(id: string, patch: Partial<Companion>) {
-    setCompanions((prev) => {
-      const next = prev.map((c) => (c.id === id ? { ...c, ...patch } : c));
-      // 防抖儲存（用最新 next，避免閉包陳舊）
-      if (saveCompTimer) clearTimeout(saveCompTimer);
-      saveCompTimer = setTimeout(() => {
-        persistCompanions(next);
-      }, 600);
-      return next;
-    });
-  }
-
-  async function removeCompanion(id: string) {
-    if (!confirm("確定刪除這位潛伴？")) return;
-    // 用 functional update 拿最新陣列再過濾，避免陳舊閉包
-    let next: Companion[] = [];
-    setCompanions((prev) => {
-      next = prev.filter((c) => c.id !== id);
-      return next;
-    });
-    // 等 React commit 後再 PATCH
-    await new Promise((r) => setTimeout(r, 0));
-    await persistCompanions(next);
-  }
-
-  const completedCompanions = useMemo(
-    () =>
-      companions.filter(
-        (c) => c.name.trim().length >= 2 && c.cert !== null,
-      ),
-    [companions],
-  );
-
-  if (!me) {
-    return (
-      <LiffShell title="個人資料" backHref="/liff/welcome" bottomNav={<BottomNav />}>
-        <div className="px-4 py-12 text-center text-sm">
-          {loadError ? (
-            <div className="space-y-3">
-              <div className="text-[var(--color-coral)] font-semibold">
-                載入失敗
-              </div>
-              <div className="rounded-md bg-[var(--color-coral)]/10 p-3 text-left text-xs font-mono break-all">
-                {loadError}
-              </div>
-              <Button
-                onClick={() => reloadMe()}
-                variant="outline"
-                size="sm"
-              >
-                重試
-              </Button>
-              <Button
-                onClick={() => liff.login()}
-                variant="outline"
-                size="sm"
-                className="ml-2"
-              >
-                重新登入 LINE
-              </Button>
-            </div>
-          ) : (
-            <span className="text-[var(--muted-foreground)]">載入中...</span>
-          )}
-        </div>
-      </LiffShell>
-    );
-  }
-
-  return (
-    <LiffShell
-      title="個人資料"
-      backHref="/liff/welcome"
-      bottomNav={<BottomNav />}
-      rightSlot={
-        saving ? (
-          <span className="text-[11px] text-[var(--muted-foreground)]">儲存中...</span>
-        ) : savedAt ? (
-          <span className="text-[11px] font-semibold text-[var(--color-phosphor)]">
-            ✓ 已儲存
-          </span>
-        ) : null
-      }
-    >
-      <div className="space-y-3 px-4 pt-3">
-        {/* 顯示卡（不可摺疊）*/}
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <Avatar className="h-14 w-14">
-              <AvatarImage src={liff.profile?.pictureUrl} />
-              <AvatarFallback>
-                {(me.realName || me.displayName).slice(0, 1)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-base font-bold">
-                  {me.realName || me.displayName}
-                </span>
-                <VipMiniBadge vipLevel={me.vipLevel ?? 1} />
-              </div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--muted-foreground)] tabular flex-wrap">
-                <span>ID: {me.lineUserId.slice(0, 10)}...</span>
-                {(me.roles ?? [me.role])
-                  .filter((r) => r !== "customer")
-                  .map((r) => (
-                    <Badge key={r} variant={r === "admin" ? "coral" : "ocean"}>
-                      {r}
-                    </Badge>
-                  ))}
-              </div>
-            </div>
-          </CardContent>
-          <Separator />
-          <CardContent className="grid grid-cols-3 gap-2 p-3 text-center">
-            <div className="rounded-lg px-1 py-1">
-              <div className="text-xl font-bold tabular text-[var(--color-phosphor)]">
-                {me.haiwangziLogCount ?? 0}
-              </div>
-              <div className="text-[10px] text-[var(--muted-foreground)]">
-                海王子累積氣瓶數
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => openBookingDialog("bookings")}
-              className={cn(
-                "rounded-lg px-1 py-1 transition-colors active:scale-[0.97]",
-                me.stats.totalBookings > 0 &&
-                  "hover:bg-[var(--muted)] cursor-pointer",
-              )}
-              disabled={me.stats.totalBookings === 0}
-            >
-              <div className="text-xl font-bold tabular">
-                {me.stats.totalBookings}
-              </div>
-              <div className="text-[10px] text-[var(--muted-foreground)]">
-                預約紀錄{me.stats.totalBookings > 0 && " ▸"}
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => openBookingDialog("completed")}
-              className={cn(
-                "rounded-lg px-1 py-1 transition-colors active:scale-[0.97]",
-                me.stats.completed > 0 &&
-                  "hover:bg-[var(--muted)] cursor-pointer",
-              )}
-              disabled={me.stats.completed === 0}
-            >
-              <div className="text-xl font-bold tabular text-[var(--color-coral)]">
-                {me.stats.completed}
-              </div>
-              <div className="text-[10px] text-[var(--muted-foreground)]">
-                已結束{me.stats.completed > 0 && " ▸"}
-              </div>
-            </button>
-          </CardContent>
-        </Card>
-
-        {/* 站內訊息通知卡（類似抵用金概念）— 點進去看 /liff/notifications */}
-        <NotificationCard liff={liff} />
-
-        {/* 補償金 / 抵用金 卡 */}
-        <CreditCard balance={me.creditBalance ?? 0} liff={liff} />
-
-        {/* 後台入口：管理者(admin) / 老闆(boss) / IT(it) — v624 加入 it */}
-        {((me.roles ?? [me.role]).includes("admin") ||
-          (me.roles ?? [me.role]).includes("boss") ||
-          (me.roles ?? [me.role]).includes("it")) && (
-          <Link
-            href={
-              typeof window !== "undefined" && window.innerWidth < 768
-                ? "/admin/m"
-                : "/admin"
-            }
-          >
-            <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">
-                  <Settings className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-bold">
-                    {(me.roles ?? [me.role]).includes("it")
-                      ? "IT 主控台"
-                      : (me.roles ?? [me.role]).includes("admin")
-                        ? "管理者主控台"
-                        : "老闆主控台"}
-                  </div>
-                  <div className="text-[11px] text-[var(--muted-foreground)]">
-                    {((me.roles ?? [me.role]).includes("admin") || (me.roles ?? [me.role]).includes("it"))
-                      ? "開團 / 訂單 / 會員 / 訊息模板 / 系統設定"
-                      : "開團 / 訂單 / 會員 / 收款核對"}
-                  </div>
-                </div>
-                <span className="text-[var(--color-ocean-deep)]">▸</span>
-              </CardContent>
-            </Card>
-          </Link>
-        )}
-        {((me.roles ?? [me.role]).includes("coach") || (me.roles ?? [me.role]).includes("assistant")) && (
-          <Link href="/liff/coach/today">
-            <Card className="border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 transition-colors hover:bg-[var(--color-phosphor)]/10">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]">
-                  <Settings className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-bold">
-                    {(me.roles ?? [me.role]).includes("coach") ? "教練後台" : "助教後台"}
-                  </div>
-                  <div className="text-[11px] text-[var(--muted-foreground)]">
-                    今日場次 / 點名 / 本期排班
-                  </div>
-                </div>
-                <span className="text-[var(--color-ocean-deep)]">▸</span>
-              </CardContent>
-            </Card>
-          </Link>
-        )}
-
-        {/* 個人資料（含證照、聯絡）— Collapsible，必填 */}
-        <CollapsibleCard
-          title="個人資料"
-          required
-          complete={personalComplete}
-          open={personalOpen}
-          onToggle={() => setPersonalOpen(!personalOpen)}
-          summary={
-            personalComplete
-              ? `${realName}・${phone}・${email}・${cert}${logCount ? `・${logCount}支` : ""}`
-              : email.trim().length === 0
-                ? "🔔 首次登入請填 email（收通知信用）"
-                : "尚未填寫（預約時會強制填寫）"
-          }
-        >
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>姓名 *</Label>
-                <Input
-                  value={realName}
-                  onChange={(e) => setRealName(e.target.value)}
-                  placeholder="本名"
-                />
-              </div>
-              <div>
-                <Label>手機 *</Label>
-                <Input
-                  type="tel"
-                  inputMode="numeric"
-                  value={phone}
-                  onChange={(e) => setPhone(formatPhoneTW(e.target.value))}
-                  maxLength={11}
-                  placeholder="0912-345678"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>
-                Email *
-                <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                  （收預約確認 / 行前通知 / 發票，比 SMS 便宜）
-                </span>
-              </Label>
-              <Input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className={cn(
-                  email.trim().length > 0 &&
-                    !emailValid &&
-                    "border-[var(--color-coral)]",
-                )}
-              />
-              {email.trim().length > 0 && !emailValid && (
-                <div className="mt-0.5 text-[10px] text-[var(--color-coral)]">
-                  email 格式不對
-                </div>
-              )}
-
-              {/* v258：Email 驗證狀態 + 發送驗證信按鈕 */}
-              {email.trim().length > 0 && emailValid && (
-                <div className="mt-1.5 space-y-1">
-                  {emailVerifiedAt && email.trim() === savedEmail ? (
-                    <div className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                      ✓ Email 已驗證
-                    </div>
-                  ) : email.trim() !== savedEmail ? (
-                    <div className="text-[10px] text-[var(--muted-foreground)]">
-                      ✏️ Email 已修改，儲存後可發送驗證信
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700">
-                        ⚠️ 尚未驗證
-                      </div>
-                      <button
-                        type="button"
-                        onClick={sendVerifyEmail}
-                        disabled={verifyBusy}
-                        className="rounded-full border border-[var(--color-phosphor)] px-2.5 py-0.5 text-[10px] font-medium text-[var(--color-phosphor)] hover:bg-[var(--color-phosphor)]/10 disabled:opacity-50"
-                      >
-                        {verifyBusy ? "發送中..." : "📧 發送驗證信"}
-                      </button>
-                    </div>
-                  )}
-                  {!emailVerifiedAt && email.trim() === savedEmail && (
-                    <div className="text-[10px] leading-relaxed text-[var(--muted-foreground)]">
-                      🎁 完整資料 + Email 驗證，完成首次潛水（到場）後自動發 100 元首潛獎勵
-                    </div>
-                  )}
-                  {verifyMsg && (
-                    <div className="text-[10px] text-[var(--muted-foreground)]">
-                      {verifyMsg}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div>
-              <Label>
-                <Award className="mr-1 inline h-3.5 w-3.5" />
-                證照等級 *
-              </Label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {CERTS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCert(c)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs font-medium",
-                      cert === c
-                        ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
-                        : "border-[var(--border)]",
-                    )}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>證照編號</Label>
-                <Input
-                  value={certNumber}
-                  onChange={(e) => setCertNumber(e.target.value)}
-                  placeholder="例: TW-AOW-12345"
-                />
-              </div>
-              <div>
-                <Label>累計潛水支數</Label>
-                <Input
-                  inputMode="numeric"
-                  value={logCount}
-                  onChange={(e) =>
-                    setLogCount(e.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder="例: 25"
-                  className="text-center"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>
-                生日
-                <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                  {birthdayLocked
-                    ? "（已設定，如需更正請聯絡客服）"
-                    : "（生日當月發放抵用金 🎂・填寫後不可自行修改）"}
-                </span>
-              </Label>
-              <Input
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                readOnly={birthdayLocked}
-                disabled={birthdayLocked}
-                className={birthdayLocked ? "opacity-60 cursor-not-allowed" : undefined}
-              />
-            </div>
-            <div>
-              <Label>
-                <Phone className="mr-1 inline h-3.5 w-3.5" />
-                備註 (教練可見)
-              </Label>
-              <textarea
-                className="mt-1 w-full rounded-[var(--radius-card)] border border-[var(--input)] bg-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                rows={2}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="耳壓平衡 / 過敏 / 慢性病 / 用藥..."
-              />
-            </div>
-          </div>
-        </CollapsibleCard>
-
-        {/* 通知偏好 — Collapsible */}
-        <CollapsibleCard
-          title="通知偏好"
-          complete={notifyByLine || (notifyByEmail && !!email)}
-          open={notifyOpen}
-          onToggle={() => setNotifyOpen(!notifyOpen)}
-          summary={
-            [
-              notifyByLine ? "LINE 推播" : null,
-              notifyByEmail && email ? "Email" : null,
-            ]
-              .filter(Boolean)
-              .join(" + ") || "未開啟任何通知管道"
-          }
-        >
-          <div className="mb-2 text-[11px] text-[var(--muted-foreground)]">
-            選擇你想接收通知的管道（兩個都可以開）
-          </div>
-          <div className="space-y-2">
-            <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
-              <div>
-                <div className="text-sm font-semibold">LINE 推播</div>
-                <div className="text-[11px] text-[var(--muted-foreground)]">
-                  透過 LINE 官方帳號收 Flex 卡片
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={notifyByLine}
-                onChange={(e) => setNotifyByLine(e.target.checked)}
-                className="h-5 w-5"
-              />
-            </label>
-
-            <label className="flex items-center justify-between gap-2 rounded-md border border-[var(--border)] p-2.5">
-              <div>
-                <div className="text-sm font-semibold">
-                  Email{" "}
-                  {!email && (
-                    <span className="ml-1 rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
-                      請先填 email
-                    </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-[var(--muted-foreground)]">
-                  {email
-                    ? `收到 ${email}`
-                    : "需先填 email 才會生效"}
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={notifyByEmail}
-                disabled={!email}
-                onChange={(e) => setNotifyByEmail(e.target.checked)}
-                className="h-5 w-5"
-              />
-            </label>
-          </div>
-        </CollapsibleCard>
-
-        {/* 緊急聯絡人 — Collapsible，必填 */}
-        <CollapsibleCard
-          title="緊急聯絡人"
-          required
-          complete={emergencyComplete}
-          open={emergencyOpen}
-          onToggle={() => setEmergencyOpen(!emergencyOpen)}
-          summary={
-            emergencyComplete
-              ? `${emergencyName}・${emergencyRel}・${emergencyPhone}`
-              : "尚未填寫（預約時會強制填寫）"
-          }
-        >
-          <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
-            <Input
-              value={emergencyName}
-              onChange={(e) => setEmergencyName(e.target.value)}
-              placeholder="姓名 *"
-            />
-            <Input
-              value={emergencyRel}
-              onChange={(e) => setEmergencyRel(e.target.value)}
-              placeholder="關係 *"
-            />
-            <Input
-              type="tel"
-              inputMode="numeric"
-              value={emergencyPhone}
-              onChange={(e) =>
-                setEmergencyPhone(formatPhoneTW(e.target.value))
-              }
-              maxLength={11}
-              placeholder="0912-345678"
-            />
-          </div>
-        </CollapsibleCard>
-
-        {/* 常用潛伴 — Collapsible */}
-        <CollapsibleCard
-          title="常用潛伴"
-          complete={completedCompanions.length > 0}
-          open={companionsOpen}
-          onToggle={() => setCompanionsOpen(!companionsOpen)}
-          rightHint={
-            companions.length > 0 ? (
-              <span>· {companions.length} 位</span>
-            ) : null
-          }
-          summary={
-            companions.length === 0
-              ? "尚未新增潛伴（預約時可一鍵帶入）"
-              : companions
-                  .filter((c) => c.name.trim())
-                  .map((c) => c.name)
-                  .join("、") || "尚未填寫"
-          }
-        >
-          <div className="space-y-2">
-            <p className="text-[11px] text-[var(--muted-foreground)]">
-              預先把常一起下水的潛伴資料填好，下次多人預約直接挑選。
-              預約時新填的潛伴也會自動加進這裡。
-            </p>
-            {companions.length === 0 && (
-              <div className="rounded-lg border-2 border-dashed border-[var(--border)] p-4 text-center text-xs text-[var(--muted-foreground)]">
-                還沒有潛伴，點下方「新增潛伴」開始
-              </div>
-            )}
-            {companions.map((c, idx) => (
-              <InlineCompanionEditor
-                key={c.id}
-                idx={idx + 1}
-                companion={c}
-                onChange={(patch) => updateCompanion(c.id, patch)}
-                onRemove={() => removeCompanion(c.id)}
-              />
-            ))}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={addCompanion}
-            >
-              <Plus className="h-4 w-4" />
-              新增潛伴 #{companions.length + 1}
-            </Button>
-          </div>
-        </CollapsibleCard>
-
-        {/* FAQ / 關於 入口 */}
-        <a
-          href="/liff/faq"
-          className="flex items-center justify-between rounded-xl border bg-white p-4 transition-colors hover:bg-[var(--muted)]/40"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-phosphor)]/15">
-              <span className="text-base">❓</span>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-[var(--foreground)]">常見問題與關於</div>
-              <div className="text-[10px] text-[var(--muted-foreground)]">
-                預約規則 / 退款 / VIP 福利 / 聯絡我們
-              </div>
-            </div>
-          </div>
-          <span className="text-[var(--muted-foreground)]">→</span>
-        </a>
-
-        {/*
-          v248：移除 /liff/reset 入口。
-          連續踩 3 個 bug（v244 logout / v246 clear / v247 白名單）後決定整個拿掉。
-          使用者遇到畫面異常的最佳作法是「完全關閉 LINE App 後重開」——平台原生機制最可靠，
-          不需要 app 內按鈕代勞。v243 已修根因（idToken 改 useRef），正常流量不會閃。
-        */}
-      </div>
-
-      {/* 預約紀錄 / 已完成 點擊跳出 Dialog */}
-      <Dialog
-        open={statsDialog !== null}
-        onOpenChange={(o) => !o && setStatsDialog(null)}
-      >
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {statsDialog === "completed" ? "已結束 / 已取消" : "即將進行的預約"}
-            </DialogTitle>
-          </DialogHeader>
-          {bookingLoading ? (
-            <LiffLoading variant="ring" label="正在載入紀錄..." />
-          ) : bookingError ? (
-            <div className="py-8 px-3 text-sm text-[var(--color-coral)]">
-              <div className="font-semibold mb-2">載入失敗</div>
-              <div className="rounded-md bg-[var(--color-coral)]/10 p-2 text-xs font-mono break-all">
-                {bookingError}
-              </div>
-            </div>
-          ) : (
-            <BookingHistoryList
-              bookings={bookingHistory}
-              filter={statsDialog}
-              onClose={() => setStatsDialog(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </LiffShell>
-  );
-}
-
-// ── 海王子潛水會員等級卡 ────────────────────────────
-// v424：會員等級縮成「名字右邊的小徽章」— 只顯示 emoji + LV + 名稱（其餘明細移除）
-function VipMiniBadge({ vipLevel }: { vipLevel: number }) {
-  const [tiers, setTiers] = useState<VipTier[]>(VIP_TIERS);
-  useEffect(() => {
-    fetch("/api/vip-tiers")
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d.tiers) && d.tiers.length > 0) setTiers(d.tiers);
-      })
-      .catch(() => {});
-  }, []);
-  const tier = getVipTier(vipLevel, tiers);
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold leading-none"
-      style={{
-        backgroundColor: `${tier.color}20`,
-        color: tier.color,
-        border: `1px solid ${tier.color}55`,
-      }}
-    >
-      <span className="text-sm leading-none">{tier.emoji}</span>
-      LV{tier.level} {tier.name}
-    </span>
-  );
-}
-
-// v424：站內訊息通知卡（仿抵用金卡樣式）— 顯示未讀數，點進去看 /liff/notifications
-function NotificationCard({ liff }: { liff: ReturnType<typeof useLiff> }) {
-  const [unread, setUnread] = useState<number>(0);
-  useEffect(() => {
-    let alive = true;
-    liff
-      .fetchWithAuth<{ count: number }>("/api/me/notifications/unread-count")
-      .then((d) => {
-        if (alive) setUnread(d.count ?? 0);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [liff]);
-  const has = unread > 0;
-  return (
-    <Link href="/liff/notifications" className="block">
-      <Card
-        className={cn(
-          "cursor-pointer border-2 transition-colors",
-          has
-            ? "border-[var(--color-coral)]/50 bg-[var(--color-coral)]/5 hover:bg-[var(--color-coral)]/10"
-            : "border-[var(--border)] hover:bg-[var(--muted)]",
-        )}
-      >
-        <CardContent className="flex items-center gap-3 p-4">
-          <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-ocean-deep)]/10">
-            <Bell className="h-6 w-6 text-[var(--color-ocean-deep)]" />
-            {has && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--color-coral)] px-1 text-[10px] font-bold text-white">
-                {unread > 99 ? "99+" : unread}
-              </span>
-            )}
-          </div>
-          <div className="flex-1">
-            <div className="text-[11px] text-[var(--muted-foreground)]">
-              站內訊息通知
-            </div>
-            <div
-              className={cn(
-                "text-base font-bold",
-                has ? "text-[var(--color-coral)]" : "",
-              )}
-            >
-              {has ? `${unread} 則未讀訊息` : "目前沒有未讀訊息"}
-            </div>
-            <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
-              預約進度、付款、退款等通知都會在這裡
-            </div>
-          </div>
-          <span className="text-[var(--color-coral)]">▸</span>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function statusLabel(status: string): { text: string; tone: "ok" | "warn" | "muted" } {
-  switch (status) {
-    case "pending":
-      return { text: "待確認", tone: "warn" };
-    case "confirmed":
-      return { text: "已確認", tone: "ok" };
-    case "completed":
-      return { text: "活動結束", tone: "ok" };
-    case "cancelled_by_user":
-      return { text: "活動取消（客戶取消）", tone: "muted" };
-    case "cancelled_by_weather":
-      return { text: "活動取消（天氣）", tone: "muted" };
-    case "cancelled_unpaid":
-      return { text: "活動取消（訂單不成立）", tone: "muted" };
-    case "no_show":
-      return { text: "活動取消（未到場）", tone: "warn" };
-    default:
-      return { text: status, tone: "muted" };
-  }
-}
-
-// v653：訂單是否「已結束」=已取消 / 已完成 / 活動日已過。否則為「未來要進行的」。
-const DONE_CANCELLED = new Set(["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"]);
-function isBookingDone(b: BookingHistoryItem, todayStr: string): boolean {
-  if (DONE_CANCELLED.has(b.status)) return true;
-  if (b.status === "completed" || b.status === "no_show") return true;
-  const eventDate = b.type === "daily" ? b.ref?.date : (b.ref?.dateEnd ?? b.ref?.dateStart);
-  if (eventDate && eventDate < todayStr) return true; // 活動日已過
-  return false;
-}
-
-function BookingHistoryList({
-  bookings,
-  filter,
-  onClose,
-}: {
-  bookings: BookingHistoryItem[];
-  filter: "bookings" | "completed" | null;
-  onClose: () => void;
-}) {
-  // v653：預約紀錄=未來要進行的；已完成=過去 + 已取消 + 已完成
-  const todayStr = useMemo(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }), []);
-  const filtered = useMemo(() => {
-    if (filter === "completed") return bookings.filter((b) => isBookingDone(b, todayStr));
-    return bookings.filter((b) => !isBookingDone(b, todayStr)); // 只留未來要進行的
-  }, [bookings, filter, todayStr]);
-
-  if (filtered.length === 0) {
-    return (
-      <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-        {filter === "completed"
-          ? "尚無已結束 / 已取消的紀錄"
-          : "目前沒有即將進行的預約"}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {filtered.map((b) => {
-        // 防呆：ref 可能為 null（trip/tour 被刪了 → 變成孤兒訂單）
-        const ref = b.ref ?? {};
-        const date = ref.date || ref.dateStart || "—";
-        const title =
-          b.type === "tour"
-            ? ref.title || "潛水團"
-            : (ref.sites?.[0] ?? "東北角");
-        const sub =
-          b.type === "tour"
-            ? `${ref.dateStart?.slice(5) ?? "—"} → ${ref.dateEnd?.slice(5) ?? "—"}`
-            : `${ref.startTime ?? ""} · ${b.participants} 人`;
-        const status = statusLabel(b.status);
-        return (
-          <Link
-            key={b.id}
-            href={`/liff/my?just=${b.id}`}
-            onClick={onClose}
-            className="block rounded-lg border border-[var(--border)] p-3 transition-colors hover:bg-[var(--muted)]"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {b.type === "tour" ? (
-                    <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-[var(--color-coral)]" />
-                  ) : (
-                    <Anchor className="h-3.5 w-3.5 flex-shrink-0 text-[var(--color-phosphor)]" />
-                  )}
-                  <span className="truncate text-sm font-bold">{title}</span>
-                </div>
-                <div className="mt-1 text-[11px] tabular text-[var(--muted-foreground)]">
-                  {date} · {sub}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <Badge
-                  variant={
-                    status.tone === "ok"
-                      ? "default"
-                      : status.tone === "warn"
-                      ? "coral"
-                      : "muted"
-                  }
-                  className="text-[10px]"
-                >
-                  {status.text}
-                </Badge>
-                <span className="text-[11px] tabular font-semibold text-[var(--color-coral)]">
-                  NT$ {b.totalAmount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── 補償金 / 抵用金 卡 ─────────────────────────────────────
-interface CreditTx {
-  id: string;
-  amount: number;
-  reason: string;
-  refType?: string | null;
-  refId?: string | null;
-  refCode?: string | null;
-  note: string | null;
-  balanceAfter: number;
-  createdAt: string;
-  byAdmin?: boolean;
-}
-
-const REASON_LABELS: Record<string, { label: string; emoji: string; desc: string }> = {
-  birthday: { label: "生日抵用金", emoji: "🎂", desc: "海王子送您的生日禮物" },
-  vip_upgrade: { label: "升等獎勵", emoji: "✨", desc: "VIP 等級提升獎勵" },
-  refund: { label: "退費補償", emoji: "🔄", desc: "訂單退款轉抵用金" },
-  used: { label: "訂單折抵", emoji: "💸", desc: "預約時抵扣金額" },
-  admin_adjust: { label: "管理員調整", emoji: "🛠", desc: "由海王子管理員調整" },
-  first_order_reward: { label: "首單獎勵", emoji: "🎉", desc: "首次完成潛水的獎勵" },
-  signup_reward: { label: "註冊禮金", emoji: "🎁", desc: "完成 Email 驗證的見面禮" },
-  vip_overflow: { label: "VIP 滿級回饋", emoji: "🏆", desc: "滿級後持續潛水的回饋" },
-};
-
-function CreditCard({
-  balance,
-  liff,
-}: {
-  balance: number;
-  liff: ReturnType<typeof useLiff>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [txs, setTxs] = useState<CreditTx[] | null>(null);
-  const [totals, setTotals] = useState<{ totalIn: number; totalOut: number }>({ totalIn: 0, totalOut: 0 });
-  const [loading, setLoading] = useState(false);
-
-  async function openDialog() {
-    setOpen(true);
-    if (txs === null) {
-      setLoading(true);
-      try {
-        const r = await liff.fetchWithAuth<{
-          balance: number;
-          totalIn: number;
-          totalOut: number;
-          txs: CreditTx[];
-        }>("/api/me/credits");
-        setTxs(r.txs);
-        setTotals({ totalIn: r.totalIn ?? 0, totalOut: r.totalOut ?? 0 });
-      } catch {
-        setTxs([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-  }
-
-  return (
+  // ===== 子頁 =====
+  if (view === "info") return frame(
     <>
-      <Card
-        className="cursor-pointer border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 transition-colors hover:bg-[var(--color-coral)]/10"
-        onClick={openDialog}
-      >
-        <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-coral)]/20 text-2xl">
-            🎁
+      <SubHeader title="個人資訊" onBack={() => setView(null)} />
+      <BCard>
+        <Lab>姓名</Lab><input value={realName} onChange={(e) => setRealName(e.target.value)} placeholder="本名" style={INP} />
+        <div style={{ marginTop: 10 }}><Lab>手機</Lab><input value={phone} onChange={(e) => setPhone(formatPhoneTW(e.target.value))} inputMode="numeric" maxLength={11} placeholder="0912-345678" style={INP} /></div>
+        <div style={{ marginTop: 10 }}><Lab>Email（收預約確認 / 行前通知 / 發票）</Lab><input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" placeholder="you@example.com" style={INP} />
+          <div style={{ marginTop: 6 }}>{emailVerifiedAt ? <span style={{ fontSize: 11.5, color: C.okFg }}>✓ Email 已驗證</span> : <button onClick={sendVerify} style={{ fontSize: 11.5, border: `1px solid ${C.accFg}`, color: C.accFg, background: "none", borderRadius: 999, padding: "4px 12px" }}>發送驗證信 🎁 完成首潛得 100 元</button>}{verifyMsg && <div style={{ fontSize: 11.5, color: C.okFg, marginTop: 5 }}>{verifyMsg}</div>}</div>
+        </div>
+        <div style={{ marginTop: 10 }}><Lab>生日（當月發放抵用金 🎂・填寫後不可自行修改）</Lab><input type="date" value={birthday} disabled={birthdayLocked} onChange={(e) => setBirthday(e.target.value)} style={{ ...INP, opacity: birthdayLocked ? 0.6 : 1 }} /></div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, margin: "14px 0 6px" }}>緊急聯絡人</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="姓名" style={INP} />
+          <input value={eRel} onChange={(e) => setERel(e.target.value)} placeholder="關係" style={INP} />
+        </div>
+        <input value={ePhone} onChange={(e) => setEPhone(formatPhoneTW(e.target.value))} inputMode="numeric" maxLength={11} placeholder="0912-345678" style={{ ...INP, marginTop: 8 }} />
+      </BCard>
+      {saveBtn()}
+    </>
+  );
+  if (view === "certs") return frame(
+    <>
+      <SubHeader title="證照 / 潛伴" onBack={() => setView(null)} />
+      <BCard title="我的證照">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div><Lab>證照等級</Lab><select value={cert} onChange={(e) => setCert(e.target.value as Cert | "")} style={SELP}><option value="">未填</option>{CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+          <div><Lab>累計潛水支數</Lab><input value={logCount} onChange={(e) => setLogCount(e.target.value.replace(/\D/g, ""))} inputMode="numeric" style={{ ...INP, textAlign: "center" }} /></div>
+        </div>
+        <div style={{ marginTop: 8 }}><Lab>證照編號</Lab><input value={certNumber} onChange={(e) => setCertNumber(e.target.value)} placeholder="證照卡上的號碼" style={INP} /></div>
+      </BCard>
+      <BCard title={`常用潛伴（${companions.length}）`} sub="下單時可一鍵帶入">
+        {companions.map((c, i) => (
+          <div key={c.id ?? i} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 12, fontWeight: 600 }}>潛伴 #{i + 1}</span><button onClick={() => { if (window.confirm("確定刪除這位潛伴？")) setCompanions((a) => a.filter((_, j) => j !== i)); }} style={{ fontSize: 11, color: C.coral, background: "none", border: "none" }}>刪除</button></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <input value={c.name} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="姓名 *" style={INP} />
+              <input value={c.phone} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, phone: formatPhoneTW(e.target.value) } : x))} inputMode="numeric" maxLength={11} placeholder="手機" style={INP} />
+              <select value={c.cert ?? ""} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, cert: (e.target.value || null) as Cert | null } : x))} style={SELP}><option value="">證照</option>{CERTS.map((cc) => <option key={cc} value={cc}>{cc}</option>)}</select>
+              <input value={c.relationship} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, relationship: e.target.value } : x))} placeholder="關係" style={INP} />
+            </div>
           </div>
-          <div className="flex-1">
-            <div className="text-[11px] text-[var(--muted-foreground)]">
-              我的補償金 / 抵用金
-            </div>
-            <div className="text-xl font-bold tabular text-[var(--color-coral)]">
-              NT$ {balance.toLocaleString()}
-            </div>
-            <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
-              生日 +100、升等 LV2 +200、退費可轉抵用金
-            </div>
-          </div>
-          <span className="text-[var(--color-coral)]">▸</span>
-        </CardContent>
-      </Card>
+        ))}
+        <button onClick={() => setCompanions((a) => [...a, { name: "", phone: "", cert: null, certNumber: "", logCount: 0, relationship: "" }])} style={{ width: "100%", border: `1px dashed ${C.line}`, background: "none", color: C.accFg, borderRadius: 10, padding: "10px 0", fontSize: 13 }}>＋ 新增潛伴</button>
+      </BCard>
+      {saveBtn({ companions })}
+    </>
+  );
+  if (view === "notif") return frame(
+    <>
+      <SubHeader title="通知偏好" onBack={() => setView(null)} />
+      <BCard title="通知偏好" sub="選擇用哪些管道接收預約確認、行前提醒與重要通知">
+        {([["line", "LINE 通知", "透過官方帳號推播（最即時）", notifyByLine, setNotifyByLine], ["email", "Email 通知", "寄到你的信箱（需先驗證 Email）", notifyByEmail, setNotifyByEmail]] as const).map(([k, t, s, on, setOn]) => (
+          <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderBottom: `0.5px solid ${C.line}` }}>
+            <span style={{ flex: 1 }}><span style={{ fontSize: 14, display: "block" }}>{t}</span><span style={{ fontSize: 11.5, color: C.mute }}>{s}</span></span>
+            <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} style={{ width: 20, height: 20 }} />
+          </label>
+        ))}
+      </BCard>
+      {saveBtn()}
+    </>
+  );
+  if (view === "credits") return frame(<CreditsView onBack={() => setView(null)} liff={liff} balance={me.creditBalance ?? 0} />);
 
-      <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>抵用金紀錄</DialogTitle>
-          </DialogHeader>
-          <div className="rounded-md bg-[var(--color-coral)]/10 p-3 text-center">
-            <div className="text-[11px] text-[var(--muted-foreground)]">
-              目前餘額
-            </div>
-            <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
-              NT$ {balance.toLocaleString()}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
-              <div className="rounded bg-white/60 p-1.5">
-                <div className="text-[var(--muted-foreground)]">累計收入</div>
-                <div className="font-bold text-[var(--color-phosphor)]">+{totals.totalIn.toLocaleString()}</div>
-              </div>
-              <div className="rounded bg-white/60 p-1.5">
-                <div className="text-[var(--muted-foreground)]">累計支出</div>
-                <div className="font-bold text-[var(--color-coral)]">-{totals.totalOut.toLocaleString()}</div>
-              </div>
-            </div>
-          </div>
-          {loading ? (
-            <LiffLoading variant="ring" label="正在載入抵用金紀錄..." />
-          ) : !txs || txs.length === 0 ? (
-            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-              尚無紀錄。生日當天或會員升等時系統會自動發放抵用金。
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {txs.map((t) => {
-                const meta = REASON_LABELS[t.reason] ?? {
-                  label: t.reason,
-                  emoji: "·",
-                  desc: "",
-                };
-                const positive = t.amount >= 0;
-                // admin_adjust 有 note 時，把 note 當主標題，原本「管理員調整」變副標
-                const isAdminAdjust = t.reason === "admin_adjust";
-                const mainLabel = isAdminAdjust && t.note ? t.note : meta.label;
-                const subLabel = isAdminAdjust && t.note ? meta.label : "";
-                return (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] p-2.5"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-lg">{meta.emoji}</span>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold flex items-center gap-1 flex-wrap">
-                          {mainLabel}
-                          {t.byAdmin && isAdminAdjust && (
-                            <span className="rounded-full bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[9px] text-[var(--color-coral)]">
-                              {subLabel || "管理員"}
-                            </span>
-                          )}
-                          {t.refCode && (
-                            <span className="rounded-md bg-teal-50 px-1.5 py-0 font-mono text-[9px] text-teal-800">
-                              {t.refCode}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-[var(--muted-foreground)] tabular">
-                          {new Date(t.createdAt).toLocaleDateString("zh-TW")}
-                          {!isAdminAdjust && t.note ? ` · ${t.note}` : ""}
-                          {!t.note && meta.desc ? ` · ${meta.desc}` : ""}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div
-                        className={cn(
-                          "text-sm font-bold tabular",
-                          positive
-                            ? "text-[var(--color-phosphor)]"
-                            : "text-[var(--color-coral)]",
-                        )}
-                      >
-                        {positive ? "+" : ""}
-                        {t.amount.toLocaleString()}
-                      </div>
-                      <div className="text-[9px] text-[var(--muted-foreground)] tabular">
-                        餘 {t.balanceAfter.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+  // ===== 主清單 =====
+  const name = me.realName ?? me.displayName ?? "會員";
+  const stats: Array<[string, string]> = [
+    [String(me.haiwangziLogCount ?? 0), "海王子潛次"], [String(me.creditBalance ?? 0), "抵用金"],
+    [String(me.stats?.totalBookings ?? 0), "進行中"], [me.vipLevel ? `LV${me.vipLevel}` : "會員", "等級"],
+  ];
+  return frame(
+    <>
+      <div style={{ textAlign: "center", padding: "6px 0 12px" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center", margin: "0 auto" }}><User size={30} /></div>
+        <div style={{ fontSize: 16, fontWeight: 500, marginTop: 8 }}>{name}</div>
+        <div style={{ fontSize: 12, color: C.mute }}>{me.email ?? ""}</div>
+      </div>
+      <div style={{ display: "flex", background: C.page, borderRadius: 12, padding: "12px 0", textAlign: "center", marginBottom: 6 }}>
+        {stats.map(([a, b]) => <div key={b} style={{ flex: 1 }}><div style={{ fontSize: 18, fontWeight: 500 }}>{a}</div><div style={{ fontSize: 11, color: C.mute }}>{b}</div></div>)}
+      </div>
+      <Sect t="帳戶" />
+      <LRow Icon={User} label="個人資訊" right={me.phone ?? ""} onClick={() => setView("info")} />
+      <LRow Icon={School} label="證照 / 潛伴" right={me.cert ?? "未填"} onClick={() => setView("certs")} />
+      <LRow Icon={Bell} label="通知偏好" onClick={() => setView("notif")} />
+      <Sect t="紀錄" />
+      <LRow Icon={SlidersHorizontal} label="抵用金明細" right={ntd(me.creditBalance ?? 0)} onClick={() => setView("credits")} />
+      {isStaff && (<>
+        <Sect t="管理" />
+        <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
+          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>教練到場點名</span><ChevronRight size={16} color={C.mute} />
+        </Link>
+      </>)}
+      <Sect t="其他" />
+      <button onClick={() => liff.logout()} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", color: C.dangFg }}>
+        <ArrowLeft size={19} /><span style={{ flex: 1, fontSize: 14 }}>登出</span>
+      </button>
     </>
   );
 }
 
-// 模組級 timer，跨 render 持有
-let saveCompTimer: NodeJS.Timeout | undefined;
-
-/**
- * 同伴 #N 的「永遠展開」inline editor。
- * 預約時用同一個版面，使用者一打開常用同伴就能直接填寫。
- */
-function InlineCompanionEditor({
-  idx,
-  companion,
-  onChange,
-  onRemove,
-}: {
-  idx: number;
-  companion: Companion;
-  onChange: (patch: Partial<Companion>) => void;
-  onRemove: () => void;
-}) {
-  const complete = companion.name.trim().length >= 2 && companion.cert !== null;
-  const [open, setOpen] = useState(!complete);
+interface CreditTx { id: string; amount: number; reason: string; note?: string | null; refCode?: string | null; balanceAfter?: number; createdAt: string }
+const CREDIT_REASON: Record<string, [string, string]> = { birthday: ["🎂", "生日抵用金"], vip_upgrade: ["✨", "升等獎勵"], refund: ["🔄", "退費補償"], used: ["💸", "訂單折抵"], admin_adjust: ["🛠", "管理員調整"], first_order_reward: ["🎉", "首單獎勵"], signup_reward: ["🎁", "註冊禮金"], vip_overflow: ["🏆", "VIP 滿級回饋"] };
+function CreditsView({ onBack, liff, balance }: { onBack: () => void; liff: ReturnType<typeof useLiff>; balance: number }) {
+  const [data, setData] = useState<{ balance: number; totalIn: number; totalOut: number; txs: CreditTx[] } | null>(null);
   useEffect(() => {
-    if (complete) setOpen(false);
+    if (!liff.ready) return;
+    liff.fetchWithAuth<{ balance: number; totalIn: number; totalOut: number; txs: CreditTx[] }>("/api/me/credits")
+      .then((d) => setData({ balance: d.balance ?? balance, totalIn: d.totalIn ?? 0, totalOut: d.totalOut ?? 0, txs: d.txs ?? [] }))
+      .catch(() => setData({ balance, totalIn: 0, totalOut: 0, txs: [] }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complete]);
-
-  // 收合：摘要列
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          "flex w-full items-center justify-between rounded-lg border-2 px-3 py-2.5 text-left",
-          complete
-            ? "border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5"
-            : "border-dashed border-[var(--color-coral)] bg-[var(--color-coral)]/5",
-        )}
-      >
-        <div className="flex items-center gap-2">
-          {complete ? (
-            <Check className="h-3.5 w-3.5 text-[var(--color-phosphor)]" />
-          ) : (
-            <X className="h-3.5 w-3.5 text-[var(--color-coral)]" />
-          )}
-          <span className="text-xs font-bold">潛伴 #{idx}</span>
-          <span
-            className={cn(
-              "text-xs",
-              complete
-                ? "text-[var(--foreground)]"
-                : "text-[var(--color-coral)]",
-            )}
-          >
-            {complete
-              ? `${companion.name}・${companion.cert}${companion.phone ? `・${companion.phone}` : ""}${companion.relationship ? `・${companion.relationship}` : ""}`
-              : "尚未填寫"}
-          </span>
-        </div>
-        <Edit3 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-      </button>
-    );
-  }
-
+  }, [liff.ready]);
   return (
-    <div className="rounded-lg border-2 border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        {/* 整個標題列點下去就收合 */}
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="-m-1 flex flex-1 items-center gap-1.5 rounded p-1 text-left hover:bg-black/5"
-          aria-label="收起"
-        >
-          <span className="text-sm font-bold">潛伴 #{idx}</span>
-          {complete && (
-            <span className="text-[11px] text-[var(--muted-foreground)]">
-              {companion.name}・{companion.cert}
-            </span>
-          )}
-          <ChevronUp className="ml-auto h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="rounded-full p-1 text-[var(--color-coral)] hover:bg-[var(--color-coral)]/10 flex-shrink-0"
-          aria-label="刪除"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-[10px]">姓名 *</Label>
-            <Input
-              value={companion.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              placeholder="本名"
-            />
-          </div>
-          <div>
-            <Label className="text-[10px]">手機</Label>
-            <Input
-              type="tel"
-              inputMode="numeric"
-              value={companion.phone}
-              onChange={(e) =>
-                onChange({ phone: formatPhoneTW(e.target.value) })
-              }
-              maxLength={11}
-              placeholder="0912-345678"
-            />
+    <>
+      <SubHeader title="抵用金明細" onBack={onBack} />
+      {!data ? <LiffLoading variant="ring" label="讀取抵用金紀錄..." /> : (<>
+        <div style={{ background: C.dangBg, borderRadius: 12, padding: "14px 0", textAlign: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 11.5, color: C.mute }}>目前餘額</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: C.coral }}>NT$ {data.balance.toLocaleString()}</div>
+          <div style={{ display: "flex", gap: 9, padding: "10px 14px 0" }}>
+            <div style={{ flex: 1, background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "6px 0" }}><div style={{ fontSize: 10, color: C.mute }}>累計收入</div><div style={{ fontSize: 13, fontWeight: 700, color: C.okFg }}>+{data.totalIn.toLocaleString()}</div></div>
+            <div style={{ flex: 1, background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "6px 0" }}><div style={{ fontSize: 10, color: C.mute }}>累計支出</div><div style={{ fontSize: 13, fontWeight: 700, color: C.coral }}>-{data.totalOut.toLocaleString()}</div></div>
           </div>
         </div>
-        <div>
-          <Label className="text-[10px]">證照等級 *</Label>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {CERTS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => onChange({ cert: c })}
-                className={cn(
-                  "rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
-                  companion.cert === c
-                    ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)] text-[var(--color-ocean-deep)]"
-                    : "border-[var(--border)]",
-                )}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-[10px]">證照編號</Label>
-            <Input
-              value={companion.certNumber}
-              onChange={(e) => onChange({ certNumber: e.target.value })}
-              placeholder="可選填"
-            />
-          </div>
-          <div>
-            <Label className="text-[10px]">累計潛水支數</Label>
-            <Input
-              inputMode="numeric"
-              value={companion.logCount || ""}
-              onChange={(e) =>
-                onChange({
-                  logCount: Number(e.target.value.replace(/\D/g, "") || 0),
-                })
-              }
-              placeholder="例: 25"
-              className="text-center"
-            />
-          </div>
-        </div>
-        <div>
-          <Label className="text-[10px]">關係</Label>
-          <Input
-            value={companion.relationship}
-            onChange={(e) => onChange({ relationship: e.target.value })}
-            placeholder="家人 / 朋友 / 配偶 / 同事..."
-          />
-        </div>
-      </div>
-    </div>
+        {data.txs.length === 0 ? <div style={{ color: C.mute, fontSize: 13, padding: "24px 0", textAlign: "center", lineHeight: 1.7 }}>尚無紀錄。<br />生日當天或會員升等時系統會自動發放抵用金。</div>
+          : data.txs.map((t) => { const [emoji, label] = CREDIT_REASON[t.reason] ?? ["·", t.reason]; const pos = t.amount >= 0; const main = t.reason === "admin_adjust" && t.note ? t.note : label;
+            return (
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>{emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13.5, fontWeight: 500 }}>{main}{t.refCode && <span style={{ fontSize: 9.5, fontFamily: "monospace", background: C.okBg, color: C.okFg, borderRadius: 5, padding: "1px 5px", marginLeft: 5 }}>{t.refCode}</span>}</div><div style={{ fontSize: 10.5, color: C.mute }}>{new Date(t.createdAt).toLocaleString("zh-TW")}</div></div>
+                <div style={{ textAlign: "right" }}><div style={{ fontSize: 14, fontWeight: 700, color: pos ? C.okFg : C.coral }}>{pos ? "+" : ""}{t.amount.toLocaleString()}</div>{t.balanceAfter != null && <div style={{ fontSize: 10, color: C.mute }}>餘 {t.balanceAfter.toLocaleString()}</div>}</div>
+              </div>
+            );
+          })}
+      </>)}
+    </>
   );
 }

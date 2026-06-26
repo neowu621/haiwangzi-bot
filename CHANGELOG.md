@@ -6,6 +6,15 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260627_700 — 2026-06-27 (個人中心改 m2 風格 lazy 子頁,減少讀取)
+
+- `/liff/profile` 整頁改 m2 風格:主清單只載入**一次** `/api/me`(姓名/統計/各項目);點項目才進子頁。
+  - 子頁:個人資訊 / 證照·潛伴 / 通知偏好 用已載入資料**即時開啟**(零額外讀取),儲存 PATCH `/api/me`;Email 驗證 `send-verify-email`。
+  - 抵用金明細才**另外即時讀** `/api/me/credits`(顯示讀取中)。
+  - **移除「預約紀錄 / 潛水紀錄」兩列**(依老闆指示);保留抵用金明細。
+  - 管理區(staff)「教練到場點名」→ `/liff/coach/today`;登出 `liff.logout()`。
+- 沿用 `src/components/liff/mobileShared`(C/Sect)。改版前先以可點互動預覽與老闆確認過版面/感受。
+
 ## 20260627_699 — 2026-06-27 (訊息通知:站內訊息/發送訊息各佔一半 Y 軸)
 
 - `/liff/messages` 改為上下 50/50:上半「站內訊息」(通知列表,獨立捲動)、下半「發送訊息給客服」(對話獨立捲動 + 輸入框釘在下半底部)。容器 `height: calc(100dvh - 152px)`,兩半 `flex:1`。
