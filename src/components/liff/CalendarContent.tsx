@@ -20,7 +20,7 @@ function fmtISODate(d: Date) {
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function startOfWeek(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
 
-export function CalendarContent({ onGoWishes }: { onGoWishes: () => void }) {
+export function CalendarContent() {
   const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,18 +58,6 @@ export function CalendarContent({ onGoWishes }: { onGoWishes: () => void }) {
   return (
     <>
       <section className="px-4 pt-3">
-        {/* 找不到日期 → 切到「預約潛水」子分頁 */}
-        <button type="button" onClick={onGoWishes} className="mb-3 block w-full text-left">
-          <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 hover:bg-[var(--color-phosphor)]/10 transition-colors">
-            <span className="text-xl">📝</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-[var(--color-ocean-deep)]">找不到日期？</div>
-              <div className="text-[11px] text-[var(--muted-foreground)]">可提預約潛水日期（老闆會回覆討論）</div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-[var(--color-phosphor)]" />
-          </div>
-        </button>
-
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="icon" disabled={pageOffset === 0} onClick={() => setPageOffset((o) => Math.max(0, o - 1))} aria-label="上一週">
             <ChevronLeft className="h-5 w-5" />

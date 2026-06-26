@@ -10,7 +10,6 @@ import {
   Edit3,
   XCircle,
   Loader2,
-  Bell,
   ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -329,15 +328,7 @@ export default function MyBookingsPage() {
             <InsuranceNotice variant="compact" />
           </div>
         )}
-        {/* 站內通知中心入口 */}
-        <Link
-          href="/liff/notifications"
-          className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm hover:bg-[var(--muted)]/30"
-        >
-          <Bell className="h-4 w-4 text-[var(--color-coral)]" />
-          <span className="flex-1 font-medium">通知中心</span>
-          <ChevronRight className="h-4 w-4 text-[var(--muted-foreground)]" />
-        </Link>
+        {/* v698：通知中心入口移除(已移至底部「訊息通知」分頁) */}
         {/* v267：背景刷新指示（有快取資料 + 正在拉新資料時顯示） */}
         {refreshing && (
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-phosphor)]/10 px-3 py-1 text-[10px] text-[var(--color-phosphor)]">
@@ -577,6 +568,14 @@ function BookingCard({
       ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100))
       : 0;
   const cancellable = isCancellable(b);
+  // v698：每筆預約預設縮起,點擊展開
+  const [open, setOpen] = useState(false);
+  const d = deriveBookingDisplay({
+    status: b.status,
+    paymentStatus: b.paymentStatus,
+    createdAt: b.createdAt,
+    activityDate: (ref && "date" in ref) ? ref.date : (ref && "dateStart" in ref ? ref.dateStart : null),
+  });
   const [proofLightbox, setProofLightbox] = useState<{
     url: string;
     caption?: string;
@@ -606,14 +605,19 @@ function BookingCard({
   return (
     <Card className={cn(b.type === "tour" && "border-l-4 border-l-[var(--color-coral)]")}>
       <CardContent className="p-4 space-y-2">
-        {/* Row 1：類型 + 人數 + 氣瓶 */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Row 1：類型 + 人數 + 氣瓶（v698：點擊整列展開/收起，右側顯示狀態/金額/箭頭）*/}
+        <div className="flex items-center gap-2 flex-wrap cursor-pointer" onClick={() => setOpen((o) => !o)}>
           {isDaily ? <CalendarDays className="h-4 w-4" /> : <Plane className="h-4 w-4" />}
           <span className="text-sm font-bold">{isDaily ? "日潛" : "旅遊潛水"}</span>
           <Badge variant="muted" className="text-[10px]">×{b.participants} 人</Badge>
           {isDaily && ref && "tankCount" in ref && ref.tankCount && (
             <Badge variant="muted" className="text-[10px]">×{b.participants * ref.tankCount} 支</Badge>
           )}
+          <span className="ml-auto flex items-center gap-1.5">
+            <Badge variant={d.variant} className="text-[10px]">{d.label}</Badge>
+            {b.totalAmount > 0 && <span className="text-sm font-bold tabular text-[var(--color-coral)]">NT$ {b.totalAmount.toLocaleString()}</span>}
+            <ChevronRight className={cn("h-4 w-4 text-[var(--muted-foreground)] transition-transform", open && "rotate-90")} />
+          </span>
         </div>
 
         {/* Row 2：地點 + 日期時間 / tour 標題 + 日期區間 */}
@@ -638,6 +642,8 @@ function BookingCard({
           </div>
         )}
 
+        {/* v698：以下為展開後才顯示的明細 */}
+        {open && (<>
         {/* v666：活動提醒（場次/團層級，客戶可見）— 對齊桌機 /pclogin */}
         {ref?.activityNote && (
           <div className="rounded-md bg-[#eafaf3] px-2.5 py-1.5 text-xs leading-relaxed text-[#0a7d4f]">
@@ -647,15 +653,7 @@ function BookingCard({
 
         {/* Row 3：狀態 + 動作橫排（v319：單一衍生 status / 取消 / 同意聲明）*/}
         <div className="flex items-center gap-2 flex-wrap">
-          {(() => {
-            const d = deriveBookingDisplay({
-              status: b.status,
-              paymentStatus: b.paymentStatus,
-              createdAt: b.createdAt,
-              activityDate: (b.ref && "date" in b.ref) ? b.ref.date : (b.ref && "dateStart" in b.ref ? b.ref.dateStart : null),
-            });
-            return <Badge variant={d.variant} className="text-[11px]">{d.label}</Badge>;
-          })()}
+          <Badge variant={d.variant} className="text-[11px]">{d.label}</Badge>
           {cancellable && (
             <Button
               size="sm"
@@ -877,6 +875,7 @@ function BookingCard({
         )}
 
         {/* v293：同意聲明已搬到 Row 3，這裡移除避免重複 */}
+        </>)}
       </CardContent>
 
       {/* Payment proof lightbox */}

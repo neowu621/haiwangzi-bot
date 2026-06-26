@@ -44,8 +44,8 @@ function BookingInner() {
         ))}
       </div>
 
-      {mounted.has("calendar") && <div style={{ display: tab === "calendar" ? "block" : "none" }}><CalendarContent onGoWishes={() => go("wishes")} /></div>}
-      {mounted.has("tour") && <div style={{ display: tab === "tour" ? "block" : "none" }}><TourContent onGoWishes={() => go("wishes")} /></div>}
+      {mounted.has("calendar") && <div style={{ display: tab === "calendar" ? "block" : "none" }}><CalendarContent /></div>}
+      {mounted.has("tour") && <div style={{ display: tab === "tour" ? "block" : "none" }}><TourContent /></div>}
       {mounted.has("wishes") && <div style={{ display: tab === "wishes" ? "block" : "none" }}><WishesContent /></div>}
     </LiffShell>
   );
