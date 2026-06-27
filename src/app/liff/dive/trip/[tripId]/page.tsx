@@ -425,6 +425,20 @@ export default function TripBookingPage({
     logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
     companionsValid;
 
+  // v703：按鈕變灰時，列出「還差什麼」讓使用者知道要補哪些（按鈕不再無聲 disabled）
+  const missing: string[] = [];
+  if (!cancellationRead) missing.push("勾選取消政策");
+  if (!safetyRead) missing.push("勾選安全須知");
+  if (!signedHasInk) missing.push("手寫簽名");
+  if (realName.trim().length < 2) missing.push("真實姓名");
+  if (phone.trim().length < 8) missing.push("聯絡電話");
+  if (emergencyName.trim().length < 2) missing.push("緊急聯絡人");
+  if (emergencyPhone.trim().length < 8) missing.push("緊急聯絡人電話");
+  if (cert === "") missing.push("證照等級");
+  if (certNumber.trim().length < 1) missing.push("證照號碼");
+  if (logCount.trim().length < 1) missing.push("潛水次數");
+  if (!companionsValid) missing.push("同行者資料");
+
   async function submit() {
     if (!trip || !canSubmit) return;
     // v269：送出前 check email/phone（user 表的，不是 form 的 realName/phone）
@@ -1220,6 +1234,13 @@ export default function TripBookingPage({
                 {bookingClosed ? "已截止預約" : submitting ? "送出中..." : "確認預約"}
               </Button>
             </div>
+            {/* v703：未填完時提示還差哪些必填，按鈕才不會「無聲變灰」 */}
+            {!bookingClosed && !submitting && missing.length > 0 && (
+              <div className="mt-2 rounded-lg bg-[var(--color-coral)]/10 p-2.5 text-xs leading-relaxed text-[var(--color-coral)]">
+                ⚠️ 還差：{missing.join("、")}<br />
+                <span className="text-[var(--muted-foreground)]">補完後即可按「確認預約」送出。</span>
+              </div>
+            )}
             {/* v341：截止提示 */}
             {bookingClosed && (
               <div className="mt-2 rounded-lg bg-[var(--color-coral)]/10 p-2.5 text-center text-xs text-[var(--color-coral)]">

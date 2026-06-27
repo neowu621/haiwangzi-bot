@@ -3,7 +3,7 @@
 //   抵用金明細才另外即時讀 /api/me/credits)→ 減少讀取次數。移除「預約紀錄/潛水紀錄」。
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight } from "lucide-react";
+import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, ChevronDown, MessageCircle } from "lucide-react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
@@ -47,6 +47,15 @@ export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [err, setErr] = useState(false);
   const [view, setView] = useState<View>(null);
+  // v703：訊息中心收進個人中心(可展開) + 站內未讀數(讀 BottomNav 已快取的值,不另外打 API)
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    try {
+      const n = Number(window.localStorage.getItem("haiwangzi:notifications:unread:v1") || 0);
+      if (Number.isFinite(n) && n > 0) setUnread(n);
+    } catch { /* ignore */ }
+  }, []);
 
   // 表單狀態(由 me 帶入,子頁共用、儲存一次 PATCH)
   const [realName, setRealName] = useState(""); const [phone, setPhone] = useState(""); const [email, setEmail] = useState("");
@@ -195,6 +204,23 @@ export default function ProfilePage() {
       <LRow Icon={User} label="個人資訊" right={me.phone ?? ""} onClick={() => setView("info")} />
       <LRow Icon={School} label="證照 / 潛伴" right={me.cert ?? "未填"} onClick={() => setView("certs")} />
       <LRow Icon={Bell} label="通知偏好" onClick={() => setView("notif")} />
+      <Sect t="訊息" />
+      <button onClick={() => setMsgOpen((o) => !o)} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, background: "none", border: "none", borderBottomWidth: "0.5px", textAlign: "left", color: C.ink, cursor: "pointer" }}>
+        <MessageCircle size={19} color={C.mute} /><span style={{ flex: 1, fontSize: 14 }}>訊息中心</span>
+        {unread > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.coral, borderRadius: 999, padding: "1px 7px", minWidth: 18, textAlign: "center" }}>{unread > 99 ? "99+" : unread}</span>}
+        {msgOpen ? <ChevronDown size={16} color={C.mute} /> : <ChevronRight size={16} color={C.mute} />}
+      </button>
+      {msgOpen && (
+        <div style={{ paddingLeft: 18 }}>
+          <Link href="/liff/notifications" style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, padding: "11px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
+            <span style={{ flex: 1, fontSize: 13.5 }}>📢 站內訊息</span>
+            {unread > 0 && <span style={{ fontSize: 11, color: C.coral }}>{unread} 則未讀</span>}<ChevronRight size={15} color={C.mute} />
+          </Link>
+          <Link href="/liff/messages" style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, padding: "11px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
+            <span style={{ flex: 1, fontSize: 13.5 }}>💬 聯絡客服</span><ChevronRight size={15} color={C.mute} />
+          </Link>
+        </div>
+      )}
       <Sect t="紀錄" />
       <LRow Icon={SlidersHorizontal} label="抵用金明細" right={ntd(me.creditBalance ?? 0)} onClick={() => setView("credits")} />
       {isStaff && (<>

@@ -6,15 +6,17 @@
 #
 # Steps:
 #   1. git add -A + commit (with your message)
-#   2. git push origin master  <- this is the deploy trigger (Zeabur GitHub App
-#      auto-builds master from the repo, with proper LF line endings)
-#   3. poll /api/healthz every 20s, compare APP_VERSION in src/lib/version.ts
+#   2. git push origin master  (update remote HEAD)
+#   3. zeabur service redeploy  (build the pushed HEAD from git; a plain push
+#      does NOT reliably auto-build here)
+#   4. poll /api/healthz every 20s, compare APP_VERSION in src/lib/version.ts
 #      version match -> OK; over 10 min -> FAIL hint to check dashboard
 #
-# Why NOT `zeabur deploy` (CLI local-upload):
-#   It uploads the local Windows working tree, which crashed prod with
-#   "exec ./docker-entrypoint.sh: no such file or directory" AND raced the
-#   git-push build, CANCELing it. Always deploy via git push on this repo.
+# Why `service redeploy` and NOT `zeabur deploy` (CLI local-upload):
+#   `zeabur deploy` uploads the local Windows working tree, which crashed prod
+#   with "exec ./docker-entrypoint.sh: no such file or directory" AND raced the
+#   git build, CANCELing it. `service redeploy` rebuilds the connected branch
+#   HEAD from git (LF line endings) -- the reliable path on this repo.
 #
 # NOTE: keep this file ASCII-only. PowerShell 5.1 reads UTF-8-without-BOM
 #       files as the system codepage and will mangle non-ASCII characters,
@@ -28,6 +30,7 @@ param(
 $ErrorActionPreference = "Stop"
 $SERVICE_ID = "6a022340dd502f86055afac5"
 $PROJECT_ID = "6a01ded58e8e49b9247928c8"
+$ENV_ID = "6a01ded5e5ed304c1d846053"
 $HEALTH_URL = "https://haiwangzi.xyz/api/healthz"
 
 # -- read target version --
@@ -43,17 +46,21 @@ git add -A
 git commit -m $Message
 if (-not $?) { Write-Host "(nothing to commit, continuing)" -ForegroundColor DarkGray }
 
-# -- 2. push (this is the deploy trigger: Zeabur GitHub App builds master) --
-Write-Host "`n[2/3] git push (Zeabur GitHub App auto-builds master)..." -ForegroundColor Yellow
+# -- 2. push (update remote master HEAD to this commit) --
+Write-Host "`n[2/4] git push..." -ForegroundColor Yellow
 git push origin master
 
-# NOTE: do NOT run `zeabur deploy` (CLI local-upload) here. It uploads the
-# local Windows working tree and (a) crashed prod with
-# "exec ./docker-entrypoint.sh: no such file or directory", and (b) raced the
-# git-push build and CANCELED it. The git-push build is the reliable path.
+# -- 3. trigger a GIT build of the pushed HEAD --
+#   Use `zeabur service redeploy` (rebuilds the connected branch HEAD from git,
+#   with proper LF line endings) -- NOT `zeabur deploy`, which uploads the local
+#   Windows working tree and crashed prod with
+#   "exec ./docker-entrypoint.sh: no such file or directory" while also racing
+#   and CANCELing the git build. A plain push does NOT reliably auto-build here.
+Write-Host "`n[3/4] zeabur service redeploy (git build of pushed HEAD)..." -ForegroundColor Yellow
+zeabur service redeploy --id $SERVICE_ID --env-id $ENV_ID -y
 
-# -- 3. poll verify --
-Write-Host "`n[3/3] waiting for $TARGET to go live (check every 20s, max 10 min)..." -ForegroundColor Yellow
+# -- 4. poll verify --
+Write-Host "`n[4/4] waiting for $TARGET to go live (check every 20s, max 10 min)..." -ForegroundColor Yellow
 $deadline = (Get-Date).AddMinutes(10)
 while ((Get-Date) -lt $deadline) {
   try {
