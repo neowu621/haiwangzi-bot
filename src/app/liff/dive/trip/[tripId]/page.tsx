@@ -618,21 +618,27 @@ export default function TripBookingPage({
               />
             </div>
             <Separator />
-            {/* 潛次 */}
+            {/* 潛水次數 — v718：船潛為固定套裝(不可調整);岸潛可調 */}
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-sm">潛次</Label>
+                <Label className="text-sm">潛水次數</Label>
                 <div className="text-[10px] text-[var(--muted-foreground)]">
-                  最多 {trip.tankCount} 潛 · 每支 NT$ {trip.pricing.extraTank.toLocaleString()}（含空氣瓶）
+                  {trip.isBoat
+                    ? `船潛套裝固定 ${trip.tankCount} 潛 · 每人 NT$ ${trip.pricing.extraTank.toLocaleString()}（含潛次配置，不可調整）`
+                    : `最多 ${trip.tankCount} 潛 · 每支 NT$ ${trip.pricing.extraTank.toLocaleString()}（含空氣瓶）`}
                 </div>
               </div>
-              <Stepper
-                value={tankCount}
-                min={1}
-                max={trip.tankCount}
-                onChange={setTankCount}
-                suffix="潛"
-              />
+              {trip.isBoat ? (
+                <span className="rounded-lg bg-sky-50 px-3 py-1.5 text-sm font-bold text-sky-700">{trip.tankCount} 潛</span>
+              ) : (
+                <Stepper
+                  value={tankCount}
+                  min={1}
+                  max={trip.tankCount}
+                  onChange={setTankCount}
+                  suffix="潛"
+                />
+              )}
             </div>
             <Separator />
             {/* 裝備（Dialog 開啟） */}

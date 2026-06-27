@@ -173,10 +173,10 @@ export async function POST(req: NextRequest) {
     nightDive: number;
     scooterRental: number;
   };
-  const effectiveTanks = Math.min(
-    trip.tankCount,
-    Math.max(1, data.tankCount ?? trip.tankCount),
-  );
+  // v718：船潛為固定套裝，潛次一律鎖定為場次設定(不接受客戶調整)；岸潛才可 1..trip.tankCount
+  const effectiveTanks = trip.isBoat
+    ? trip.tankCount
+    : Math.min(trip.tankCount, Math.max(1, data.tankCount ?? trip.tankCount));
   // v48 計價公式：
   //   總額 = baseTrip (整單平收) + extraTank × 支數 × 人數 + 夜潛/水推附加 + 裝備
   //   pricing.baseTrip   = 整單一次性基本費（船費分攤等），預設 0，不 ×人數

@@ -46,6 +46,7 @@ interface Trip {
   startTime: string;
   isNightDive: boolean;
   isScooter: boolean;
+  isBoat?: boolean; // v718：船潛(套裝價·固定潛次)
   tankCount: number;
   capacity: number | null;
   booked: number;
@@ -991,7 +992,8 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
 
   const gearAmountRaw = GEAR.reduce((s, g) => s + (gear[g.type] ?? 0) * (gearPrice[g.type] ?? g.defPrice), 0);
   const tankFee = Number(member.tankPromo?.active ? Math.max(0, trip.pricing.extraTank - (member.tankPromo?.discount ?? 0)) : trip.pricing.extraTank);
-  const divesAmount = tankFee * tankCount * participants;
+  // v718：船潛=每人套裝價(不乘支數);岸潛=每支×支×人
+  const divesAmount = trip.isBoat ? trip.pricing.extraTank * participants : tankFee * tankCount * participants;
   let extraAmount = trip.pricing.baseTrip;
   if (trip.isNightDive) extraAmount += trip.pricing.nightDive;
   if (trip.isScooter) extraAmount += trip.pricing.scooterRental;
@@ -1076,7 +1078,9 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
           <SectionTitle>潛水內容</SectionTitle>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {field("人數", <Stepper value={participants} min={1} max={10} onChange={setParticipants} />)}
-            {field(`潛次（最多 ${trip.tankCount}）`, <Stepper value={tankCount} min={1} max={trip.tankCount} onChange={setTankCount} />)}
+            {trip.isBoat
+              ? field(`潛水次數（船潛套裝固定）`, <span style={{ fontSize: 14, fontWeight: 700, color: "#0369a1" }}>{trip.tankCount} 潛（不可調整）</span>)
+              : field(`潛水次數（最多 ${trip.tankCount}）`, <Stepper value={tankCount} min={1} max={trip.tankCount} onChange={setTankCount} />)}
           </div>
 
           <SectionTitle>裝備租借（每人）{member.gearDiscountPct < 100 && <span style={{ fontSize: 11, color: "#0a8f86", fontWeight: 600, marginLeft: 6 }}>🎖 VIP{member.vipLevel} 享 {100 - member.gearDiscountPct}% off</span>}</SectionTitle>
@@ -1134,7 +1138,7 @@ function DailyBookingForm({ trip, member, onBack }: { trip: Trip; member: Member
 
         <SummaryPanel
           rows={[
-            ["潛水費", ntd(divesAmount), `${tankFee} × ${tankCount}潛 × ${participants}人`],
+            ["潛水費", ntd(divesAmount), trip.isBoat ? `船潛套裝 ${trip.pricing.extraTank} × ${participants}人（含 ${trip.tankCount} 潛）` : `${tankFee} × ${tankCount}潛 × ${participants}人`],
             ...(tankDiscPerTank > 0 && codeDiscountEff === 0 ? [["🔥 氣瓶折扣", `−${ntd(tankSaved)}`, `每支 −${tankDiscPerTank}`] as [string, string, string]] : []),
             ...(codeDiscountEff > 0 ? [["🎏 優惠代碼", `−${ntd(codeDiscountEff)}`, promoApplied?.label ?? ""] as [string, string, string]] : []),
             ...(extraAmount > 0 ? [["基本/附加費", ntd(extraAmount), ""] as [string, string, string]] : []),

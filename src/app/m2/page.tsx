@@ -900,8 +900,10 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
       <BCard title="預約內容">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 9 }}><span style={{ fontSize: 13 }}>人數</span><Stp value={pax} min={1} max={trip.available ?? 99} onChange={setPax} suffix="人" /></div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `0.5px solid ${C.line}`, paddingTop: 9 }}>
-          <div><div style={{ fontSize: 13 }}>潛次</div><div style={{ fontSize: 10.5, color: C.mute }}>每支 NT$ {extraTank.toLocaleString()}（含空氣瓶）</div></div>
-          <Stp value={tank} min={1} max={trip.tankCount} onChange={setTank} suffix="潛" />
+          <div><div style={{ fontSize: 13 }}>潛水次數</div><div style={{ fontSize: 10.5, color: C.mute }}>{trip.isBoat ? `船潛套裝固定 ${trip.tankCount} 潛 · 每人 NT$ ${extraTank.toLocaleString()}（不可調整）` : `每支 NT$ ${extraTank.toLocaleString()}（含空氣瓶）`}</div></div>
+          {trip.isBoat
+            ? <span style={{ fontSize: 13, fontWeight: 700, color: "#0369a1", background: "#e0f2fe", borderRadius: 8, padding: "4px 12px" }}>{trip.tankCount} 潛</span>
+            : <Stp value={tank} min={1} max={trip.tankCount} onChange={setTank} suffix="潛" />}
         </div>
         <div style={{ borderTop: `0.5px solid ${C.line}`, paddingTop: 9, marginTop: 9 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 13 }}>租賃裝備</span><button onClick={() => setGearOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, border: `1px solid ${C.line}`, background: "#fff", borderRadius: 8, padding: "5px 11px" }}><Plus size={13} />{gearList.length ? "編輯" : "需要租裝備"}</button></div>
