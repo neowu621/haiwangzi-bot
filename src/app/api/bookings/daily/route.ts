@@ -354,6 +354,7 @@ export async function POST(req: NextRequest) {
       type: "daily",
       refId: data.tripId,
       participants: data.participants,
+      tankCount: effectiveTanks, // v704：存客戶實際選的潛次（每人），讓「我的預約」顯示正確
       participantDetails: (data.participantDetails ?? []) as never,
       rentalGear: data.rentalGear,
       notes: data.notes,

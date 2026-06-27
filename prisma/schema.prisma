@@ -421,6 +421,8 @@ model Booking {
   // v475：custom（客製開單）沒有對應 trip/tour；refId 改填隨機 UUID（指向不存在的 trip），維持非空避免全專案型別波及
   refId               String         @map("ref_id") @db.Uuid
   participants        Int            @default(1)
+  // v704：客戶下單實際選的潛次（每人，1..trip.tankCount）。日潛專用；舊單 null → 顯示時 fallback trip.tankCount
+  tankCount           Int?           @map("tank_count")
   // v475：客製訂單欄位（type=custom 時使用）
   customItemName      String?        @map("custom_item_name") @db.VarChar(128) // 品項名（OW課程 / 1對1輔導…）
   customCategory      String?        @map("custom_category") @db.VarChar(32)   // 合約類別 key（對應 ContractTemplate）

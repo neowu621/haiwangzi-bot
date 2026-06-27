@@ -146,6 +146,7 @@ export async function PATCH(
       where: { id },
       data: {
         participants: newParticipants,
+        tankCount: effectiveTanks, // v704：編輯後同步存實際潛次
         rentalGear: data.rentalGear ?? undefined,
         notes: data.notes === undefined ? undefined : data.notes,
         participantDetails:

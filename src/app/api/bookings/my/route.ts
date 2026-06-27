@@ -89,6 +89,7 @@ export async function GET(req: NextRequest) {
         depositAmount: b.depositAmount,
         paidAmount: b.paidAmount,
         participants: b.participants,
+        tankCount: b.tankCount ?? null, // v704：客戶實際選的潛次（舊單為 null，client fallback trip.tankCount）
         rentalGear: b.rentalGear,
         participantDetails: b.participantDetails,
         notes: b.notes,

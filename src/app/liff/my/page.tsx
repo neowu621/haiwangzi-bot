@@ -73,6 +73,7 @@ interface MyBooking {
   depositAmount: number;
   paidAmount: number;
   participants: number;
+  tankCount: number | null; // v704：客戶實際選的潛次（舊單 null → fallback ref.tankCount）
   rentalGear: RentalGear[];
   notes: string | null;
   ref:
@@ -610,8 +611,9 @@ function BookingCard({
           {isDaily ? <CalendarDays className="h-4 w-4" /> : <Plane className="h-4 w-4" />}
           <span className="text-sm font-bold">{isDaily ? "日潛" : "旅遊潛水"}</span>
           <Badge variant="muted" className="text-[10px]">×{b.participants} 人</Badge>
-          {isDaily && ref && "tankCount" in ref && ref.tankCount && (
-            <Badge variant="muted" className="text-[10px]">×{b.participants * ref.tankCount} 支</Badge>
+          {isDaily && ((b.tankCount ?? (ref && "tankCount" in ref ? ref.tankCount : 0)) ?? 0) > 0 && (
+            // v704：顯示客戶實際選的潛次（每人）；舊單沒存 → fallback 場次預設
+            <Badge variant="muted" className="text-[10px]">×{b.tankCount ?? (ref && "tankCount" in ref ? ref.tankCount : 0)} 支</Badge>
           )}
           <span className="ml-auto flex items-center gap-1.5">
             <Badge variant={d.variant} className="text-[10px]">{d.label}</Badge>
