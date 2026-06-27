@@ -402,6 +402,10 @@ export default function AdminEmailPage() {
                       <option value="PROCESSING">處理中</option>
                       <option value="CLOSED">已結案</option>
                     </select>
+                    {/* v710：一鍵結案（不需回覆的訊息直接收尾，免再開下拉） */}
+                    {detail.status !== "CLOSED" && (
+                      <button onClick={() => changeStatus("CLOSED")} title="一鍵標記已結案（不需回覆時）" style={closeBtn}>✓ 已結案</button>
+                    )}
                     <button onClick={deleteThread} title="永久刪除整條對話" style={delBtn}>🗑 刪除</button>
                   </div>
                 </div>
@@ -493,6 +497,8 @@ function srcChip(channel?: string): React.CSSProperties {
 }
 const statusSel: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #dce7ea", background: "#fff", color: "#3d5563", fontFamily: "inherit", cursor: "pointer" };
 const delBtn: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #f3c6c6", background: "#fff", color: "#c0432a", fontFamily: "inherit", cursor: "pointer", fontWeight: 600 };
+// v710：一鍵結案按鈕（綠色，比照 CLOSED 狀態色）
+const closeBtn: React.CSSProperties = { fontSize: 12.5, padding: "6px 11px", borderRadius: 9, border: "1px solid #2BA66B", background: "#e0f3e8", color: "#1c8f5e", fontFamily: "inherit", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" };
 function bubble(out: boolean, wide: boolean): React.CSSProperties {
   // v564：有 HTML(iframe)的訊息才用寬泡泡(填滿欄位,讓 iframe 有參照寬度);
   //   純文字(LINE/一般回覆)用聊天式內容寬 → 配合欄位的 flex-end/flex-start 自然靠右/靠左。
