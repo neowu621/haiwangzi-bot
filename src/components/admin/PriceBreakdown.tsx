@@ -49,20 +49,26 @@ export function PriceBreakdown({ pb, fallback }: {
     const credit = pb.creditUsed ?? 0;
     const payable = pb.payable ?? Math.max(0, pb.totalAmount - credit);
     const useCharged = pb.tankUnitCharged ?? pb.perTank ?? 0;
+    const tankDisc = pb.tankDiscountPerTank ?? 0;
+    const auto = pb.autoDiscount ?? 0;
+    const promo = pb.promoDiscount ?? 0;
+    // 活動減免(每支)勝出 → 折進氣瓶那行;優惠代碼(%)勝出 → 另列一行
+    const autoWon = auto > 0 && auto >= promo;
+    const promoWon = promo > 0 && promo > auto;
+    const dives = pb.divesAmount ?? 0;
+    const netDives = dives - (autoWon ? auto : 0);
+    const cnt = pb.tankCount ?? 1;
+    const ppl = pb.participants ?? 1;
+    const tankLabel = pb.isBoat
+      ? `船潛套裝 ${autoWon ? `(${ntd(pb.perTank ?? 0)} − 優惠 ${tankDisc}×${cnt}潛)` : ntd(pb.perTank ?? 0)} × ${ppl} 人（含 ${cnt} 潛）`
+      : `氣瓶 ${autoWon ? `(${ntd(useCharged)} − 優惠 ${tankDisc})` : ntd(useCharged)} × ${cnt} 支 × ${ppl} 人${pb.staffTankApplied ? "（教練價）" : ""}`;
     return (
       <div>
-        {pb.isBoat ? (
-          <Row
-            label={`船潛套裝 ${ntd(pb.perTank ?? 0)} × ${pb.participants ?? 1} 人（含 ${pb.tankCount ?? 1} 潛）`}
-            value={ntd(pb.divesAmount ?? 0)}
-          />
-        ) : (
-          <Row
-            label={`氣瓶 ${ntd(useCharged)} × ${pb.tankCount ?? 1} 支 × ${pb.participants ?? 1} 人${pb.staffTankApplied ? "（教練價）" : ""}`}
-            strike={pb.staffTankApplied && pb.perTank && pb.perTank !== useCharged ? ntd(pb.perTank) : undefined}
-            value={ntd(pb.divesAmount ?? 0)}
-          />
-        )}
+        <Row
+          label={tankLabel}
+          strike={!pb.isBoat && pb.staffTankApplied && pb.perTank && pb.perTank !== useCharged ? ntd(pb.perTank) : undefined}
+          value={ntd(netDives)}
+        />
         {(pb.baseTrip ?? 0) > 0 && <Row label="基本費（整單）" value={ntd(pb.baseTrip ?? 0)} />}
         {(pb.gearAmount ?? 0) > 0 && (
           <Row
@@ -71,12 +77,8 @@ export function PriceBreakdown({ pb, fallback }: {
             value={`+ ${ntd(pb.gearAmount ?? 0)}`}
           />
         )}
-        {(pb.finalDiscount ?? 0) > 0 && (
-          <Row
-            label={pb.promoDiscount && pb.promoDiscount >= (pb.autoDiscount ?? 0) ? `優惠代碼 ${pb.promoCode ?? ""}` : `活動減免${pb.tankDiscountPerTank ? `（每支 −${pb.tankDiscountPerTank}）` : ""}`}
-            value={`− ${ntd(pb.finalDiscount ?? 0)}`}
-            tone="ok"
-          />
+        {promoWon && (
+          <Row label={`優惠代碼 ${pb.promoCode ?? ""}`} value={`− ${ntd(promo)}`} tone="ok" />
         )}
         {hr}
         <Row label="訂單總額" value={ntd(pb.totalAmount)} bold />
