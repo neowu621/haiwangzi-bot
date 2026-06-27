@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-06-28 — 訂單金額明細(組成) + 岸潛/船潛分類 + 移除證照號碼（v711→v716）
+
+目前線上 = **v20260628_716**。
+
+- **v711 — 站內訊息(老闆)補完整場次+金額**:付款憑證通知(`api/bookings/[id]/payment-proofs`)的 notifyAdmins/LINE push 改顯示 場次 label + 訂單總額 + 應付(remaining = total − paid，**已扣抵用金**) + 客戶填報金額。修正原本只回顯客戶輸入的 `data.amount`(導致 1100 vs 應付 1250)。
+- **v712 — 訂單金額明細(組成)**:`Booking.priceBreakdown Json?`(下單時凍結);`daily`/`tour` route 寫入組成;共用 `<PriceBreakdown>`(`src/components/admin/`)在 老闆結帳(`/admin/tonight`)兩區(已下單待匯款／待確認匯款)以「金額明細 ▾」展開顯示「氣瓶/減免/裝備 → 訂單總額 − 抵用金 = 應付」。
+- **v713 — 移除證照號碼(certNumber)**:`個人資訊`(liff/profile·m2·pclogin)與下單確認只保留**證照等級**選擇,移除號碼輸入與驗證。
+- **v714 — 日潛 岸潛/船潛 分類**:`DivingTrip.isBoat`(migrate-safety 加欄)。船潛=「每人套裝價·含 X 潛」**不乘支數**(`divesAmount = pricing.extraTank × 人`),岸潛沿用(`× 支 × 人`);減免/裝備/抵用金不變。後台場次表單加 岸潛/船潛 切換 + 「氣瓶費」欄船潛改標「套裝價(每人·含N潛)」;場次管理列 + 顧客場次卡(CalendarContent/trip 詳情/m2)顯示 🚤船潛/🏖岸潛。船潛仍照常累積潛次(attendance route 不變)。
+- **v715/v716 — 明細更完整 + 舊訂單估算**:新訂單明細把每支減免折進氣瓶行(`(650−25)×3支×2人`),優惠代碼(%)另列;**舊訂單**(無凍結明細)改用場次現價(`extraTank/baseTrip/isBoat`,由 `api/admin/payment-proofs` + `api/admin/bookings` 回傳)重建「氣瓶毛額 + 基本費 + 裝備 − 折抵合計 = 訂單總額 − 抵用金 = 應付」,不再只顯示合併的「氣瓶/場次費」。
+- **下單必填驗證**:沿用既有 —— daily/tour route 與前端皆需有效 refId、participants≥1、聯絡資訊(姓名/電話)、證照等級;裝備為選填。
+
+---
+
 ## 2026-06-27 — LIFF 底部導覽重構(首頁/訊息通知/潛水預約整合)（v696→v697）
 
 目前線上 = **v20260627_697**。
