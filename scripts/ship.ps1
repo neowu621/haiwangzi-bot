@@ -6,14 +6,15 @@
 #
 # Steps:
 #   1. git add -A + commit (with your message)
-#   2. git push origin master
-#   3. zeabur deploy (bypass GitHub webhook, deploy local commit directly)
-#   4. poll /api/healthz every 20s, compare APP_VERSION in src/lib/version.ts
-#   5. version match -> OK; over 10 min -> FAIL hint to check dashboard
+#   2. git push origin master  <- this is the deploy trigger (Zeabur GitHub App
+#      auto-builds master from the repo, with proper LF line endings)
+#   3. poll /api/healthz every 20s, compare APP_VERSION in src/lib/version.ts
+#      version match -> OK; over 10 min -> FAIL hint to check dashboard
 #
-# Why CLI deploy instead of relying on git-push auto trigger:
-#   This repo has no GitHub repo webhook (Zeabur uses a GitHub App).
-#   Pushes sometimes don't auto-build. CLI deploy always triggers.
+# Why NOT `zeabur deploy` (CLI local-upload):
+#   It uploads the local Windows working tree, which crashed prod with
+#   "exec ./docker-entrypoint.sh: no such file or directory" AND raced the
+#   git-push build, CANCELing it. Always deploy via git push on this repo.
 #
 # NOTE: keep this file ASCII-only. PowerShell 5.1 reads UTF-8-without-BOM
 #       files as the system codepage and will mangle non-ASCII characters,
@@ -42,16 +43,17 @@ git add -A
 git commit -m $Message
 if (-not $?) { Write-Host "(nothing to commit, continuing)" -ForegroundColor DarkGray }
 
-# -- 2. push --
-Write-Host "`n[2/4] git push..." -ForegroundColor Yellow
+# -- 2. push (this is the deploy trigger: Zeabur GitHub App builds master) --
+Write-Host "`n[2/3] git push (Zeabur GitHub App auto-builds master)..." -ForegroundColor Yellow
 git push origin master
 
-# -- 3. Zeabur CLI deploy --
-Write-Host "`n[3/4] zeabur deploy (bypass webhook)..." -ForegroundColor Yellow
-zeabur deploy --service-id $SERVICE_ID --project-id $PROJECT_ID
+# NOTE: do NOT run `zeabur deploy` (CLI local-upload) here. It uploads the
+# local Windows working tree and (a) crashed prod with
+# "exec ./docker-entrypoint.sh: no such file or directory", and (b) raced the
+# git-push build and CANCELED it. The git-push build is the reliable path.
 
-# -- 4. poll verify --
-Write-Host "`n[4/4] waiting for $TARGET to go live (check every 20s, max 10 min)..." -ForegroundColor Yellow
+# -- 3. poll verify --
+Write-Host "`n[3/3] waiting for $TARGET to go live (check every 20s, max 10 min)..." -ForegroundColor Yellow
 $deadline = (Get-Date).AddMinutes(10)
 while ((Get-Date) -lt $deadline) {
   try {
