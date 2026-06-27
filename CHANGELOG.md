@@ -6,6 +6,14 @@
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
 
+## 20260627_711 — 2026-06-27 (付款證明通知補場次+總額+應付尾款)
+
+- 老闆收到的「新付款證明待核對」站內通知 + LINE 推播,原本只照抄客戶自填金額(看不到真正應付)。改為顯示:**場次**(日潛 日期/時間/潛點、潛旅 團名/出發日)、**訂單總額**、**應付款**(`remaining = totalAmount − paidAmount`,已扣抵用金)、以及**客戶填報金額**(對照用)。
+- 解決:抵用金退回後,應付以訂單實際 `remaining` 為準(例 1250),不再只顯示客戶填的 1100。新增 `buildSessionLabel()`。
+- 動檔:`src/app/api/bookings/[id]/payment-proofs/route.ts`。
+
+> 註:v701–v710 由另一工作流推送(訂單潛次/氣瓶、應付餘額顯示、底部分頁 v709、客服信箱一鍵結案…),細節見 `git log`。
+
 ## 20260627_700 — 2026-06-27 (個人中心改 m2 風格 lazy 子頁,減少讀取)
 
 - `/liff/profile` 整頁改 m2 風格:主清單只載入**一次** `/api/me`(姓名/統計/各項目);點項目才進子頁。
