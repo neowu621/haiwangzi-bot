@@ -72,6 +72,7 @@ interface MyBooking {
   totalAmount: number;
   depositAmount: number;
   paidAmount: number;
+  creditUsed: number; // v706：抵用金折抵額
   participants: number;
   tankCount: number | null; // v704：客戶實際選的潛次（舊單 null → fallback ref.tankCount）
   rentalGear: RentalGear[];
@@ -784,14 +785,17 @@ function BookingCard({
               <div className="text-[10px] text-[var(--muted-foreground)]">總金額</div>
             )}
           </div>
-          {/* 中：金額（永遠顯示） */}
+          {/* 中：金額（永遠顯示）— v706：待付時顯示「應付 = 總額 − 已付(含抵用金)」，非「總額」 */}
           <div className="text-right flex-shrink-0">
             <div className="text-[10px] text-[var(--muted-foreground)]">
               {needsPayment ? "應付金額" : ""}
             </div>
             <div className="text-base font-bold tabular text-[var(--color-coral)]">
-              NT$ {b.totalAmount.toLocaleString()}
+              NT$ {(needsPayment ? Math.max(0, b.totalAmount - b.paidAmount) : b.totalAmount).toLocaleString()}
             </div>
+            {b.creditUsed > 0 && (
+              <div className="text-[10px] text-[var(--color-phosphor)]">🎁 已折抵用金 NT$ {b.creditUsed.toLocaleString()}</div>
+            )}
           </div>
           {/* 右：申請退款 — v284：付款已被 admin 確認 (deposit_paid / fully_paid) 才顯示 */}
           {/*   排除：pending（沒付）/ awaiting_verify（上傳但未審）/ refunded / refunding */}

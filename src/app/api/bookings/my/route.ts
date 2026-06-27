@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
         totalAmount: b.totalAmount,
         depositAmount: b.depositAmount,
         paidAmount: b.paidAmount,
+        creditUsed: b.creditUsed, // v706：抵用金折抵額，前端顯示「已折抵用金」+ 應付 = 總額 − 已付
         participants: b.participants,
         tankCount: b.tankCount ?? null, // v704：客戶實際選的潛次（舊單為 null，client fallback trip.tankCount）
         rentalGear: b.rentalGear,
