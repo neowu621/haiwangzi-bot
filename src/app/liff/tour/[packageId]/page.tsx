@@ -154,7 +154,6 @@ export default function TourDetailPage({
     emergencyName.trim().length >= 2 &&
     emergencyPhone.trim().length >= 8 &&
     cert !== "" &&                   // v655：證照等級必填
-    certNumber.trim().length >= 1 && // v655：證照號碼必填
     logCount.trim().length >= 1;     // v655：潛水次數必填（新手填 0 也可）
 
   async function submit() {
@@ -440,15 +439,6 @@ export default function TourDetailPage({
                   className="text-center"
                 />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="cert">證照號碼 *</Label>
-              <Input
-                id="cert"
-                value={certNumber}
-                onChange={(e) => setCertNumber(e.target.value)}
-                placeholder="請填證照卡上的號碼"
-              />
             </div>
             <Separator />
             <div className="text-sm font-semibold">緊急聯絡人 *</div>

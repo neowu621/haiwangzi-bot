@@ -592,7 +592,6 @@ function ProfileView({ view, onBack }: { view: "info" | "certs" | "notif"; onBac
               <div><Lab>證照等級</Lab><select value={m.cert ?? ""} onChange={(e) => up({ cert: (e.target.value || null) as Cert | null })} style={SELP}><option value="">未填</option>{M2_CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
               <div><Lab>累計潛水支數</Lab><input value={m.logCount ?? 0} onChange={(e) => up({ logCount: Number(e.target.value.replace(/\D/g, "")) || 0 })} inputMode="numeric" style={{ ...INP, textAlign: "center" }} /></div>
             </div>
-            <div style={{ marginTop: 8 }}><Lab>證照編號</Lab><input value={m.certNumber ?? ""} onChange={(e) => up({ certNumber: e.target.value })} placeholder="證照卡上的號碼" style={INP} /></div>
           </BCard>
           <BCard title={`常用潛伴（${m.companions.length}）`} sub="下單時可一鍵帶入">
             {m.companions.map((c, i) => (
@@ -863,7 +862,7 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
   const payable = Math.max(0, afterCode - Math.min(creditUsed, credit, afterCode));
   const closed = trip ? isBookingClosed(trip.date, trip.startTime) : false;
   const compOk = companions.every((c) => c.name.trim().length >= 2 && c.cert);
-  const canSubmit = !!trip && !closed && agree.ok && realName.trim().length >= 2 && phone.trim().length >= 8 && eName.trim().length >= 2 && ePhone.trim().length >= 8 && cert !== "" && certNo.trim().length >= 1 && logc.trim().length >= 1 && compOk;
+  const canSubmit = !!trip && !closed && agree.ok && realName.trim().length >= 2 && phone.trim().length >= 8 && eName.trim().length >= 2 && ePhone.trim().length >= 8 && cert !== "" && logc.trim().length >= 1 && compOk;
 
   async function applyPromo() {
     const code = promoIn.trim().toUpperCase(); if (!code) return; setPromoMsg("");
@@ -918,7 +917,6 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
           <div><Lab>證照等級 *</Lab><select value={cert} onChange={(e) => setCert(e.target.value as Cert | "")} style={SELP}><option value="">請選擇</option>{M2_CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><Lab>累計潛水支數 *</Lab><input value={logc} onChange={(e) => setLogc(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="新手填 0" style={{ ...INP, textAlign: "center" }} /></div>
         </div>
-        <div style={{ marginTop: 8 }}><Lab>證照號碼 *</Lab><input value={certNo} onChange={(e) => setCertNo(e.target.value)} placeholder="證照卡上的號碼" style={INP} /></div>
       </BCard>
 
       <BCard title="緊急聯絡人" sub="必填">
@@ -1029,7 +1027,7 @@ function TourBook({ item, onBack, onBooked }: { item: M2Tour; onBack: () => void
   const total = tour ? (tour.basePrice + addonSum) * pax : 0;
   const deposit = tour ? tour.deposit * pax : 0;
   const payable = Math.max(0, total - Math.min(creditUsed, credit, total));
-  const canSubmit = !!tour && agree.ok && realName.trim().length >= 2 && phone.trim().length >= 8 && eName.trim().length >= 2 && ePhone.trim().length >= 8 && cert !== "" && certNo.trim().length >= 1 && logc.trim().length >= 1;
+  const canSubmit = !!tour && agree.ok && realName.trim().length >= 2 && phone.trim().length >= 8 && eName.trim().length >= 2 && ePhone.trim().length >= 8 && cert !== "" && logc.trim().length >= 1;
 
   async function submit() {
     if (!tour || !canSubmit || busy) { if (!agree.ok) setErr("請先閱讀並同意政策、完成簽名"); return; }
@@ -1078,7 +1076,6 @@ function TourBook({ item, onBack, onBooked }: { item: M2Tour; onBack: () => void
           <div><Lab>證照等級 *</Lab><select value={cert} onChange={(e) => setCert(e.target.value as Cert | "")} style={SELP}><option value="">請選擇</option>{M2_CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><Lab>累計潛水支數 *</Lab><input value={logc} onChange={(e) => setLogc(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="新手填 0" style={{ ...INP, textAlign: "center" }} /></div>
         </div>
-        <div style={{ marginTop: 8 }}><Lab>證照號碼 *</Lab><input value={certNo} onChange={(e) => setCertNo(e.target.value)} placeholder="證照卡上的號碼" style={INP} /></div>
         <div style={{ fontSize: 12.5, fontWeight: 600, margin: "12px 0 6px" }}>緊急聯絡人 *</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="姓名" style={INP} />

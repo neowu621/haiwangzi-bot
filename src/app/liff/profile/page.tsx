@@ -140,7 +140,6 @@ export default function ProfilePage() {
           <div><Lab>證照等級</Lab><select value={cert} onChange={(e) => setCert(e.target.value as Cert | "")} style={SELP}><option value="">未填</option>{CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><Lab>累計潛水支數</Lab><input value={logCount} onChange={(e) => setLogCount(e.target.value.replace(/\D/g, ""))} inputMode="numeric" style={{ ...INP, textAlign: "center" }} /></div>
         </div>
-        <div style={{ marginTop: 8 }}><Lab>證照編號</Lab><input value={certNumber} onChange={(e) => setCertNumber(e.target.value)} placeholder="證照卡上的號碼" style={INP} /></div>
       </BCard>
       <BCard title={`常用潛伴（${companions.length}）`} sub="下單時可一鍵帶入">
         {companions.map((c, i) => (

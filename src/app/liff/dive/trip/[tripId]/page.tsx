@@ -421,7 +421,6 @@ export default function TripBookingPage({
     emergencyName.trim().length >= 2 &&
     emergencyPhone.trim().length >= 8 &&
     cert !== "" &&
-    certNumber.trim().length >= 1 && // v655：證照號碼必填
     logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
     companionsValid;
 
@@ -435,7 +434,6 @@ export default function TripBookingPage({
   if (emergencyName.trim().length < 2) missing.push("緊急聯絡人");
   if (emergencyPhone.trim().length < 8) missing.push("緊急聯絡人電話");
   if (cert === "") missing.push("證照等級");
-  if (certNumber.trim().length < 1) missing.push("證照號碼");
   if (logCount.trim().length < 1) missing.push("潛水次數");
   if (!companionsValid) missing.push("同行者資料");
 
@@ -768,16 +766,6 @@ export default function TripBookingPage({
                   className="text-center"
                 />
               </div>
-            </div>
-            {/* v655：證照號碼必填（每次下單請確認/更新，方便教練掌握經驗） */}
-            <div className="mt-2">
-              <Label htmlFor="cert-number">證照號碼 *</Label>
-              <Input
-                id="cert-number"
-                value={certNumber}
-                onChange={(e) => setCertNumber(e.target.value)}
-                placeholder="請填證照卡上的號碼"
-              />
             </div>
           </div>
         </CollapsibleCard>

@@ -895,7 +895,6 @@ function CommonFields({ f, patch, policies }: { f: CommonForm; patch: (p: Partia
             {["OW", "AOW", "Rescue", "DM", "Instructor"].map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         ))}
-        {field("證照號碼", <input style={inp} value={f.certNumber} onChange={(e) => patch({ certNumber: e.target.value })} />)}
         {field("潛水次數", <input style={inp} type="number" value={f.logCount} onChange={(e) => patch({ logCount: e.target.value })} />)}
       </div>
       <SectionTitle>緊急聯絡人</SectionTitle>
@@ -1673,7 +1672,6 @@ function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void
               {["OW", "AOW", "Rescue", "DM", "Instructor"].map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           ))}
-          {field("證照號碼", <input style={inp} value={certNumber} onChange={(e) => setCertNumber(e.target.value)} />)}
           {field("潛水次數（自填總經驗）", <input style={inp} type="number" value={logCount} onChange={(e) => setLogCount(e.target.value.replace(/\D/g, ""))} />)}
         </div>
         <p style={{ fontSize: 11.5, color: C.mute, marginTop: 4, lineHeight: 1.6 }}>※ 此為自填總經驗，僅供教練參考；VIP 升等只看「海王子氣瓶數」（教練現場點名累積）。</p>
@@ -1712,7 +1710,6 @@ function ProfilePanel({ member, onSaved }: { member: Member; onSaved: () => void
                   {["OW", "AOW", "Rescue", "DM", "Instructor"].map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               ))}
-              {field("證照號碼", <input style={inp} value={c.certNumber} onChange={(e) => setCompanion(i, { certNumber: e.target.value })} />)}
               {field("電話", <input style={inp} value={c.phone} onChange={(e) => setCompanion(i, { phone: e.target.value })} />)}
             </div>
           </div>
