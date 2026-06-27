@@ -380,6 +380,9 @@ export default function TripBookingPage({
   // v638：套用教練氣瓶優惠價時，優惠代碼不生效（獨佔）
   const codeDiscountEff = !staffTankApplied && promoApplied && promoApplied.discount > tankSaved ? promoApplied.discount : 0;
   const finalTotal = Math.max(0, preDiscountTotal - Math.max(tankSaved, codeDiscountEff));
+  // v701：底部「應付金額」需扣掉抵用金折抵（後端本就有扣，這裡讓顯示對齊）
+  const creditUsedEff = Math.min(creditUsed, creditBalance, finalTotal);
+  const payable = Math.max(0, finalTotal - creditUsedEff);
 
   async function applyPromo() {
     const code = promoInput.trim().toUpperCase();
@@ -1191,15 +1194,21 @@ export default function TripBookingPage({
                   <span>− NT$ {gearSaved.toLocaleString()}</span>
                 </div>
               )}
+              {creditUsedEff > 0 && (
+                <div className="flex justify-between text-[var(--color-phosphor)]">
+                  <span>🎁 抵用金折抵</span>
+                  <span>− NT$ {creditUsedEff.toLocaleString()}</span>
+                </div>
+              )}
             </div>
             <Separator className="my-2" />
             <div className="flex items-end justify-between">
               <div>
                 <div className="text-[10px] text-[var(--muted-foreground)]">
-                  總金額
+                  {creditUsedEff > 0 ? "應付金額" : "總金額"}
                 </div>
                 <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
-                  NT$ {total.toLocaleString()}
+                  NT$ {payable.toLocaleString()}
                 </div>
               </div>
               <Button
