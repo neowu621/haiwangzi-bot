@@ -2,12 +2,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Waves, ListChecks, User } from "lucide-react";
+import { Home, Bell, Waves, ListChecks, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLiff } from "@/lib/liff/LiffProvider";
 
-// v703：底部精簡為 4 分頁 — 首頁 / 潛水預約 / 我的預約 / 個人中心。
-//   「訊息通知」收進「個人中心 > 訊息中心」(站內訊息 + 聯絡客服);未讀紅點改掛在「個人中心」。
+// v709：底部 5 分頁 — 首頁 / 站內訊息 / 潛水預約 / 我的預約 / 個人中心。
+//   「站內訊息」獨立成首頁右邊的分頁(掛未讀紅點);「聯絡客服」放在「個人中心」第一層。
 const NAV: Array<{
   href: string;
   label: string;
@@ -17,9 +17,10 @@ const NAV: Array<{
   unreadBadge?: boolean;
 }> = [
   { href: "/liff/home", label: "首頁", match: /^\/liff\/(home|welcome)/, Icon: Home },
+  { href: "/liff/notifications", label: "站內訊息", match: /^\/liff\/notifications/, Icon: Bell, unreadBadge: true },
   { href: "/liff/booking", label: "潛水預約", match: /^\/liff\/(booking|calendar|tour|dive|wishes)/, Icon: Waves },
   { href: "/liff/my", label: "我的預約", match: /^\/liff\/my/, Icon: ListChecks },
-  { href: "/liff/profile", label: "個人中心", match: /^\/liff\/(profile|messages|notifications)/, Icon: User, unreadBadge: true },
+  { href: "/liff/profile", label: "個人中心", match: /^\/liff\/(profile|messages)/, Icon: User },
 ];
 
 const UNREAD_CACHE_KEY = "haiwangzi:notifications:unread:v1";
