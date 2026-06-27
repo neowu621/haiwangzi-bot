@@ -346,6 +346,31 @@ export async function POST(req: NextRequest) {
     status = "confirmed";
   }
 
+  // v712：凍結金額明細(下單當下的氣瓶/減免/裝備/抵用金…),供老闆結帳/核對顯示組成
+  const priceBreakdown = {
+    kind: "daily" as const,
+    perTank: pricing.extraTank,
+    tankUnitCharged: staffTankUnit,
+    staffTankApplied,
+    tankCount: effectiveTanks,
+    participants: data.participants,
+    totalTanks,
+    baseTrip: extraAmount,
+    divesAmount: staffTankUnit * totalTanks,
+    tankDiscountPerTank,
+    autoDiscount,
+    gearItems: data.rentalGear,
+    gearAmountRaw,
+    gearAmount,
+    gearDiscountPct,
+    promoCode: promoCodeApplied,
+    promoDiscount,
+    finalDiscount,
+    totalAmount,
+    creditUsed,
+    payable: Math.max(0, totalAmount - creditUsed),
+  };
+
   const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({
     data: {
@@ -357,6 +382,7 @@ export async function POST(req: NextRequest) {
       tankCount: effectiveTanks, // v704：存客戶實際選的潛次（每人），讓「我的預約」顯示正確
       participantDetails: (data.participantDetails ?? []) as never,
       rentalGear: data.rentalGear,
+      priceBreakdown, // v712
       notes: data.notes,
       totalAmount,
       depositAmount: 0,

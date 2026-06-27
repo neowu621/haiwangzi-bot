@@ -140,6 +140,23 @@ export async function POST(req: NextRequest) {
     status = "confirmed";
   }
 
+  // v712：凍結金額明細(潛旅:每人團費 + 加購 − 抵用金 → 應付)
+  const allAddons = (tour.addons as Array<{ id: string; label?: string; priceDelta: number }>) ?? [];
+  const priceBreakdown = {
+    kind: "tour" as const,
+    basePrice: tour.basePrice,
+    addons: data.selectedAddons
+      .map((id) => allAddons.find((a) => a.id === id))
+      .filter((a): a is { id: string; label?: string; priceDelta: number } => !!a)
+      .map((a) => ({ label: a.label ?? "加購", priceDelta: a.priceDelta })),
+    addonAmount,
+    participants: data.participants,
+    deposit: depositAmount,
+    totalAmount,
+    creditUsed,
+    payable: Math.max(0, totalAmount - creditUsed),
+  };
+
   const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({
     data: {
@@ -149,6 +166,7 @@ export async function POST(req: NextRequest) {
       refId: data.tourId,
       participants: data.participants,
       selectedAddons: data.selectedAddons,
+      priceBreakdown, // v712
       notes: data.notes,
       totalAmount,
       depositAmount,

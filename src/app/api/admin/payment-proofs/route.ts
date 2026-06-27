@@ -49,6 +49,11 @@ export async function GET(req: NextRequest) {
             totalAmount: true,
             paidAmount: true,
             paymentStatus: true,
+            // v712：金額明細(組成)+ 舊單 fallback 欄位
+            priceBreakdown: true,
+            creditUsed: true,
+            rentalGear: true,
+            tankCount: true,
             user: { select: { displayName: true, realName: true, phone: true } },
           },
         },

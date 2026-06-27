@@ -6,6 +6,9 @@ import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun, Moon, ImageIcon, ImageOff } from "lucide-react";
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
+import { PriceBreakdown, type PriceBreakdownData } from "@/components/admin/PriceBreakdown"; // v712
+
+type GearItem = { itemType?: string; price: number; qty?: number };
 
 /**
  * v298：老闆夜間結帳介面 — 兩段式 + 批次處理
@@ -46,6 +49,10 @@ interface ProofRow {
     totalAmount: number;
     paidAmount: number;
     paymentStatus: string;
+    priceBreakdown?: PriceBreakdownData | null; // v712
+    creditUsed?: number;
+    rentalGear?: GearItem[];
+    tankCount?: number | null;
     user: { displayName: string; realName: string | null; phone: string | null };
   };
 }
@@ -54,13 +61,18 @@ interface BookingRow {
   id: string;
   code: string | null;
   userId: string;
+  type?: "daily" | "tour";
   participants: number;
   totalAmount: number;
   paidAmount: number;
   status: string;
   paymentStatus: string;
+  priceBreakdown?: PriceBreakdownData | null; // v712
+  creditUsed?: number;
+  rentalGear?: GearItem[];
+  tankCount?: number | null;
   user: { displayName: string; realName: string | null; phone: string | null };
-  ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string };
+  ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; tankCount?: number | null };
   signatureImageUrl?: string | null;
 }
 
@@ -78,6 +90,8 @@ export default function TonightPage() {
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
   const [imgErrored, setImgErrored] = React.useState<Set<string>>(new Set()); // v396：圖載入失敗的 proof id
+  const [openDetail, setOpenDetail] = React.useState<Set<string>>(new Set()); // v712：展開金額明細的卡片
+  const toggleDetail = (key: string) => setOpenDetail((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
   const reload = React.useCallback(async () => {
     setLoading(true);
@@ -301,6 +315,14 @@ export default function TonightPage() {
                             <span className="font-bold tabular-nums text-[var(--color-coral)]">NT$ {b.totalAmount.toLocaleString()}</span>
                             <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">待匯款</span>
                           </div>
+                          <button type="button" onClick={() => toggleDetail(b.id)} className="mt-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2">
+                            {openDetail.has(b.id) ? "收起明細 ▴" : "金額明細 ▾"}
+                          </button>
+                          {openDetail.has(b.id) && (
+                            <div className="mt-1.5 rounded-lg bg-[var(--muted)]/50 p-2.5">
+                              <PriceBreakdown pb={b.priceBreakdown ?? null} fallback={{ type: b.type, totalAmount: b.totalAmount, creditUsed: b.creditUsed, rentalGear: b.rentalGear, tankCount: b.tankCount ?? b.ref?.tankCount, participants: b.participants }} />
+                            </div>
+                          )}
                         </div>
                         <Link href={`/admin/bookings?status=created`}>
                           <Button size="sm" variant="outline" className="h-7 text-[11px]">
@@ -416,9 +438,18 @@ export default function TonightPage() {
                             )}
                           </div>
                           <div className="mt-0.5 text-[12px]">
+                            <span className="text-[var(--muted-foreground)]">客戶填報 </span>
                             <span className="font-bold text-[var(--color-coral)]">NT$ {p.amount.toLocaleString()}</span>
                             {p.last5 && <span className="ml-2 text-[var(--muted-foreground)]">後5碼 <span className="font-mono">{p.last5}</span></span>}
                           </div>
+                          <button type="button" onClick={() => toggleDetail(p.id)} className="mt-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2">
+                            {openDetail.has(p.id) ? "收起明細 ▴" : "金額明細（應付組成）▾"}
+                          </button>
+                          {openDetail.has(p.id) && (
+                            <div className="mt-1.5 rounded-lg bg-[var(--muted)]/50 p-2.5">
+                              <PriceBreakdown pb={(p.booking.priceBreakdown as PriceBreakdownData | null) ?? null} fallback={{ type: p.booking.type as "daily" | "tour" | undefined, totalAmount: p.booking.totalAmount, creditUsed: p.booking.creditUsed, rentalGear: p.booking.rentalGear, tankCount: p.booking.tankCount, participants: p.booking.participants }} />
+                            </div>
+                          )}
                           {/* v620：客戶備註 / 管理備註 提醒 */}
                           {p.booking.notes && (
                             <div className="mt-0.5 text-[11px] text-amber-700">📝 客戶：{p.booking.notes}</div>

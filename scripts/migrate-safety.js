@@ -57,6 +57,8 @@ const PATCHES = [
   // v704: 客戶下單實際選的潛次（每人）。db push 在本專案常因 data-loss 警告失敗，
   //   故新增欄位一律靠這支冪等腳本，別只靠 db push。
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tank_count INTEGER`,
+  // v712: 訂單金額明細(凍結於下單時),供老闆結帳/核對顯示組成
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS price_breakdown JSONB`,
 
   // v261: 首單付款獎勵設定
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_amount INT NOT NULL DEFAULT 100`,
