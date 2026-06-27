@@ -27,12 +27,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   let activitySite = "";
   let tripBooked: number | null = null;
   let tripCapacity: number | null = null;
+  // v717：舊訂單明細估算用（場次氣瓶單價/基本費/船潛）
+  let tripExtraTank = 0;
+  let tripBaseTrip = 0;
+  let tripIsBoat = false;
   if (b.type === "daily") {
     const trip = await prisma.divingTrip.findUnique({
       where: { id: b.refId },
-      select: { date: true, startTime: true, diveSiteIds: true, capacity: true },
+      select: { date: true, startTime: true, diveSiteIds: true, capacity: true, pricing: true, isBoat: true },
     });
     if (trip) {
+      const pr = (trip.pricing ?? {}) as { extraTank?: number; baseTrip?: number };
+      tripExtraTank = pr.extraTank ?? 0;
+      tripBaseTrip = pr.baseTrip ?? 0;
+      tripIsBoat = trip.isBoat ?? false;
       const sites = trip.diveSiteIds.length
         ? await prisma.diveSite.findMany({ where: { id: { in: trip.diveSiteIds } }, select: { id: true, name: true } })
         : [];
@@ -100,6 +108,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       totalAmount: b.totalAmount,
       depositAmount: b.depositAmount,
       paidAmount: b.paidAmount,
+      // v717：金額明細(組成) + 舊單 fallback 估算欄位
+      priceBreakdown: b.priceBreakdown ?? null,
+      creditUsed: b.creditUsed,
+      rentalGear: b.rentalGear ?? null,
+      tankCount: b.tankCount ?? null,
+      tripExtraTank,
+      tripBaseTrip,
+      tripIsBoat,
     },
   });
 }

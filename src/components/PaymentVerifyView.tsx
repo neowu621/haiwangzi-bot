@@ -3,8 +3,11 @@
 //   只負責呈現 + 呼叫 verify/reject；fetchJson 由各端注入（LIFF=liff.fetchWithAuth / 後台=adminFetch）。
 //   核對 API 走 /api/admin/payment-proofs/[id]/*（authFromRequest 統一驗證，admin/boss）。
 import { useCallback, useEffect, useState } from "react";
+import { PriceBreakdown, type PriceBreakdownData } from "@/components/admin/PriceBreakdown";
 
 type Fetcher = <T = unknown>(url: string, init?: RequestInit) => Promise<T>;
+
+interface GearItem { itemType?: string; label?: string; price: number; qty?: number }
 
 interface ProofData {
   proof: {
@@ -18,6 +21,9 @@ interface ProofData {
     tripBooked: number | null; tripCapacity: number | null;
     notes: string | null; adminNotes: string | null;
     totalAmount: number; depositAmount: number; paidAmount: number;
+    priceBreakdown?: PriceBreakdownData | null;
+    creditUsed?: number; rentalGear?: GearItem[] | null; tankCount?: number | null;
+    tripExtraTank?: number; tripBaseTrip?: number; tripIsBoat?: boolean;
   };
 }
 
@@ -139,6 +145,25 @@ export function PaymentVerifyView({
           <span className="font-mono font-semibold">{proof.last5 ?? "—（客戶未填）"}</span>
           <span className="text-[var(--muted-foreground)]">已付 / 總額</span>
           <span>{ntd(booking.paidAmount)} / {ntd(booking.totalAmount)}</span>
+        </div>
+
+        {/* v717：款項明細(組成) — 讓老闆核對金額是否正確 */}
+        <div className="mx-4 mb-2 rounded-lg border px-3 py-2" style={{ borderColor: "var(--border)", background: "#F7FAFC" }}>
+          <p className="mb-1 text-[11px] font-semibold text-[var(--color-ocean-deep)]">📋 款項明細</p>
+          <PriceBreakdown
+            pb={booking.priceBreakdown ?? null}
+            fallback={{
+              type: booking.type as "daily" | "tour" | undefined,
+              totalAmount: booking.totalAmount,
+              creditUsed: booking.creditUsed,
+              rentalGear: booking.rentalGear ?? undefined,
+              tankCount: booking.tankCount,
+              participants: booking.participants,
+              extraTank: booking.tripExtraTank,
+              baseTrip: booking.tripBaseTrip,
+              isBoat: booking.tripIsBoat,
+            }}
+          />
         </div>
 
         {/* 客戶備註 / 管理備註 */}
