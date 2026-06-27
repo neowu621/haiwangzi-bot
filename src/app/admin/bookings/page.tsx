@@ -46,6 +46,7 @@ interface AdminBooking {
   refundMethod?: string | null;
   creditRefunded?: number; // v608：訂單取消已退還的抵用金
   participants: number;
+  tankCount?: number | null; // v707：客戶實際選的潛次（每人）；舊單 null → fallback ref.tankCount
   overCapacity?: boolean;
   createdAt: string;
   notes?: string | null;
@@ -82,6 +83,7 @@ interface AdminBooking {
   ref: {
     date?: string;
     startTime?: string;
+    tankCount?: number; // v707：場次預設潛次（fallback 用）
     title?: string;
     dateStart?: string;
     dateEnd?: string;
@@ -998,9 +1000,18 @@ export default function AdminBookingsPage() {
                         {/* 場次時間 — daily 一行 / tour 兩行（開始 ~ 結束） */}
                         <td className="px-4 py-2.5 text-xs whitespace-nowrap">
                           {b.type === "daily" ? (
-                            <div className={cn("tabular-nums font-medium", past && "text-[var(--muted-foreground)]")}>
-                              {b.ref.date ?? "—"} {weekdayTW(b.ref.date ?? "")} {b.ref.startTime ?? ""}
-                            </div>
+                            <>
+                              <div className={cn("tabular-nums font-medium", past && "text-[var(--muted-foreground)]")}>
+                                {b.ref.date ?? "—"} {weekdayTW(b.ref.date ?? "")} {b.ref.startTime ?? ""}
+                              </div>
+                              {/* v707：潛水人數 + 總氣瓶數（每人潛次×人數）；舊單 fallback 場次預設潛次 */}
+                              <div className="mt-0.5 text-[10px] font-normal text-[var(--muted-foreground)]">
+                                👥 {b.participants} 人
+                                {(b.tankCount ?? b.ref.tankCount)
+                                  ? ` · 🤿 共 ${(b.tankCount ?? b.ref.tankCount ?? 0) * b.participants} 支`
+                                  : ""}
+                              </div>
+                            </>
                           ) : (
                             <>
                               <div className={cn("tabular-nums font-medium leading-tight", past && "text-[var(--muted-foreground)]")}>
@@ -1008,6 +1019,10 @@ export default function AdminBookingsPage() {
                               </div>
                               <div className="tabular-nums text-[10px] text-[var(--muted-foreground)] leading-tight">
                                 ~ {b.ref.dateEnd ?? "—"} {weekdayTW(b.ref.dateEnd ?? "")}
+                              </div>
+                              {/* v707：旅遊潛水顯示人數 */}
+                              <div className="mt-0.5 text-[10px] font-normal text-[var(--muted-foreground)]">
+                                👥 {b.participants} 人
                               </div>
                             </>
                           )}

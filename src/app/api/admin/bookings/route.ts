@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const [trips, tours] = await Promise.all([
       dailyIds.length === 0 ? Promise.resolve([]) : prisma.divingTrip.findMany({
         where: { id: { in: dailyIds } },
-        select: { id: true, date: true, startTime: true, diveSiteIds: true },
+        select: { id: true, date: true, startTime: true, diveSiteIds: true, tankCount: true },
       }),
       tourIds.length === 0 ? Promise.resolve([]) : prisma.tourPackage.findMany({
         where: { id: { in: tourIds } },
@@ -130,6 +130,7 @@ export async function GET(req: NextRequest) {
               startTime: t.startTime, // "08:00" 字串，直接顯示不要走時區轉換
               // v153：找不到 DiveSite 時用 id 本身（多半就是中文名稱）
               sites: t.diveSiteIds.map((id) => siteMap.get(id) ?? id),
+              tankCount: t.tankCount, // v707：場次預設潛次（舊單 booking.tankCount 為 null 時 fallback）
             };
           }
         } else {
