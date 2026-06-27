@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     // v620：批次補「出團資訊 + 該場次目前已參加人數」（日潛），避免 N+1。
     const dailyRefIds = [...new Set(proofs.filter((p) => p.booking.type === "daily").map((p) => p.booking.refId))];
     const trips = dailyRefIds.length
-      ? await prisma.divingTrip.findMany({ where: { id: { in: dailyRefIds } }, select: { id: true, date: true, startTime: true, diveSiteIds: true, capacity: true } })
+      ? await prisma.divingTrip.findMany({ where: { id: { in: dailyRefIds } }, select: { id: true, date: true, startTime: true, diveSiteIds: true, capacity: true, pricing: true, isBoat: true } })
       : [];
     const tripMap = new Map(trips.map((t) => [t.id, t]));
     const allSiteIds = [...new Set(trips.flatMap((t) => t.diveSiteIds))];
@@ -79,11 +79,16 @@ export async function GET(req: NextRequest) {
       if (b.type !== "daily") return { activityDate: "", activitySite: "", tripBooked: null as number | null, tripCapacity: null as number | null };
       const t = tripMap.get(b.refId);
       if (!t) return { activityDate: "", activitySite: "", tripBooked: null as number | null, tripCapacity: null as number | null };
+      const pr = (t.pricing ?? {}) as { extraTank?: number; baseTrip?: number };
       return {
         activityDate: `${t.date.toISOString().slice(0, 10)} ${t.startTime}`,
         activitySite: t.diveSiteIds.map((sid) => siteMap.get(sid) ?? sid).join("、"),
         tripBooked: bookedMap.get(b.refId) ?? 0,
         tripCapacity: t.capacity,
+        // v716：舊訂單明細估算用(場次氣瓶單價/基本費/船潛)
+        tripExtraTank: pr.extraTank ?? 0,
+        tripBaseTrip: pr.baseTrip ?? 0,
+        tripIsBoat: t.isBoat ?? false,
       };
     }
 

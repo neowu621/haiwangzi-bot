@@ -53,6 +53,7 @@ interface ProofRow {
     creditUsed?: number;
     rentalGear?: GearItem[];
     tankCount?: number | null;
+    tripExtraTank?: number; tripBaseTrip?: number; tripIsBoat?: boolean; // v716
     user: { displayName: string; realName: string | null; phone: string | null };
   };
 }
@@ -72,7 +73,7 @@ interface BookingRow {
   rentalGear?: GearItem[];
   tankCount?: number | null;
   user: { displayName: string; realName: string | null; phone: string | null };
-  ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; tankCount?: number | null };
+  ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; tankCount?: number | null; extraTank?: number; baseTrip?: number; isBoat?: boolean };
   signatureImageUrl?: string | null;
 }
 
@@ -320,7 +321,7 @@ export default function TonightPage() {
                           </button>
                           {openDetail.has(b.id) && (
                             <div className="mt-1.5 rounded-lg bg-[var(--muted)]/50 p-2.5">
-                              <PriceBreakdown pb={b.priceBreakdown ?? null} fallback={{ type: b.type, totalAmount: b.totalAmount, creditUsed: b.creditUsed, rentalGear: b.rentalGear, tankCount: b.tankCount ?? b.ref?.tankCount, participants: b.participants }} />
+                              <PriceBreakdown pb={b.priceBreakdown ?? null} fallback={{ type: b.type, totalAmount: b.totalAmount, creditUsed: b.creditUsed, rentalGear: b.rentalGear, tankCount: b.tankCount ?? b.ref?.tankCount, participants: b.participants, extraTank: b.ref?.extraTank, baseTrip: b.ref?.baseTrip, isBoat: b.ref?.isBoat }} />
                             </div>
                           )}
                         </div>
@@ -447,7 +448,7 @@ export default function TonightPage() {
                           </button>
                           {openDetail.has(p.id) && (
                             <div className="mt-1.5 rounded-lg bg-[var(--muted)]/50 p-2.5">
-                              <PriceBreakdown pb={(p.booking.priceBreakdown as PriceBreakdownData | null) ?? null} fallback={{ type: p.booking.type as "daily" | "tour" | undefined, totalAmount: p.booking.totalAmount, creditUsed: p.booking.creditUsed, rentalGear: p.booking.rentalGear, tankCount: p.booking.tankCount, participants: p.booking.participants }} />
+                              <PriceBreakdown pb={(p.booking.priceBreakdown as PriceBreakdownData | null) ?? null} fallback={{ type: p.booking.type as "daily" | "tour" | undefined, totalAmount: p.booking.totalAmount, creditUsed: p.booking.creditUsed, rentalGear: p.booking.rentalGear, tankCount: p.booking.tankCount, participants: p.booking.participants, extraTank: p.booking.tripExtraTank, baseTrip: p.booking.tripBaseTrip, isBoat: p.booking.tripIsBoat }} />
                             </div>
                           )}
                           {/* v620：客戶備註 / 管理備註 提醒 */}

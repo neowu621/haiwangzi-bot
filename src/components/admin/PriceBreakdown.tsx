@@ -40,7 +40,7 @@ function Row({ label, value, strike, tone, bold }: { label: React.ReactNode; val
 
 export function PriceBreakdown({ pb, fallback }: {
   pb?: PriceBreakdownData | null;
-  fallback?: { type?: "daily" | "tour"; totalAmount: number; creditUsed?: number; rentalGear?: GearItem[]; tankCount?: number | null; participants?: number };
+  fallback?: { type?: "daily" | "tour"; totalAmount: number; creditUsed?: number; rentalGear?: GearItem[]; tankCount?: number | null; participants?: number; extraTank?: number; baseTrip?: number; isBoat?: boolean };
 }) {
   const hr = <div style={{ borderTop: "0.5px solid rgba(10,35,66,.12)", margin: "4px 0" }} />;
 
@@ -105,20 +105,48 @@ export function PriceBreakdown({ pb, fallback }: {
     );
   }
 
-  // ---- 舊訂單:盡力重建(無凍結明細) ----
+  // ---- 舊訂單:用場次氣瓶單價盡力重建(無凍結明細) ----
   if (fallback) {
     const gearRaw = (fallback.rentalGear ?? []).reduce((s, g) => s + g.price * (g.qty ?? 1), 0);
     const credit = fallback.creditUsed ?? 0;
-    const rest = Math.max(0, fallback.totalAmount - gearRaw); // 氣瓶/場次費(含折抵後的殘值)
+    const cnt = fallback.tankCount ?? 1;
+    const ppl = fallback.participants ?? 1;
+    const extraTank = fallback.extraTank ?? 0;
+    const baseTrip = fallback.baseTrip ?? 0;
+    const hasTripPrice = extraTank > 0;
+    // 有場次氣瓶單價 → 列出氣瓶毛額,折抵 = 毛額+基本費+裝備 − 訂單總額(含活動減免/裝備折)
+    const grossDives = fallback.isBoat ? extraTank * ppl : extraTank * cnt * ppl;
+    const subtotal = grossDives + baseTrip + gearRaw;
+    const discount = Math.max(0, subtotal - fallback.totalAmount);
+    if (hasTripPrice) {
+      return (
+        <div>
+          <Row
+            label={fallback.isBoat ? `船潛套裝 ${ntd(extraTank)} × ${ppl} 人（含 ${cnt} 潛）` : `氣瓶 ${ntd(extraTank)} × ${cnt} 支 × ${ppl} 人`}
+            value={ntd(grossDives)}
+          />
+          {baseTrip > 0 && <Row label="基本費（整單）" value={ntd(baseTrip)} />}
+          {gearRaw > 0 && <Row label="裝備租借" value={`+ ${ntd(gearRaw)}`} />}
+          {discount > 0 && <Row label="折抵（活動減免/優惠/裝備折）" value={`− ${ntd(discount)}`} tone="ok" />}
+          {hr}
+          <Row label="訂單總額" value={ntd(fallback.totalAmount)} bold />
+          {credit > 0 && <Row label="抵用金折抵" value={`− ${ntd(credit)}`} tone="coral" />}
+          <Row label="應付" value={ntd(Math.max(0, fallback.totalAmount - credit))} tone="coral" bold />
+          <div style={{ fontSize: 10.5, color: "#7C8A99", marginTop: 4 }}>※ 舊訂單以場次現價估算（折抵為合計）</div>
+        </div>
+      );
+    }
+    // 連場次價都沒有 → 最簡估算
+    const rest = Math.max(0, fallback.totalAmount - gearRaw);
     return (
       <div>
-        <Row label={`氣瓶 / 場次費${fallback.tankCount ? `（${fallback.tankCount} 支 × ${fallback.participants ?? 1} 人）` : ""}`} value={ntd(rest)} />
+        <Row label={`氣瓶 / 場次費${fallback.tankCount ? `（${cnt} 支 × ${ppl} 人）` : ""}`} value={ntd(rest)} />
         {gearRaw > 0 && <Row label="裝備租借" value={`+ ${ntd(gearRaw)}`} />}
         {hr}
         <Row label="訂單總額" value={ntd(fallback.totalAmount)} bold />
         {credit > 0 && <Row label="抵用金折抵" value={`− ${ntd(credit)}`} tone="coral" />}
         <Row label="應付" value={ntd(Math.max(0, fallback.totalAmount - credit))} tone="coral" bold />
-        <div style={{ fontSize: 10.5, color: "#7C8A99", marginTop: 4 }}>※ 舊訂單明細為估算（下單時未凍結;氣瓶/減免合併顯示）</div>
+        <div style={{ fontSize: 10.5, color: "#7C8A99", marginTop: 4 }}>※ 舊訂單明細為估算（下單時未凍結）</div>
       </div>
     );
   }
