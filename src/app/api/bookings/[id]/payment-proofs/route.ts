@@ -169,10 +169,17 @@ export async function POST(
       const dp = await prisma.messageTemplate.findUnique({ where: { key: "deposit_pending" } }).catch(() => null);
       title = dp?.title || "💳 訂金待確認";
     }
+    // v711：通知補「場次 + 訂單總額 + 應付尾款」，讓老闆免點開即可核對；應付 = 總額−已付(已含抵用金)
+    const sessLabel = await buildSessionLabel(booking.type, booking.refId);
     notifyAdmins({
       templateKey,
       title,
-      body: `訂單 ${id.slice(0, 8)} 上傳了${typeZh}付款證明，金額 NT$${data.amount}、後5碼 ${data.last5 ?? "—"}，點開即可核對。`,
+      body:
+        `${sessLabel ? sessLabel + "\n" : ""}` +
+        `訂單 ${id.slice(0, 8)} · 訂單總額 NT$${booking.totalAmount.toLocaleString()}\n` +
+        `應付${typeZh || "款項"} NT$${remaining.toLocaleString()}（總額−已付，已扣抵用金）\n` +
+        `客戶填報 NT$${data.amount.toLocaleString()}、後5碼 ${data.last5 ?? "—"}\n` +
+        `點開即可核對。`,
       linkUrl: verifyUrl,
       icon: "💳",
     });
@@ -231,7 +238,8 @@ export async function POST(
             url: verifyUrl,
           }, "有訂金待確認");
         } else {
-          const text = `💰 待確認付款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n方式：${methodLabel}\n金額：NT$ ${data.amount.toLocaleString()}\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin/bookings?status=awaiting_verify`;
+          const sessLabel = await buildSessionLabel(booking.type, booking.refId);
+          const text = `💰 待確認付款\n\n${customerName} 上傳付款證明\n訂單 #${id.slice(0, 8)}\n${sessLabel ? `場次：${sessLabel}\n` : ""}方式：${methodLabel}\n客戶填報：NT$ ${data.amount.toLocaleString()}\n應付${typeZh || "款項"}：NT$ ${remaining.toLocaleString()}（訂單總額 NT$ ${booking.totalAmount.toLocaleString()}，已扣抵用金）\n${data.last5 ? `後 5 碼：${data.last5}\n` : ""}${data.note ? `備註：${data.note}\n` : ""}\n請至後台審核：${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin/bookings?status=awaiting_verify`;
           message = { type: "text", text };
         }
         for (const a of admins) {
@@ -284,4 +292,26 @@ export async function POST(
       uploadedAt: proof.uploadedAt,
     },
   });
+}
+
+// v711：產生「場次」標籤給付款證明通知用（日潛=日期+時間+潛點;潛旅=團名+出發日）
+async function buildSessionLabel(type: string, refId: string): Promise<string> {
+  try {
+    if (type === "daily") {
+      const t = await prisma.divingTrip.findUnique({ where: { id: refId }, select: { date: true, startTime: true, diveSiteIds: true } });
+      if (!t) return "";
+      let names = (t.diveSiteIds ?? []).join("、");
+      if ((t.diveSiteIds ?? []).some((x) => /^[0-9a-f-]{16,}$/i.test(x))) {
+        const ss = await prisma.diveSite.findMany({ where: { id: { in: t.diveSiteIds } }, select: { id: true, name: true } });
+        const m = new Map(ss.map((s) => [s.id, s.name]));
+        names = t.diveSiteIds.map((x) => m.get(x) ?? x).join("、");
+      }
+      return `日潛 ${t.date.toISOString().slice(0, 10)} ${t.startTime}${names ? ` ${names}` : ""}`;
+    }
+    if (type === "tour") {
+      const t = await prisma.tourPackage.findUnique({ where: { id: refId }, select: { title: true, dateStart: true } });
+      if (t) return `潛旅 ${t.title} ${t.dateStart.toISOString().slice(0, 10)}`;
+    }
+  } catch { /* ignore */ }
+  return "";
 }
