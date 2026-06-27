@@ -26,10 +26,12 @@ export async function GET(req: NextRequest) {
     // v224：除了 booked 人數，再算實際收費總額（用真實 booking.totalAmount 加總）
     //   排除：取消 / no_show / 退款中 / 已退款
     const tripIds = trips.map((t) => t.id);
+    // v719：改 findMany 逐筆加總，才能算「實際氣瓶數 = Σ(人數 × 該筆潛次)」
+    //   （groupBy 無法做 participants×tankCount 的逐列乘積；header「需 N 支」要與展開明細一致）
+    const tankByTrip = new Map<string, number>(trips.map((t) => [t.id, t.tankCount]));
     const bookings = tripIds.length === 0
       ? []
-      : await prisma.booking.groupBy({
-          by: ["refId"],
+      : await prisma.booking.findMany({
           where: {
             refId: { in: tripIds },
             type: "daily",
@@ -40,18 +42,18 @@ export async function GET(req: NextRequest) {
               notIn: ["refunding", "refunded"],
             },
           },
-          _sum: { participants: true, totalAmount: true, paidAmount: true },
+          select: { refId: true, participants: true, tankCount: true, totalAmount: true, paidAmount: true },
         });
-    const bookingMap = new Map(
-      bookings.map((b) => [
-        b.refId,
-        {
-          participants: b._sum.participants ?? 0,
-          revenue: b._sum.totalAmount ?? 0,
-          paid: b._sum.paidAmount ?? 0,
-        },
-      ]),
-    );
+    const bookingMap = new Map<string, { participants: number; tanks: number; revenue: number; paid: number }>();
+    for (const b of bookings) {
+      const cur = bookingMap.get(b.refId) ?? { participants: 0, tanks: 0, revenue: 0, paid: 0 };
+      const perPersonTanks = b.tankCount ?? tankByTrip.get(b.refId) ?? 0;
+      cur.participants += b.participants;
+      cur.tanks += b.participants * perPersonTanks;
+      cur.revenue += b.totalAmount;
+      cur.paid += b.paidAmount;
+      bookingMap.set(b.refId, cur);
+    }
 
     return NextResponse.json({
       trips: trips.map((t) => {
@@ -59,6 +61,7 @@ export async function GET(req: NextRequest) {
         return {
           ...t,
           booked: stats?.participants ?? 0,
+          bookedTanks: stats?.tanks ?? 0, // v719：實際氣瓶數（與展開明細一致）
           revenue: stats?.revenue ?? 0,
           paid: stats?.paid ?? 0,
         };

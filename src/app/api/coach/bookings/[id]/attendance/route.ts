@@ -55,7 +55,10 @@ export async function POST(
         const trip = await prisma.divingTrip.findUnique({
           where: { id: booking.refId },
         });
-        addLogs = (trip?.tankCount ?? 1) * booking.participants;
+        // v719：累積潛數用「該筆訂單實際潛次」(booking.tankCount)，舊單為 null 才退回場次預設。
+        //   原本一律用 trip.tankCount，會讓選少潛次的客人(如 2 潛)被多算成場次預設(3)。
+        const perPersonTanks = booking.tankCount ?? trip?.tankCount ?? 1;
+        addLogs = perPersonTanks * booking.participants;
       } else {
         // 潛水團：每人算 1 趟（每團平均 N 潛由 trip 包定，這裡先簡化）
         addLogs = booking.participants;

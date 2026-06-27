@@ -42,9 +42,16 @@ export async function GET(req: NextRequest) {
     : [];
   const siteName = new Map(sites.map((s) => [s.id, s.name]));
 
-  // 已確認 / 已點名的 bookings（confirmed 可點，completed/no_show 顯示已點狀態）
+  // v719：點名名單 = 所有「會到場」的訂單（排除取消類），不論付款是否核對。
+  //   原本只收 confirmed/completed/no_show，會漏掉「待確認匯款(awaiting_verify)」與
+  //   「建立/等待付款(pending)」的客人 —— 他們其實會來潛水，要能點名。
+  //   付款狀態另以 paymentStatus 標示（未付清/付清），不影響是否出現在名單。
   const bookings = await prisma.booking.findMany({
-    where: { refId: { in: refIds }, status: { in: ["confirmed", "completed", "no_show"] } },
+    where: {
+      refId: { in: refIds },
+      status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"] },
+      paymentStatus: { notIn: ["refunding", "refunded"] },
+    },
     select: {
       id: true, refId: true, type: true, participants: true, status: true,
       paymentStatus: true, signatureImageKey: true,

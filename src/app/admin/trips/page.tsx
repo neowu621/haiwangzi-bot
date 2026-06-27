@@ -48,6 +48,7 @@ interface Trip {
   tankCount: number;
   capacity: number | null;
   booked: number;
+  bookedTanks?: number; // v719：實際氣瓶數 = Σ(人數×該筆潛次)，與展開明細一致
   revenue?: number;  // v224：實際 booking totalAmount 加總（排除取消/退款）
   paid?: number;     // v224：實際已收
   coachIds: string[];
@@ -1317,7 +1318,7 @@ export default function AdminTripsPage() {
                             {trip.tankCount} 支/人
                             {(trip.booked ?? 0) > 0 && (
                               <span className="ml-1 font-semibold" style={{ color: "#0891b2" }}>
-                                · 需 {(trip.booked ?? 0) * (trip.tankCount ?? 0)} 支
+                                · 需 {trip.bookedTanks ?? (trip.booked ?? 0) * (trip.tankCount ?? 0)} 支
                               </span>
                             )}
                           </div>
