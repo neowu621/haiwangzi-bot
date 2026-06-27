@@ -82,6 +82,7 @@ const CreateSchema = z.object({
   startTime: z.string(), // HH:MM
   isNightDive: z.boolean().default(false),
   isScooter: z.boolean().default(false),
+  isBoat: z.boolean().default(false), // v714：船潛
   diveSiteIds: z.array(z.string()).default([]),
   tankCount: z.number().int().min(1).max(5).default(3),
   capacity: z.number().int().min(0).nullable().default(8), // null/0 = 無上限
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
         startTime: data.startTime,
         isNightDive: data.isNightDive,
         isScooter: data.isScooter,
+        isBoat: data.isBoat, // v714
         diveSiteIds: data.diveSiteIds,
         tankCount: data.tankCount,
         capacity: data.capacity === 0 ? null : data.capacity,

@@ -13,6 +13,7 @@ interface GearItem { itemType?: string; label?: string; price: number; qty?: num
 export interface PriceBreakdownData {
   kind: "daily" | "tour";
   // daily
+  isBoat?: boolean; // v714：船潛(套裝價)
   perTank?: number; tankUnitCharged?: number; staffTankApplied?: boolean;
   tankCount?: number; participants?: number; totalTanks?: number;
   baseTrip?: number; divesAmount?: number; tankDiscountPerTank?: number; autoDiscount?: number;
@@ -50,11 +51,18 @@ export function PriceBreakdown({ pb, fallback }: {
     const useCharged = pb.tankUnitCharged ?? pb.perTank ?? 0;
     return (
       <div>
-        <Row
-          label={`氣瓶 ${ntd(useCharged)} × ${pb.tankCount ?? 1} 支 × ${pb.participants ?? 1} 人${pb.staffTankApplied ? "（教練價）" : ""}`}
-          strike={pb.staffTankApplied && pb.perTank && pb.perTank !== useCharged ? ntd(pb.perTank) : undefined}
-          value={ntd(pb.divesAmount ?? 0)}
-        />
+        {pb.isBoat ? (
+          <Row
+            label={`船潛套裝 ${ntd(pb.perTank ?? 0)} × ${pb.participants ?? 1} 人（含 ${pb.tankCount ?? 1} 潛）`}
+            value={ntd(pb.divesAmount ?? 0)}
+          />
+        ) : (
+          <Row
+            label={`氣瓶 ${ntd(useCharged)} × ${pb.tankCount ?? 1} 支 × ${pb.participants ?? 1} 人${pb.staffTankApplied ? "（教練價）" : ""}`}
+            strike={pb.staffTankApplied && pb.perTank && pb.perTank !== useCharged ? ntd(pb.perTank) : undefined}
+            value={ntd(pb.divesAmount ?? 0)}
+          />
+        )}
         {(pb.baseTrip ?? 0) > 0 && <Row label="基本費（整單）" value={ntd(pb.baseTrip ?? 0)} />}
         {(pb.gearAmount ?? 0) > 0 && (
           <Row

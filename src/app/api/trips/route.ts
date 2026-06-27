@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         startTime: t.startTime,
         isNightDive: t.isNightDive,
         isScooter: t.isScooter,
+        isBoat: t.isBoat, // v714
         tankCount: t.tankCount,
         capacity: t.capacity, // null = 無上限
         booked,

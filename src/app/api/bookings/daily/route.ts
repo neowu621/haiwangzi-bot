@@ -238,7 +238,11 @@ export async function POST(req: NextRequest) {
 
   // v592：未折前總額 + 自動氣瓶折(總)；v638：教練價時氣瓶以教練單價計
   const totalTanks = effectiveTanks * data.participants;
-  const baseNoDiscount = staffTankUnit * totalTanks + extraAmount + gearAmount;
+  // v714：船潛=每人套裝價(extraTank 視為套裝價,不乘支數);岸潛=每支×支數×人
+  const divesAmount = trip.isBoat
+    ? pricing.extraTank * data.participants
+    : staffTankUnit * totalTanks;
+  const baseNoDiscount = divesAmount + extraAmount + gearAmount;
   const autoDiscount = tankDiscountPerTank * totalTanks;
 
   // v592：節慶優惠代碼 —— 與自動氣瓶折「取其優」(不疊加),可疊抵用金
@@ -349,6 +353,7 @@ export async function POST(req: NextRequest) {
   // v712：凍結金額明細(下單當下的氣瓶/減免/裝備/抵用金…),供老闆結帳/核對顯示組成
   const priceBreakdown = {
     kind: "daily" as const,
+    isBoat: trip.isBoat, // v714
     perTank: pricing.extraTank,
     tankUnitCharged: staffTankUnit,
     staffTankApplied,
@@ -356,7 +361,7 @@ export async function POST(req: NextRequest) {
     participants: data.participants,
     totalTanks,
     baseTrip: extraAmount,
-    divesAmount: staffTankUnit * totalTanks,
+    divesAmount,
     tankDiscountPerTank,
     autoDiscount,
     gearItems: data.rentalGear,

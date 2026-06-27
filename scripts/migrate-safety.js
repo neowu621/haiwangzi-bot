@@ -59,6 +59,8 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS tank_count INTEGER`,
   // v712: 訂單金額明細(凍結於下單時),供老闆結帳/核對顯示組成
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS price_breakdown JSONB`,
+  // v714: 日潛場次 岸潛/船潛(船潛=每人套裝價)
+  `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS is_boat BOOLEAN NOT NULL DEFAULT false`,
 
   // v261: 首單付款獎勵設定
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS first_order_reward_amount INT NOT NULL DEFAULT 100`,

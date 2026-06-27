@@ -12,6 +12,7 @@ const PatchSchema = z.object({
   startTime: z.string().optional(),
   isNightDive: z.boolean().optional(),
   isScooter: z.boolean().optional(),
+  isBoat: z.boolean().optional(), // v714
   diveSiteIds: z.array(z.string()).optional(),
   tankCount: z.number().int().min(1).max(5).optional(),
   capacity: z.number().int().min(0).nullable().optional(),
@@ -88,6 +89,7 @@ export async function PATCH(
   if (data.startTime) patch.startTime = data.startTime;
   if (data.isNightDive !== undefined) patch.isNightDive = data.isNightDive;
   if (data.isScooter !== undefined) patch.isScooter = data.isScooter;
+  if (data.isBoat !== undefined) patch.isBoat = data.isBoat; // v714
   if (data.diveSiteIds) patch.diveSiteIds = data.diveSiteIds;
   if (data.tankCount !== undefined) patch.tankCount = data.tankCount;
   if (data.capacity !== undefined) patch.capacity = data.capacity === 0 ? null : data.capacity;

@@ -36,7 +36,7 @@ function availBadge(a: number | null) {
   if (a <= 3) return <Badge t={`剩 ${a} 位`} k="warn" />;
   return <Badge t="有空位" k="ok" />;
 }
-interface M2Trip { id: string; date: string; startTime: string; isNightDive: boolean; tankCount: number; available: number | null; sites: Array<{ name: string }> }
+interface M2Trip { id: string; date: string; startTime: string; isNightDive: boolean; isBoat?: boolean; tankCount: number; available: number | null; sites: Array<{ name: string }> }
 interface M2Tour { id: string; title: string; destination: string; dateStart: string; dateEnd: string; deposit: number; available: number | null; subtitle: string | null }
 
 const C = {
@@ -108,7 +108,7 @@ const GEAR_DEF: Array<{ t: GearT; label: string; price: number }> = [
 ];
 const M2_CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
 type Cert = (typeof M2_CERTS)[number];
-interface TripFull { id: string; date: string; startTime: string; isNightDive: boolean; isScooter: boolean; tankCount: number; capacity: number | null; booked: number; available: number | null; pricing: { baseTrip: number; extraTank: number; nightDive: number; scooterRental: number }; sites: Array<{ id: string; name: string; description: string }>; coaches: Array<{ id: string; realName: string }>; activityNote?: string | null }
+interface TripFull { id: string; date: string; startTime: string; isNightDive: boolean; isScooter: boolean; isBoat?: boolean; tankCount: number; capacity: number | null; booked: number; available: number | null; pricing: { baseTrip: number; extraTank: number; nightDive: number; scooterRental: number }; sites: Array<{ id: string; name: string; description: string }>; coaches: Array<{ id: string; realName: string }>; activityNote?: string | null }
 interface TourFull { id: string; title: string; destination: string; dateStart: string; dateEnd: string; basePrice: number; deposit: number; finalDeadline: string | null; depositDueDays?: number; capacity: number; booked: number; available: number; includes: string[]; excludes: string[]; addons: Array<{ id: string; label: string; priceDelta: number }>; sites: Array<{ id: string; name: string; description: string }>; activityNote?: string | null }
 interface Companion2 { id?: string; name: string; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string }
 interface MeFull { realName: string | null; phone: string | null; email: string | null; cert: Cert | null; certNumber: string | null; logCount: number | null; creditBalance: number; vipLevel: number; gearDiscountPct?: number; tankPromo?: { active: boolean; discount: number; reason: string }; staffTank?: { active: boolean; price: number }; emergencyContact: { name: string; phone: string; relationship: string } | null; companions?: Companion2[] }
@@ -787,7 +787,7 @@ function ApiList({ cat, onBooked }: { cat: "daily" | "tour"; onBooked: () => voi
     <>
       {showPerf && perf && <div style={{ textAlign: "center", fontSize: 10, color: C.mute, marginBottom: 6 }}>⏱ 查詢往返 {perf.f}ms · 進頁→開查 {perf.s}ms</div>}
       {items.map((it) => cat === "daily"
-        ? ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={t.startTime} title={`${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}`} sub={`${mdShort(t.date)} · ${t.tankCount} 潛`} tags={availBadge(t.available)} />)(it as M2Trip)
+        ? ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={t.startTime} title={`${t.isBoat ? "🚤" : "🏖"} ${t.isNightDive ? "夜潛" : "日潛"} · ${t.sites.map((s) => s.name).join("＋") || "東北角"}`} sub={`${mdShort(t.date)} · ${t.tankCount} 潛`} tags={availBadge(t.available)} />)(it as M2Trip)
         : ((t) => <Sess key={t.id} onClick={() => setSel(t)} time={mdShort(t.dateStart)} title={t.title} sub={`${DEST_ZH[t.destination] ?? t.destination} · ${mdShort(t.dateStart)}~${mdShort(t.dateEnd)}`} tags={<>{availBadge(t.available)}{t.deposit ? <span style={{ fontSize: 11, color: C.mute }}>訂金 {t.deposit.toLocaleString()}</span> : null}</>} />)(it as M2Tour))}
     </>
   );
@@ -854,7 +854,8 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
   const extraTank = trip?.pricing.extraTank ?? 0;
   const tankCut = (!staff.active && tankPromo.active) ? Math.min(tankPromo.discount, extraTank) : 0;
   const effTank = staff.active ? Math.max(0, Math.min(staff.price, extraTank)) : Math.max(0, extraTank - tankCut);
-  const dives = effTank * tank * pax;
+  // v714：船潛=每人套裝價(不乘支數);岸潛=每支×支×人
+  const dives = trip?.isBoat ? extraTank * pax : effTank * tank * pax;
   const baseTrip = trip?.pricing.baseTrip ?? 0;
   const total = dives + baseTrip + gearDisc;
   const codeDisc = (!staff.active && promo && promo.discount > tankCut * tank * pax) ? promo.discount : 0;
@@ -885,7 +886,7 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
     } catch { setErr("連線失敗，請重試"); } finally { setBusy(false); }
   }
   if (!trip) return <><BackBar onBack={onBack} /><div style={{ padding: "30px 0", textAlign: "center", color: C.mute, fontSize: 13 }}>載入場次中…</div></>;
-  const title = `${trip.isNightDive ? "夜潛" : "日潛"} · ${trip.sites.map((s) => s.name).join("＋") || "東北角"}`;
+  const title = `${trip.isBoat ? "🚤" : "🏖"} ${trip.isNightDive ? "夜潛" : "日潛"} · ${trip.sites.map((s) => s.name).join("＋") || "東北角"}`;
   return (
     <div>
       <BackBar onBack={onBack} />
@@ -977,7 +978,7 @@ function DailyBook({ item, onBack, onBooked }: { item: M2Trip; onBack: () => voi
       <BCard>
         <div style={{ fontSize: 12, color: C.mute, lineHeight: 1.9 }}>
           {baseTrip > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>基本費（整單）</span><span>NT$ {baseTrip.toLocaleString()}</span></div>}
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span>潛水 {effTank.toLocaleString()} × {tank} 支 × {pax} 人</span><span>NT$ {dives.toLocaleString()}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span>{trip?.isBoat ? `船潛套裝 ${extraTank.toLocaleString()} × ${pax} 人（含 ${tank} 潛）` : `潛水 ${effTank.toLocaleString()} × ${tank} 支 × ${pax} 人`}</span><span>NT$ {dives.toLocaleString()}</span></div>
           {gearTotal > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>裝備</span><span>+ NT$ {gearDisc.toLocaleString()}</span></div>}
           {codeDisc > 0 && <div style={{ display: "flex", justifyContent: "space-between", color: C.okFg }}><span>優惠代碼</span><span>− NT$ {codeDisc.toLocaleString()}</span></div>}
           {creditUsed > 0 && <div style={{ display: "flex", justifyContent: "space-between", color: C.coral }}><span>抵用金折抵</span><span>− NT$ {Math.min(creditUsed, credit, afterCode).toLocaleString()}</span></div>}

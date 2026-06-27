@@ -39,6 +39,7 @@ interface TripDetail {
   startTime: string;
   isNightDive: boolean;
   isScooter: boolean;
+  isBoat?: boolean; // v714
   tankCount: number;
   capacity: number | null;     // null = 無上限
   booked: number;
@@ -362,9 +363,10 @@ export default function TripBookingPage({
     },
     [trip, tankDiscountPerTank, staffTankApplied, staffTank],
   );
+  // v714：船潛=每人套裝價(不乘支數);岸潛=每支×支×人
   const divesAmount = useMemo(
-    () => effectiveTankFee * tankCount * participants,
-    [effectiveTankFee, tankCount, participants],
+    () => trip?.isBoat ? trip.pricing.extraTank * participants : effectiveTankFee * tankCount * participants,
+    [trip?.isBoat, trip?.pricing.extraTank, effectiveTankFee, tankCount, participants],
   );
   const tankSaved = tankDiscountPerTank * tankCount * participants;
   const extraAmount = useMemo(() => {
@@ -549,6 +551,7 @@ export default function TripBookingPage({
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                <span className={`rounded px-1 py-0.5 text-[10px] font-bold ${trip.isBoat ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>{trip.isBoat ? "🚤 船潛" : "🏖 岸潛"}</span>
                 <Anchor className="h-3.5 w-3.5 opacity-70" />
                 <span>{trip.sites.map((s) => s.name).join(" · ")}</span>
                 {trip.referenceVideoUrl && (
@@ -1146,18 +1149,24 @@ export default function TripBookingPage({
               )}
               <div className="flex justify-between">
                 <span>
-                  潛水{" "}
-                  {tankSaved > 0 || staffTankApplied ? (
-                    <>
-                      <span className="mr-1 text-[var(--muted-foreground)] line-through">
-                        {trip.pricing.extraTank.toLocaleString()}
-                      </span>
-                      {effectiveTankFee.toLocaleString()}
-                    </>
+                  {trip.isBoat ? (
+                    <>船潛套裝 {trip.pricing.extraTank.toLocaleString()} × {participants} 人（含 {tankCount} 潛）</>
                   ) : (
-                    trip.pricing.extraTank.toLocaleString()
-                  )}{" "}
-                  × {tankCount} 支 × {participants} 人
+                    <>
+                      潛水{" "}
+                      {tankSaved > 0 || staffTankApplied ? (
+                        <>
+                          <span className="mr-1 text-[var(--muted-foreground)] line-through">
+                            {trip.pricing.extraTank.toLocaleString()}
+                          </span>
+                          {effectiveTankFee.toLocaleString()}
+                        </>
+                      ) : (
+                        trip.pricing.extraTank.toLocaleString()
+                      )}{" "}
+                      × {tankCount} 支 × {participants} 人
+                    </>
+                  )}
                 </span>
                 <span>NT$ {divesAmount.toLocaleString()}</span>
               </div>

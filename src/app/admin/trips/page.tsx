@@ -43,6 +43,7 @@ interface Trip {
   startTime: string;
   isNightDive: boolean;
   isScooter: boolean;
+  isBoat: boolean; // v714
   diveSiteIds: string[];
   tankCount: number;
   capacity: number | null;
@@ -193,6 +194,7 @@ const BLANK_FORM = {
   startTime: "08:00",
   isNightDive: false,
   isScooter: false,
+  isBoat: false, // v714：岸潛(false)/船潛(true)
   diveSiteIds: [] as string[],
   tankCount: 3,
   capacity: 8,
@@ -403,6 +405,7 @@ export default function AdminTripsPage() {
       startTime: trip.startTime,
       isNightDive: trip.isNightDive,
       isScooter: trip.isScooter,
+      isBoat: trip.isBoat, // v714
       diveSiteIds: [...trip.diveSiteIds],
       tankCount: trip.tankCount,
       capacity: trip.capacity ?? 0,
@@ -425,6 +428,7 @@ export default function AdminTripsPage() {
       startTime: trip.startTime,
       isNightDive: trip.isNightDive,
       isScooter: trip.isScooter,
+      isBoat: trip.isBoat, // v714
       diveSiteIds: [...trip.diveSiteIds],
       tankCount: trip.tankCount,
       capacity: trip.capacity ?? 0,
@@ -1302,6 +1306,9 @@ export default function AdminTripsPage() {
                         {/* 地點 + 氣瓶數（兩行；含總量）*/}
                         <td className="px-3 py-1.5 text-xs">
                           <div className="font-medium text-[var(--foreground)]">
+                            <span className={`mr-1 rounded px-1 py-0.5 text-[9px] font-semibold ${trip.isBoat ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>
+                              {trip.isBoat ? "🚤船潛" : "🏖岸潛"}
+                            </span>
                             {trip.diveSiteIds.length > 0
                               ? trip.diveSiteIds.map(siteName).join("・")
                               : "—"}
@@ -1727,6 +1734,28 @@ export default function AdminTripsPage() {
               })()}
             </div>
 
+            {/* v714：岸潛 / 船潛 */}
+            <div>
+              <Label className="mb-1 block text-xs">潛水方式</Label>
+              <div className="flex gap-2">
+                {([["岸潛", false], ["船潛", true]] as const).map(([label, boat]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setForm({ ...form, isBoat: boat })}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${form.isBoat === boat ? "border-[var(--color-ocean-deep)] bg-[var(--color-ocean-deep)] text-white" : "border-[var(--border)]"}`}
+                  >
+                    {boat ? "🚤 " : "🏖 "}{label}
+                  </button>
+                ))}
+              </div>
+              {form.isBoat && (
+                <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                  船潛為「每人套裝價」（下方費用填套裝價，含 {form.tankCount} 潛）；計價不乘支數，活動減免仍 ×氣瓶數。
+                </p>
+              )}
+            </div>
+
             {/* 費用設定 — 氣瓶費 + 其他費用 同一行 */}
             <div>
               <Label className="mb-1.5 block text-xs">費用設定 (NT$)</Label>
@@ -1734,7 +1763,7 @@ export default function AdminTripsPage() {
                 {/* 氣瓶費 */}
                 <div className="w-28 shrink-0">
                   <div className="mb-0.5 text-[10px] text-[var(--muted-foreground)]">
-                    氣瓶費（每瓶）
+                    {form.isBoat ? `套裝價（每人·含${form.tankCount}潛）` : "氣瓶費（每瓶）"}
                   </div>
                   <Input
                     type="text"

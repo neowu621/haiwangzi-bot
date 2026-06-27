@@ -10,7 +10,7 @@ import { LiffLoading } from "@/components/shell/LiffLoading";
 import { cn, isBookingClosed } from "@/lib/utils";
 
 interface Trip {
-  id: string; date: string; startTime: string; isNightDive: boolean; isScooter: boolean;
+  id: string; date: string; startTime: string; isNightDive: boolean; isScooter: boolean; isBoat?: boolean;
   tankCount: number; capacity: number | null; booked: number; available: number | null;
   sites: Array<{ id: string; name: string } | null>;
 }
@@ -130,6 +130,7 @@ export function CalendarContent() {
                   </div>
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                      <Badge variant="muted" className={`text-[10px] ${t.isBoat ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"} border-transparent`}>{t.isBoat ? "🚤 船潛" : "🏖 岸潛"}</Badge>
                       <span>{t.sites.filter((s) => s).map((s) => s!.name).join(" · ") || "東北角"}</span>
                       <Badge variant="muted" className="text-[10px]">{t.tankCount} 潛</Badge>
                       {t.isNightDive && <Badge className="gap-0.5 text-[10px] border-transparent bg-indigo-500 text-white">🌙 夜潛</Badge>}

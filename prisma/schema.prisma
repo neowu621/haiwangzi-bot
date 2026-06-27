@@ -342,6 +342,8 @@ model DivingTrip {
   startTime         String        @map("start_time") @db.VarChar(5)
   isNightDive       Boolean       @default(false) @map("is_night_dive")
   isScooter         Boolean       @default(false) @map("is_scooter")
+  // v714：船潛(true)/岸潛(false)。船潛=每人套裝價(extraTank 視為套裝價,不乘支數)
+  isBoat            Boolean       @default(false) @map("is_boat")
   diveSiteIds       String[]      @default([]) @map("dive_site_ids")
   tankCount         Int           @default(1) @map("tank_count")
   capacity          Int? // null = 無上限
