@@ -130,6 +130,7 @@ interface AdminBookingMini {
   id: string;
   code?: string | null;
   participants: number;
+  tankCount?: number | null; // v708：訂單實際潛次（每人）
   totalAmount: number;
   paidAmount: number;
   status: string;
@@ -143,6 +144,7 @@ interface TripBookingRow {
   userName: string;
   phone: string | null;
   participants: number;
+  tankCount: number | null; // v708：客戶實際選的潛次（每人）；舊單 null → fallback 場次預設
   totalAmount: number;
   paidAmount: number;
   status: string;
@@ -158,11 +160,13 @@ const PAY_STATUS_LABEL: Record<string, string> = {
 };
 const BOOK_STATUS_LABEL: Record<string, string> = {
   pending: "待確認",
+  awaiting_verify: "待確認匯款",   // v708：原本缺這項 → 顯示成英文 awaiting_verify
   confirmed: "已確認",
   cancelled_by_user: "客戶取消",
-  cancelled_by_weather: "天候取消",
+  cancelled_by_weather: "天氣取消",
+  cancelled_unpaid: "訂單不成立",  // v708
   completed: "已完成",
-  no_show: "未到",
+  no_show: "未到場",
 };
 
 /** 取得 YYYY-MM-DD 對應的星期顯示，例如 「(週一)」「(週日)」 */
@@ -288,6 +292,7 @@ export default function AdminTripsPage() {
         userName: b.user.realName ?? b.user.displayName,
         phone: b.user.phone,
         participants: b.participants,
+        tankCount: b.tankCount ?? null, // v708：帶出訂單實際潛次
         totalAmount: b.totalAmount,
         paidAmount: b.paidAmount,
         status: b.status,
@@ -1372,13 +1377,15 @@ export default function AdminTripsPage() {
                               const active = tripBks.filter((b) => !isCancelled(b.status) && !isRefunding(b.paymentStatus));
                               const cancelled = tripBks.filter((b) => isCancelled(b.status) || isRefunding(b.paymentStatus));
                               const activeParticipants = active.reduce((s, b) => s + b.participants, 0);
+                              // v708：總氣瓶數 = 各訂單實際潛次×人數的加總（非「人數×場次預設」）
+                              const activeTanks = active.reduce((s, b) => s + b.participants * (b.tankCount ?? trip.tankCount ?? 0), 0);
                               const activeRevenue = active.reduce((s, b) => s + b.totalAmount, 0);
                               const activePaid = active.reduce((s, b) => s + b.paidAmount, 0);
                               return (
                               <div className="overflow-x-auto px-3 py-2">
                                 {/* summary */}
                                 <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md bg-white/70 px-2.5 py-1.5 text-[11px]">
-                                  <span><b style={{ color: "#1a4a70" }}>{active.length}</b> 筆有效訂單 ・ <b className="text-emerald-700">{activeParticipants}</b> 人 ・ <b className="text-emerald-700">{activeParticipants * (trip.tankCount ?? 0)}</b> 支氣瓶</span>
+                                  <span><b style={{ color: "#1a4a70" }}>{active.length}</b> 筆有效訂單 ・ <b className="text-emerald-700">{activeParticipants}</b> 人 ・ <b className="text-emerald-700">{activeTanks}</b> 支氣瓶</span>
                                   <span className="text-slate-500">應收 <b className="text-slate-700 tabular-nums">{activeRevenue.toLocaleString()}</b> · 實收 <b className="text-slate-700 tabular-nums">{activePaid.toLocaleString()}</b></span>
                                   {cancelled.length > 0 && (
                                     <span className="text-rose-600">已取消 <b>{cancelled.length}</b> 筆（不計入）</span>
@@ -1422,7 +1429,8 @@ export default function AdminTripsPage() {
                                         <td className="px-2 py-1 tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">{b.phone ?? "—"}</td>
                                         <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">×{b.participants}</td>
                                         <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">
-                                          {trip.tankCount != null ? `${b.participants * trip.tankCount} 支` : "—"}
+                                          {/* v708：用訂單實際潛次（每人）×人數；舊單 fallback 場次預設 */}
+                                          {(() => { const per = b.tankCount ?? trip.tankCount; return per != null ? `${b.participants * per} 支` : "—"; })()}
                                         </td>
                                         <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">
                                           {b.paidAmount.toLocaleString()}/{b.totalAmount.toLocaleString()}
