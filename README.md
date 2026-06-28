@@ -6,7 +6,7 @@
 
 **Production**: https://haiwangzi.xyz  
 **LIFF Entry**: https://liff.line.me/2010006458-fyokMnVv  
-**當前版本**: `20260627_700`（版本規則 `YYYYMMDD_NN`，見 `src/lib/version.ts`，每次 push 必 bump）
+**當前版本**: `20260628_725`（版本規則 `YYYYMMDD_NN`，見 `src/lib/version.ts`，每次 push 必 bump）
 
 ---
 
@@ -75,7 +75,7 @@
 - **預約**：日潛場次、潛水旅行團、開團許願單三種管道；場次開始前 2 小時截止。
 - **付款**：銀行轉帳 / LINE Pay；上傳轉帳截圖 → 後台審核憑證 → 確認訂單。
 - **自動通知**（Cronicle 排程）：D-1 行前提醒、訂金/尾款催繳、海況天氣警示、生日抵用金、VIP 升等。
-- **會員 / VIP**：依「海王子潛次」自動升級 LV1–5；註冊送 50 元、首單送 100 元抵用金。
+- **會員 / VIP**：依「海王子潛次」自動升級 LV1–5；註冊送 50 元、首單送 100 元抵用金。會員列表/客戶詳情的「累計消費」＝該客人所有訂單實付金額的即時加總（v725 起，取代會漂移的計數器；僅供參考、不影響 VIP 等級）。
 - **手機後台** `/admin/m`：8 大卡（老闆結帳 / 訂單 / 願望單 / 客服信箱 / 日潛 / 會員 / 潛旅 / 抵用金），手機開 `/admin` 自動進。
 - **客服信箱** `/admin/email`：網站諮詢 + Email + LINE 客人訊息統一收件匣，可在後台直接回（LINE 用官方帳號 / Email 用信件）。
 - **網站分析**：自建訪客計數（今日 / 近 7 天 / 近 24 小時曲線，後台瀏覽不計）＋ Google Analytics 近 30 天（OAuth，免服務帳戶金鑰）嵌入後台 `/admin/analytics`。
@@ -727,4 +727,4 @@ Email: neowu62@gmail.com
 ---
 
 _Generated and maintained for 東北角海王子潛水團 LIFF App project_  
-_當前版本：`20260627_700`_
+_當前版本：`20260628_725`_
