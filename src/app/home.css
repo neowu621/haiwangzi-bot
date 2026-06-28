@@ -26,16 +26,11 @@
 .hw .hero-cta-sub{display:inline-block;margin-top:14px;color:var(--foam);font-size:.92rem;font-weight:600;text-decoration:none;border-bottom:1px solid transparent}
 .hw .hero-cta-sub:hover{border-bottom-color:currentColor}
 
-.hw .bg-reeffish{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-04.webp) center/cover}
-.hw .bg-coraldiver{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-02.webp) center/cover}
-.hw .bg-turtle{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-03.webp) center/cover}
-.hw .bg-coral{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-05.webp) center/cover}
-.hw .bg-boat{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-06.webp) center/cover}
-.hw .bg-school{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-07.webp) center/cover}
-.hw .bg-blue{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-08.webp) center/cover}
-.hw .bg-macro{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-09.webp) center/cover}
-.hw .bg-greenreef{background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9)),url(/home/src-10.webp) center/cover}
-.hw .bg-coron{background:linear-gradient(160deg,rgba(2,21,42,.4),rgba(2,21,42,.88)),url(/home/src-01.webp) center/cover}
+/* v723：POI 卡背景圖由 CSS background 改 next/image（fill + lazy）——首屏只載 hero，
+   潛點/潛旅 13 張背景圖延後載入並走 Next 圖片最佳化（responsive + AVIF/WebP）。
+   圖片墊在 z-index:0、漸層遮罩 z-index:1，文字（.num/.poi-body z-index:2、.lvl z-index:3）疊在上層。 */
+.hw .poi-img{object-fit:cover;z-index:0}
+.hw .poi-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(160deg,rgba(2,21,42,.42),rgba(2,21,42,.9))}
 
 /* NAV */
 .hw header.nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 22px;transition:background .35s,padding .35s}

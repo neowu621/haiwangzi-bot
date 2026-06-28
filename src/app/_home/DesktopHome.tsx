@@ -12,6 +12,47 @@ import {
 } from "./data";
 import { localBusinessJsonLd } from "@/lib/business-info";
 
+// v723：潛點/潛旅卡的背景圖（bg-* class → WebP 路徑，對應原 home.css 的 url()）。
+// 改用 next/image（fill + lazy）後，這 13 張背景圖不再於首屏一次載入，而是捲到附近才載、
+// 並走 Next 圖片最佳化（responsive 尺寸 + AVIF/WebP）。首屏只留 hero（hero-bg 仍走 CSS background 即時載入）。
+const POI_IMG: Record<string, string> = {
+  "bg-reeffish": "/home/src-04.webp",
+  "bg-coraldiver": "/home/src-02.webp",
+  "bg-turtle": "/home/src-03.webp",
+  "bg-coral": "/home/src-05.webp",
+  "bg-boat": "/home/src-06.webp",
+  "bg-school": "/home/src-07.webp",
+  "bg-blue": "/home/src-08.webp",
+  "bg-macro": "/home/src-09.webp",
+  "bg-greenreef": "/home/src-10.webp",
+  "bg-coron": "/home/src-01.webp",
+};
+
+type Poi = { n: string; bg: string; zh: string; en: string; level?: string; d: string; tags: string[] };
+
+function PoiCard({ s }: { s: Poi }) {
+  return (
+    <div className="poi reveal">
+      <Image
+        className="poi-img"
+        src={POI_IMG[s.bg] ?? "/home/src-08.webp"}
+        alt={s.zh}
+        fill
+        loading="lazy"
+        sizes="(min-width:980px) 33vw, (min-width:620px) 50vw, 100vw"
+      />
+      <span className="poi-scrim" aria-hidden />
+      <span className="num">{s.n}</span>
+      {s.level ? <span className={`lvl lvl-${LVL_CLASS[s.level] || "mid"}`}>{s.level}</span> : null}
+      <div className="poi-body">
+        <h3>{s.zh}<span>{s.en}</span></h3>
+        <p>{s.d}</p>
+        <div className="poi-meta">{s.tags.map((t) => <span key={t}>{t}</span>)}</div>
+      </div>
+    </div>
+  );
+}
+
 // v505：桌機 / 平板版首頁（原 page.tsx 內容抽出為共用元件；`/` 依裝置渲染、`/dt` 強制預覽）。
 export default function DesktopHome() {
   const bizJsonLd = localBusinessJsonLd();
@@ -163,7 +204,7 @@ export default function DesktopHome() {
           <div className="sec-head reveal"><span className="eyebrow">Northeast Coast Dive Sites</span><h2 className="section-title">東北角潛點</h2><p>海王子常帶隊的東北角潛點, 地形與生態各有特色, 依你的程度與想看的風景安排。</p><p className="sec-hint">🐠 剛拿證照、想穩定技巧？推薦從 <b>潮境 / 深澳</b> 開始練功。</p></div>
           <div className="poi-grid">
             {SPOTS.map((s) => (
-              <div key={s.n} className={`poi ${s.bg} reveal`}><span className="num">{s.n}</span>{s.level ? <span className={`lvl lvl-${LVL_CLASS[s.level] || "mid"}`}>{s.level}</span> : null}<div className="poi-body"><h3>{s.zh}<span>{s.en}</span></h3><p>{s.d}</p><div className="poi-meta">{s.tags.map((t) => <span key={t}>{t}</span>)}</div></div></div>
+              <PoiCard key={s.n} s={s} />
             ))}
           </div>
         </div>
@@ -174,7 +215,7 @@ export default function DesktopHome() {
           <div className="sec-head reveal"><span className="eyebrow">Dive Trip Destinations</span><h2 className="section-title">潛旅目的地</h2><p>跟著海王子玩遍國內外潛點, 教練全程帶隊, 玩潛水也玩旅遊, 名額有限。</p></div>
           <div className="poi-grid">
             {TRIPS.map((s) => (
-              <div key={s.zh} className={`poi ${s.bg} reveal`}><span className="num">{s.n}</span>{s.level ? <span className={`lvl lvl-${LVL_CLASS[s.level] || "mid"}`}>{s.level}</span> : null}<div className="poi-body"><h3>{s.zh}<span>{s.en}</span></h3><p>{s.d}</p><div className="poi-meta">{s.tags.map((t) => <span key={t}>{t}</span>)}</div></div></div>
+              <PoiCard key={s.zh} s={s} />
             ))}
           </div>
           <div className="adv-callout reveal">
