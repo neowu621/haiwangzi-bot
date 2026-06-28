@@ -289,6 +289,13 @@ const PATCHES = [
   // v297: payment_proofs 駁回保留紀錄 + 老闆說明
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ`,
   `ALTER TABLE payment_proofs ADD COLUMN IF NOT EXISTS reject_reason TEXT`,
+  // v721: 硬性防重複付款證明 —— 同一訂單「相同(類型+金額+後5碼)」的未審核證明只能有一筆。
+  //   App 層已有去重(v621/v720)，這條 DB 部分唯一索引是最後防線(防並發 race)。
+  //   只約束未審核(verified_at/rejected_at 皆 null)；已審核/已駁回的歷史筆不受限。
+  //   COALESCE(last5,'') 讓 null 後5碼也能參與唯一判斷(否則多個 null 不互相衝突)。
+  `CREATE UNIQUE INDEX IF NOT EXISTS uniq_pending_payment_proof
+     ON payment_proofs (booking_id, type, amount, COALESCE(last5, ''))
+     WHERE verified_at IS NULL AND rejected_at IS NULL`,
   // v311: 客戶 onboarding 完成時間
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ`,
   // v315: 訂單日報設定

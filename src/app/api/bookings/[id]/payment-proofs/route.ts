@@ -149,6 +149,14 @@ export async function POST(
     ]);
     proof = createdProof;
   } catch (e) {
+    // v721：撞到 DB 防重複唯一索引(並發 race) → 視為重複點擊，回既有那筆，不報錯
+    if (e && typeof e === "object" && (e as { code?: string }).code === "P2002") {
+      const existing = await prisma.paymentProof.findFirst({
+        where: { bookingId: id, type: data.type, amount: data.amount, last5: data.last5 ?? null, verifiedAt: null, rejectedAt: null },
+        select: { id: true },
+      });
+      return NextResponse.json({ ok: true, proof: { id: existing?.id }, deduped: true });
+    }
     console.error("[POST payment-proofs]", e);
     return NextResponse.json(
       { error: "create failed", detail: e instanceof Error ? e.message : String(e) },

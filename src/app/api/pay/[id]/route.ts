@@ -389,6 +389,10 @@ export async function POST(
 
     return NextResponse.json({ ok: true });
   } catch (e) {
+    // v721：撞到 DB 防重複唯一索引(並發 race) → 視為重複點擊，回成功(不報錯、不重複建立)
+    if (e && typeof e === "object" && (e as { code?: string }).code === "P2002") {
+      return NextResponse.json({ ok: true, deduped: true });
+    }
     console.error("[POST /api/pay/[id]]", e);
     return NextResponse.json(
       { error: "create_failed", detail: e instanceof Error ? e.message : String(e) },
