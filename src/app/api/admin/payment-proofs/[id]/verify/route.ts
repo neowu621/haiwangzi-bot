@@ -58,9 +58,13 @@ export async function POST(
       { status: 400 },
     );
   }
-  if (proof.booking.status === "completed" || proof.booking.status === "no_show") {
+  // v723：completed（已到場/已結束）仍允許核可——尾款常在潛水當天/事後才匯，
+  //   而「到場點名」也會把訂單轉 completed；若擋 completed 會導致「已到場的尾款無法核可」。
+  //   核可只會累加 paidAmount + 記一筆金流，狀態維持 completed（下方 newBookingStatus 不動 completed）。
+  //   no_show（未到場）仍擋下：未到場不應再收款，需要時走退款/補收流程。
+  if (proof.booking.status === "no_show") {
     return NextResponse.json(
-      { error: "訂單已結束，無法再核可付款證明" },
+      { error: "訂單為「未到場」，無法核可付款證明。如需處理請改用退款/補收流程。" },
       { status: 400 },
     );
   }
