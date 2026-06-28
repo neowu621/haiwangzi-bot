@@ -41,11 +41,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
 
   if (!user) return NextResponse.json({ error: "user not found" }, { status: 404 });
 
-  // 統計：訂單數 / 願望單數
-  const [bookingCount, wishCount] = await Promise.all([
+  // 統計：訂單數 / 願望單數 / 累計實付（v724：累計消費改即時加總所有訂單的 paidAmount，
+  //   含已取消，與會員列表「累計消費」、潛水紀錄「已付款」一致，取代會漂移的 user.totalSpend）
+  const [bookingCount, wishCount, paidAgg] = await Promise.all([
     prisma.booking.count({ where: { userId } }),
     prisma.diveWish.count({ where: { userId } }),
+    prisma.booking.aggregate({ where: { userId }, _sum: { paidAmount: true } }),
   ]);
+  const totalPaid = paidAgg._sum.paidAmount ?? 0;
 
   // v664：彙整該會員「各筆訂單的客戶備註」(Booking.notes，客人下單自己填的)，附活動標籤
   const noted = await prisma.booking.findMany({
@@ -71,7 +74,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
 
   return NextResponse.json({
     user,
-    stats: { bookingCount, wishCount },
+    stats: { bookingCount, wishCount, totalPaid },
     activityNotes,
   });
 }

@@ -42,7 +42,7 @@ interface CustomerData {
     createdAt: string;
     lastActiveAt: string;
   };
-  stats: { bookingCount: number; wishCount: number };
+  stats: { bookingCount: number; wishCount: number; totalPaid: number };
   activityNotes?: Array<{ bookingId: string; note: string; label: string; at: string }>; // v661：各活動備註
 }
 
@@ -195,8 +195,8 @@ export function CustomerDetailDialog({
                   <div className="font-medium tabular-nums">{data.user.logCount}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-[var(--muted-foreground)]">累積消費</div>
-                  <div className="font-medium tabular-nums">NT$ {data.user.totalSpend.toLocaleString()}</div>
+                  <div className="text-[10px] text-[var(--muted-foreground)]">累計消費</div>
+                  <div className="font-medium tabular-nums">NT$ {data.stats.totalPaid.toLocaleString()}</div>
                 </div>
                 <div>
                   <div className="text-[10px] text-[var(--muted-foreground)]">抵用金</div>

@@ -254,8 +254,9 @@ export default function AdminUsersPage() {
         va = a.creditBalance;
         vb = b.creditBalance;
       } else if (sortKey === "totalSpend") {
-        va = a.totalSpend ?? 0;
-        vb = b.totalSpend ?? 0;
+        // v724：累計消費排序改用即時加總的實付金額（與顯示一致）
+        va = a.stats?.revenue ?? 0;
+        vb = b.stats?.revenue ?? 0;
       }
       if (va < vb) return sortAsc ? -1 : 1;
       if (va > vb) return sortAsc ? 1 : -1;
@@ -392,7 +393,6 @@ export default function AdminUsersPage() {
             blacklisted: editing.blacklisted,
             blacklistReason: editing.blacklistReason,
             vipLevel: editing.vipLevel,
-            totalSpend: editing.totalSpend,
             // v208：若 role 是 coach，帶上 coach 設定
             ...((editing.effectiveRoles ?? [editing.role]).includes("coach") && editing.coach
               ? { coach: {
@@ -836,10 +836,11 @@ export default function AdminUsersPage() {
                           {u.haiwangziLogCount ?? 0}
                         </button>
                       </td>
-                      {/* 累計消費 */}
+                      {/* 累計消費 — v724：改為即時加總「該客人所有訂單的實付金額」(= 潛水紀錄詳情的「已付款」)，
+                          不再用會漂移的 user.totalSpend 計數器。 */}
                       <td className="px-4 py-3 tabular-nums text-xs">
-                        {(u.totalSpend ?? 0) > 0
-                          ? `NT$${(u.totalSpend ?? 0).toLocaleString()}`
+                        {(u.stats?.revenue ?? 0) > 0
+                          ? `NT$${(u.stats?.revenue ?? 0).toLocaleString()}`
                           : "—"}
                       </td>
                       {/* 最後活躍 — v340：日期上、時間下 */}
@@ -1223,16 +1224,8 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                <Label className="text-xs">累計消費 (NT$)</Label>
-                <NumberInput
-                  min={0}
-                  value={editing.totalSpend ?? 0}
-                  onChange={(n) =>
-                    setEditing({ ...editing, totalSpend: n })
-                  }
-                />
-              </div>
+              {/* v724：移除「累計消費」手動欄位 —— 累計消費已改為即時加總實付金額(自動、不可手改)，
+                  手動值不再影響顯示，留著只會誤導。VIP 等級也只看潛水次數，與此無關。 */}
 
               <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                 <Label className="text-xs">生日</Label>
