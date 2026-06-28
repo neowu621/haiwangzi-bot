@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
-import { Check, X, ImageOff } from "lucide-react";
+import { Check, X, ImageOff, Image as ImageIcon } from "lucide-react";
 
 interface ProofBooking {
   id: string;
@@ -32,9 +32,7 @@ interface ProofRow {
   bookingId: string;
   type: "deposit" | "final" | "refund";
   amount: number;
-  imageKey: string | null;
-  previewUrl: string | null;
-  thumb: string | null;
+  hasImage?: boolean;        // v722：清單只回有無圖；點選才載 R2 圖
   uploadedAt: string;
   last5: string | null;
   note: string | null;
@@ -73,7 +71,20 @@ export default function MobileTonightPage() {
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [imgErrored, setImgErrored] = useState<Set<string>>(new Set());
+  const [imgLoading, setImgLoading] = useState<string | null>(null); // v722：載入中的 proof id
+  // v722：點「查看匯款」才打單筆 API 取 presigned URL，新分頁開圖（清單不再預載大圖）
+  const openProofImage = useCallback(async (proofId: string) => {
+    setImgLoading(proofId);
+    try {
+      const d = await adminFetch<{ proof: { imageUrl: string | null } }>(`/api/admin/payment-proofs/${proofId}`);
+      if (d.proof?.imageUrl) window.open(d.proof.imageUrl, "_blank", "noopener");
+      else alert("此筆沒有可顯示的圖片（可能客戶只填後 5 碼，或圖片已清理）");
+    } catch (e) {
+      alert("載入圖片失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setImgLoading(null);
+    }
+  }, []);
 
   const load = useCallback(() => {
     if (!ready) return;
@@ -182,8 +193,6 @@ export default function MobileTonightPage() {
       <div className="space-y-2">
         {proofs.map((p) => {
           const name = p.booking.user.realName ?? p.booking.user.displayName;
-          const img = p.previewUrl || p.thumb;
-          const showImg = img && !imgErrored.has(p.id);
           return (
             <div
               key={p.id}
@@ -191,17 +200,17 @@ export default function MobileTonightPage() {
               style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
             >
               <div className="flex items-start gap-3">
-                {showImg ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={img ?? ""}
-                    alt="付款證明"
-                    loading="lazy"
-                    className="h-16 w-16 flex-shrink-0 rounded-lg border object-cover"
-                    style={{ borderColor: "rgba(0,0,0,0.08)" }}
-                    onClick={() => img && window.open(img, "_blank", "noopener")}
-                    onError={() => setImgErrored((s) => new Set(s).add(p.id))}
-                  />
+                {p.hasImage ? (
+                  <button
+                    type="button"
+                    onClick={() => openProofImage(p.id)}
+                    disabled={imgLoading === p.id}
+                    className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border text-[9px] disabled:opacity-50"
+                    style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--muted, #f1f5f9)", color: "var(--color-ocean-deep, #0a2342)" }}
+                  >
+                    <ImageIcon className="h-5 w-5 opacity-70" />
+                    {imgLoading === p.id ? "載入中…" : "查看匯款"}
+                  </button>
                 ) : (
                   <div
                     className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[9px]"

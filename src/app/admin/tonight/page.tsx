@@ -28,9 +28,7 @@ interface ProofRow {
   bookingId: string;
   type: "deposit" | "final" | "refund"; // v301
   amount: number;
-  previewUrl: string | null;
-  thumb?: string | null;     // v396：DB 縮圖（即時顯示）
-  imageKey?: string | null;  // v396：區分「沒上傳圖」與「載入失敗」
+  hasImage?: boolean;        // v722：清單只回有無圖；圖片點選時才載入
   uploadedAt: string;
   last5: string | null;
   note: string | null;
@@ -90,7 +88,20 @@ export default function TonightPage() {
   const [pendingUnpaid, setPendingUnpaid] = React.useState<BookingRow[]>([]);
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
-  const [imgErrored, setImgErrored] = React.useState<Set<string>>(new Set()); // v396：圖載入失敗的 proof id
+  const [imgLoading, setImgLoading] = React.useState<string | null>(null); // v722：正在載入圖片的 proof id
+  // v722：點「匯款」icon 才打單筆 API 取 presigned URL → 開燈箱（清單不再預載圖）
+  const openProofImage = React.useCallback(async (proofId: string) => {
+    setImgLoading(proofId);
+    try {
+      const d = await adminFetch<{ proof: { imageUrl: string | null } }>(`/api/admin/payment-proofs/${proofId}`);
+      if (d.proof?.imageUrl) setLightbox(d.proof.imageUrl);
+      else alert("此筆沒有可顯示的圖片（可能客戶只填後 5 碼，或圖片已清理）");
+    } catch (e) {
+      alert("載入圖片失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setImgLoading(null);
+    }
+  }, []);
   const [openDetail, setOpenDetail] = React.useState<Set<string>>(new Set()); // v712：展開金額明細的卡片
   const toggleDetail = (key: string) => setOpenDetail((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
@@ -382,27 +393,23 @@ export default function TonightPage() {
                           }}
                           className="mt-1"
                         />
-                        {(p.previewUrl || p.thumb) && !imgErrored.has(p.id) ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={p.previewUrl || p.thumb || ""}
-                            alt="proof"
-                            loading="lazy"
-                            className="h-16 w-16 rounded border object-cover cursor-zoom-in"
-                            onClick={() => setLightbox(p.previewUrl || p.thumb || null)}
-                            onError={() => setImgErrored((s) => new Set(s).add(p.id))}
-                          />
-                        ) : !p.imageKey ? (
-                          // v396：沒上傳圖（現金交付 / 只填後 5 碼）
-                          <div className="h-16 w-16 rounded border border-dashed bg-[var(--muted)] flex flex-col items-center justify-center gap-0.5 text-[9px] text-[var(--muted-foreground)]">
+                        {/* v722：匯款截圖改 icon，點選才載入 R2 圖片（清單不再預載大圖） */}
+                        {p.hasImage ? (
+                          <button
+                            type="button"
+                            onClick={() => openProofImage(p.id)}
+                            disabled={imgLoading === p.id}
+                            title="點擊查看匯款截圖"
+                            className="h-16 w-16 shrink-0 rounded border bg-[var(--muted)] flex flex-col items-center justify-center gap-0.5 text-[9px] text-[var(--color-ocean-deep)] hover:bg-[var(--color-phosphor)]/10 disabled:opacity-50"
+                          >
+                            <ImageIcon className="h-5 w-5 opacity-70" />
+                            {imgLoading === p.id ? "載入中…" : "查看匯款"}
+                          </button>
+                        ) : (
+                          // 沒上傳圖（現金交付 / 只填後 5 碼）
+                          <div className="h-16 w-16 shrink-0 rounded border border-dashed bg-[var(--muted)] flex flex-col items-center justify-center gap-0.5 text-[9px] text-[var(--muted-foreground)]">
                             <ImageOff className="h-4 w-4 opacity-60" />
                             無圖
-                          </div>
-                        ) : (
-                          // 有 key 但載入失敗 / 已清理
-                          <div className="h-16 w-16 rounded border bg-[var(--muted)] flex flex-col items-center justify-center gap-0.5 text-[9px] text-[var(--muted-foreground)]">
-                            <ImageIcon className="h-4 w-4 opacity-60" />
-                            載入失敗
                           </div>
                         )}
                         <div className="flex-1 min-w-0">

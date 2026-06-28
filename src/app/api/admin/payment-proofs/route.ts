@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
-import { presignGetUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,40 +91,24 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    // 為每張憑證生 presigned URL
-    const withUrls = await Promise.all(
-      proofs.map(async (p) => {
-        let previewUrl: string | null = null;
-        // v238：imageKey 可為 null（沒附圖只填後 5 碼）
-        // v379：legacy base64 imageKey 直接回，不要拿去 presign（會失敗 → 無預覽）
-        if (p.imageKey?.startsWith("data:")) {
-          previewUrl = p.imageKey;
-        } else if (p.imageKey) {
-          try {
-            previewUrl = await presignGetUrl("payments", p.imageKey, 600);
-          } catch (e) {
-            console.error("[presign payment proof]", e);
-          }
-        }
-        return {
-          id: p.id,
-          bookingId: p.bookingId,
-          type: p.type,
-          amount: p.amount,
-          imageKey: p.imageKey,
-          previewUrl,
-          thumb: p.thumbBase64 ?? null,   // v379：縮圖（DB，即時顯示）
-          uploadedAt: p.uploadedAt,
-          verifiedAt: p.verifiedAt,
-          verifiedBy: p.verifiedBy,
-          rejectedAt: p.rejectedAt,       // v297
-          rejectReason: p.rejectReason,   // v297
-          last5: p.last5,                 // v297：admin 對帳用
-          note: p.note,                   // v297
-          booking: { ...p.booking, ...tripInfo(p.booking) }, // v620：補出團/已參加人數
-        };
-      }),
-    );
+    // v722：清單不再逐張 presign R2（原本一筆訂單多張憑證時會 N 次簽章 + 前端載 N 張大圖，
+    //   手機 WebView 幾乎當機）。改成只回 hasImage 旗標，前端顯示「匯款」icon，
+    //   點選時才打 /api/admin/payment-proofs/[id] 取得 presigned URL 載入單張圖。
+    const withUrls = proofs.map((p) => ({
+      id: p.id,
+      bookingId: p.bookingId,
+      type: p.type,
+      amount: p.amount,
+      hasImage: Boolean(p.imageKey), // 有沒有上傳圖（決定顯示「匯款」icon 或「無圖」）
+      uploadedAt: p.uploadedAt,
+      verifiedAt: p.verifiedAt,
+      verifiedBy: p.verifiedBy,
+      rejectedAt: p.rejectedAt,       // v297
+      rejectReason: p.rejectReason,   // v297
+      last5: p.last5,                 // v297：admin 對帳用
+      note: p.note,                   // v297
+      booking: { ...p.booking, ...tripInfo(p.booking) }, // v620：補出團/已參加人數
+    }));
 
     return NextResponse.json({ proofs: withUrls });
   } catch (e) {
