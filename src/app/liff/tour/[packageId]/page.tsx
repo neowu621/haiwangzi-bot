@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -15,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SignaturePad } from "@/components/ui/SignaturePad";
+import type { SignaturePadProps } from "@/components/ui/SignaturePad";
 import { PolicyText } from "@/components/ui/PolicyText";
 import { MissingContactInfoModal } from "@/components/liff/MissingContactInfoModal";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +28,17 @@ import { cn } from "@/lib/utils";
 
 // v655：證照等級（與日潛一致）
 const TOUR_CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
+
+const SignaturePad = dynamic<SignaturePadProps>(
+  () => import("@/components/ui/SignaturePad").then((m) => m.SignaturePad),
+  {
+    loading: () => (
+      <div className="rounded-lg border border-dashed border-[var(--border)] bg-white px-4 py-8 text-center text-xs text-[var(--muted-foreground)]">
+        正在載入簽名板...
+      </div>
+    ),
+  },
+);
 
 interface TourDetail {
   id: string;

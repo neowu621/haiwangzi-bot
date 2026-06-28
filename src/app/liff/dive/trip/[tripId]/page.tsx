@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Anchor,
@@ -15,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SignaturePad } from "@/components/ui/SignaturePad";
+import type { SignaturePadProps } from "@/components/ui/SignaturePad";
 import { PolicyText } from "@/components/ui/PolicyText";
 import { MissingContactInfoModal } from "@/components/liff/MissingContactInfoModal";
 import { Label } from "@/components/ui/label";
@@ -84,6 +85,17 @@ const GEAR_LABELS: Record<GearItemType, string> = {
 
 // v211：UI picker 移除 Rescue（既有資料仍可顯示）
 const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
+
+const SignaturePad = dynamic<SignaturePadProps>(
+  () => import("@/components/ui/SignaturePad").then((m) => m.SignaturePad),
+  {
+    loading: () => (
+      <div className="rounded-lg border border-dashed border-[var(--border)] bg-white px-4 py-8 text-center text-xs text-[var(--muted-foreground)]">
+        正在載入簽名板...
+      </div>
+    ),
+  },
+);
 
 interface Companion {
   id?: string;

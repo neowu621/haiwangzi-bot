@@ -1,12 +1,41 @@
 # STATUS — 海王子潛水團 LIFF App
 
-**Last update：** 2026-06-21
-**Version（線上 prod）：** `20260627_700`
+**Last update：** 2026-06-29
+**Version（工作分支）：** `20260628_726-C1`（prod 基底 `20260628_726`）
 **Phase：** ✅ 已上線營運中 — `https://haiwangzi.xyz`（Zeabur 自動部署）
 **部署驗證：** `curl https://haiwangzi.xyz/api/healthz` 回的 version 即線上版本。
-**近期重點（詳見 docs/PROGRESS.md）：** 抵用金取消自動退 + 異動通知、簽名 DB-buffer（秒回不掉）、cron 全站救回（舊網域失效）、安全硬化（密碼雜湊不外送 / 22 路由 timing-safe / 限流）、清死碼、天氣取消手動觸發（場次管理一鍵取消+通知+退款）。
+**近期重點（詳見 docs/PROGRESS.md）：** 付款核對金額明細、岸潛/船潛分類、移除證照號碼、付款證明防重複、到場點名/氣瓶數修正、匯款截圖延後載入、首頁圖片優化、會員累計消費改即時加總、Codex 改進分支版本改為 `20260628_726-C1`。
 
 > ⚠️ 以下「local 測試」段落為早期本機開發紀錄，**現況以線上 prod 為準**。
+
+---
+
+## 2026-06-29 目前進度
+
+- 工作分支版本：`20260628_726-C1`。後續 Codex 改版沿用 `20260628_726-C2`、`20260628_726-C3`...
+
+### GitHub / PR / Issue / Actions
+
+- GitHub repo：`neowu621/haiwangzi-bot`，default branch `master`。
+- Open issues：0。
+- Open PR：1 個 draft PR [#1](https://github.com/neowu621/haiwangzi-bot/pull/1)。
+  - PR #1 只改文件（`CHANGELOG.md`、`STATUS.md`、`TODO.md`），目標是補到 `20260529_119`。
+  - 目前 `master` 已到 `20260628_726`，PR #1 內容已過期，且 merge state 是 conflict / dirty。
+  - 建議：不要 merge；可關閉 PR #1。若要保留其中的 TODO，請改從最新 `master` 重新整理到 `docs/PROGRESS.md` 或新的待辦文件。
+- Recent GitHub Actions：最近的 `Daily Orders Email`、`Weekly Report Email`、`Daily Cron`、`Daily DB Backup` 都是 success，沒有正在失敗的 checks。
+
+### 近期功能進度（v711 → v726）
+
+- 付款憑證通知補完整資訊：場次、訂單總額、應付尾款、客戶填報金額。
+- 老闆結帳 / 付款核對補「金額明細」，顯示氣瓶、減免、裝備、抵用金與應付金額。
+- 日潛新增岸潛 / 船潛分類；船潛使用每人套裝價，不再依氣瓶支數相乘。
+- 移除證照號碼欄位，只保留證照等級。
+- 付款證明上傳加去重與 DB 部分唯一索引，降低重複上傳 / 並發 race。
+- 到場點名納入待確認匯款客人，並修正場次氣瓶數與潛數累積。
+- 匯款截圖改為 icon，點擊才載入 R2 大圖，避免列表預載大圖片。
+- 移除已過期的 m2 路線與相關負擔。
+- 首頁圖片改用 `next/image` lazy 載入，降低首屏成本。
+- 會員列表 / 客戶詳情的累計消費改為即時加總實付金額，避免歷史計數器漂移。
 
 ---
 

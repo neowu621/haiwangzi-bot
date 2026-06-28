@@ -10,7 +10,7 @@
 //
 // ⚠️ 不會動 SiteConfig / MessageTemplate（admin 設定保留）
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { DEV_PERSONAS } from "../src/lib/dev-personas";
 
 const prisma = new PrismaClient();
@@ -109,7 +109,7 @@ async function main() {
   // ─── DivingTrips (清舊 demo + 灌新的) ──────────────────
   await prisma.divingTrip.deleteMany({ where: { weatherNote: "[demo]" } });
 
-  const trips: Parameters<typeof prisma.divingTrip.create>[0]["data"][] = [];
+  const trips: Prisma.DivingTripCreateInput[] = [];
   // 未來 14 天：週間 1 場（早上）、週末 2 場（早+夜）
   for (let d = 1; d <= 21; d++) {
     const date = new Date();

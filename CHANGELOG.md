@@ -1,10 +1,21 @@
 # Changelog
 
+## 20260628_726-C1 - 2026-06-29 (Codex LIFF security/performance completion)
+
+- Implemented C1 branch improvements: lazy-loaded `/liff/booking` tab bodies, lazy-loaded booking signature pads, centralized LIFF SDK loading, upgraded vulnerable dependencies, added HSTS, and fixed Prisma seed typings so production build verification passes.
+- Added before/after audit: `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`.
+- Verification: `npm audit --json` reports 0 vulnerabilities and `npm run build` passes. `npm run lint` still requires an ESLint 9 flat config follow-up.
+
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 
 > ⚠️ 註：此 CHANGELOG 自 v621 後曾長時間未補（v622–v664 的細節見 `git log` 與 `docs/PROGRESS.md`）。以下從 v665 起恢復記錄。
 
 > 🆕 **第二版手機 UI `/m2`（v685→v692）** —— 完全獨立的新路由，不動 `/admin`、`/liff`、`/pclogin`、官網 `/`；後端全沿用既有 API（不新增）。只動 `src/app/m2/page.tsx`（另沿用 `SignaturePad`/`PolicyText`/`booking-status`/`payment-deadline` 純元件/函式，皆只讀）。⚠️ 目前登入是 UAT backdoor（弱密碼 `msi` → 以 neowu62 身分發會員 session），**正式上線前必須換成 LINE 登入並移除 `/api/m2/session`**。
+
+## 20260628_726-C1 — 2026-06-29 (Codex LIFF 安全/效能改進分支起點)
+
+- 依指示將 Codex 改進分支版本由 `20260628_726` 改為 `20260628_726-C1`，後續同基底迭代使用 `-C2`、`-C3`。
+- 本分支目標：LINE LIFF 網路安全檢視、10 大安全與載入優化、改善前後差異比對、GitHub 分支驗證。
 
 ## 20260627_711 — 2026-06-27 (付款證明通知補場次+總額+應付尾款)
 

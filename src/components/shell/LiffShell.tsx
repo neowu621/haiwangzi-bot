@@ -8,6 +8,7 @@ import { SplashOverlay } from "@/components/shell/SplashOverlay";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 import { OnboardingModal } from "@/components/liff/OnboardingModal";
+import { loadLiffClient } from "@/lib/liff/client";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "東北角海王子潛水";
 const LINE_OA = process.env.NEXT_PUBLIC_LINE_OA_ID ?? "@894bpmew";
@@ -34,8 +35,8 @@ function FriendGateBlock() {
   async function recheck() {
     setRechecking(true);
     try {
-      const liffMod = await import("@line/liff");
-      const friendship = await liffMod.default.getFriendship();
+      const liff = await loadLiffClient();
+      const friendship = await liff.getFriendship();
       if (friendship.friendFlag) {
         // 重新整理整個 LIFF state；最簡單方式 reload
         window.location.reload();

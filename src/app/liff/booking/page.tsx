@@ -1,12 +1,10 @@
 "use client";
 // v697：潛水預約整合頁 —— 一日潛水 / 旅行潛水 / 預約潛水 三合一,頂部三選項即時切換(不重載)。
 import { Suspense, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
-import { CalendarContent } from "@/components/liff/CalendarContent";
-import { TourContent } from "@/components/liff/TourContent";
-import { WishesContent } from "@/components/liff/WishesContent";
 import { cn } from "@/lib/utils";
 
 type Tab = "calendar" | "tour" | "wishes";
@@ -16,6 +14,27 @@ const TABS: Array<{ k: Tab; label: string }> = [
   { k: "wishes", label: "預約潛水" },
 ];
 const TITLE: Record<Tab, string> = { calendar: "一日潛水", tour: "旅行潛水", wishes: "預約潛水" };
+
+function TabLoading({ label }: { label: string }) {
+  return (
+    <div className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+      正在載入{label}...
+    </div>
+  );
+}
+
+const CalendarContent = dynamic(
+  () => import("@/components/liff/CalendarContent").then((m) => m.CalendarContent),
+  { loading: () => <TabLoading label="一日潛水" /> },
+);
+const TourContent = dynamic(
+  () => import("@/components/liff/TourContent").then((m) => m.TourContent),
+  { loading: () => <TabLoading label="旅行潛水" /> },
+);
+const WishesContent = dynamic(
+  () => import("@/components/liff/WishesContent").then((m) => m.WishesContent),
+  { loading: () => <TabLoading label="預約潛水" /> },
+);
 
 function BookingInner() {
   const sp = useSearchParams();

@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { loadLiffClient } from "@/lib/liff/client";
 
 export interface LiffProfile {
   userId: string;
@@ -112,7 +113,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
     //   liff.init 內部的 LINE server features fetch 可能爆 "Unable to load client features" / "Load failed"。
     //   3 次 retry 配 exponential backoff 通常第二次就會過。
     async function liffInitWithRetry(
-      liff: typeof import("@line/liff").default,
+      liff: Awaited<ReturnType<typeof loadLiffClient>>,
       liffId: string,
       tries = 3,
     ): Promise<void> {
@@ -147,8 +148,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         step = "import_liff_sdk";
-        const liffMod = await import("@line/liff");
-        const liff = liffMod.default;
+        const liff = await loadLiffClient();
         step = "liff_init";
         await liffInitWithRetry(liff, cfg.liffId);
         step = "post_init";
@@ -227,15 +227,15 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
         if (isMock) return;
         // v351：即使 isLoggedIn=true 也強制重登 —— idToken 過期時 isLoggedIn 仍為 true，
         //   不重登就無法刷新 token（「重新登入」按鈕原本因 isLoggedIn 守衛而無效）。
-        import("@line/liff").then((m) => {
+        loadLiffClient().then((liff) => {
           idTokenRef.current = null;
-          m.default.login({ redirectUri: window.location.href });
+          liff.login({ redirectUri: window.location.href });
         });
       },
       logout: () => {
         if (isMock) return;
-        import("@line/liff").then((m) => {
-          if (m.default.isLoggedIn()) m.default.logout();
+        loadLiffClient().then((liff) => {
+          if (liff.isLoggedIn()) liff.logout();
           window.location.reload();
         });
       },
@@ -261,19 +261,19 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
 
           // 修 admin 401 race: 頁面 useEffect 比 LIFF init 早跑時，等最多 3 秒讓 LIFF ready
           // 直接 poll liff SDK 而不是 React state，避免閉包 stale issue
-          const liffMod = await import("@line/liff");
+          const liff = await loadLiffClient();
           let waited = 0;
           let sawLoggedIn = false;
           while (waited < 3000) {
             try {
-              const t = liffMod.default.getIDToken();
+              const t = liff.getIDToken();
               if (t) {
                 token = t;
                 // v243：只更新 ref（不 setState），不讓 token 刷新引發 re-render 迴圈
                 idTokenRef.current = t;
                 break;
               }
-              const loggedIn = liffMod.default.isLoggedIn?.();
+              const loggedIn = liff.isLoggedIn?.();
               // getIDToken 返回 null 但 SDK 已 init
               if (loggedIn === false) break;             // 未登入，等下面 login()
               if (loggedIn === true) {
@@ -301,8 +301,7 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
             // 1. 未登入 → liff.login() 跳轉 LINE OAuth
             // 2. 已登入但 LIFF Channel 沒勾 `openid` scope → 強制 logout 重來
             try {
-              const liffMod = await import("@line/liff");
-              const liff = liffMod.default;
+              const liff = await loadLiffClient();
               if (liff.isLoggedIn()) {
                 // 已登入卻拿不到 idToken → scope 設定有問題，logout 重來
                 try { liff.logout(); } catch { /* ignore */ }
@@ -365,8 +364,8 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
               if (Date.now() - last > 60000) {
                 sessionStorage.setItem(key, String(Date.now()));
                 idTokenRef.current = null; // 丟掉過期 token
-                const liffMod = await import("@line/liff");
-                liffMod.default.login({ redirectUri: window.location.href });
+                const liff = await loadLiffClient();
+                liff.login({ redirectUri: window.location.href });
                 throw new Error("LINE 登入已過期，正在重新登入…");
               }
             } catch (e) {

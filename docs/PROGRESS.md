@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-29 — GitHub triage + LIFF 安全/效能改進分支起點（v20260628_726-C1）
+
+目前工作分支 = **v20260628_726-C1**（prod 基底 **v20260628_726**）。
+
+> 依新指示，Codex 改進分支從 `20260628_726-C1` 起跳，後續同基底改版用 `-C2` / `-C3`。本分支目標：LINE LIFF 安全檢視、10 大載入/安全優化、前後差異與驗證。
+
+- **GitHub 狀態**：repo `neowu621/haiwangzi-bot`，default branch `master`；open issues = 0。
+- **PR #1 狀態**：唯一 open PR 是 draft [#1](https://github.com/neowu621/haiwangzi-bot/pull/1)，branch `claude/progress-update-tloc9`。只改 `CHANGELOG.md` / `STATUS.md` / `TODO.md`，原目的為補文件到 `20260529_119`。
+- **PR #1 判斷**：`master` 已前進到 `20260628_726`，PR #1 已落後近一個月且 merge state = conflict / dirty。其 `CHANGELOG.md`、`STATUS.md` 內容已過期；不建議 merge。若需要 TODO 內容，應從最新 `master` 重新整理後另開文件/commit。
+- **Checks / Actions**：PR #1 沒有綁 status checks；近期 scheduled Actions（`Daily Orders Email`、`Weekly Report Email`、`Daily Cron`、`Daily DB Backup`）皆為 success，沒有 failing checks 需要 debug。
+- **近期已上線重點（v711→v726）**：
+  - v711→v717：付款憑證通知補場次/總額/應付、老闆結帳與付款核對加金額明細。
+  - v713→v718：移除證照號碼，新增岸潛/船潛分類，船潛套裝價與潛水次數邏輯調整。
+  - v719→v721：到場點名納入待確認匯款、氣瓶數/潛數修正、付款證明去重與 DB 防重複索引。
+  - v722→v724：匯款截圖延後載入、移除 m2、首頁圖片 lazy 載入、修 completed 訂單尾款核可。
+  - v725→v726：會員累計消費改為即時加總實付金額，README 當前版本同步到 `20260628_726`。
+- **本次文件更新**：同步 `APP_VERSION`、`README.md`、`STATUS.md` header 與「2026-06-29 目前進度」區塊。
+- **C1 已完成驗證**：lazy-loaded `/liff/booking` 分頁內容與簽名板、集中 LIFF SDK loader、套件安全升級、HSTS、Prisma seed typing 修正；`npm audit --json` = 0 vulnerabilities，`npm run build` pass。改善前後表詳見 `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`。
+
+---
+
 ## 2026-06-28 — 訂單金額明細(組成) + 岸潛/船潛分類 + 移除證照號碼（v711→v716）
 
 目前線上 = **v20260628_716**。

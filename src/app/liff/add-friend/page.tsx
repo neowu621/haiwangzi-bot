@@ -2,6 +2,7 @@
 import * as React from "react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { loadLiffClient } from "@/lib/liff/client";
 import { useRouter } from "next/navigation";
 import { Heart, RefreshCw } from "lucide-react";
 
@@ -35,8 +36,8 @@ export default function AddFriendPage() {
     setRechecking(true);
     try {
       // 重新跑 getFriendship — 在 LIFF 加完好友後回到頁面時用
-      const liffMod = await import("@line/liff");
-      const friendship = await liffMod.default.getFriendship();
+      const liff = await loadLiffClient();
+      const friendship = await liff.getFriendship();
       if (friendship.friendFlag) {
         router.replace("/liff/welcome");
       } else {

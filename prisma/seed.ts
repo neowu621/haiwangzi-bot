@@ -2,7 +2,7 @@
 // 直接對應 diving_bot_kit 範例:鶯歌石/深奧/綠島團/蘭嶼團
 // 跑法: npx tsx prisma/seed.ts
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -115,7 +115,7 @@ async function main() {
     return x.toISOString().slice(0, 10); // YYYY-MM-DD
   };
 
-  const trips: Parameters<typeof prisma.divingTrip.create>[0]["data"][] = [
+  const trips: Prisma.DivingTripCreateInput[] = [
     {
       date: new Date(addDays(2)),
       startTime: "08:00",
@@ -170,7 +170,7 @@ async function main() {
     },
     // 未來 2 週每週一上午
     ...[7, 14, 21].map(
-      (offset): Parameters<typeof prisma.divingTrip.create>[0]["data"] => ({
+      (offset): Prisma.DivingTripCreateInput => ({
         date: new Date(addDays(offset)),
         startTime: "08:00",
         isNightDive: false,
@@ -196,7 +196,7 @@ async function main() {
     where: { title: { contains: "[seed]" } },
   });
 
-  const tours: Parameters<typeof prisma.tourPackage.create>[0]["data"][] = [
+  const tours: Prisma.TourPackageCreateInput[] = [
     {
       title: "綠島三天兩夜水推團 (平日) [seed]",
       destination: "green_island",

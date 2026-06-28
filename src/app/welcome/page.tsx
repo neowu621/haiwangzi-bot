@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
 import { APP_VERSION } from "@/lib/version";
+import { loadLiffClient } from "@/lib/liff/client";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "潛水團";
 const TAGLINE = process.env.NEXT_PUBLIC_APP_TAGLINE ?? "安全．專業．陪你看見海";
@@ -27,10 +28,10 @@ export default function HomePage() {
     if (!LIFF_ID) return;
     (async () => {
       try {
-        const liffMod = await import("@line/liff");
-        await liffMod.default.init({ liffId: LIFF_ID });
-        if (liffMod.default.isLoggedIn()) {
-          const friendship = await liffMod.default.getFriendship();
+        const liff = await loadLiffClient();
+        await liff.init({ liffId: LIFF_ID });
+        if (liff.isLoggedIn()) {
+          const friendship = await liff.getFriendship();
           setIsFriend(friendship.friendFlag);
         }
       } catch {
