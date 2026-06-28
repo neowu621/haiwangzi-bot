@@ -5,9 +5,9 @@
 
 ---
 
-## 2026-06-29 — GitHub triage + LIFF 安全/效能改進分支起點（v20260628_726-C1）
+## 2026-06-29 — GitHub triage + LIFF 安全/效能改進分支（v20260628_726-C2）
 
-目前工作分支 = **v20260628_726-C1**（prod 基底 **v20260628_726**）。
+目前工作分支 = **v20260628_726-C2**（prod 基底 **v20260628_726**）。
 
 > 依新指示，Codex 改進分支從 `20260628_726-C1` 起跳，後續同基底改版用 `-C2` / `-C3`。本分支目標：LINE LIFF 安全檢視、10 大載入/安全優化、前後差異與驗證。
 
@@ -22,7 +22,7 @@
   - v722→v724：匯款截圖延後載入、移除 m2、首頁圖片 lazy 載入、修 completed 訂單尾款核可。
   - v725→v726：會員累計消費改為即時加總實付金額，README 當前版本同步到 `20260628_726`。
 - **本次文件更新**：同步 `APP_VERSION`、`README.md`、`STATUS.md` header 與「2026-06-29 目前進度」區塊。
-- **C1 已完成驗證**：lazy-loaded `/liff/booking` 分頁內容與簽名板、集中 LIFF SDK loader、套件安全升級、HSTS、Prisma seed typing 修正；`npm audit --json` = 0 vulnerabilities，`npm run build` pass。改善前後表詳見 `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`。
+- **C2 已完成驗證**：lazy-loaded `/liff/booking` 分頁內容與簽名板、集中 LIFF SDK loader、套件安全升級、HSTS、Prisma seed typing 修正、ESLint 9 flat config；`npm run lint`、`npm audit --json`、`npm run build` pass。改善前後表詳見 `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`。
 
 ---
 

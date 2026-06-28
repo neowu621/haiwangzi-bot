@@ -1,10 +1,15 @@
 # Changelog
 
+## 20260628_726-C2 - 2026-06-29 (Codex verification gate completion)
+
+- Added ESLint 9 flat config so `npm run lint` is part of the C1/C2 verification gate again.
+- Verification: `npm run lint`, `npm audit --json`, and `npm run build` pass. Lint still reports existing warnings for later cleanup.
+
 ## 20260628_726-C1 - 2026-06-29 (Codex LIFF security/performance completion)
 
 - Implemented C1 branch improvements: lazy-loaded `/liff/booking` tab bodies, lazy-loaded booking signature pads, centralized LIFF SDK loading, upgraded vulnerable dependencies, added HSTS, and fixed Prisma seed typings so production build verification passes.
 - Added before/after audit: `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`.
-- Verification: `npm audit --json` reports 0 vulnerabilities and `npm run build` passes. `npm run lint` still requires an ESLint 9 flat config follow-up.
+- Verification: `npm audit --json` reports 0 vulnerabilities and `npm run build` passes.
 
 版本規則：`YYYYMMDD_NN`，NN 為跨日累計、不歸零的計數器。每次 push GitHub 都需要 bump。
 

@@ -1,6 +1,6 @@
 # LIFF Security and Performance Audit - 2026-06-29
 
-Version: `20260628_726-C1`
+Version: `20260628_726-C2`
 Branch: `codex/liff-security-performance-audit`
 Base production version: `20260628_726`
 
@@ -14,7 +14,7 @@ The main code changes reduce eager client JavaScript, centralize LIFF SDK loadin
 
 | Area | Before | After |
 | --- | --- | --- |
-| Version | `20260628_726` | `20260628_726-C1` |
+| Version | `20260628_726` | `20260628_726-C2` |
 | Build verification | Build initially blocked by Prisma seed typing after client generation | `npm run build` passes |
 | npm audit | 7 advisories before dependency remediation | 0 vulnerabilities |
 | Static JS in `.next/static` | 3865.3 KB | 3812.4 KB |
@@ -24,6 +24,7 @@ The main code changes reduce eager client JavaScript, centralize LIFF SDK loadin
 | Signature pad | Included eagerly on booking pages | Loaded only when the booking page needs the signature UI |
 | LIFF SDK imports | Multiple direct dynamic imports across client components | Central `loadLiffClient()` memoized loader |
 | Security headers | CSP, frame restrictions, content type, referrer, and permissions headers existed | Added `Strict-Transport-Security` |
+| Lint gate | `npm run lint` failed because ESLint 9 had no flat config | Added `eslint.config.mjs`; lint now exits 0 with existing warnings |
 
 ## Top 10 Checks
 
@@ -43,15 +44,16 @@ The main code changes reduce eager client JavaScript, centralize LIFF SDK loadin
 Passed:
 
 - `npm run db:generate`
+- `npm run lint`
 - `npm audit --json`
 - `npm run build`
 
-Known verification gap:
+Lint note:
 
-- `npm run lint` currently fails because ESLint 9 requires an `eslint.config.*` flat config, and this repository still lacks one. This is a pre-existing project configuration gap, not introduced by the C1 changes.
+- The lint command now runs and exits successfully. Existing React compiler and unused-code findings are kept as warnings so the repository has a usable release gate without hiding the remaining cleanup queue.
 
 ## Follow-up Candidates
 
-- Add an ESLint 9 flat config so `npm run lint` becomes part of the normal release gate again.
+- Gradually clean up the remaining lint warnings, especially React compiler warnings in admin-heavy pages.
 - Consider LINE LIFF pluggable SDK migration in a separate C2 branch after testing in a real LINE WebView.
 - Capture real-device WebView metrics for `/liff/booking`, daily booking, and tour booking after deployment.
