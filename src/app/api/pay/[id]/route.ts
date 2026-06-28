@@ -289,12 +289,34 @@ export async function POST(
   }
 
   const imageKey = data.r2Key ?? data.imageDataUrl ?? null;
+  const proofType = booking.paymentStatus === "fully_paid" ? "final" : (booking.type === "tour" && booking.paidAmount < booking.depositAmount ? "deposit" : "final");
+
+  // v720：防重複提交 —— 公開付款連結原本沒有去重(只有 5/分鐘 rate limit)，
+  //   客戶因「沒看到成功回饋」連按多次會建出多筆相同證明(實際發生過 9 筆)。
+  //   與 LIFF 端 (v621) 一致：5 分鐘內相同(訂單+類型+金額+後5碼)未審核證明視為重複點擊，
+  //   直接回成功、不再建立也不再通知老闆。
+  const dupSince = new Date(Date.now() - 5 * 60 * 1000);
+  const existingDup = await prisma.paymentProof.findFirst({
+    where: {
+      bookingId: id,
+      type: proofType,
+      amount: data.amount,
+      last5: data.last5 ?? null,
+      verifiedAt: null,
+      rejectedAt: null,
+      uploadedAt: { gte: dupSince },
+    },
+    select: { id: true },
+  });
+  if (existingDup) {
+    return NextResponse.json({ ok: true, deduped: true });
+  }
 
   try {
     await prisma.paymentProof.create({
       data: {
         bookingId: id,
-        type: booking.paymentStatus === "fully_paid" ? "final" : (booking.type === "tour" && booking.paidAmount < booking.depositAmount ? "deposit" : "final"),
+        type: proofType,
         amount: data.amount,
         imageKey,
         last5: data.last5 ?? null,
