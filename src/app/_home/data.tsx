@@ -57,9 +57,9 @@ export const NAV = [
 ];
 
 // v413：潛水課程（依老闆提供內容）
-// v424t：新增「體驗潛水（免證照）」「持證精進·Fun Dive 練功」兩張卡
-// 體驗潛水：實際內容已補（v433，NT$2,500）。
-// TODO（老闆未來提供後補上）：持證精進 Fun Dive 練功 的「實際價格・時長」，目前 price 仍「LINE 詢問」佔位。
+// v751：移除「持證精進·Fun Dive 練功」課程卡 —— Fun Dive 本質＝持證者的一日潛水，
+//   不是課程；想 Fun Dive 走「一日潛水」預約／「日潛 Fun Dive」費用頁即可，避免重複。
+//   只留 體驗潛水 / OW / AOW 三種真正的「課程」。
 export const COURSES = [
   {
     badge: "免證照體驗 · DISCOVER",
@@ -74,20 +74,6 @@ export const COURSES = [
       { t: "確定日期預約收 50% 訂金", hl: false },
       { t: "自備：泳衣／泳褲、浴巾、盥洗用品", hl: false },
       { t: "報名請告知性別、身高、體重、鞋號，幫你準備合身防寒衣", hl: false },
-    ],
-  },
-  {
-    badge: "持證精進 · FUN DIVE",
-    title: "剛拿證照、想把浮力練好？",
-    msg: "我想詢問「持證精進 Fun Dive 練功」",
-    price: "LINE 詢問",
-    includes: "Fun Dive 練功・平日小團・近一對一",
-    items: [
-      { t: "平日小團、近一對一，汪汪把心力都放在照顧你身上", hl: true },
-      { t: "每一潛針對你的弱點即時提醒：配重、中性浮力、踢法", hl: false },
-      { t: "下潛前先做技巧複習，慢慢來、不趕行程", hl: false },
-      { t: "證照放久忘光？先安排「複習潛」找回手感再往深走", hl: false },
-      { t: "適合想長期跟著教練穩定練功、突破自己的你", hl: true },
     ],
   },
   {
