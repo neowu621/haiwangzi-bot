@@ -83,8 +83,8 @@ export default function DesktopHome() {
             <Image
               src="/home/src-hero.webp"
               alt="東北角海王子潛水教練 汪汪"
-              width={840}
-              height={840}
+              width={640}
+              height={1137}
               priority
               sizes="(max-width: 979px) 360px, 440px"
             />

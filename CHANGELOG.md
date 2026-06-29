@@ -1,5 +1,11 @@
 # Changelog
 
+## 20260629_747M - 2026-06-29 (Hero 換新潛水員圖 + 壓縮)
+
+- 首頁 Hero 圖 `public/home/src-hero.webp` 換成新的潛水員直幅插畫：原檔 1.8MB PNG → 壓成 **640×1137 WebP（150KB，約 1/12）**。檔名不變，桌機/手機首頁、LIFF、海報背景、OG/SEO 共 7 處自動沿用。
+- 新圖為直幅（720×1279→640×1137），桌機 Hero 框維持 1:1 cover 上緣裁切（顯示頭→裝備上半身）；手機維持 40vh 帶狀 cover。同步把 `DesktopHome`/`MobileHome` 的 `<Image>` width/height 改成新比例避免 aspect 警告。
+- 動檔 `public/home/src-hero.webp`、`src/app/_home/DesktopHome.tsx`、`src/app/_home/MobileHome.tsx`。
+
 ## 20260629_746M - 2026-06-29 (其餘 9 色品牌圖示一併轉小 + 刪原始大 PNG)
 
 - 接續 745M：把剩餘 9 色品牌圖示（teal/ocean/obsidian/white/slate/aqua/gold/seagreen/twilight）全部轉成 **256px WebP（各 6–8KB）**，`MantaTrident.tsx` 的 `SRC` 全 10 色改指向 WebP。
