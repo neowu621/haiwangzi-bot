@@ -50,7 +50,7 @@ interface ExternalLinks {
 
 interface PaymentInfo {
   bank?: { name?: string; branch?: string; account?: string; holder?: string };
-  linepay?: { qrUrl?: string; liteId?: string };
+  linepay?: { qrUrl?: string; liteId?: string; lineUrl?: string };
 }
 
 interface Config {
@@ -622,6 +622,13 @@ export default function SettingsPage() {
                   placeholder="例：a26463030（老闆個人 LINE Pay ID）"
                 />
               </FieldRow>
+              <FieldRow label="LINE 對話連結">
+                <Input
+                  value={cfg?.paymentInfo?.linepay?.lineUrl ?? ""}
+                  onChange={(e) => setCfg((c) => c ? { ...c, paymentInfo: { ...(c.paymentInfo ?? {}), linepay: { ...(c.paymentInfo?.linepay ?? {}), lineUrl: e.target.value } } } : c)}
+                  placeholder="https://line.me/ti/p/xxxxx（老闆個人 LINE，留空則不顯示按鈕）"
+                />
+              </FieldRow>
               {cfg?.paymentInfo?.linepay?.qrUrl && (
                 <div className="grid grid-cols-[10rem_1fr] items-start gap-3">
                   <span className="text-sm text-[var(--muted-foreground)]">QR 預覽</span>
@@ -632,6 +639,9 @@ export default function SettingsPage() {
             </div>
             <p className="mt-3 text-[11px] text-[var(--muted-foreground)]">
               💡 取得 QR 步驟：開 LINE Pay → 個人 → 收款 QR → 截圖上傳到 Imgur 等圖床 → 把圖片 URL 貼到上方。
+            </p>
+            <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+              💬 「LINE 對話連結」填了之後，客戶付款頁會多一顆「用 LINE 敲老闆轉帳」按鈕，點了直接開啟與老闆的 LINE 對話，再用 LINE Pay 轉帳。取得：LINE → 主頁 → 個人檔案 → 分享 → 複製連結。
             </p>
           </div>
 

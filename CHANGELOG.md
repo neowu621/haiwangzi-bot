@@ -1,5 +1,11 @@
 # Changelog
 
+## 20260629_728 - 2026-06-29 (日潛進度條 + LINE Pay 跳老闆對話按鈕)
+
+- 「我的預約」日潛(一次付清)新增 4 階段進度條:預約 → 要求匯款(建單即亮) → 匯款確認(老闆核可) → 活動(結束)。旅潛維持原本 預約/訂金/尾款/出發。動檔 `src/app/liff/my/page.tsx`。
+- 付款頁(`/pay/[id]`、`/liff/payment/[bookingId]`)LINE Pay 區塊新增「💬 用 LINE 敲老闆轉帳」按鈕:點了直接開啟與老闆的 LINE 對話,客戶在對話裡用 LINE Pay 轉帳(金額仍需自填 — 個人 LINE Pay 無法帶指定金額,要自動帶金額需申請 LINE Pay 商家 API)。
+- 按鈕來源:後台「付款資訊 → LINE Pay → LINE 對話連結(lineUrl)」,**留空則不顯示按鈕**。資料經 `siteConfig.paymentInfo.linepay.lineUrl`,由 `/api/config` 與 `/api/pay/[id]` 帶出。動檔 `admin/settings`、`api/config`、`api/pay/[id]`、兩個付款頁。
+
 ## 20260629_727 - 2026-06-29 (C2 LIFF 安全/效能改進併入 master)
 
 - 將 Codex 分支 `codex/liff-security-performance-audit`（C1+C2）快進併入 master：`/liff/booking` 分頁與簽名板延遲載入、集中化 LIFF SDK loader（`src/lib/liff/client.ts`）、升級有漏洞依賴（`@line/liff` 2.29、`nodemailer` 9、`tsx` 4.22）、新增 HSTS、新增 ESLint 9 flat config、修 Prisma seed 型別。

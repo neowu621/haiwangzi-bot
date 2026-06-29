@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 interface PaymentInfo {
   bank?: { name?: string; branch?: string; account?: string; holder?: string };
-  linepay?: { qrUrl?: string; liteId?: string };
+  linepay?: { qrUrl?: string; liteId?: string; lineUrl?: string };
 }
 
 // 公開 runtime config,給 client 端 fetch.
@@ -95,6 +95,7 @@ export async function GET() {
   const linepay = {
     qrUrl: paymentInfo.linepay?.qrUrl ?? "",
     liteId: paymentInfo.linepay?.liteId ?? "",
+    lineUrl: paymentInfo.linepay?.lineUrl ?? "",
   };
 
   return NextResponse.json({

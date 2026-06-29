@@ -569,6 +569,13 @@ function BookingCard({
     b.totalAmount > 0
       ? Math.min(100, Math.round((b.paidAmount / b.totalAmount) * 100))
       : 0;
+  // 日潛(一次付清)4 階段進度：預約 / 要求匯款（建單即亮）/ 匯款確認 / 活動
+  const dailyProgress = (() => {
+    let done = 2; // 預約 + 要求匯款：訂單一建立即完成
+    if (b.paymentStatus === "fully_paid") done++; // 匯款確認
+    if (b.status === "completed") done++; // 活動
+    return Math.round((done / 4) * 100);
+  })();
   const cancellable = isCancellable(b);
   // v698：每筆預約預設縮起,點擊展開
   const [open, setOpen] = useState(false);
@@ -691,27 +698,37 @@ function BookingCard({
           </div>
         )}
 
-        {b.type === "tour" && b.totalAmount > 0 && (
+        {b.totalAmount > 0 && (
           <div className="mt-3">
             <div className="flex justify-between text-xs">
-              <span className="text-[var(--muted-foreground)]">付款進度</span>
-              <span className="tabular font-semibold">
-                {b.paidAmount.toLocaleString()} / {b.totalAmount.toLocaleString()}
-              </span>
+              <span className="text-[var(--muted-foreground)]">{b.type === "tour" ? "付款進度" : "訂單進度"}</span>
+              {b.type === "tour" && (
+                <span className="tabular font-semibold">
+                  {b.paidAmount.toLocaleString()} / {b.totalAmount.toLocaleString()}
+                </span>
+              )}
             </div>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--muted)]">
               <div
                 className="h-full bg-[var(--color-phosphor)]"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${b.type === "tour" ? progress : dailyProgress}%` }}
               />
             </div>
             <div className="mt-2 flex gap-1">
-              {[
-                { label: "預約", done: true },
-                { label: "訂金", done: b.paidAmount >= b.depositAmount },
-                { label: "尾款", done: b.paymentStatus === "fully_paid" },
-                { label: "出發", done: b.status === "completed" },
-              ].map((s, i) => (
+              {(b.type === "tour"
+                ? [
+                    { label: "預約", done: true },
+                    { label: "訂金", done: b.paidAmount >= b.depositAmount },
+                    { label: "尾款", done: b.paymentStatus === "fully_paid" },
+                    { label: "出發", done: b.status === "completed" },
+                  ]
+                : [
+                    { label: "預約", done: true },
+                    { label: "要求匯款", done: true },
+                    { label: "匯款確認", done: b.paymentStatus === "fully_paid" },
+                    { label: "活動", done: b.status === "completed" },
+                  ]
+              ).map((s, i) => (
                 <div
                   key={i}
                   className="flex flex-1 flex-col items-center gap-0.5"
@@ -733,7 +750,7 @@ function BookingCard({
               ))}
             </div>
             {/* v672：明確拆「已付訂金 / 尾款」金額（對齊桌機 /pclogin；截止日見上方付款鈕旁 ⏰）*/}
-            {b.paidAmount > 0 && b.totalAmount - b.paidAmount > 0 && (
+            {b.type === "tour" && b.paidAmount > 0 && b.totalAmount - b.paidAmount > 0 && (
               <div className="mt-2 flex items-center justify-between text-xs">
                 <span className="font-medium text-[#0a7d4f]">已付訂金 NT$ {b.paidAmount.toLocaleString()}</span>
                 <span className="font-bold text-[var(--color-coral)]">尾款 NT$ {(b.totalAmount - b.paidAmount).toLocaleString()}</span>

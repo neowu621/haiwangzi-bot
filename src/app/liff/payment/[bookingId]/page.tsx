@@ -44,7 +44,7 @@ interface MyBookingMini {
 
 interface Config {
   bank: { name: string; branch: string; account: string; holder: string };
-  linepay: { qrUrl: string; liteId: string };  // v289
+  linepay: { qrUrl: string; liteId: string; lineUrl?: string };  // v289
 }
 
 type PayMethod = "bank" | "linepay" | "other";
@@ -572,7 +572,7 @@ export default function PaymentUploadPage({
         )}
 
         {/* v289：linepay 顯示 QR + Lite ID */}
-        {paymentMethod === "linepay" && (linepay?.qrUrl || linepay?.liteId) && (
+        {paymentMethod === "linepay" && (linepay?.qrUrl || linepay?.liteId || linepay?.lineUrl) && (
           <Card className="bg-green-50/40 border-green-200">
             <CardHeader>
               <CardTitle className="text-base text-green-900">💚 LINE Pay 轉帳</CardTitle>
@@ -593,8 +593,18 @@ export default function PaymentUploadPage({
                   >📋 複製</button>
                 </div>
               )}
+              {linepay.lineUrl && (
+                <a
+                  href={linepay.lineUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-1.5 rounded-md bg-[#06C755] px-3 py-2.5 text-sm font-bold text-white"
+                >
+                  💬 用 LINE 敲老闆轉帳
+                </a>
+              )}
               <div className="mt-2 rounded bg-green-100 p-2 text-xs text-green-900 leading-relaxed">
-                💚 <b>直接 LINE Pay 給老闆</b>：開啟 LINE Pay → 掃上方 QR 或搜尋上方 ID，轉帳{" "}
+                💚 <b>直接 LINE Pay 給老闆</b>：{linepay.lineUrl ? "點上方按鈕開啟與老闆的 LINE 對話 → 在對話裡按「+ → 轉帳」" : "開啟 LINE Pay → 掃上方 QR 或搜尋上方 ID"}，轉帳{" "}
                 <span className="tabular font-bold">NT$ {expected.toLocaleString()}</span>，再到下方<b>上傳轉帳成功截圖</b>送出。
               </div>
             </CardContent>

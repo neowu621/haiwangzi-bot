@@ -27,7 +27,7 @@ interface PayApiOK {
   booking: BookingPublic;
   contract?: { title: string; content: string; refUrl: string | null; signed: boolean } | null;
   bank?: { name: string; branch: string; account: string; holder: string };
-  linepay?: { qrUrl: string; liteId: string };
+  linepay?: { qrUrl: string; liteId: string; lineUrl?: string };
   proofs?: Array<{
     id: string;
     type: string;
@@ -296,7 +296,7 @@ export default function PublicPayPage({
           </div>
         )}
 
-        {paymentMethod === "linepay" && (data.linepay?.qrUrl || data.linepay?.liteId) && (
+        {paymentMethod === "linepay" && (data.linepay?.qrUrl || data.linepay?.liteId || data.linepay?.lineUrl) && (
           <div className="mt-3 rounded-md bg-green-50 p-3 text-sm">
             <div className="font-semibold text-green-900 mb-2">💚 LINE Pay</div>
             {data.linepay.qrUrl && (
@@ -314,8 +314,18 @@ export default function PublicPayPage({
                 >📋 複製</button>
               </div>
             )}
+            {data.linepay.lineUrl && (
+              <a
+                href={data.linepay.lineUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 flex items-center justify-center gap-1.5 rounded-md bg-[#06C755] px-3 py-2.5 text-sm font-bold text-white"
+              >
+                💬 用 LINE 敲老闆轉帳
+              </a>
+            )}
             <div className="mt-2 rounded bg-green-100 p-2 text-xs text-green-900 leading-relaxed">
-              💚 <b>直接 LINE Pay 給老闆</b>：開啟 LINE Pay → 掃上方 QR 或搜尋上方 ID 轉帳，再上傳轉帳截圖。
+              💚 <b>直接 LINE Pay 給老闆</b>：{data.linepay.lineUrl ? "點上方按鈕開啟與老闆的 LINE 對話 → 在對話裡按「+ → 轉帳」" : "開啟 LINE Pay → 掃上方 QR 或搜尋上方 ID"} 轉帳，再上傳轉帳截圖。
             </div>
           </div>
         )}

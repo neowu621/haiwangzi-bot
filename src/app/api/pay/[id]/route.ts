@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 interface PaymentInfo {
   bank?: { name?: string; branch?: string; account?: string; holder?: string };
-  linepay?: { qrUrl?: string; liteId?: string };
+  linepay?: { qrUrl?: string; liteId?: string; lineUrl?: string };
 }
 
 export const runtime = "nodejs";
@@ -150,6 +150,7 @@ export async function GET(
   const linepay = {
     qrUrl: paymentInfo.linepay?.qrUrl ?? "",
     liteId: paymentInfo.linepay?.liteId ?? "",
+    lineUrl: paymentInfo.linepay?.lineUrl ?? "",
   };
 
   // 已上傳的付款證明 — v297：含完整狀態 + 縮圖 presigned URL
