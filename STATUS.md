@@ -1,7 +1,7 @@
 # STATUS — 海王子潛水團 LIFF App
 
 **Last update：** 2026-06-29
-**Version：** `20260629_729`（個人中心身分徽章 + IT/老闆/管理 後台連結）
+**Version：** `20260629_730`（我的預約收合列金額改顯示應付，與下方一致）
 **Phase：** ✅ 已上線營運中 — `https://haiwangzi.xyz`（Zeabur 自動部署）
 **部署驗證：** `curl https://haiwangzi.xyz/api/healthz` 回的 version 即線上版本。
 **近期重點（詳見 docs/PROGRESS.md）：** 付款核對金額明細、岸潛/船潛分類、移除證照號碼、付款證明防重複、到場點名/氣瓶數修正、匯款截圖延後載入、首頁圖片優化、會員累計消費改即時加總、LIFF 安全/效能改進（C2）併入 master 並完成驗證 gate（版本 `20260629_727`）。

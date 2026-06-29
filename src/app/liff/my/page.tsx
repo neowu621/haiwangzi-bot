@@ -625,7 +625,7 @@ function BookingCard({
           )}
           <span className="ml-auto flex items-center gap-1.5">
             <Badge variant={d.variant} className="text-[10px]">{d.label}</Badge>
-            {b.totalAmount > 0 && <span className="text-sm font-bold tabular text-[var(--color-coral)]">NT$ {b.totalAmount.toLocaleString()}</span>}
+            {b.totalAmount > 0 && <span className="text-sm font-bold tabular text-[var(--color-coral)]">NT$ {(needsPayment ? Math.max(0, b.totalAmount - b.paidAmount) : b.totalAmount).toLocaleString()}</span>}
             <ChevronRight className={cn("h-4 w-4 text-[var(--muted-foreground)] transition-transform", open && "rotate-90")} />
           </span>
         </div>
