@@ -1287,7 +1287,7 @@ export default function AdminBookingsPage() {
 
       {/* ── Edit Dialog ───────────────────────────────── */}
       <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-[min(96vw,920px)] overflow-y-auto sm:max-w-[min(96vw,920px)]">
+        <DialogContent className="max-h-[90vh] max-w-[min(96vw,1200px)] overflow-y-auto sm:max-w-[min(96vw,1200px)]">
           <DialogHeader>
             <DialogTitle>訂單詳情 / 編輯</DialogTitle>
           </DialogHeader>
@@ -1573,7 +1573,14 @@ export default function AdminBookingsPage() {
               </div>{/* /右欄 */}
               </div>{/* /左右兩欄 grid */}
 
-              {/* ── 💰 退款處理（已付>0 且未退款才顯示）── 移到付款狀態下方，視覺最顯眼 */}
+              {/* v741：底部左右兩欄 —— 左：備註/簽名/狀態歷史/付款憑證｜右：退款處理。
+                  用 grid col-start 指定欄位（原始 DOM 順序不動，桌機才分欄、手機維持單欄堆疊）。
+                  目的：把原本垂直堆疊的兩大塊改並排，減少視窗高度、桌機免捲動。 */}
+              <div className="grid lg:grid-cols-2 gap-3 items-start">
+              {/* 右欄群組（退款處理 / paid=0 提示）— 桌機放第 2 欄 */}
+              <div className="space-y-3 lg:col-start-2 lg:row-start-1">
+
+              {/* ── 💰 退款處理（已付>0 且未退款才顯示）── */}
               {/* v740：退款只在「紅色區域」狀態（活動結束 / 各種活動取消）才啟動；其餘狀態維持灰色、點選提醒 */}
               {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (() => {
                 const currentStatusKey = deriveBookingDisplay({
@@ -1682,6 +1689,10 @@ export default function AdminBookingsPage() {
                   💡 客戶尚未付款 — 若要不參加，請把「訂單狀態」改成「客戶取消」即可，不需要走退款流程。
                 </div>
               )}
+              </div>{/* /右欄群組（退款） */}
+
+              {/* 左欄群組（備註 / 狀態歷史 / 付款憑證）— 桌機放第 1 欄 */}
+              <div className="space-y-3 lg:col-start-1 lg:row-start-1">
 
               {/* ── 備註區塊 ── */}
               <div className="space-y-2 pt-1">
@@ -1860,6 +1871,8 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
               )}
+              </div>{/* /左欄群組（備註） */}
+              </div>{/* /底部左右兩欄 grid */}
 
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
