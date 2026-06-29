@@ -1,5 +1,13 @@
 # Changelog
 
+## 20260630_749M - 2026-06-30 (課程詢問分頁 — 預覽版)
+
+- 潛水預約頁(`/liff/booking`)目前頂部三分頁（一日潛水/旅行潛水/預約潛水），規劃新增第 4 個「**課程詢問**」。先做**獨立預覽** `/course-inquiry`（不動線上預約頁）。
+- 內容：上半「目前課程內容」（取自 `COURSES`：體驗潛水/Fun Dive/OW/AOW，含價格、包含、重點）；下半「需求訊息」表單。
+- 送出 → `POST /api/contact`（type=question）一次寫入**客服信箱(站內訊息)＋Email 通知老闆＋LINE 推播老闆**；另有「用 LINE 直接問老闆」即時管道。沿用 `/contact` 的 Cloudflare Turnstile + honeypot 防濫發，無需新後端。
+- 版面沿用預約潛水(WishesContent)的 Card/Label/Input/Button 樣式；元件 `CourseInquiryContent` 可重用 → 確認後直接併進正式預約頁當第 4 分頁。
+- 新增 `src/components/liff/CourseInquiryContent.tsx`、`src/app/course-inquiry/page.tsx`（noindex）。
+
 ## 20260630_748M - 2026-06-30 (修手機 Hero 不顯示：換檔名破快取)
 
 - 回報「手機首頁 Hero 無法顯示」。經查 prod 圖檔與 Next 圖片最佳化各尺寸皆 200 正常、markup 正確 → 判定為**裝置/CDN 對舊 `src-hero.webp` 同網址的舊或失敗快取**（換圖但檔名沒變，回訪者命中舊快取）。
