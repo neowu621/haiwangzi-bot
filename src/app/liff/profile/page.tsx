@@ -3,7 +3,7 @@
 //   抵用金明細才另外即時讀 /api/me/credits)→ 減少讀取次數。移除「預約紀錄/潛水紀錄」。
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, MessageCircle, LayoutDashboard } from "lucide-react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
@@ -176,6 +176,12 @@ export default function ProfilePage() {
 
   // ===== 主清單 =====
   const name = me.realName ?? me.displayName ?? "會員";
+  // v729：身分徽章 + 後台連結 —— 多重身分取最高優先
+  const myRoles = me.roles ?? [me.role ?? ""];
+  const ROLE_LABEL: Record<string, string> = { it: "IT", boss: "老闆", admin: "管理", coach: "教練", assistant: "助教" };
+  const primaryRole = ["it", "boss", "admin", "coach", "assistant"].find((r) => myRoles.includes(r));
+  const roleLabel = primaryRole ? ROLE_LABEL[primaryRole] : null;
+  const isAdminLevel = myRoles.some((r) => ["it", "boss", "admin"].includes(r));
   const stats: Array<[string, string]> = [
     [String(me.haiwangziLogCount ?? 0), "海王子潛次"], [String(me.creditBalance ?? 0), "抵用金"],
     [String(me.stats?.totalBookings ?? 0), "進行中"], [me.vipLevel ? `LV${me.vipLevel}` : "會員", "等級"],
@@ -186,6 +192,11 @@ export default function ProfilePage() {
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center", margin: "0 auto" }}><User size={30} /></div>
         <div style={{ fontSize: 16, fontWeight: 500, marginTop: 8 }}>{name}</div>
         <div style={{ fontSize: 12, color: C.mute }}>{me.email ?? ""}</div>
+        {roleLabel && (
+          <span style={{ display: "inline-block", marginTop: 6, fontSize: 11.5, fontWeight: 700, color: C.accFg, background: C.accBg, borderRadius: 999, padding: "2px 11px" }}>
+            {roleLabel}
+          </span>
+        )}
       </div>
       <div style={{ display: "flex", background: C.page, borderRadius: 12, padding: "12px 0", textAlign: "center", marginBottom: 6 }}>
         {stats.map(([a, b]) => <div key={b} style={{ flex: 1 }}><div style={{ fontSize: 18, fontWeight: 500 }}>{a}</div><div style={{ fontSize: 11, color: C.mute }}>{b}</div></div>)}
@@ -206,6 +217,11 @@ export default function ProfilePage() {
         <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
           <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>教練到場點名</span><ChevronRight size={16} color={C.mute} />
         </Link>
+        {isAdminLevel && (
+          <Link href="/admin/m" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
+            <LayoutDashboard size={19} color={C.accFg} /><span style={{ flex: 1, fontSize: 14 }}>後台管理</span><ChevronRight size={16} color={C.mute} />
+          </Link>
+        )}
       </>)}
       <Sect t="其他" />
       <button onClick={() => liff.logout()} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", color: C.dangFg }}>
