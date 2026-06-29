@@ -264,6 +264,8 @@ export default function AdminBookingsPage() {
   const [adjAmount, setAdjAmount] = useState<string>("");
   const [adjNote, setAdjNote] = useState<string>("");
   const [addingEntry, setAddingEntry] = useState(false);
+  // v743：金額調整（新增付款）預設收合，需要時才展開
+  const [addEntryOpen, setAddEntryOpen] = useState(false);
   // v738：老闆帳務調整(改訂單收費，例 共乘 +300 / 補償 −600)
   const [adjItemLabel, setAdjItemLabel] = useState<string>("");
   const [adjItemAmount, setAdjItemAmount] = useState<string>("");
@@ -1331,12 +1333,7 @@ export default function AdminBookingsPage() {
                         🔒 此訂單已退款 {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「活動備註」
                       </div>
                     )}
-                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                      <Label className="text-xs">參加人數</Label>
-                      <NumberInput min={1} max={20} value={editing.participants}
-                        disabled={locked}
-                        onChange={(n) => setEditing({ ...editing, participants: Math.max(1, n) })} />
-                    </div>
+                    {/* v743：參加人數移除（左欄「下單明細」已顯示 × N 人，這裡不再重複可編輯欄） */}
                     {/* v366：💰 金額（總/已付/剩餘 三欄）+ 可展開修改總金額 */}
                     <div className="rounded-lg border border-[var(--border)] overflow-hidden">
                       <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>💰 金額</div>
@@ -1409,6 +1406,10 @@ export default function AdminBookingsPage() {
                         {(() => {
                           const entriesSum = entries.reduce((s, e) => s + e.amount, 0);
                           const priorPaid = editing.paidAmount - entriesSum;
+                          // v743：paidAmount 內含「下單時抵用金折抵」(creditUsed)，從先前已付拆出來、單獨標示
+                          const creditUsed = editing.creditUsed ?? editing.priceBreakdown?.creditUsed ?? 0;
+                          const creditPortion = Math.max(0, Math.min(creditUsed, priorPaid));
+                          const cashPrior = priorPaid - creditPortion;
                           const hasRows = entries.length > 0 || priorPaid > 0;
                           return (
                             <>
@@ -1418,10 +1419,17 @@ export default function AdminBookingsPage() {
                               {!entriesLoading && !hasRows && (
                                 <div className="py-3 text-center text-[11px] text-[var(--muted-foreground)]">尚無付款紀錄</div>
                               )}
-                              {priorPaid > 0 && (
+                              {creditPortion > 0 && (
+                                <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
+                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px]">抵用金採用</span>
+                                  <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{creditPortion.toLocaleString()}</span>
+                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: "#fef3c7", color: "#92400e" }}>⭐ 抵用金折抵</span>
+                                </div>
+                              )}
+                              {cashPrior > 0 && (
                                 <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
                                   <span className="text-[11px] text-[var(--muted-foreground)] w-[92px]">先前已付</span>
-                                  <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{priorPaid.toLocaleString()}</span>
+                                  <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{cashPrior.toLocaleString()}</span>
                                   <span className="text-[10px] text-[var(--muted-foreground)]">（未明細化）</span>
                                 </div>
                               )}
@@ -1450,10 +1458,15 @@ export default function AdminBookingsPage() {
                       </div>
                     </div>
 
-                    {/* v366：➕ 金額調整（新增一筆付款/折抵，取代舊「新增付款」+「助教減免」）*/}
+                    {/* v366/v743：➕ 金額調整（新增一筆付款）— 預設收合，點標題才展開 */}
                     {!locked && owed > 0 && (
                       <div className="rounded-lg border border-[var(--border)] overflow-hidden">
-                        <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>➕ 金額調整（新增一筆付款紀錄）</div>
+                        <button type="button" onClick={() => setAddEntryOpen((o) => !o)}
+                          className="w-full flex items-center justify-between bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>
+                          <span>➕ 金額調整（新增一筆付款紀錄）</span>
+                          {addEntryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
+                        {addEntryOpen && (
                         <div className="p-3 space-y-2">
                           <div className="grid grid-cols-2 gap-2">
                             <select value={adjKind} onChange={(e) => setAdjKind(e.target.value)}
@@ -1496,9 +1509,12 @@ export default function AdminBookingsPage() {
                             {addingEntry ? "處理中…" : "✓ 確認，新增此筆"}
                           </Button>
                         </div>
+                        )}
                       </div>
                     )}
 
+                    {/* v743：付款方式只在客戶已上傳付款憑證（= 已選付款方式）時才顯示 */}
+                    {(proofs.length > 0 || !!editing.paymentMethod) && (
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">付款方式</Label>
                       <select className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm disabled:opacity-50"
@@ -1513,6 +1529,7 @@ export default function AdminBookingsPage() {
                         {editing.paymentMethod === "cash" && <option value="cash">現場（舊）</option>}
                       </select>
                     </div>
+                    )}
                     {/* v327：合併為單一「訂單狀態」下拉（含付款進度）— 反推回 DB 兩維度 */}
                     <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
                       <Label className="text-xs">訂單狀態</Label>
