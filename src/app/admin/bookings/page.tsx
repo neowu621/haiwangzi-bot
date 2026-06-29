@@ -1574,26 +1574,50 @@ export default function AdminBookingsPage() {
               </div>{/* /左右兩欄 grid */}
 
               {/* ── 💰 退款處理（已付>0 且未退款才顯示）── 移到付款狀態下方，視覺最顯眼 */}
-              {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (
+              {/* v740：退款只在「紅色區域」狀態（活動結束 / 各種活動取消）才啟動；其餘狀態維持灰色、點選提醒 */}
+              {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (() => {
+                const currentStatusKey = deriveBookingDisplay({
+                  status: editing.status,
+                  paymentStatus: editing.paymentStatus,
+                  createdAt: editing.createdAt,
+                }).key;
+                const REFUND_ALLOWED_KEYS: BookingStatusKey[] = ["completed", "no_show", "cancelled_user", "cancelled_weather", "cancelled_unpaid"];
+                const refundEnabled = REFUND_ALLOWED_KEYS.includes(currentStatusKey);
+                const refundExpanded = refundEnabled && refundOpen;
+                return (
                 <div className="rounded-md p-3 space-y-2"
-                  style={{ border: "2px solid rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.05)" }}>
-                  <button type="button" onClick={() => setRefundOpen(!refundOpen)}
+                  style={refundEnabled
+                    ? { border: "2px solid rgba(255,123,90,0.4)", background: "rgba(255,123,90,0.05)" }
+                    : { border: "2px solid rgba(148,163,184,0.35)", background: "rgba(148,163,184,0.08)", opacity: 0.7 }}>
+                  <button type="button"
+                    onClick={() => {
+                      if (!refundEnabled) {
+                        alert("目前訂單狀態不支援退款。\n\n請先把上方「訂單狀態」改成「活動結束」或「活動取消」（未到場／客戶取消／天氣／訂單不成立），退款處理才會啟動。");
+                        return;
+                      }
+                      setRefundOpen(!refundOpen);
+                    }}
                     className="flex w-full items-center justify-between text-sm font-semibold"
-                    style={{ color: "var(--color-coral)" }}>
+                    style={{ color: refundEnabled ? "var(--color-coral)" : "var(--muted-foreground)" }}>
                     <span className="flex items-center gap-1.5">
-                      💰 退款處理
+                      {refundEnabled ? "💰" : "🔒"} 退款處理
                       <span className="text-[11px] font-normal opacity-80">
                         （已付 {editing.paidAmount.toLocaleString()}{editing.paidAmount < editing.totalAmount ? `／總額 ${editing.totalAmount.toLocaleString()}` : ""}）
                       </span>
                     </span>
-                    {refundOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    {refundEnabled && (refundOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
                   </button>
-                  {!refundOpen && (
+                  {!refundEnabled && (
+                    <p className="text-[11px] text-[var(--muted-foreground)] pt-0.5">
+                      🔒 需先把「訂單狀態」改為 <b>活動結束</b> 或 <b>活動取消</b>（未到場／客戶取消／天氣／訂單不成立）才能退款
+                    </p>
+                  )}
+                  {refundEnabled && !refundOpen && (
                     <p className="text-[11px] text-[var(--color-coral)] opacity-80 pt-0.5">
                       ↑ 點此展開：可選 <b>轉抵用金</b>（永不過期 · 可加成）或 <b>退現金</b>
                     </p>
                   )}
-                  {refundOpen && (
+                  {refundExpanded && (
                     <div className="space-y-2 pt-1">
                       <div className="grid grid-cols-2 gap-2">
                         <button type="button" onClick={() => setRefundMethod("credit")}
@@ -1648,7 +1672,8 @@ export default function AdminBookingsPage() {
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               {/* paid=0 提示：沒收到錢就不會有退款流程 */}
               {editing.paidAmount === 0 && editing.status !== "cancelled_by_user" && editing.status !== "cancelled_by_weather" && (
