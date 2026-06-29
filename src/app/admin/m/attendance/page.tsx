@@ -20,7 +20,15 @@ interface Session {
   type: "daily" | "tour";
   label: string;
   time: string;
+  date: string; // v737：場次日期 YYYY-MM-DD
   bookings: AttBooking[];
+}
+
+// v737：YYYY-MM-DD → 「2026-06-29（週一）」
+function fmtDateW(d: string): string {
+  if (!d) return "";
+  const w = new Date(`${d}T00:00:00+08:00`).toLocaleDateString("zh-TW", { weekday: "short", timeZone: "Asia/Taipei" });
+  return `${d}（${w}）`;
 }
 
 export default function MobileAttendancePage() {
@@ -112,6 +120,7 @@ export default function MobileAttendancePage() {
           {(sessions ?? []).map((s) => (
             <div key={s.key} className="rounded-xl border" style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}>
               <div className="border-b px-3 py-2" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+                <div className="text-[11px] font-semibold" style={{ color: "var(--color-ocean-deep)" }}>📅 {fmtDateW(s.date)}</div>
                 <div className="text-sm font-bold">{s.type === "daily" ? "🔱" : "✈️"} {s.label}</div>
                 <div className="mt-0.5 text-[11px]" style={{ color: "var(--muted-foreground)" }}>
                   {s.bookings.length} 筆・待點 {s.bookings.filter((b) => b.status === "confirmed").length}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 20260629_736 - 2026-06-29 (會員查詢點選彈窗 + 到場點名顯示日期星期)
+
+- 手機後台「會員查詢」(`/admin/m/users`)搜尋到會員後，點一筆 → **底部彈窗**：
+  - **聯繫方式**：📞 打電話(`tel:` 直撥) ・ 💬 用 LINE 傳訊息(打字 → 透過官方帳號推到會員 LINE，走既有 `/api/admin/contact-customer`)。
+  - **進行中訂單**：列出所有未結束/未取消的訂單(含已下訂尚未匯款)，金額顯示應付；點任一筆 → 疊層開**訂單詳細彈窗**(`<OrderDetail>`)。
+  - 新增 `GET /api/admin/m/users/[userId]`(聯繫 + 進行中訂單)。動檔 `src/app/admin/m/users/page.tsx`。
+- **到場點名**(桌機 `/admin/attendance` + 手機 `/admin/m/attendance`)每個場次標題新增**日期 + 星期**(例「📅 2026-06-29（週一）」)，避免只看到時間(08:00)分不清是哪天。API `/api/admin/attendance/today` 的每個 session 補回 `date`。註:點名清單本來就嚴格只抓「台北今日」場次，顯示日期後即一目了然。
+
 ## 20260629_735 - 2026-06-29 (修 LINE 對話連結存不進去)
 
 - Bug:後台「付款資訊 → LINE 對話連結(lineUrl)」按儲存後顯示「已儲存」但實際沒存進去。原因:`/api/admin/site-config` 的 `PatchSchema.paymentInfo.linepay` 只定義 `qrUrl`/`liteId`,Zod `z.object` 預設會**過濾未定義欄位**,把 `lineUrl` 丟掉。修:linepay schema 補上 `lineUrl`。動檔 `src/app/api/admin/site-config/route.ts`。

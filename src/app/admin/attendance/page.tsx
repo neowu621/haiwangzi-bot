@@ -21,7 +21,15 @@ interface Session {
   type: "daily" | "tour";
   label: string;
   time: string;
+  date: string; // v737：場次日期 YYYY-MM-DD
   bookings: AttBooking[];
+}
+
+// v737：YYYY-MM-DD → 「2026-06-29（週一）」
+function fmtDateW(d: string): string {
+  if (!d) return "";
+  const w = new Date(`${d}T00:00:00+08:00`).toLocaleDateString("zh-TW", { weekday: "short", timeZone: "Asia/Taipei" });
+  return `${d}（${w}）`;
 }
 
 export default function AttendancePage() {
@@ -109,6 +117,7 @@ export default function AttendancePage() {
             {(sessions ?? []).map((s) => (
               <div key={s.key} className="rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
                 <div className="border-b p-3" style={{ borderColor: "var(--border)" }}>
+                  <p className="text-[11px] font-semibold" style={{ color: "var(--color-ocean-deep)" }}>📅 {fmtDateW(s.date)}</p>
                   <p className="text-sm font-bold">{s.type === "daily" ? "🔱" : "✈️"} {s.label}</p>
                   <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
                     {s.bookings.length} 筆・待點 {s.bookings.filter((b) => b.status === "confirmed").length}

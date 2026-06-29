@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
       type: "daily" as const,
       label: `${t.startTime} ${t.diveSiteIds.map((id) => siteName.get(id) ?? id).join("、")}`.trim(),
       time: t.startTime,
+      date: t.date.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }), // v737：場次日期(YYYY-MM-DD)
       bookings: (byRef.get(t.id) ?? []).map(mapBk),
     })),
     ...tours.map((t) => ({
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest) {
       type: "tour" as const,
       label: t.title,
       time: "",
+      date: t.dateStart.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }), // v737：出發日
       bookings: (byRef.get(t.id) ?? []).map(mapBk),
     })),
   ].filter((s) => s.bookings.length > 0);
