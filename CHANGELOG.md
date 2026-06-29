@@ -1,5 +1,9 @@
 # Changelog
 
+## 20260629_737 - 2026-06-29 (修 736 型別錯誤，部署可過)
+
+- 修 `GET /api/admin/m/users/[userId]` 的 `status.notIn` 型別:`string[]` → 轉型 `Prisma.BookingWhereInput["status"]`(原本 `next build` 型別檢查失敗會卡 Zeabur 部署)。本次先本機確認型別檢查通過再推。
+
 ## 20260629_736 - 2026-06-29 (會員查詢點選彈窗 + 到場點名顯示日期星期)
 
 - 手機後台「會員查詢」(`/admin/m/users`)搜尋到會員後，點一筆 → **底部彈窗**：

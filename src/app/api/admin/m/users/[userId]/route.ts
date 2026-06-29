@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { deriveBookingDisplay } from "@/lib/booking-status";
 
@@ -35,7 +36,7 @@ export async function GET(
     if (!user) return NextResponse.json({ error: "user not found" }, { status: 404 });
 
     const bookings = await prisma.booking.findMany({
-      where: { userId, status: { notIn: [...DONE_OR_CANCELLED] } },
+      where: { userId, status: { notIn: [...DONE_OR_CANCELLED] } as Prisma.BookingWhereInput["status"] },
       select: {
         id: true, code: true, type: true, refId: true, participants: true,
         totalAmount: true, paidAmount: true, paymentStatus: true, status: true, createdAt: true,
