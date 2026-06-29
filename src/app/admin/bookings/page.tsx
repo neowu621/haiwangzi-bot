@@ -1311,21 +1311,13 @@ export default function AdminBookingsPage() {
                 </div>
               </div>
 
-              {/* v739：桌機左右兩欄 —— 左：下單明細｜右：金額/付款/帳務 */}
+              {/* v742：單一兩欄 grid（每欄各自獨立堆疊，避免左欄留白）。
+                  右視覺欄(col2)＝金額/付款/帳務/訂單狀態 + 退款處理；
+                  左視覺欄(col1)＝下單明細 + 備註/簽名/狀態歷史/付款憑證。
+                  只把「下單明細」搬到左視覺欄開頭，其餘大塊不動。 */}
               <div className="grid lg:grid-cols-2 gap-3 items-start">
-              <div className="space-y-3">
-              {/* v738：📋 下單明細 ＝ 客戶訂了什麼（含老闆帳務調整） */}
-              <div className="rounded-lg border border-[var(--border)] overflow-hidden">
-                <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>📋 下單明細</div>
-                <div className="p-3">
-                  <PriceBreakdown
-                    pb={editing.priceBreakdown ?? null}
-                    fallback={{ type: editing.type, totalAmount: editing.totalAmount, participants: editing.participants, tankCount: editing.tankCount }}
-                  />
-                </div>
-              </div>
-              </div>{/* /左欄 */}
-              <div className="space-y-3">{/* 右欄開始 */}
+              {/* 右視覺欄（col2）：金額 / 付款 / 帳務 / 訂單狀態 + 退款處理 */}
+              <div className="space-y-3 lg:col-start-2 lg:row-start-1">{/* 右欄開始 */}
 
               {/* v191：退款後鎖住所有 input（除 adminNotes） */}
               {(() => {
@@ -1570,17 +1562,8 @@ export default function AdminBookingsPage() {
                   </>
                 );
               })()}
-              </div>{/* /右欄 */}
-              </div>{/* /左右兩欄 grid */}
 
-              {/* v741：底部左右兩欄 —— 左：備註/簽名/狀態歷史/付款憑證｜右：退款處理。
-                  用 grid col-start 指定欄位（原始 DOM 順序不動，桌機才分欄、手機維持單欄堆疊）。
-                  目的：把原本垂直堆疊的兩大塊改並排，減少視窗高度、桌機免捲動。 */}
-              <div className="grid lg:grid-cols-2 gap-3 items-start">
-              {/* 右欄群組（退款處理 / paid=0 提示）— 桌機放第 2 欄 */}
-              <div className="space-y-3 lg:col-start-2 lg:row-start-1">
-
-              {/* ── 💰 退款處理（已付>0 且未退款才顯示）── */}
+              {/* ── 💰 退款處理（已付>0 且未退款才顯示）── 接在付款/訂單狀態下方（同一右視覺欄） */}
               {/* v740：退款只在「紅色區域」狀態（活動結束 / 各種活動取消）才啟動；其餘狀態維持灰色、點選提醒 */}
               {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (() => {
                 const currentStatusKey = deriveBookingDisplay({
@@ -1689,10 +1672,21 @@ export default function AdminBookingsPage() {
                   💡 客戶尚未付款 — 若要不參加，請把「訂單狀態」改成「客戶取消」即可，不需要走退款流程。
                 </div>
               )}
-              </div>{/* /右欄群組（退款） */}
+              </div>{/* /右視覺欄（付款 + 退款） */}
 
-              {/* 左欄群組（備註 / 狀態歷史 / 付款憑證）— 桌機放第 1 欄 */}
+              {/* 左視覺欄（col1）：下單明細 + 備註 / 簽名 / 狀態歷史 / 付款憑證 */}
               <div className="space-y-3 lg:col-start-1 lg:row-start-1">
+
+              {/* v738/v742：📋 下單明細 ＝ 客戶訂了什麼（含老闆帳務調整）— 搬到左視覺欄開頭 */}
+              <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>📋 下單明細</div>
+                <div className="p-3">
+                  <PriceBreakdown
+                    pb={editing.priceBreakdown ?? null}
+                    fallback={{ type: editing.type, totalAmount: editing.totalAmount, participants: editing.participants, tankCount: editing.tankCount }}
+                  />
+                </div>
+              </div>
 
               {/* ── 備註區塊 ── */}
               <div className="space-y-2 pt-1">
@@ -1734,41 +1728,7 @@ export default function AdminBookingsPage() {
                   />
                 )}
 
-                {/* v262：客戶簽名 + 簽署 metadata（法律證據） */}
-                {(editing.signatureImageUrl || editing.signedAt) && (
-                  <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                    <Label className="text-xs pt-1.5">
-                      ✍️ 客戶簽名
-                      <span className="block font-normal text-[10px] text-[var(--muted-foreground)]">法律證據</span>
-                    </Label>
-                    <div className="space-y-1.5">
-                      {editing.signatureImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={editing.signatureImageUrl}
-                          alt="customer signature"
-                          className="max-h-32 rounded-md border bg-white"
-                          style={{ borderColor: "var(--border)" }}
-                        />
-                      ) : (
-                        <div className="text-xs text-[var(--muted-foreground)]">
-                          （簽名圖未上傳，可能是 R2 未設定或網路問題）
-                        </div>
-                      )}
-                      {editing.signedAt && (
-                        <div className="text-[11px] text-[var(--muted-foreground)] font-mono">
-                          🕒 {new Date(editing.signedAt).toLocaleString("zh-TW")}
-                        </div>
-                      )}
-                      {editing.signedFromUserAgent && (
-                        <div className="text-[10px] text-[var(--muted-foreground)] truncate" title={editing.signedFromUserAgent}>
-                          📱 {editing.signedFromUserAgent}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              </div>{/* /備註區塊（客戶簽名已移到下方與付款憑證並排） */}
 
               {/* v278：訂單狀態歷史 (event log) */}
               {editing.statusLogs && editing.statusLogs.length > 0 && (
@@ -1806,6 +1766,42 @@ export default function AdminBookingsPage() {
                 </div>
               )}
 
+              {/* v742：客戶簽名 + 付款憑證 並排（各佔左視覺欄一半 ≈ 全寬 1/4） */}
+              <div className="grid sm:grid-cols-2 gap-3 items-start">
+
+              {/* v262/v742：客戶簽名（法律證據）— 改卡片式，與付款憑證並排 */}
+              {(editing.signatureImageUrl || editing.signedAt) && (
+                <div className="rounded-md p-3 space-y-2" style={{ border: "2px solid var(--border)" }}>
+                  <div className="text-sm font-semibold flex items-center gap-2">
+                    ✍️ 客戶簽名
+                    <span className="text-[10px] font-normal text-[var(--muted-foreground)]">法律證據</span>
+                  </div>
+                  {editing.signatureImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={editing.signatureImageUrl}
+                      alt="customer signature"
+                      className="w-full max-h-32 object-contain rounded-md border bg-white"
+                      style={{ borderColor: "var(--border)" }}
+                    />
+                  ) : (
+                    <div className="text-xs text-[var(--muted-foreground)]">
+                      （簽名圖未上傳，可能是 R2 未設定或網路問題）
+                    </div>
+                  )}
+                  {editing.signedAt && (
+                    <div className="text-[11px] text-[var(--muted-foreground)] font-mono">
+                      🕒 {new Date(editing.signedAt).toLocaleString("zh-TW")}
+                    </div>
+                  )}
+                  {editing.signedFromUserAgent && (
+                    <div className="text-[10px] text-[var(--muted-foreground)] truncate" title={editing.signedFromUserAgent}>
+                      📱 {editing.signedFromUserAgent}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 付款憑證審核區 — 只在 已付>0 OR 真的有憑證 時顯示 */}
               {(proofs.length > 0 || (proofsLoading && editing.paidAmount > 0)) && (
                 <div className="rounded-md p-3 space-y-2" style={{ border: "2px solid var(--border)" }}>
@@ -1818,7 +1814,7 @@ export default function AdminBookingsPage() {
                   {proofsLoading && proofs.length === 0 && (
                     <p className="text-xs text-[var(--muted-foreground)]">載入中...</p>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {proofs.map((p) => (
                       <div key={p.id} className="rounded-md border p-2 space-y-1.5" style={{ borderColor: "var(--border)" }}>
                         <div className="flex items-center justify-between text-xs">
@@ -1871,8 +1867,9 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
               )}
-              </div>{/* /左欄群組（備註） */}
-              </div>{/* /底部左右兩欄 grid */}
+              </div>{/* /客戶簽名＋付款憑證 並排 grid */}
+              </div>{/* /左視覺欄（下單明細 + 備註） */}
+              </div>{/* /兩欄 grid */}
 
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
