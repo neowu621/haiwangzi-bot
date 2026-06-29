@@ -23,6 +23,24 @@ export interface PriceBreakdownData {
   basePrice?: number; addons?: Array<{ label: string; priceDelta: number }>; addonAmount?: number; deposit?: number;
   // 共用
   totalAmount: number; creditUsed?: number; payable?: number;
+  // v738：老闆帳務調整項(共乘 +300 / 補償 −600…)，會加進總額
+  bossAdjustments?: Array<{ label: string; amount: number; at?: string; by?: string }>;
+}
+
+// v738：渲染老闆帳務調整列(藍色,正=加收/負=減免)
+function AdjRows({ adj }: { adj?: Array<{ label: string; amount: number }> }) {
+  if (!adj || adj.length === 0) return null;
+  return (
+    <>
+      {adj.map((a, i) => (
+        <Row
+          key={i}
+          label={<span style={{ color: "#185FA5" }}>{a.label}（老闆調整）</span>}
+          value={`${a.amount >= 0 ? "+ " : "− "}${ntd(Math.abs(a.amount))}`}
+        />
+      ))}
+    </>
+  );
 }
 
 function Row({ label, value, strike, tone, bold }: { label: React.ReactNode; value: string; strike?: string; tone?: "mute" | "ok" | "coral" | "ink"; bold?: boolean }) {
@@ -47,7 +65,9 @@ export function PriceBreakdown({ pb, fallback }: {
   // ---- 新訂單:精確明細 ----
   if (pb && pb.kind === "daily") {
     const credit = pb.creditUsed ?? 0;
-    const payable = pb.payable ?? Math.max(0, pb.totalAmount - credit);
+    const adjSum = (pb.bossAdjustments ?? []).reduce((s, a) => s + a.amount, 0);
+    const total = pb.totalAmount + adjSum;
+    const payable = Math.max(0, total - credit);
     const useCharged = pb.tankUnitCharged ?? pb.perTank ?? 0;
     const tankDisc = pb.tankDiscountPerTank ?? 0;
     const auto = pb.autoDiscount ?? 0;
@@ -80,8 +100,9 @@ export function PriceBreakdown({ pb, fallback }: {
         {promoWon && (
           <Row label={`優惠代碼 ${pb.promoCode ?? ""}`} value={`− ${ntd(promo)}`} tone="ok" />
         )}
+        <AdjRows adj={pb.bossAdjustments} />
         {hr}
-        <Row label="訂單總額" value={ntd(pb.totalAmount)} bold />
+        <Row label="訂單總額" value={ntd(total)} bold />
         {credit > 0 && <Row label="抵用金折抵" value={`− ${ntd(credit)}`} tone="coral" />}
         <Row label="應付" value={ntd(payable)} tone="coral" bold />
       </div>
@@ -89,15 +110,18 @@ export function PriceBreakdown({ pb, fallback }: {
   }
   if (pb && pb.kind === "tour") {
     const credit = pb.creditUsed ?? 0;
-    const payable = pb.payable ?? Math.max(0, pb.totalAmount - credit);
+    const adjSum = (pb.bossAdjustments ?? []).reduce((s, a) => s + a.amount, 0);
+    const total = pb.totalAmount + adjSum;
+    const payable = Math.max(0, total - credit);
     return (
       <div>
         <Row label={`團費 ${ntd(pb.basePrice ?? 0)} × ${pb.participants ?? 1} 人`} value={ntd((pb.basePrice ?? 0) * (pb.participants ?? 1))} />
         {(pb.addons ?? []).map((a, i) => (
           <Row key={i} label={`加購 ${a.label} × ${pb.participants ?? 1} 人`} value={`+ ${ntd(a.priceDelta * (pb.participants ?? 1))}`} />
         ))}
+        <AdjRows adj={pb.bossAdjustments} />
         {hr}
-        <Row label="訂單總額" value={ntd(pb.totalAmount)} bold />
+        <Row label="訂單總額" value={ntd(total)} bold />
         {(pb.deposit ?? 0) > 0 && <Row label="訂金" value={ntd(pb.deposit ?? 0)} tone="mute" />}
         {credit > 0 && <Row label="抵用金折抵" value={`− ${ntd(credit)}`} tone="coral" />}
         <Row label="應付" value={ntd(payable)} tone="coral" bold />

@@ -19,6 +19,7 @@ import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2, ImageOff } fro
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
 import { deriveBookingDisplay, BOOKING_STATUS_FILTER_GROUPS, BOOKING_STATUS_EDITABLE_KEYS, reverseDerivedStatus, type BookingStatusKey } from "@/lib/booking-status"; // v319 / v324 / v327
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
+import { PriceBreakdown, type PriceBreakdownData } from "@/components/admin/PriceBreakdown"; // v738：下單明細
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   const ctrl = new AbortController();
@@ -45,6 +46,7 @@ interface AdminBooking {
   refundedAt?: string | null;
   refundMethod?: string | null;
   creditRefunded?: number; // v608：訂單取消已退還的抵用金
+  creditUsed?: number; // v739：下單折抵的抵用金（表格「抵扣金額」欄）
   participants: number;
   tankCount?: number | null; // v707：客戶實際選的潛次（每人）；舊單 null → fallback ref.tankCount
   overCapacity?: boolean;
@@ -52,6 +54,7 @@ interface AdminBooking {
   notes?: string | null;
   siteNotes?: string | null;
   adminNotes?: string | null;
+  priceBreakdown?: PriceBreakdownData | null; // v738：下單明細(凍結) + 老闆帳務調整
   // v262：簽名
   signatureImageUrl?: string | null;
   signedAt?: string | null;
@@ -261,6 +264,10 @@ export default function AdminBookingsPage() {
   const [adjAmount, setAdjAmount] = useState<string>("");
   const [adjNote, setAdjNote] = useState<string>("");
   const [addingEntry, setAddingEntry] = useState(false);
+  // v738：老闆帳務調整(改訂單收費，例 共乘 +300 / 補償 −600)
+  const [adjItemLabel, setAdjItemLabel] = useState<string>("");
+  const [adjItemAmount, setAdjItemAmount] = useState<string>("");
+  const [addingAdj, setAddingAdj] = useState(false);
   const [editTotal, setEditTotal] = useState(false); // 是否展開「修改總金額」
 
   // 未到場 dialog
@@ -738,6 +745,47 @@ export default function AdminBookingsPage() {
     }
   }
 
+  // v738：老闆帳務調整 — 加一筆收費項目(可正可負)，改訂單總額
+  async function addAdjustment() {
+    if (!editing) return;
+    const label = adjItemLabel.trim();
+    const amt = Number(adjItemAmount);
+    if (!label) { alert("請填項目名稱（例：共乘 / 補上次沒潛水）"); return; }
+    if (!Number.isInteger(amt) || amt === 0) { alert("請輸入金額（可為負，例 300 或 -600）"); return; }
+    setAddingAdj(true);
+    try {
+      const r = await adminFetch<{ ok: boolean; booking: { totalAmount: number; paymentStatus: string }; adjustments: NonNullable<PriceBreakdownData["bossAdjustments"]> }>(
+        `/api/admin/bookings/${editing.id}/adjustment`,
+        { method: "POST", body: JSON.stringify({ label, amount: amt }) },
+      );
+      const newPb = { ...(editing.priceBreakdown ?? {}), bossAdjustments: r.adjustments } as PriceBreakdownData;
+      setEditing({ ...editing, totalAmount: r.booking.totalAmount, paymentStatus: r.booking.paymentStatus, priceBreakdown: newPb });
+      setBookings((arr) => arr.map((x) => (x.id === editing.id ? { ...x, totalAmount: r.booking.totalAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"] } : x)));
+      setAdjItemLabel("");
+      setAdjItemAmount("");
+    } catch (e) {
+      alert("帳務調整失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAddingAdj(false);
+    }
+  }
+
+  async function deleteAdjustment(index: number, item: { label: string; amount: number }) {
+    if (!editing) return;
+    if (!confirm(`移除帳務調整「${item.label} ${item.amount >= 0 ? "+" : ""}${item.amount.toLocaleString()}」？\n訂單總額會倒回，動作寫入審計紀錄。`)) return;
+    try {
+      const r = await adminFetch<{ ok: boolean; booking: { totalAmount: number; paymentStatus: string }; adjustments: NonNullable<PriceBreakdownData["bossAdjustments"]> }>(
+        `/api/admin/bookings/${editing.id}/adjustment?index=${index}`,
+        { method: "DELETE" },
+      );
+      const newPb = { ...(editing.priceBreakdown ?? {}), bossAdjustments: r.adjustments } as PriceBreakdownData;
+      setEditing({ ...editing, totalAmount: r.booking.totalAmount, paymentStatus: r.booking.paymentStatus, priceBreakdown: newPb });
+      setBookings((arr) => arr.map((x) => (x.id === editing.id ? { ...x, totalAmount: r.booking.totalAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"] } : x)));
+    } catch (e) {
+      alert("移除失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+
   async function doRefund() {
     if (!editing) return;
     const n = Number(refundAmount);
@@ -928,8 +976,9 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
                     <th className="px-3 py-3 font-medium" title="會=會員備註(長期·內部) 客=客戶下單填的備註。活動提醒請在『日潛場次/潛旅』編輯，客戶可見。">備註 ⓘ</th>
-                    <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">金額</SortBtn></th>
-                    <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">已付</SortBtn></th>
+                    <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">總金額</SortBtn></th>
+                    <th className="px-4 py-3 font-medium text-right">抵扣金額</th>
+                    <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">實際付款</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="method" curK={sortKey} dir={sortDir} onClick={toggleSort}>方式</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="status" curK={sortKey} dir={sortDir} onClick={toggleSort}>狀態</SortBtn></th>
                     <th className="px-4 py-3 font-medium">操作</th>
@@ -1055,13 +1104,17 @@ export default function AdminBookingsPage() {
                             );
                           })()}
                         </td>
-                        {/* 金額 */}
+                        {/* v739：總金額 */}
                         <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                           {b.totalAmount.toLocaleString()}
                         </td>
-                        {/* 已付 */}
+                        {/* v739：抵扣金額（抵用金折抵） */}
+                        <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: (b.creditUsed ?? 0) > 0 ? "#0F6E56" : "var(--muted-foreground)" }}>
+                          {(b.creditUsed ?? 0) > 0 ? `− ${(b.creditUsed ?? 0).toLocaleString()}` : "—"}
+                        </td>
+                        {/* v739：實際付款（現金，= 已付 − 抵用金） */}
                         <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
-                          {b.paidAmount.toLocaleString()}
+                          {Math.max(0, b.paidAmount - (b.creditUsed ?? 0)).toLocaleString()}
                         </td>
                         {/* v320：方式先（原本中段） */}
                         <td className="px-4 py-2.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap">
@@ -1195,7 +1248,7 @@ export default function AdminBookingsPage() {
                   })}
                   {pagedBookings.length === 0 && (
                     <tr>
-                      <td colSpan={13} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      <td colSpan={14} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
@@ -1258,6 +1311,17 @@ export default function AdminBookingsPage() {
                 </div>
               </div>
 
+              {/* v738：📋 下單明細 ＝ 客戶訂了什麼（含老闆帳務調整） */}
+              <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>📋 下單明細</div>
+                <div className="p-3">
+                  <PriceBreakdown
+                    pb={editing.priceBreakdown ?? null}
+                    fallback={{ type: editing.type, totalAmount: editing.totalAmount, participants: editing.participants, tankCount: editing.tankCount }}
+                  />
+                </div>
+              </div>
+
               {/* v191：退款後鎖住所有 input（除 adminNotes） */}
               {(() => {
                 const locked = editing.paymentStatus === "refunded";
@@ -1309,6 +1373,37 @@ export default function AdminBookingsPage() {
                         ))}
                       </div>
                     </div>
+
+                    {/* v738：🧮 老闆帳務調整（改訂單收費，例 共乘 +300 / 補上次沒潛水 −600）*/}
+                    {!locked && (
+                      <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                        <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>🧮 老闆帳務調整（加收 / 減免）</div>
+                        <div className="p-3 space-y-2">
+                          <div className="flex gap-2">
+                            <Input value={adjItemLabel} onChange={(e) => setAdjItemLabel(e.target.value)}
+                              placeholder="項目（例：共乘 / 補上次沒潛水）" className="flex-1" disabled={addingAdj} />
+                            <Input value={adjItemAmount} onChange={(e) => setAdjItemAmount(e.target.value)}
+                              placeholder="±金額" inputMode="numeric" className="w-24" disabled={addingAdj} />
+                            <Button size="sm" className="h-9 whitespace-nowrap" onClick={addAdjustment} disabled={addingAdj}>加入</Button>
+                          </div>
+                          <p className="text-[11px] text-[var(--muted-foreground)]">加收打正(例 300)、減免打負(例 -600)。加入後即算進總額與應付，並寫入審計。</p>
+                          {(editing.priceBreakdown?.bossAdjustments ?? []).length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              {(editing.priceBreakdown?.bossAdjustments ?? []).map((a, i) => (
+                                <div key={i} className="flex items-center gap-2 text-[13px]">
+                                  <span className="flex-1 truncate" style={{ color: "#185FA5" }}>{a.label}</span>
+                                  <span className="tabular-nums font-bold" style={{ color: a.amount >= 0 ? "#185FA5" : "#0F6E56" }}>
+                                    {a.amount >= 0 ? "+" : "−"} NT$ {Math.abs(a.amount).toLocaleString()}
+                                  </span>
+                                  <button type="button" onClick={() => deleteAdjustment(i, a)}
+                                    className="text-slate-300 hover:text-[var(--color-coral)] text-xs">✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* v366：🧾 付款紀錄 */}
                     <div className="rounded-lg border border-[var(--border)] overflow-hidden">
