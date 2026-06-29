@@ -1,10 +1,10 @@
 # STATUS — 海王子潛水團 LIFF App
 
 **Last update：** 2026-06-29
-**Version（工作分支）：** `20260628_726-C2`（prod 基底 `20260628_726`）
+**Version：** `20260629_727`（C2 LIFF 安全/效能改進已併入 master）
 **Phase：** ✅ 已上線營運中 — `https://haiwangzi.xyz`（Zeabur 自動部署）
 **部署驗證：** `curl https://haiwangzi.xyz/api/healthz` 回的 version 即線上版本。
-**近期重點（詳見 docs/PROGRESS.md）：** 付款核對金額明細、岸潛/船潛分類、移除證照號碼、付款證明防重複、到場點名/氣瓶數修正、匯款截圖延後載入、首頁圖片優化、會員累計消費改即時加總、Codex 改進分支版本改為 `20260628_726-C2`，並完成 LIFF 安全/效能與驗證 gate。
+**近期重點（詳見 docs/PROGRESS.md）：** 付款核對金額明細、岸潛/船潛分類、移除證照號碼、付款證明防重複、到場點名/氣瓶數修正、匯款截圖延後載入、首頁圖片優化、會員累計消費改即時加總、LIFF 安全/效能改進（C2）併入 master 並完成驗證 gate（版本 `20260629_727`）。
 
 > ⚠️ 以下「local 測試」段落為早期本機開發紀錄，**現況以線上 prod 為準**。
 
@@ -12,8 +12,8 @@
 
 ## 2026-06-29 目前進度
 
-- 工作分支版本：`20260628_726-C2`。後續 Codex 改版沿用 `20260628_726-C3`、`20260628_726-C4`...
-- C2 驗證：`npm run lint`、`npm audit --json`、`npm run build` 皆通過；改善前後表見 `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`。
+- 版本：`20260629_727`（C2 分支 `codex/liff-security-performance-audit` 已快進併入 master）。
+- C2 驗證：`npm run db:generate`、`npm run lint`（0 errors / 205 warnings）、`npm audit`（0 vulnerabilities）、`npm run build`（compiled successfully）皆通過；改善前後表見 `docs/LIFF_SECURITY_PERFORMANCE_AUDIT_20260629.md`。
 
 ### GitHub / PR / Issue / Actions
 

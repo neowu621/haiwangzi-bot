@@ -1,5 +1,11 @@
 # Changelog
 
+## 20260629_727 - 2026-06-29 (C2 LIFF 安全/效能改進併入 master)
+
+- 將 Codex 分支 `codex/liff-security-performance-audit`（C1+C2）快進併入 master：`/liff/booking` 分頁與簽名板延遲載入、集中化 LIFF SDK loader（`src/lib/liff/client.ts`）、升級有漏洞依賴（`@line/liff` 2.29、`nodemailer` 9、`tsx` 4.22）、新增 HSTS、新增 ESLint 9 flat config、修 Prisma seed 型別。
+- 版本號正規化：併入時將工作分支的 `20260628_726-C2` 改為正規 `20260629_727`（符合 `YYYYMMDD_NN` 慣例）。
+- 本機驗證（合併前）：`npm install`（0 vulnerabilities）、`npm run db:generate`、`npm run lint`（0 errors / 205 warnings）、`npm run build`（compiled successfully）皆通過。
+
 ## 20260628_726-C2 - 2026-06-29 (Codex verification gate completion)
 
 - Added ESLint 9 flat config so `npm run lint` is part of the C1/C2 verification gate again.
