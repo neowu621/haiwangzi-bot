@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
         status: true,
         paymentStatus: true,
         totalAmount: true,
+        paidAmount: true,
         createdAt: true,
         user: { select: { realName: true, displayName: true } },
       },
@@ -144,13 +145,18 @@ export async function GET(req: NextRequest) {
         createdAt: b.createdAt,
         activityDate: date,
       });
+      // v733：清單金額顯示「應付」= 待付時(總額−已付，已含抵用金折抵)；已付清/退款顯示總額。
+      //   與客戶端「我的預約」一致，修正有折抵用金的訂單在訂單管理顯示原始總額(例 575 應為 475)。
+      const needsPayment =
+        b.paymentStatus !== "fully_paid" && b.paymentStatus !== "refunded" && b.totalAmount > 0;
+      const amount = needsPayment ? Math.max(0, b.totalAmount - b.paidAmount) : b.totalAmount;
       return {
         id: b.id,
         code: b.code,
         customerName: b.user.realName ?? b.user.displayName,
         status: b.status,
         statusLabel: display.label,
-        amount: b.totalAmount,
+        amount,
         date,
         title,
       };
