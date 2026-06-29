@@ -12,15 +12,16 @@ const SRC: Record<BrandVariant, string> = {
   // v745：主色改用 256px WebP（6KB，原 1024px PNG 629KB）— 全站 Logo 只顯示 24–60px，無需大圖。
   //   resize fit:inside 等比縮放、不裁切（不會切到鬼蝠魟尾巴，遵守 v541 註記）。
   deepblue: "/brand-icons/hwz-deepblue-256.webp",
-  teal: "/brand-icons/hwz-teal.png",
-  ocean: "/brand-icons/hwz-ocean.png",
-  obsidian: "/brand-icons/hwz-obsidian.png",
-  white: "/brand-icons/hwz-white.png",
-  slate: "/brand-icons/hwz-slate.png",
-  aqua: "/brand-icons/hwz-aqua.png",
-  gold: "/brand-icons/hwz-gold.png",
-  seagreen: "/brand-icons/hwz-seagreen.png",
-  twilight: "/brand-icons/hwz-twilight.png",
+  // v745：全 10 色一律改 256px WebP（每張 6–8KB，原各 ~600–760KB PNG）
+  teal: "/brand-icons/hwz-teal-256.webp",
+  ocean: "/brand-icons/hwz-ocean-256.webp",
+  obsidian: "/brand-icons/hwz-obsidian-256.webp",
+  white: "/brand-icons/hwz-white-256.webp",
+  slate: "/brand-icons/hwz-slate-256.webp",
+  aqua: "/brand-icons/hwz-aqua-256.webp",
+  gold: "/brand-icons/hwz-gold-256.webp",
+  seagreen: "/brand-icons/hwz-seagreen-256.webp",
+  twilight: "/brand-icons/hwz-twilight-256.webp",
 };
 
 /** 主品牌色（深海藍）；想換色把這裡改成別的 variant */
