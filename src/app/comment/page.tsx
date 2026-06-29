@@ -15,7 +15,7 @@ export default function CommentPage() {
     "@type": "LocalBusiness",
     name: "東北角海王子潛水",
     url: "https://haiwangzi.xyz",
-    image: "https://haiwangzi.xyz/home/src-hero.webp",
+    image: "https://haiwangzi.xyz/home/src-hero-diver.webp",
     description: "東北角萊萊鶯歌石潛水基地，汪汪教練帶你安心探索水下世界。",
     aggregateRating: { "@type": "AggregateRating", ratingValue: "5", reviewCount: BUILTIN_REVIEWS.length, bestRating: "5" },
     review: BUILTIN_REVIEWS.map((r) => ({

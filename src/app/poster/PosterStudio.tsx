@@ -27,7 +27,7 @@ const THEMES: Record<string, { bg: string; panel: string; accent: string; gold: 
 // ---- 背景照（站內現有 webp，同源可被 html2canvas 擷取）----
 const PHOTOS: Record<string, string> = {
   none: "",
-  coach: "/home/src-hero.webp",
+  coach: "/home/src-hero-diver.webp",
   wall: "/home/review-wall.webp",
   reef: "/home/review-coral.webp",
 };

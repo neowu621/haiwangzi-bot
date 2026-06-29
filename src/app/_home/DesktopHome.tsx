@@ -81,7 +81,7 @@ export default function DesktopHome() {
           </div>
           <div className="hero-coach">
             <Image
-              src="/home/src-hero.webp"
+              src="/home/src-hero-diver.webp"
               alt="東北角海王子潛水教練 汪汪"
               width={640}
               height={1137}

@@ -45,7 +45,7 @@ export default function MobileHome() {
 
       {/* Hero（精簡）*/}
       <section style={{ position: "relative", color: "#fff", overflow: "hidden" }}>
-        <Image src="/home/src-hero.webp" alt="東北角海王子潛水教練 汪汪" width={640} height={1137} priority sizes="(max-width:520px) 100vw, 520px" style={{ width: "100%", height: "40vh", maxHeight: 360, minHeight: 230, objectFit: "cover", objectPosition: "center 26%", display: "block" }} />
+        <Image src="/home/src-hero-diver.webp" alt="東北角海王子潛水教練 汪汪" width={640} height={1137} priority sizes="(max-width:520px) 100vw, 520px" style={{ width: "100%", height: "40vh", maxHeight: 360, minHeight: 230, objectFit: "cover", objectPosition: "center 26%", display: "block" }} />
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, rgba(10,35,66,.15) 0%, rgba(10,35,66,.35) 45%, ${C.navy} 100%)` }} />
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 18px 18px" }}>
           <div style={{ fontSize: 11, letterSpacing: 2, color: "#9fd9d2", marginBottom: 6 }}>LAILAI YINGGE ROCK · NORTHEAST COAST</div>

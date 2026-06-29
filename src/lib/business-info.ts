@@ -8,7 +8,7 @@ export const BUSINESS = {
   name: "東北角海王子潛水",
   altName: "Sea Prince Diving",
   url: "https://haiwangzi.xyz",
-  image: "https://haiwangzi.xyz/home/src-hero.webp",
+  image: "https://haiwangzi.xyz/home/src-hero-diver.webp",
   logo: "https://haiwangzi.xyz/brand-icons/hwz-deepblue-256.webp",
   description: "東北角萊萊鶯歌石水肺潛水（scuba）基地，汪汪教練帶你安心探索水下世界——免證照體驗潛水、OW/AOW 考證、Fun Dive 練功，龍洞、潮境等東北角潛點與國內外潛旅。",
   priceRange: "$$", // 大致價位等級（$ 便宜 ~ $$$$ 高），不放實際金額

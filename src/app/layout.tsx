@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "東北角海王子潛水",
-    images: ["/home/src-hero.webp"],
+    images: ["/home/src-hero-diver.webp"],
   },
 };
 

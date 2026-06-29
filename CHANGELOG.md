@@ -1,5 +1,11 @@
 # Changelog
 
+## 20260630_748M - 2026-06-30 (修手機 Hero 不顯示：換檔名破快取)
+
+- 回報「手機首頁 Hero 無法顯示」。經查 prod 圖檔與 Next 圖片最佳化各尺寸皆 200 正常、markup 正確 → 判定為**裝置/CDN 對舊 `src-hero.webp` 同網址的舊或失敗快取**（換圖但檔名沒變，回訪者命中舊快取）。
+- 修法：把 hero 檔名改為 **`src-hero-diver.webp`**（破快取，所有裝置與最佳化器強制重抓）。同步更新全部 7 處引用（桌機/手機首頁、LIFF、海報背景、OG、SEO、business-info）。
+- 動檔 `public/home/src-hero-diver.webp`（rename）、`DesktopHome`/`MobileHome`/`liff/home`/`PosterStudio`/`layout`/`comment`/`business-info`。
+
 ## 20260629_747M - 2026-06-29 (Hero 換新潛水員圖 + 壓縮)
 
 - 首頁 Hero 圖 `public/home/src-hero.webp` 換成新的潛水員直幅插畫：原檔 1.8MB PNG → 壓成 **640×1137 WebP（150KB，約 1/12）**。檔名不變，桌機/手機首頁、LIFF、海報背景、OG/SEO 共 7 處自動沿用。
