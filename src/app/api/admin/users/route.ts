@@ -87,7 +87,10 @@ export async function GET(req: NextRequest) {
     if (a.status === "completed") s.completed += a._count._all;
     if (a.status.startsWith("cancelled")) s.cancelled += a._count._all;
     if (a.status === "no_show") s.noShow += a._count._all;
-    s.revenue += a._sum.paidAmount ?? 0;
+    // v739：累計消費(revenue)只算有實際消費的訂單 — 排除取消類 / 未到場
+    if (!a.status.startsWith("cancelled") && a.status !== "no_show") {
+      s.revenue += a._sum.paidAmount ?? 0;
+    }
     s.potential += a._sum.totalAmount ?? 0;
     stats.set(a.userId, s);
   }

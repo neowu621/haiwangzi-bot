@@ -1,6 +1,7 @@
 // v320: 客戶完整資訊（給 CustomerDetailDialog 用）
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { authFromRequest, requireRole } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -41,12 +42,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
 
   if (!user) return NextResponse.json({ error: "user not found" }, { status: 404 });
 
-  // 統計：訂單數 / 願望單數 / 累計實付（v724：累計消費改即時加總所有訂單的 paidAmount，
-  //   含已取消，與會員列表「累計消費」、潛水紀錄「已付款」一致，取代會漂移的 user.totalSpend）
+  // 統計：訂單數 / 願望單數 / 累計實付
+  //   v739：只算「有實際消費」的訂單 — 排除取消類 / 未到場（無實際下水），與會員列表 revenue、
+  //   潛水紀錄「已付款」一致(三處同步排除取消)。
+  const activeStatus = {
+    notIn: ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid", "no_show"],
+  } as Prisma.BookingWhereInput["status"];
   const [bookingCount, wishCount, paidAgg] = await Promise.all([
-    prisma.booking.count({ where: { userId } }),
+    prisma.booking.count({ where: { userId, status: activeStatus } }),
     prisma.diveWish.count({ where: { userId } }),
-    prisma.booking.aggregate({ where: { userId }, _sum: { paidAmount: true } }),
+    prisma.booking.aggregate({ where: { userId, status: activeStatus }, _sum: { paidAmount: true } }),
   ]);
   const totalPaid = paidAgg._sum.paidAmount ?? 0;
 

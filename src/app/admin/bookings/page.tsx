@@ -1287,7 +1287,7 @@ export default function AdminBookingsPage() {
 
       {/* ── Edit Dialog ───────────────────────────────── */}
       <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-[min(95vw,1200px)] overflow-y-auto sm:max-w-[min(95vw,1200px)]">
+        <DialogContent className="max-h-[90vh] max-w-[min(96vw,920px)] overflow-y-auto sm:max-w-[min(96vw,920px)]">
           <DialogHeader>
             <DialogTitle>訂單詳情 / 編輯</DialogTitle>
           </DialogHeader>
@@ -1311,6 +1311,9 @@ export default function AdminBookingsPage() {
                 </div>
               </div>
 
+              {/* v739：桌機左右兩欄 —— 左：下單明細｜右：金額/付款/帳務 */}
+              <div className="grid lg:grid-cols-2 gap-3 items-start">
+              <div className="space-y-3">
               {/* v738：📋 下單明細 ＝ 客戶訂了什麼（含老闆帳務調整） */}
               <div className="rounded-lg border border-[var(--border)] overflow-hidden">
                 <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>📋 下單明細</div>
@@ -1321,6 +1324,8 @@ export default function AdminBookingsPage() {
                   />
                 </div>
               </div>
+              </div>{/* /左欄 */}
+              <div className="space-y-3">{/* 右欄開始 */}
 
               {/* v191：退款後鎖住所有 input（除 adminNotes） */}
               {(() => {
@@ -1565,6 +1570,8 @@ export default function AdminBookingsPage() {
                   </>
                 );
               })()}
+              </div>{/* /右欄 */}
+              </div>{/* /左右兩欄 grid */}
 
               {/* ── 💰 退款處理（已付>0 且未退款才顯示）── 移到付款狀態下方，視覺最顯眼 */}
               {editing.paidAmount > 0 && editing.paymentStatus !== "refunded" && (

@@ -1544,15 +1544,14 @@ export default function AdminUsersPage() {
             <div>
               {/* 統計 */}
               {(() => {
-                const totalPaid = diveBookings.reduce((s, b) => s + b.paidAmount, 0);
-                const totalParticipants = diveBookings.reduce(
-                  (s, b) => s + b.participants,
-                  0,
-                );
+                // v739：累計只算「有實際消費」的訂單 — 排除取消類 / 未到場（無實際下水）
+                const active = diveBookings.filter((b) => !b.status.startsWith("cancelled") && b.status !== "no_show");
+                const totalPaid = active.reduce((s, b) => s + b.paidAmount, 0);
+                const totalParticipants = active.reduce((s, b) => s + b.participants, 0);
                 return (
                   <div className="mb-3 grid grid-cols-3 gap-2">
                     {[
-                      ["訂單數", `${diveBookings.length} 筆`],
+                      ["訂單數", `${active.length} 筆`],
                       ["總人次", `${totalParticipants} 人`],
                       ["已付款", `NT$${totalPaid.toLocaleString()}`],
                     ].map(([label, value]) => (
