@@ -69,14 +69,17 @@ async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     return await attemptAdminFetch<T>(path, init, 12_000);
   } catch (e) {
+    // v731：用 name 判斷 AbortError，不限 DOMException 實例 —— LINE WebView 內 abort
+    //   有時不是 DOMException，會漏接導致原始訊息「signal is aborted without reason」外洩。
+    const isAbort = e instanceof Error && e.name === "AbortError";
     const transient =
-      (e instanceof DOMException && e.name === "AbortError") ||
+      isAbort ||
       (e instanceof TypeError); // 網路層錯誤（連線重置 / DNS / fetch failed）
     if (canRetry && transient) {
       // 全新連線再試一次，逾時放寬到 25 秒
       return await attemptAdminFetch<T>(path, init, 25_000);
     }
-    if (e instanceof DOMException && e.name === "AbortError") {
+    if (isAbort) {
       throw new Error("連線逾時，請重試（網路較慢或伺服器較遠）");
     }
     throw e;

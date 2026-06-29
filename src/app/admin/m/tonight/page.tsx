@@ -57,6 +57,21 @@ interface BookingsResp {
   bookings: BookingRow[];
 }
 
+// v731：聯合待辦中心 —— 新願望·待回覆
+interface WishRow {
+  id: string;
+  code: string | null;
+  type: string;
+  preferredDate: string;
+  participants: number;
+  customerNote: string | null;
+  user: { displayName: string; realName: string | null };
+}
+interface WishesResp {
+  wishes: WishRow[];
+}
+const WISH_TYPE_LABEL: Record<string, string> = { boat: "船潛", shore: "岸潛", night: "夜潛", tour: "潛水團" };
+
 const TYPE_LABEL: Record<ProofRow["type"], string> = {
   deposit: "訂金",
   final: "尾款",
@@ -67,6 +82,7 @@ export default function MobileTonightPage() {
   const { ready } = useAdminAuth();
   const [proofs, setProofs] = useState<ProofRow[]>([]);
   const [pendingUnpaid, setPendingUnpaid] = useState<BookingRow[]>([]); // v674：已下單·待匯款
+  const [pendingWishes, setPendingWishes] = useState<WishRow[]>([]); // v731：新願望·待回覆
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
@@ -94,10 +110,12 @@ export default function MobileTonightPage() {
     Promise.all([
       adminFetch<ProofsResp>(`/api/admin/payment-proofs?status=pending`),
       adminFetch<BookingsResp>(`/api/admin/bookings?light=1`),
+      adminFetch<WishesResp>(`/api/admin/dive-wishes?status=pending`),
     ])
-      .then(([proofData, bookingData]) => {
+      .then(([proofData, bookingData, wishData]) => {
         if (!alive) return;
         setProofs(proofData.proofs ?? []);
+        setPendingWishes(wishData.wishes ?? []);
         const allBk = bookingData.bookings ?? [];
         // v680：「待到場」已移除（改用獨立「到場點名」），這裡只算「已下單·待匯款」
         // v674：已下單·待匯款（status=pending，尚未上傳付款證明），近的排前
@@ -327,7 +345,48 @@ export default function MobileTonightPage() {
         </>
       )}
 
+      {/* ===== Section 2：新願望·待回覆（v731 聯合待辦） ===== */}
+      {pendingWishes.length > 0 && (
+        <>
+          <div className="mb-1.5 mt-5">
+            <span className="text-sm font-bold" style={{ color: "var(--color-ocean-deep)" }}>
+              新願望·待回覆（{pendingWishes.length}）
+            </span>
+          </div>
+          <div className="space-y-2">
+            {pendingWishes.map((w) => (
+              <Link
+                key={w.id}
+                href="/admin/m/dive-wishes"
+                className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
+                style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-bold">{w.user.realName ?? w.user.displayName}</span>
+                  <span className="flex-shrink-0 text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                    {WISH_TYPE_LABEL[w.type] ?? w.type}・{w.participants} 位
+                  </span>
+                </div>
+                <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                  📝 {w.customerNote || w.preferredDate || "—"}{w.code ? `・${w.code}` : ""}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* v680：「待到場確認」已移除（改用獨立「到場點名」/admin/m/attendance），避免與外面重複 */}
+
+      {/* v731：完整列表入口 —— 即使沒有待辦也能進去看全部 */}
+      <div className="mt-5 flex gap-2">
+        <Link href="/admin/m/bookings" className="flex-1 rounded-lg border py-2 text-center text-xs font-medium" style={{ borderColor: "rgba(0,0,0,0.12)", color: "var(--color-ocean-deep)" }}>
+          📖 看全部訂單
+        </Link>
+        <Link href="/admin/m/dive-wishes" className="flex-1 rounded-lg border py-2 text-center text-xs font-medium" style={{ borderColor: "rgba(0,0,0,0.12)", color: "var(--color-ocean-deep)" }}>
+          📝 看全部願望
+        </Link>
+      </div>
 
       {loading && (
         <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
