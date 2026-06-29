@@ -25,6 +25,12 @@ interface Session {
   bookings: AttBooking[];
 }
 
+// v744：點名排序 —— 未點(confirmed) 最前、未到場(no_show) 中間、已到場(completed) 最後
+const ATT_RANK: Record<string, number> = { confirmed: 0, no_show: 1, completed: 2 };
+function attRank(status: string): number {
+  return ATT_RANK[status] ?? 0;
+}
+
 // v737：YYYY-MM-DD → 「2026-06-29（週一）」
 function fmtDateW(d: string): string {
   if (!d) return "";
@@ -124,7 +130,7 @@ export default function AttendancePage() {
                   </p>
                 </div>
                 <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-                  {s.bookings.map((b) => {
+                  {[...s.bookings].sort((a, b) => attRank(a.status) - attRank(b.status)).map((b) => {
                     const done = b.status === "completed";
                     const noShow = b.status === "no_show";
                     return (
