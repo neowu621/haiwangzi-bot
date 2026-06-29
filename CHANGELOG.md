@@ -1,5 +1,9 @@
 # Changelog
 
+## 20260629_735 - 2026-06-29 (修 LINE 對話連結存不進去)
+
+- Bug:後台「付款資訊 → LINE 對話連結(lineUrl)」按儲存後顯示「已儲存」但實際沒存進去。原因:`/api/admin/site-config` 的 `PatchSchema.paymentInfo.linepay` 只定義 `qrUrl`/`liteId`,Zod `z.object` 預設會**過濾未定義欄位**,把 `lineUrl` 丟掉。修:linepay schema 補上 `lineUrl`。動檔 `src/app/api/admin/site-config/route.ts`。
+
 ## 20260629_734 - 2026-06-29 (老闆結帳改四區待辦 + 點擊底部彈窗訂單詳細)
 
 - 「老闆結帳」(`/admin/m/tonight`)重整為老闆「要及時處理/知道」的四區，順序：**💰 已匯款·待你確認**(要核可) → **🧾 已下訂·尚未付款** → **✅ 已付款·待出團**(活動日近 14 天內) → **📝 新願望·待回覆**。

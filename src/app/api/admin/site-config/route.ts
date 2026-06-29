@@ -78,6 +78,7 @@ const PatchSchema = z.object({
     linepay: z.object({
       qrUrl: z.string().default(""),    // QR code 圖片 URL（個人轉帳 QR）
       liteId: z.string().default(""),   // LINE Pay Lite ID
+      lineUrl: z.string().default(""),  // v735：LINE 對話連結（點了開老闆 LINE 轉帳）—— 漏列會被 Zod 過濾掉
     }).optional(),
   }).optional(),
   // v227：取消政策（純文字，admin 可編輯，FAQ + 預約頁同步顯示）
