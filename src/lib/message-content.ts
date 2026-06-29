@@ -234,10 +234,18 @@ const methodZh = (v: unknown) => (v === "credit" ? "轉抵用金" : v === "cash"
 export function buildDynamicBody(key: string, p: Record<string, unknown>): string {
   switch (key) {
     // ── 一日潛水（一次付清）/ 預約 ──
-    case "booking_confirm":
-      return `預約場次：${s(p.site)}\n出發時間：${s(p.date)} ${s(p.time)}\n應付金額：NT$ ${m(p.total)}（一次付清）`
+    case "booking_confirm": {
+      // v732：應付 = 扣抵用金後金額。有折抵用金時顯示「總額 − 折抵 = 應付」，避免顯示原始總額。
+      const total = Number(p.total);
+      const credit = Number(p.creditUsed) || 0;
+      const payable = p.payable != null ? Number(p.payable) : total;
+      const amountBlock = credit > 0
+        ? `訂單總額：NT$ ${m(total)}\n折抵用金：−NT$ ${m(credit)}\n應付金額：NT$ ${m(payable)}（一次付清）`
+        : `應付金額：NT$ ${m(payable)}（一次付清）`;
+      return `預約場次：${s(p.site)}\n出發時間：${s(p.date)} ${s(p.time)}\n${amountBlock}`
         + (p.activityNote ? `\n📣 活動提醒：${s(p.activityNote)}` : "")
         + (p.notes ? `\n📝 您的備註：${s(p.notes)}` : "");
+    }
     case "d1_reminder": {
       const head = `明日場次：${s(p.date)} ${s(p.time)}・${s(p.site)}`;
       const sea = p.weather ? `\n天氣 ${s(p.weather)}・浪高 ${s(p.wave)}・水溫 ${s(p.water)}・能見度 ${s(p.vis)}` : "";

@@ -49,6 +49,8 @@ interface BookingRow {
   userId?: string;
   participants?: number;
   totalAmount?: number;
+  paidAmount?: number;   // v732：含抵用金的已付，用來算應付
+  creditUsed?: number;   // v732：已折抵用金（顯示提示）
   status: string;
   ref?: { date?: string; dateStart?: string; startTime?: string; sites?: string[]; title?: string };
   user?: { displayName: string; realName: string | null; phone: string | null };
@@ -329,13 +331,15 @@ export default function MobileTonightPage() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-sm font-bold">{b.user?.realName ?? b.user?.displayName ?? "客戶"}</span>
+                    {/* v732：顯示應付 = 總額 − 已付(含抵用金)，不再顯示原始總額 */}
                     <span className="flex-shrink-0 font-mono text-sm font-bold tabular-nums" style={{ color: "var(--color-coral)" }}>
-                      ${(b.totalAmount ?? 0).toLocaleString()}
+                      ${Math.max(0, (b.totalAmount ?? 0) - (b.paidAmount ?? 0)).toLocaleString()}
                     </span>
                   </div>
                   <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
                     {b.ref?.title ? "✈️" : "🔱"} {refLabel || "—"}・{b.participants ?? 1} 位
                     {b.code ? `・${b.code}` : ""}
+                    {(b.creditUsed ?? 0) > 0 ? `・已折 NT$ ${(b.creditUsed ?? 0).toLocaleString()}` : ""}
                     <span className="ml-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">待匯款</span>
                   </div>
                 </Link>

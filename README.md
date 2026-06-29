@@ -6,7 +6,7 @@
 
 **Production**: https://haiwangzi.xyz  
 **LIFF Entry**: https://liff.line.me/2010006458-fyokMnVv  
-**當前版本**: `20260629_731`（見 `src/lib/version.ts`，每次 push 必 bump）
+**當前版本**: `20260629_732`（見 `src/lib/version.ts`，每次 push 必 bump）
 
 ---
 
@@ -727,4 +727,4 @@ Email: neowu62@gmail.com
 ---
 
 _Generated and maintained for 東北角海王子潛水團 LIFF App project_  
-_當前版本：`20260629_731`_
+_當前版本：`20260629_732`_

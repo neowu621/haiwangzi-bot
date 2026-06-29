@@ -106,7 +106,7 @@ async function handle(req: NextRequest) {
     // D+7：最後通知
     if (b.createdAt < d7 && !reminderTypes.has("payment_d7")) {
       try {
-        const text = `🚨 付款最後通知\n\n您的訂單 #${b.id.slice(0, 8)} 已超過 7 天未付款。\n若 3 天內仍未完成，系統將自動取消訂單。\n\n金額 NT$ ${b.totalAmount.toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖。\n— 海王子潛水`;
+        const text = `🚨 付款最後通知\n\n您的訂單 #${b.id.slice(0, 8)} 已超過 7 天未付款。\n若 3 天內仍未完成，系統將自動取消訂單。\n\n應付金額 NT$ ${Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖。\n— 海王子潛水`;
         if ((b.user.notifyByLine ?? true) && lineClient) {
           await lineClient.pushMessage({ to: b.userId, messages: [{ type: "text", text }] });
         }
@@ -126,7 +126,7 @@ async function handle(req: NextRequest) {
     // D+2：友善提醒（v349：下訂 2 天未付款）
     if (b.createdAt < d2 && !reminderTypes.has("payment_d3")) {
       try {
-        const text = `📋 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已預約成功 2 天，目前尚未收到付款。\n\n金額 NT$ ${b.totalAmount.toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖，\n以保留您的名額。\n\n— 海王子潛水`;
+        const text = `📋 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已預約成功 2 天，目前尚未收到付款。\n\n應付金額 NT$ ${Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖，\n以保留您的名額。\n\n— 海王子潛水`;
         if ((b.user.notifyByLine ?? true) && lineClient) {
           await lineClient.pushMessage({ to: b.userId, messages: [{ type: "text", text }] });
         }

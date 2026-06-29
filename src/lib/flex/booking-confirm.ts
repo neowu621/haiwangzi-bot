@@ -9,6 +9,18 @@ export function bookingConfirm(
   altText: string,
   override?: TemplateOverride,
 ): FlexMessage {
+  // v732：應付 = 扣抵用金後金額。有折抵用金時顯示「總額 / 折抵 / 應付」三行，避免只顯示原始總額。
+  const total = asNumber(params.total);
+  const credit = asNumber(params.creditUsed);
+  const payable = params.payable != null ? asNumber(params.payable) : total;
+  const amountLines =
+    credit > 0
+      ? [
+          kv("訂單總額", `NT$ ${total.toLocaleString()}`),
+          kv("折抵用金", `−NT$ ${credit.toLocaleString()}`),
+          kv("應付金額", `NT$ ${payable.toLocaleString()}`),
+        ]
+      : [kv("應付金額", `NT$ ${payable.toLocaleString()}`)];
   return flex(altText, {
     type: "bubble",
     header: {
@@ -32,7 +44,7 @@ export function bookingConfirm(
         kv("日期", asString(params.date)),
         kv("時間", asString(params.time)),
         kv("潛點", asString(params.site)),
-        kv("金額", `NT$ ${asNumber(params.total).toLocaleString()}`),
+        ...amountLines,
       ],
     },
     footer: {

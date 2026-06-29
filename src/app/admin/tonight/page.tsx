@@ -259,7 +259,8 @@ export default function TonightPage() {
                       </button>
                       {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
                       <span className="text-[var(--muted-foreground)]">{refLabel}</span>
-                      <span className="tabular-nums font-semibold">NT$ {b.totalAmount.toLocaleString()}</span>
+                      {/* v732：顯示應付 = 總額 − 已付(含抵用金) */}
+                      <span className="tabular-nums font-semibold">NT$ {Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}</span>
                     </div>
                     <Link href={`/admin/bookings?status=awaiting_verify`}>
                       <Button size="sm" variant="outline" className="h-7 text-[11px]">
@@ -324,7 +325,9 @@ export default function TonightPage() {
                               {b.code ?? b.id.slice(0, 8)}
                             </span>
                             {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
-                            <span className="font-bold tabular-nums text-[var(--color-coral)]">NT$ {b.totalAmount.toLocaleString()}</span>
+                            {/* v732：顯示應付 = 總額 − 已付(含抵用金) */}
+                            <span className="font-bold tabular-nums text-[var(--color-coral)]">NT$ {Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}</span>
+                            {(b.creditUsed ?? 0) > 0 && <span className="text-[10px] text-[var(--muted-foreground)]">已折 NT$ {(b.creditUsed ?? 0).toLocaleString()}</span>}
                             <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">待匯款</span>
                           </div>
                           <button type="button" onClick={() => toggleDetail(b.id)} className="mt-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2">
