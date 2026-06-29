@@ -1,5 +1,9 @@
 # Changelog
 
+## 20260629_745M - 2026-06-29 (全站 Logo 改 6KB WebP，省 99% 流量)
+
+- 全站品牌 Logo（首頁桌機/手機 header、admin shell、登入頁、LIFF、footer 等）原本用 1024px PNG `hwz-deepblue.png`（629KB）只為顯示 24–60px 的小圖示。改用新生成的 **256px WebP `hwz-deepblue-256.webp`（6.3KB）**，單張省 ~623KB（99%）。`resize fit:inside` 等比縮放、不裁切（不會切到鬼蝠魟尾巴，遵守 v541 註記）。只改 `MantaTrident.tsx` 的 `deepblue` 來源，全站共用同元件故一次涵蓋。SEO 結構化資料的 logo 仍維持 PNG（給爬蟲、非頁面流量）。動檔 `src/components/brand/MantaTrident.tsx` + 新增 `public/brand-icons/hwz-deepblue-256.webp`。
+
 ## 20260629_744M - 2026-06-29 (到場點名排序：未點最前、已到場最後)
 
 - 「到場點名」每個場次內的參加者改為依點名狀態排序：**未點（confirmed）最前 → 未到場（no_show）中間 → 已到場（completed）最後**。相同狀態維持原順序（穩定排序）。點完「到場」後即時重排到底部，名單由上往下越點越短。動檔 `src/app/admin/attendance/page.tsx`。

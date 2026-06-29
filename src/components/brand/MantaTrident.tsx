@@ -9,7 +9,9 @@ export type BrandVariant =
   | "slate" | "aqua" | "gold" | "seagreen" | "twilight";
 
 const SRC: Record<BrandVariant, string> = {
-  deepblue: "/brand-icons/hwz-deepblue.png",
+  // v745：主色改用 256px WebP（6KB，原 1024px PNG 629KB）— 全站 Logo 只顯示 24–60px，無需大圖。
+  //   resize fit:inside 等比縮放、不裁切（不會切到鬼蝠魟尾巴，遵守 v541 註記）。
+  deepblue: "/brand-icons/hwz-deepblue-256.webp",
   teal: "/brand-icons/hwz-teal.png",
   ocean: "/brand-icons/hwz-ocean.png",
   obsidian: "/brand-icons/hwz-obsidian.png",
