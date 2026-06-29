@@ -164,9 +164,10 @@ export default function MobileBookingsPage() {
       {/* 列表 */}
       <div className="space-y-2">
         {items.map((b) => (
-          <div
+          <Link
             key={b.id}
-            className="block rounded-xl border px-3 py-2.5"
+            href={`/admin/m/bookings/${b.id}?from=/admin/m/bookings`}
+            className="block rounded-xl border px-3 py-2.5 active:scale-[0.99]"
             style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
           >
             <div className="flex items-center justify-between gap-2">
@@ -181,7 +182,7 @@ export default function MobileBookingsPage() {
               {b.code ? `・${b.code}` : ""}
             </div>
             <div className="mt-1 text-[11px] font-medium">{b.statusLabel}</div>
-          </div>
+          </Link>
         ))}
       </div>
 
