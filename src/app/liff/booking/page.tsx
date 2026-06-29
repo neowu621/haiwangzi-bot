@@ -1,5 +1,6 @@
 "use client";
-// v697：潛水預約整合頁 —— 一日潛水 / 旅行潛水 / 預約潛水 三合一,頂部三選項即時切換(不重載)。
+// v697：潛水預約整合頁 —— 一日潛水 / 旅行潛水 / 預約潛水 三合一,頂部選項即時切換(不重載)。
+// v749：新增第 4 分頁「課程詢問」(課程內容說明 + 需求訊息表單，送出走 /api/contact)。
 import { Suspense, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
@@ -7,13 +8,14 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { cn } from "@/lib/utils";
 
-type Tab = "calendar" | "tour" | "wishes";
+type Tab = "calendar" | "tour" | "wishes" | "course";
 const TABS: Array<{ k: Tab; label: string }> = [
   { k: "calendar", label: "一日潛水" },
   { k: "tour", label: "旅行潛水" },
   { k: "wishes", label: "預約潛水" },
+  { k: "course", label: "課程詢問" },
 ];
-const TITLE: Record<Tab, string> = { calendar: "一日潛水", tour: "旅行潛水", wishes: "預約潛水" };
+const TITLE: Record<Tab, string> = { calendar: "一日潛水", tour: "旅行潛水", wishes: "預約潛水", course: "課程詢問" };
 
 function TabLoading({ label }: { label: string }) {
   return (
@@ -35,11 +37,15 @@ const WishesContent = dynamic(
   () => import("@/components/liff/WishesContent").then((m) => m.WishesContent),
   { loading: () => <TabLoading label="預約潛水" /> },
 );
+const CourseInquiryContent = dynamic(
+  () => import("@/components/liff/CourseInquiryContent").then((m) => m.CourseInquiryContent),
+  { loading: () => <TabLoading label="課程詢問" /> },
+);
 
 function BookingInner() {
   const sp = useSearchParams();
   const q = sp.get("tab") as Tab | null;
-  const initial: Tab = q && ["calendar", "tour", "wishes"].includes(q) ? q : "calendar";
+  const initial: Tab = q && ["calendar", "tour", "wishes", "course"].includes(q) ? q : "calendar";
   const [tab, setTab] = useState<Tab>(initial);
   // 首次點到才掛載該子分頁(lazy);掛載後保留,切換只切顯示 → 不重載、保留狀態
   const [mounted, setMounted] = useState<Set<Tab>>(() => new Set([initial]));
@@ -66,6 +72,7 @@ function BookingInner() {
       {mounted.has("calendar") && <div style={{ display: tab === "calendar" ? "block" : "none" }}><CalendarContent /></div>}
       {mounted.has("tour") && <div style={{ display: tab === "tour" ? "block" : "none" }}><TourContent /></div>}
       {mounted.has("wishes") && <div style={{ display: tab === "wishes" ? "block" : "none" }}><WishesContent /></div>}
+      {mounted.has("course") && <div style={{ display: tab === "course" ? "block" : "none" }}><CourseInquiryContent /></div>}
     </LiffShell>
   );
 }
