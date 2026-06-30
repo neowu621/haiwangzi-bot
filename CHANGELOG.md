@@ -1,5 +1,14 @@
 # Changelog
 
+## 20260701_759M - 2026-07-01 (網站 AI 客服小幫手 — Claude Haiku 4.5)
+
+- 公開頁右下角新增浮動「💬 AI 小幫手」聊天視窗：客戶可問課程/潛點/潛旅/費用/預約/安全/裝備，由 Claude **Haiku 4.5** 依知識庫回答；後台 `/admin`、LIFF `/liff`、`/pclogin`、教練端自動隱藏。
+- 後端 `POST /api/assistant`：Haiku 4.5、加速率限制（每 IP 20/min）、知識庫當 system prompt（prompt-cache）、工具迴圈。工具 `submit_inquiry`：客戶想被主動聯繫時把需求寫進客服信箱 + 通知老闆（重用 `notifyBossNewInquiry`，server 端可信、免 Turnstile）。
+- 知識庫 `src/lib/assistant-kb.ts`：課程價格、東北角潛點、潛旅、FAQ、營業/聯絡的精選靜態快照；行為規範：只答潛水相關、不捏造即時空位/報價、引導加 LINE @894bpmew。
+- 需 `ANTHROPIC_API_KEY`（已加入 `.env.example`）；未設時 `/api/assistant` 回 503 並引導加 LINE。新增依賴 `@anthropic-ai/sdk`。
+- **尚未做（下一版）**：即時場次空位 / 個人化報價工具（需接 DB 場次資料層 + 真實 key 驗證）。
+- 動檔：`assistant-kb.ts`、`api/assistant/route.ts`、`assistant/ChatWidget.tsx`、`layout.tsx`、`.env.example`、`package.json`。
+
 ## 20260701_758M - 2026-07-01 (角色：代理人(admin)權限收緊 + 顯示正名「代理人」)
 
 - **為「老闆代理人」釐清角色**：保留 `boss`(老闆/最高權) 與 `admin`(代理人) 兩階層，未來可指派多位代理人。enum 值不動。

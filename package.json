@@ -17,6 +17,7 @@
     "ship": "powershell -ExecutionPolicy Bypass -File scripts/ship.ps1 -Message"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.107.0",
     "@aws-sdk/client-s3": "^3.687.0",
     "@aws-sdk/s3-request-presigner": "^3.687.0",
     "@line/bot-sdk": "^9.5.1",

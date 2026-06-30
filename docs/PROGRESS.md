@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-07-01 — 網站 AI 客服小幫手（v759）
+
+線上 = **v20260701_759M**。公開頁加一個浮動 AI 客服，回答課程/潛點/潛旅/費用/預約/安全/裝備。
+
+- **前端** `src/components/assistant/ChatWidget.tsx`：右下角浮動「💬」按鈕 → 聊天面板（client、inline 樣式、無外部依賴）。用 `usePathname` 守衛：`/admin`、`/liff`、`/pclogin`、`/coach` 自動隱藏，只在公開行銷頁顯示。掛在 `src/app/layout.tsx`。
+- **後端** `src/app/api/assistant/route.ts`：`POST` → Claude **Haiku 4.5**（`claude-haiku-4-5`）；加速率限制（`checkRateLimit` scope `assistant`，20/min）；知識庫當 system prompt（`cache_control` ephemeral）；非串流工具迴圈（最多 4 圈）。工具 `submit_inquiry` 重用 `prisma` emailThread/Message + `notifyBossNewInquiry`（server 可信、免 Turnstile）寫進客服信箱。缺 `ANTHROPIC_API_KEY` → 503。
+- **知識庫** `src/lib/assistant-kb.ts`：靜態精選快照（對應 `_home/data.tsx` 的 COURSES/SPOTS/TRIPS/FAQ）+ 行為規範。**固定字串**以利 prompt cache；不放即時資料。
+- 依賴：`@anthropic-ai/sdk`。env：`ANTHROPIC_API_KEY`（`.env.example` 已加）。
+
+**決策 / 注意**：
+- 本版**非串流**（Haiku 快，JSON 回覆即可）；要 token 串流可後續加（claude-api skill 的 Streaming Manual Loop）。
+- **即時場次空位 / 個人化報價工具尚未做**（v760 候選）：需接 DB 場次資料層（`divingTrip` / `cache.ts` getter），且要真實 `ANTHROPIC_API_KEY` 才能端到端驗。先把 FAQ + 留資基礎上線驗證再疊。
+- 寫 Anthropic API 程式前讀 `claude-api` skill（model id / 工具 / 快取）。Haiku 4.5 不支援 `effort`，本版未用 thinking。
+- 知識庫是手寫快照，課程/價格有變要同步 `assistant-kb.ts`（與 `_home/data.tsx`）。
+
+**下次先看**：① 真實 key 設好後端到端測 AI 客服 ② 加即時場次/報價工具 ③ 視需要加 token 串流。
+
+---
+
 ## 2026-07-01 — 訂單流程全鏈優化 + 角色/代理人權限（v752 → v758）
 
 線上 = **v20260701_758M**。本輪聚焦訂單詳情、到場點名、退款追蹤與角色模型，並產出訂單流程說明頁 `docs/order-flow.html`。（v727–v751 細節見 `CHANGELOG.md`：訂單編輯視窗重設計、到場排序、品牌圖示/Hero WebP 壓縮、課程詢問分頁等。）
