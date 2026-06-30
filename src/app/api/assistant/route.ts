@@ -69,6 +69,15 @@ const TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "get_dive_tours",
+      description:
+        "查詢目前開放報名的潛水旅行（潛旅，如綠島/蘭嶼/小琉球/國外團）真實清單：團名、日期、天數、團費、名額。當訪客問有沒有潛旅團、某地點的團、何時出團、團費多少、還有沒有位子時，務必呼叫此工具，不要憑空回答。",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "submit_inquiry",
       description:
         "當訪客明確希望教練主動聯繫、或想留下需求時，把詢問送進客服信箱並通知老闆。需要對方提供稱呼與 Email。送出前請先向對方確認內容。",
@@ -123,6 +132,41 @@ async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
   } catch (e) {
     console.error("[assistant get_dive_sessions]", e);
     return "查詢場次時出了點問題，請加 LINE @894bpmew 直接問汪汪教練。";
+  }
+}
+
+/** get_dive_tours 工具：查目前開放的潛水旅行（潛旅）+ 名額。寫入 tourPackage/booking 會 bump "tours" 域 → 存檔自動更新。 */
+async function runGetDiveTours(): Promise<string> {
+  const todayTw = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  try {
+    const lines = await cached("assistant:tours", "tours", TTL_LISTING, async () => {
+      const tours = await prisma.tourPackage.findMany({
+        where: { status: { in: ["open", "full"] }, dateEnd: { gte: new Date(todayTw) } },
+        orderBy: { dateStart: "asc" },
+      });
+      if (tours.length === 0) return [] as string[];
+      const ids = tours.map((x) => x.id);
+      const grp = await prisma.booking.groupBy({
+        by: ["refId"],
+        where: { refId: { in: ids }, type: "tour", status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] } },
+        _sum: { participants: true },
+      });
+      const bm = new Map(grp.map((b) => [b.refId, b._sum.participants ?? 0]));
+      return tours.map((x) => {
+        const s = x.dateStart.toISOString().slice(0, 10);
+        const e = x.dateEnd.toISOString().slice(0, 10);
+        const dur = x.durationLabel ? `（${x.durationLabel}）` : "";
+        const booked = bm.get(x.id) ?? 0;
+        const seat = x.capacity == null ? "可報名" : x.capacity - booked <= 0 ? "已額滿" : `剩 ${x.capacity - booked} 位`;
+        const bf = x.beginnerFriendly ? "・新手友善" : "";
+        return `${x.title}${dur}：${s}~${e}・每人 NT$${x.basePrice.toLocaleString()}（訂金 ${x.deposit.toLocaleString()}）・${seat}${bf}`;
+      });
+    });
+    if (!lines || lines.length === 0) return "目前沒有開放報名的潛水旅行（潛旅）。可加 LINE @894bpmew 問汪汪教練，或許願開團 🙂";
+    return `目前開放的潛水旅行（潛旅）：\n${lines.join("\n")}\n（報名／詳情請加 LINE @894bpmew）`;
+  } catch (e) {
+    console.error("[assistant get_dive_tours]", e);
+    return "查詢潛旅時出了點問題，請加 LINE @894bpmew 直接問汪汪教練。";
   }
 }
 
@@ -261,6 +305,8 @@ export async function POST(req: NextRequest) {
             let a: { from?: string; to?: string } = {};
             try { a = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }
             out = await runGetDiveSessions(a.from, a.to);
+          } else if (call.function?.name === "get_dive_tours") {
+            out = await runGetDiveTours();
           } else if (call.function?.name === "submit_inquiry") {
             let args: { name?: string; email?: string; message?: string } = {};
             try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }

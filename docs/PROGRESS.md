@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-01 — AI 客服接「潛旅查詢」工具，潛旅存檔自動同步（v766）
+
+回應「當日潛水與旅行潛水存檔時就更新知識」。
+
+- 新增 `get_dive_tours()`：查 `tourPackage`（status open/full、dateEnd>=今天）+ booking groupBy(type=tour) 算名額，回團名/日期/天數/團費/訂金/名額/新手友善。重用 `cached("assistant:tours","tours",TTL_LISTING,loader)`。
+- **自動同步機制**：`src/lib/prisma.ts` $extends 蓋章——`divingTrip` 寫入 bump `trips`、`tourPackage` bump `tours`、`booking` bump 兩者。所以後台「日潛場次/潛水旅行」一存檔，對應域版本 +1，AI 工具下次查即最新（命中快取時零 DB）。= 「存檔就更新知識庫」靠即時工具+版本號快取達成，非重生成靜態文字。
+- 當日潛水(v765 get_dive_sessions) + 潛旅(v766 get_dive_tours) 皆即時。
+- **下次先看**：個人化報價工具；token 串流；靜態 KB（assistant-kb 課程價）與後台價目對齊。
+
+---
+
 ## 2026-07-01 — AI 客服接「即時場次查詢」工具（v765）
 
 修正 v764 上線後回報：AI 答「本週末有沒有場次」是模糊/導 LINE（因只有靜態知識）。
