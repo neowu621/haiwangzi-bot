@@ -270,7 +270,6 @@ export default function AdminBookingsPage() {
   const [adjItemLabel, setAdjItemLabel] = useState<string>("");
   const [adjItemAmount, setAdjItemAmount] = useState<string>("");
   const [addingAdj, setAddingAdj] = useState(false);
-  const [editTotal, setEditTotal] = useState(false); // 是否展開「修改總金額」
 
   // 未到場 dialog
   const [noShowTarget, setNoShowTarget] = useState<AdminBooking | null>(null);
@@ -372,7 +371,6 @@ export default function AdminBookingsPage() {
       setProofsLoading(false);
       setEntries([]);
       setEntriesLoading(false);
-      setEditTotal(false);
       setAdjAmount("");
       setAdjNote("");
       setAdjKind("transfer");
@@ -726,6 +724,36 @@ export default function AdminBookingsPage() {
     }
   }
 
+  // v752：一鍵「現場收現・結清剩餘」— 寫一筆現金(實收)= 剩餘款，剩餘歸零、標記已付清
+  async function settleCashOwed() {
+    if (!editing) return;
+    // 防呆：總金額有未存的變更時，先請存（否則結清金額會算錯）
+    if (editingOriginal && editing.totalAmount !== editingOriginal.totalAmount) {
+      alert("你改了「總金額」但尚未儲存。\n請先按下方「儲存」套用總金額，再結清。");
+      return;
+    }
+    const owed = editing.totalAmount - editing.paidAmount;
+    if (owed <= 0) { alert("此訂單已無剩餘款"); return; }
+    if (!confirm(`確認老闆現場收到現金 NT$${owed.toLocaleString()}？\n將寫一筆「現金（實收）」付款紀錄，剩餘款歸零。`)) return;
+    setAddingEntry(true);
+    try {
+      const r = await adminFetch<{ ok: boolean; entry: PaymentEntryRow; booking: { paidAmount: number; paymentStatus: string } }>(
+        `/api/admin/bookings/${editing.id}/payment-entry`,
+        { method: "POST", body: JSON.stringify({ kind: "cash", amount: owed }) },
+      );
+      setEntries((arr) => [r.entry, ...arr]);
+      setEditing({ ...editing, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus });
+      setEditingOriginal((o) => (o ? { ...o, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus } : o));
+      setBookings((arr) => arr.map((x) => (x.id === editing.id
+        ? { ...x, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"] }
+        : x)));
+    } catch (e) {
+      alert("結清失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAddingEntry(false);
+    }
+  }
+
   // v366：移除一筆付款明細（倒扣 paidAmount，audit 保留軌跡）
   async function deleteEntry(entry: PaymentEntryRow) {
     if (!editing) return;
@@ -1009,7 +1037,6 @@ export default function AdminBookingsPage() {
                           setAdjAmount("");
                           setAdjNote("");
                           setAdjKind("transfer");
-                          setEditTotal(false);
                         }}
                       >
                         {/* v320：訂單編號縮到最小 */}
@@ -1334,7 +1361,7 @@ export default function AdminBookingsPage() {
                       </div>
                     )}
                     {/* v743：參加人數移除（左欄「下單明細」已顯示 × N 人，這裡不再重複可編輯欄） */}
-                    {/* v366：💰 金額（總/已付/剩餘 三欄）+ 可展開修改總金額 */}
+                    {/* v366：💰 金額（總/已付/剩餘 三欄）— v752：移除「修改總金額」，金額調整改走帳務調整 */}
                     <div className="rounded-lg border border-[var(--border)] overflow-hidden">
                       <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>💰 金額</div>
                       <div className="p-3">
@@ -1355,16 +1382,18 @@ export default function AdminBookingsPage() {
                             <div className="text-lg font-extrabold tabular-nums" style={{ color: owed > 0 ? "var(--color-coral)" : "#16a34a" }}>{owed.toLocaleString()}</div>
                           </div>
                         </div>
-                        {!locked && (editTotal ? (
-                          <div className="mt-2 flex items-center gap-2">
-                            <NumberInput min={0} value={editing.totalAmount} className="flex-1"
-                              onChange={(n) => setEditing({ ...editing, totalAmount: n })} />
-                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditTotal(false)}>完成</Button>
-                          </div>
-                        ) : (
-                          <button type="button" onClick={() => setEditTotal(true)}
-                            className="mt-2 block ml-auto text-[11px] font-semibold" style={{ color: "#0e9f93" }}>✎ 修改總金額</button>
-                        ))}
+                        {!locked && owed > 0 && (
+                          <button type="button" onClick={settleCashOwed} disabled={addingEntry}
+                            className="mt-3 w-full rounded-md py-2 text-sm font-bold text-white disabled:opacity-60"
+                            style={{ background: "#0e9f93" }}>
+                            {addingEntry ? "處理中…" : `💵 現場收現・結清剩餘 NT$ ${owed.toLocaleString()}`}
+                          </button>
+                        )}
+                        {!locked && (
+                          <p className="mt-2 text-right text-[11px] text-[var(--muted-foreground)]">
+                            金額增減請用下方「🧮 帳務調整」；分期／其他付款方式用「➕ 金額調整」
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1421,16 +1450,16 @@ export default function AdminBookingsPage() {
                               )}
                               {creditPortion > 0 && (
                                 <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
-                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px]">抵用金採用</span>
+                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px] tabular-nums">{fmtEntryDate(editing.createdAt)}</span>
                                   <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{creditPortion.toLocaleString()}</span>
                                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: "#fef3c7", color: "#92400e" }}>⭐ 抵用金折抵</span>
                                 </div>
                               )}
                               {cashPrior > 0 && (
                                 <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
-                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px]">先前已付</span>
+                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px] tabular-nums">{fmtEntryDate(editing.createdAt)}</span>
                                   <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{cashPrior.toLocaleString()}</span>
-                                  <span className="text-[10px] text-[var(--muted-foreground)]">（未明細化）</span>
+                                  <span className="text-[10px] text-[var(--muted-foreground)]">先前已付（未明細化）</span>
                                 </div>
                               )}
                               {entries.map((e) => {
