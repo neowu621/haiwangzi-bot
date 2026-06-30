@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-01 — AI 客服價目/政策即時讀後台（v767）
+
+選 2：讓後台可編輯的價目/政策也即時同步給 AI（免 cron）。
+
+- `src/app/api/assistant/route.ts`：`readSiteCfg()` 讀完整 siteConfig；`buildLivePricingBlock(cfg)` 把 `gearRentalPrices`(裝備租借)、`defaultTripPricing`(日潛基本費/氣瓶/夜潛/推進器)、`cancellationPolicy`、`safetyPolicy` 格式化注入 system prompt（「以此為準」）。POST 改讀完整 cfg（取代只讀 aiBot）。走 siteConfig 版本號快取（寫入 bump `config`）→ 後台存檔即生效。
+- `assistant-kb.ts`：加規則「裝備/日潛費用/取消/安全政策以後台即時為準」。
+- 涵蓋面：場次(v765)、潛旅(v766)、裝備/日潛價+政策(v767) 皆即時。**課程方案價(體驗 2500/OW/AOW 14500)仍寫死在 assistant-kb（非 siteConfig 欄）**；要即時需另加後台欄位或用「補充知識」覆寫。
+- **下次先看**：個人化報價工具；token 串流；課程方案價是否要搬進後台。
+
+---
+
 ## 2026-07-01 — AI 客服接「潛旅查詢」工具，潛旅存檔自動同步（v766）
 
 回應「當日潛水與旅行潛水存檔時就更新知識」。

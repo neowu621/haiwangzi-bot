@@ -1,5 +1,12 @@
 # Changelog
 
+## 20260701_767M - 2026-07-01 (AI 客服：價目/政策即時讀後台，存檔即生效)
+
+- AI 客服回答時**即時讀後台 `siteConfig`** 的可編輯價目與政策,注入 system prompt：**裝備租借價**(`gearRentalPrices`)、**日潛費用**(`defaultTripPricing` 基本費/每支氣瓶/夜潛/水中推進器)、**取消/退款政策**(`cancellationPolicy`)、**安全須知**(`safetyPolicy`)。老闆在後台「系統設定 → 金額/政策」一改,AI 立刻跟上(走 siteConfig 版本號快取,免 cron)。
+- 知識庫規則：這些項目「以後台目前價目/政策為準」,優先於靜態範例數字。
+- 註：課程方案價(體驗/OW/AOW)仍為行銷固定值(`assistant-kb.ts`),非後台欄位;要即時可另議。
+- 動檔：`src/app/api/assistant/route.ts`、`src/lib/assistant-kb.ts`。
+
 ## 20260701_766M - 2026-07-01 (AI 客服：接「潛旅查詢」工具，潛旅存檔自動同步)
 
 - AI 客服新增 `get_dive_tours` 工具：查目前開放報名的**潛水旅行（潛旅）**真實清單（團名、日期、天數、團費、訂金、名額、新手友善）。被問潛旅團/出團日期/團費/名額時照實答。

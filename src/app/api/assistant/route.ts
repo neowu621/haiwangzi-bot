@@ -13,11 +13,49 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface AiBotCfg { enabled?: boolean; model?: string; persona?: string; greeting?: string; extraKnowledge?: string }
+type SiteCfgLite = {
+  aiBot?: AiBotCfg;
+  gearRentalPrices?: Record<string, number> | null;
+  defaultTripPricing?: { baseTrip?: number; extraTank?: number; nightDive?: number; scooterRental?: number } | null;
+  cancellationPolicy?: string | null;
+  safetyPolicy?: string | null;
+};
+async function readSiteCfg(): Promise<SiteCfgLite | null> {
+  try { return (await getSiteConfigRow()) as unknown as SiteCfgLite; } catch { return null; }
+}
 async function readAiBotCfg(): Promise<AiBotCfg> {
-  try {
-    const cfg = await getSiteConfigRow();
-    return ((cfg as { aiBot?: AiBotCfg } | null)?.aiBot ?? {}) as AiBotCfg;
-  } catch { return {}; }
+  return (await readSiteCfg())?.aiBot ?? {};
+}
+
+const GEAR_LABEL: Record<string, string> = { full_set: "全套裝備", BCD: "BCD浮力調整背心", regulator: "調節器", wetsuit: "防寒衣", fins: "蛙鞋", mask: "面鏡", computer: "潛水電腦錶" };
+// v767：把後台可編輯的價目/政策即時注入 system prompt（老闆後台改即生效）
+function buildLivePricingBlock(cfg: SiteCfgLite | null): string {
+  if (!cfg) return "";
+  let block = "";
+  const parts: string[] = [];
+  const gear = cfg.gearRentalPrices;
+  if (gear && typeof gear === "object") {
+    const g = Object.entries(gear)
+      .filter(([, v]) => typeof v === "number" && v > 0)
+      .map(([k, v]) => `${GEAR_LABEL[k] ?? k} NT$${(v as number).toLocaleString()}`)
+      .join("、");
+    if (g) parts.push(`裝備租借：${g}`);
+  }
+  const tp = cfg.defaultTripPricing;
+  if (tp && typeof tp === "object") {
+    const bits: string[] = [];
+    if (tp.baseTrip) bits.push(`基本費 NT$${tp.baseTrip.toLocaleString()}`);
+    if (tp.extraTank) bits.push(`每支氣瓶 NT$${tp.extraTank.toLocaleString()}`);
+    if (tp.nightDive) bits.push(`夜潛加價 NT$${tp.nightDive.toLocaleString()}`);
+    if (tp.scooterRental) bits.push(`水中推進器 NT$${tp.scooterRental.toLocaleString()}`);
+    if (bits.length) parts.push(`日潛費用參考：${bits.join("、")}`);
+  }
+  if (parts.length) block += `\n\n# 後台目前價目（即時，報價以此為準）\n${parts.join("\n")}`;
+  const cancel = (cfg.cancellationPolicy ?? "").trim();
+  if (cancel) block += `\n\n# 取消／退款政策（即時，以此為準）\n${cancel.slice(0, 1500)}`;
+  const safety = (cfg.safetyPolicy ?? "").trim();
+  if (safety) block += `\n\n# 安全須知（即時）\n${safety.slice(0, 1500)}`;
+  return block;
 }
 
 // GET：給前端 widget 取「是否啟用 + 招呼語」（公開、輕量、走 siteConfig 快取）
@@ -244,7 +282,8 @@ export async function POST(req: NextRequest) {
   const limited = checkRateLimit(req, { scope: "assistant", windowMs: 60_000, max: 20 });
   if (limited) return limited;
 
-  const ai = await readAiBotCfg();
+  const cfg = await readSiteCfg();
+  const ai = cfg?.aiBot ?? {};
   if (ai.enabled === false) {
     return NextResponse.json(
       { error: "AI 客服目前已由後台停用，歡迎加 LINE @894bpmew 直接詢問汪汪教練 🙂" },
@@ -278,8 +317,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請提供對話訊息（最後一則需為使用者）" }, { status: 400 });
   }
 
-  // 系統提示 = 知識庫 + 後台補充的個性/知識
-  let system = buildSystemPrompt();
+  // 系統提示 = 知識庫 + 後台即時價目/政策 + 後台補充的個性/知識
+  let system = buildSystemPrompt() + buildLivePricingBlock(cfg);
   if ((ai.persona ?? "").trim()) system += `\n\n# 老闆補充的個性／語氣（務必遵循）\n${(ai.persona ?? "").trim()}`;
   if ((ai.extraKnowledge ?? "").trim()) system += `\n\n# 老闆補充的資訊（優先採用）\n${(ai.extraKnowledge ?? "").trim()}`;
   const messages: OAIMessage[] = [{ role: "system", content: system }, ...history];
