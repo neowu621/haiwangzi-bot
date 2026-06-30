@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-01 — AI 客服改最便宜模型 + 個性活潑（v763）
+
+- 模型：`DEFAULT_MODEL` 改 **`google/gemini-2.5-flash-lite`**（最便宜 $0.10/$0.40；以成本為主）。工具呼叫想更穩 → `OPENROUTER_MODEL=google/gemini-2.5-flash`。
+- 個性：`assistant-kb.ts`「個性與風格」段改**活潑熱情**（海邊好朋友、俏皮 emoji、仍簡短不浮誇）。
+- **設定面板就是 `src/lib/assistant-kb.ts`**（單一 system prompt 字串 `ASSISTANT_SYSTEM_PROMPT`）：個性→「個性與風格」段、範圍/限制→「範圍與安全限制」+「重要規則」段、知識內容→各對應段；改完 push→Zeabur 生效。模型/成本→環境變數 `OPENROUTER_MODEL`（免改碼）。
+- 仍待：Zeabur 設 `OPENROUTER_API_KEY`（只有老闆能設）後端到端測。
+
+---
+
 ## 2026-07-01 — AI 客服修模型代號 + 強化安全護欄（v762）
 
 - **模型修正**：OpenRouter 下架 `google/gemini-2.0-flash-001`（404 No endpoints）→ `route.ts` `DEFAULT_MODEL` 改 **`google/gemini-2.5-flash`**。實測該帳號金鑰可呼叫（auth OK、模型有服務）。便宜清單：`gemini-2.5-flash-lite`（$0.10/$0.40 最便宜）、`gemini-2.5-flash`（$0.30/$2.50，工具呼叫穩，預設）。可用 `OPENROUTER_MODEL` 覆寫。

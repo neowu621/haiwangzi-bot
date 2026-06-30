@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.5-flash"; // 便宜快速、工具呼叫穩；更省可用 OPENROUTER_MODEL=google/gemini-2.5-flash-lite
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // 最便宜；要更穩工具呼叫可用 OPENROUTER_MODEL=google/gemini-2.5-flash
 const MAX_HISTORY = 12; // 只帶最近 N 則，控成本
 const MAX_TURNS = 4;    // 工具迴圈上限
 

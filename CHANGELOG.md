@@ -1,5 +1,12 @@
 # Changelog
 
+## 20260701_763M - 2026-07-01 (AI 客服：改最便宜 gemini-2.5-flash-lite + 個性活潑)
+
+- 預設模型改為 **`google/gemini-2.5-flash-lite`**（OpenRouter 最便宜，$0.10/$0.40 每百萬 token；實測金鑰可用）。要更穩的工具呼叫可用 `OPENROUTER_MODEL=google/gemini-2.5-flash`。
+- AI **個性改活潑**（`assistant-kb.ts`「個性與風格」段）：熱情有元氣、像愛潛水的海邊好朋友、適度俏皮 emoji；仍簡短有重點、不浮誇保證。
+- 設定位置：個性/語氣與回答範圍**全在 `src/lib/assistant-kb.ts`** 的 system prompt；模型/成本走環境變數 `OPENROUTER_MODEL`（免改碼）。
+- 動檔：`src/app/api/assistant/route.ts`、`src/lib/assistant-kb.ts`。
+
 ## 20260701_762M - 2026-07-01 (AI 客服：修模型代號 gemini-2.5-flash + 強化安全護欄)
 
 - **修可用性**：OpenRouter 已下架 `google/gemini-2.0-flash-001`（呼叫回 404）→ 預設模型改為 **`google/gemini-2.5-flash`**（實測金鑰可正常呼叫；更省可用 `OPENROUTER_MODEL=google/gemini-2.5-flash-lite`）。
