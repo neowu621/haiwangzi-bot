@@ -764,7 +764,7 @@ export default function AdminUsersPage() {
                       <td className="px-2 py-3 whitespace-nowrap" style={{ width: "1%" }}>
                         <div className="flex flex-col gap-0.5">
                           {u.effectiveRoles.map((r) => {
-                            const ROLE_LABELS_CN = { customer: "會員", coach: "教練", boss: "老闆", admin: "管理者", assistant: "助教", it: "IT" };
+                            const ROLE_LABELS_CN = { customer: "會員", coach: "教練", boss: "老闆", admin: "代理人", assistant: "助教", it: "IT" };
                             return (
                               <Badge
                                 key={r}
@@ -983,7 +983,7 @@ export default function AdminUsersPage() {
                 <div className="space-y-2">
                   {(() => {
                     const roles = new Set<string>(editing.effectiveRoles ?? [editing.role]);
-                    const LABELS: Record<string, string> = { customer: "會員", boss: "老闆", assistant: "助教", coach: "教練", admin: "管理者", it: "IT" };
+                    const LABELS: Record<string, string> = { customer: "會員", boss: "老闆", assistant: "助教", coach: "教練", admin: "代理人", it: "IT" };
                     const apply = (next: Set<string>) => {
                       if (next.size === 0) next.add("customer");
                       const arr = Array.from(next) as Role[];

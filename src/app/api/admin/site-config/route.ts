@@ -323,7 +323,7 @@ export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["admin"]);
+  const role = requireRole(auth.user, ["boss"]); // v758：改系統設定限老闆(boss/it)，代理人(admin)不可
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
@@ -353,7 +353,7 @@ export async function DELETE(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["admin"]);
+  const role = requireRole(auth.user, ["boss"]); // v758：還原系統設定限老闆(boss/it)，代理人(admin)不可
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
   await prisma.siteConfig.delete({ where: { id: "default" } }).catch(() => null);

@@ -142,11 +142,11 @@ export async function DELETE(
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  // 軟取消 admin + coach 都能；硬刪除限 admin
+  // 軟取消 admin(代理人) + coach 都能；硬刪除(永久)限老闆 boss — v758
   const url = new URL(req.url);
   const permanent = url.searchParams.get("permanent") === "true";
   const role = permanent
-    ? requireRole(auth.user, ["admin"])
+    ? requireRole(auth.user, ["boss"])
     : requireRole(auth.user, ["admin", "coach"]);
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });

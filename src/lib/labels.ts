@@ -5,7 +5,7 @@ export const ROLE_LABEL_CN: Record<string, string> = {
   customer: "會員",
   coach: "教練",
   boss: "老闆",
-  admin: "管理員",
+  admin: "代理人", // v758：原「管理員」→「代理人」（老闆代理；enum 值維持 admin）
 };
 
 export const CERT_LABEL_CN: Record<string, string> = {

@@ -98,7 +98,7 @@ export function PaymentVerifyView({
       return (
         <div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
           <div className="text-2xl">🔒</div>
-          <div className="mt-1 font-semibold text-[var(--color-ocean-deep)]">此功能僅限 管理者 / 老闆 / IT</div>
+          <div className="mt-1 font-semibold text-[var(--color-ocean-deep)]">此功能僅限 代理人 / 老闆 / IT</div>
           <div className="mt-1 text-[12px]">收款核對是老闆職責，教練 / 助教不經手款項。</div>
         </div>
       );

@@ -1,5 +1,16 @@
 # Changelog
 
+## 20260701_758M - 2026-07-01 (角色：代理人(admin)權限收緊 + 顯示正名「代理人」)
+
+- **為「老闆代理人」釐清角色**：保留 `boss`(老闆/最高權) 與 `admin`(代理人) 兩階層，未來可指派多位代理人。enum 值不動。
+- **收緊代理人權限邊界**（修正「文件說不可、API 卻可」的不一致）：
+  - 改系統設定 `POST/DELETE /api/admin/site-config` → 由 `["admin"]` 收緊為 `["boss"]`（boss/it 才能改；代理人不可）。
+  - 永久刪除訂單（`?permanent=true`）→ 由 `["admin"]` 收緊為 `["boss"]`（代理人只能軟取消，不能永久刪除）。
+  - 代理人維持營運全權：訂單/會員/場次/收款/退款/取消場次/通知。
+- **顯示正名**：角色中文「管理員/管理者」統一改為「**代理人**」（`lib/labels.ts`、會員管理兩處 label、收款 gate 提示）；enum 與 API 仍用 `admin`。
+- 注意：bootstrap 建立的初始帳號為 `admin`；老闆本人帳號建議在會員管理改為 `boss`（才看得到系統設定/可永久刪除）。代理人用 `admin`。
+- 動檔：`site-config/route.ts`、`bookings/[id]/route.ts`、`lib/labels.ts`、`admin/users/page.tsx`、`PaymentVerifyView.tsx`、`liff/coach/payment/page.tsx`。
+
 ## 20260630_757M - 2026-06-30 (訂單管理：「⏳ 待退款」清單，取消/未到有現金未退別漏退)
 
 - 訂單管理新增「⏳ 待退款」篩選 chip（狀態列「全部」旁）：一鍵列出**取消類/未到、且仍有現金未退**的訂單，避免突然取消活動或未到場後漏退現金。
