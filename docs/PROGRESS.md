@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-07-01 — 訂單流程全鏈優化 + 角色/代理人權限（v752 → v758）
+
+線上 = **v20260701_758M**。本輪聚焦訂單詳情、到場點名、退款追蹤與角色模型，並產出訂單流程說明頁 `docs/order-flow.html`。（v727–v751 細節見 `CHANGELOG.md`：訂單編輯視窗重設計、到場排序、品牌圖示/Hero WebP 壓縮、課程詢問分頁等。）
+
+- **v752–753 訂單詳情**：移除「✎ 修改總金額」直接改總額入口（金額調整改走「🧮 帳務調整」加收/減免，有審計）；付款紀錄「抵用金折抵/先前已付」兩列補上訂單成立日；新增一鍵「💵 現場收現·結清剩餘」（寫 `現金(實收)=剩餘` 並標付清，重用 `payment-entry`）。動檔 `src/app/admin/bookings/page.tsx`。
+- **v754 訂單歷程**：右欄「付款紀錄」+ 左欄「訂單狀態歷史」合併成單一「📋 訂單歷程」時間軸，依 `createdAt` 舊→新交錯（付款事件 + 狀態事件同列）。純前端排序，不改後端。
+- **v755 到場點名**：桌機 `/admin/attendance`、手機 `/admin/m/attendance`、教練端 `/liff/coach/today` 三處「到場/未到」一律先 confirm；未付清+到場→現場收現結清；已付+未到→提醒退款。attendance API 回傳補 `totalAmount/paidAmount`。
+- **v756 權限修正（修 v755 回歸）**：`payment-entry`（收款/折抵記帳）限老闆（boss/admin/it），移除 coach → 教練/助教不可記帳，到場點名依 `effectiveRoles` 分流（老闆現場收現；教練/助教只標到場+提醒）。未到退款提醒三介面統一「通知老闆」。新增 `docs/order-flow.html`。
+- **v757 待退款清單**：訂單管理新增「⏳ 待退款」篩選 chip — 列出「取消/未到、且現金（`paidAmount−creditUsed`）未退」的單，避免漏退。前端衍生、不改 schema、不自動扣款。
+- **v758 角色 / 代理人**：釐清 `boss`（老闆/最高權）與 `admin`（**代理人**，營運全權但不含系統設定/永久刪除）為**刻意分階**（`requireRole` 裡 boss⊋admin、it 全通過）。**收緊代理人權限**：`site-config` 寫入 + 訂單永久刪除 → 由 `["admin"]` 改 `["boss"]`（修「文件說不可、API 卻可」的洞）。**顯示正名**「管理員/管理者」→「代理人」（`lib/labels.ts` 等，enum 值不動）。供老闆未來指派多位代理人。
+
+**決策 / 注意**：
+- 角色模型細節：`src/lib/auth.ts` `requireRole`（boss 通過 admin 端點、it 永遠通過）。`bootstrap` 建立初始帳號為 `admin` → **老闆本人帳號應在會員管理改成 `boss`**，否則看不到系統設定、不能永久刪除；代理人才用 `admin`。
+- enum `admin`→`deputy/manager` 全面改名（217 處 + DB 遷移）**目前不做**，只改顯示。
+- 退款目前無自動扣款：突然取消活動（`weather-cancel`）只自動退「折抵抵用金」，現金需老闆手動退；未到也是提醒。待退款清單即為防漏退的補強。
+
+**環境 / 部署**：本機 `git` 不在 PowerShell PATH（用 Git Bash 或先補 PATH）；Node 24 在 `C:\Program Files\nodejs`（非預設 PATH）。部署 = push `master` → Zeabur 自動建置（**約 7–9 分鐘**，會變動）→ 驗 `curl https://haiwangzi.xyz/api/healthz` 的 `version`。在 worktree `crazy-poincare-a00022`（對齊 origin/master）開發。
+
+**下次先看 / 可做**：待退款可加「自動建退款請求」或「老闆總覽待退款徽章」；是否要 enum 改名 `admin→deputy`。
+
+---
+
 ## 2026-06-29 — GitHub triage + LIFF 安全/效能改進分支（v20260628_726-C2）
 
 目前工作分支 = **v20260628_726-C2**（prod 基底 **v20260628_726**）。
