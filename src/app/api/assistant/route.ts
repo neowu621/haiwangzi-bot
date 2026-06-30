@@ -179,7 +179,7 @@ async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
       const sm = new Map(sites.map((s) => [s.id, s.name]));
       return trips.map((x) => {
         const ds = x.date.toISOString().slice(0, 10);
-        const wd = WD[new Date(`${ds}T00:00:00+08:00`).getDay()];
+        const wd = weekdayOf(ds); // 用中午+8 換算，避免伺服器 UTC 下 getDay 退一天
         const names = x.diveSiteIds.map((id) => sm.get(id) ?? id).join("、") || "東北角";
         const booked = bm.get(x.id) ?? 0;
         const seat = x.capacity == null ? "可預約" : x.capacity - booked <= 0 ? "已滿" : `剩 ${x.capacity - booked} 位`;
@@ -245,7 +245,7 @@ async function buildLiveFactsBlock(): Promise<string> {
   const tours = await runGetDiveTours();
   return [
     "# 【即時資料｜系統剛從資料庫撈出的真實最新內容，回答日期／場次／潛旅／名額一律以此為準，禁止自行推算日期或捏造】",
-    `今天：${today}（星期${wd}）。明天：${tomorrow}。本週末＝ ${sat}（六）與 ${sun}（日）。`,
+    `今天：${today}（星期${wd}）。明天：${tomorrow}（星期${weekdayOf(tomorrow)}）。本週末＝ ${sat}（星期${weekdayOf(sat)}）與 ${sun}（星期${weekdayOf(sun)}）。`,
     "",
     "## 近 30 天日潛場次",
     sessions,
