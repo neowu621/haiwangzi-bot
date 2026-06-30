@@ -1428,10 +1428,10 @@ export default function AdminBookingsPage() {
                       </div>
                     )}
 
-                    {/* v366：🧾 付款紀錄 */}
+                    {/* v754：📋 訂單歷程 — 付款紀錄 + 狀態歷史 合併成單一時間軸（依時間排序，舊→新） */}
                     <div className="rounded-lg border border-[var(--border)] overflow-hidden">
-                      <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>🧾 付款紀錄</div>
-                      <div className="px-3 py-1">
+                      <div className="bg-slate-50 px-3 py-1.5 text-xs font-bold" style={{ color: "#0A2342" }}>📋 訂單歷程（付款 + 狀態）</div>
+                      <div className="px-3 py-1 max-h-72 overflow-y-auto">
                         {(() => {
                           const entriesSum = entries.reduce((s, e) => s + e.amount, 0);
                           const priorPaid = editing.paidAmount - entriesSum;
@@ -1439,48 +1439,70 @@ export default function AdminBookingsPage() {
                           const creditUsed = editing.creditUsed ?? editing.priceBreakdown?.creditUsed ?? 0;
                           const creditPortion = Math.max(0, Math.min(creditUsed, priorPaid));
                           const cashPrior = priorPaid - creditPortion;
-                          const hasRows = entries.length > 0 || priorPaid > 0;
+                          const orderT = new Date(editing.createdAt).getTime();
+                          const rowCls = "flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] last:border-0 text-[13px]";
+                          const timeCls = "text-[11px] text-[var(--muted-foreground)] w-[88px] tabular-nums flex-shrink-0";
+                          const amtCls = "font-bold tabular-nums text-right w-[60px] flex-shrink-0";
+                          const items: Array<{ t: number; el: React.ReactNode }> = [];
+                          // 狀態事件（下單／改期／完成／取消…）
+                          (editing.statusLogs ?? []).forEach((log) => items.push({ t: new Date(log.createdAt).getTime(), el: (
+                            <div key={`s-${log.id}`} className="flex items-start gap-2 py-2 border-b border-dashed border-[var(--border)] last:border-0 text-[13px]">
+                              <span className={timeCls}>{fmtEntryDate(log.createdAt)}</span>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium">
+                                  {!log.fromStatus
+                                    ? `下單・${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`
+                                    : log.fromStatus === log.toStatus
+                                      ? `${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`
+                                      : `${BOOKING_STATUS_LABEL[log.fromStatus] ?? log.fromStatus} → ${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`}
+                                </span>
+                                {log.note && <span className="ml-1 text-[var(--muted-foreground)]">— {log.note}</span>}
+                                <span className="ml-1 inline-flex rounded-full bg-[var(--muted)] px-1.5 py-0 text-[9px] text-[var(--muted-foreground)]">{log.actorRole}</span>
+                              </div>
+                            </div>
+                          ) }));
+                          // 下單時抵用金折抵（無獨立時戳 → 用訂單成立時點）
+                          if (creditPortion > 0) items.push({ t: orderT, el: (
+                            <div key="credit" className={rowCls}>
+                              <span className={timeCls}>{fmtEntryDate(editing.createdAt)}</span>
+                              <span className={amtCls} style={{ color: "#0A2342" }}>{creditPortion.toLocaleString()}</span>
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: "#fef3c7", color: "#92400e" }}>⭐ 抵用金折抵</span>
+                            </div>
+                          ) });
+                          // 先前已付（未明細化）
+                          if (cashPrior > 0) items.push({ t: orderT, el: (
+                            <div key="cashPrior" className={rowCls}>
+                              <span className={timeCls}>{fmtEntryDate(editing.createdAt)}</span>
+                              <span className={amtCls} style={{ color: "#0A2342" }}>{cashPrior.toLocaleString()}</span>
+                              <span className="text-[10px] text-[var(--muted-foreground)]">先前已付（未明細化）</span>
+                            </div>
+                          ) });
+                          // 逐筆付款明細（含現場收現／轉帳／折抵…）
+                          entries.forEach((e) => {
+                            const m = PAYMENT_KIND_META[e.kind] ?? { label: e.kind, cat: "discount" as const };
+                            const bs = PAYMENT_BADGE_STYLE[m.cat];
+                            items.push({ t: new Date(e.createdAt).getTime(), el: (
+                              <div key={`e-${e.id}`} className={rowCls}>
+                                <span className={timeCls}>{fmtEntryDate(e.createdAt)}</span>
+                                <span className={amtCls} style={{ color: e.amount >= 0 ? "#047857" : "var(--color-coral)" }}>{e.amount >= 0 ? "+" : ""}{e.amount.toLocaleString()}</span>
+                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={bs}>{m.label}{e.note ? `・${e.note}` : ""}</span>
+                                {!locked && (
+                                  <button type="button" onClick={() => deleteEntry(e)}
+                                    className="ml-auto text-slate-300 hover:text-[var(--color-coral)] text-xs">✕</button>
+                                )}
+                              </div>
+                            ) });
+                          });
+                          items.sort((a, b) => a.t - b.t);
                           return (
                             <>
-                              {entriesLoading && entries.length === 0 && (
+                              {entriesLoading && items.length === 0 && (
                                 <div className="py-3 text-center text-[11px] text-[var(--muted-foreground)]">載入中…</div>
                               )}
-                              {!entriesLoading && !hasRows && (
-                                <div className="py-3 text-center text-[11px] text-[var(--muted-foreground)]">尚無付款紀錄</div>
+                              {!entriesLoading && items.length === 0 && (
+                                <div className="py-3 text-center text-[11px] text-[var(--muted-foreground)]">尚無紀錄</div>
                               )}
-                              {creditPortion > 0 && (
-                                <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
-                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px] tabular-nums">{fmtEntryDate(editing.createdAt)}</span>
-                                  <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{creditPortion.toLocaleString()}</span>
-                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: "#fef3c7", color: "#92400e" }}>⭐ 抵用金折抵</span>
-                                </div>
-                              )}
-                              {cashPrior > 0 && (
-                                <div className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] text-[13px]">
-                                  <span className="text-[11px] text-[var(--muted-foreground)] w-[92px] tabular-nums">{fmtEntryDate(editing.createdAt)}</span>
-                                  <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: "#0A2342" }}>{cashPrior.toLocaleString()}</span>
-                                  <span className="text-[10px] text-[var(--muted-foreground)]">先前已付（未明細化）</span>
-                                </div>
-                              )}
-                              {entries.map((e) => {
-                                const m = PAYMENT_KIND_META[e.kind] ?? { label: e.kind, cat: "discount" as const };
-                                const bs = PAYMENT_BADGE_STYLE[m.cat];
-                                return (
-                                  <div key={e.id} className="flex items-center gap-2 py-2 border-b border-dashed border-[var(--border)] last:border-0 text-[13px]">
-                                    <span className="text-[11px] text-[var(--muted-foreground)] w-[92px] tabular-nums">{fmtEntryDate(e.createdAt)}</span>
-                                    <span className="font-bold tabular-nums text-right w-[72px]" style={{ color: e.amount >= 0 ? "#047857" : "var(--color-coral)" }}>
-                                      {e.amount >= 0 ? "+" : ""}{e.amount.toLocaleString()}
-                                    </span>
-                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={bs}>
-                                      {m.label}{e.note ? `・${e.note}` : ""}
-                                    </span>
-                                    {!locked && (
-                                      <button type="button" onClick={() => deleteEntry(e)}
-                                        className="ml-auto text-slate-300 hover:text-[var(--color-coral)] text-xs">✕</button>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                              {items.map((i) => i.el)}
                             </>
                           );
                         })()}
@@ -1776,41 +1798,7 @@ export default function AdminBookingsPage() {
 
               </div>{/* /備註區塊（客戶簽名已移到下方與付款憑證並排） */}
 
-              {/* v278：訂單狀態歷史 (event log) */}
-              {editing.statusLogs && editing.statusLogs.length > 0 && (
-                <div className="rounded-md p-3" style={{ border: "1px solid var(--border)" }}>
-                  <div className="mb-2 text-sm font-semibold flex items-center gap-2">
-                    📋 訂單狀態歷史
-                    <span className="text-[10px] font-normal text-[var(--muted-foreground)]">
-                      ({editing.statusLogs.length} 筆)
-                    </span>
-                  </div>
-                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                    {editing.statusLogs.map((log) => (
-                      <div key={log.id} className="flex gap-3 items-start text-[11px] border-b pb-1.5" style={{ borderColor: "var(--border)" }}>
-                        <div className="flex-shrink-0 font-mono text-[10px] text-[var(--muted-foreground)] w-24">
-                          {new Date(log.createdAt).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-medium">
-                            {!log.fromStatus
-                              ? `初始：${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`
-                              : log.fromStatus === log.toStatus
-                                ? `${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}` /* v607：from==to（如退款附註）只顯示單一狀態 */
-                                : `${BOOKING_STATUS_LABEL[log.fromStatus] ?? log.fromStatus} → ${BOOKING_STATUS_LABEL[log.toStatus] ?? log.toStatus}`}
-                          </span>
-                          {log.note && (
-                            <span className="ml-1 text-[var(--muted-foreground)]">— {log.note}</span>
-                          )}
-                          <span className="ml-1 inline-flex rounded-full bg-[var(--muted)] px-1.5 py-0 text-[9px] text-[var(--muted-foreground)]">
-                            {log.actorRole}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* v754：訂單狀態歷史已併入右欄「📋 訂單歷程」時間軸（與付款紀錄交錯顯示） */}
 
               {/* v742：客戶簽名 + 付款憑證 並排（各佔左視覺欄一半 ≈ 全寬 1/4） */}
               <div className="grid sm:grid-cols-2 gap-3 items-start">
