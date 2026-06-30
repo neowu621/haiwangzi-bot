@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-01 — AI 客服接「即時場次查詢」工具（v765）
+
+修正 v764 上線後回報：AI 答「本週末有沒有場次」是模糊/導 LINE（因只有靜態知識）。
+
+- `src/app/api/assistant/route.ts` 新增工具 `get_dive_sessions(from?, to?)`：查 `divingTrip`（status open/full、日期區間預設今天~+14天）+ booking groupBy 算剩餘名額 + diveSite 名稱，回精簡清單（`YYYY-MM-DD(週) 時間 潛點・岸/船潛・N潛・剩X位`）。**重用 `/api/trips` 的 `cached(key,"trips",TTL_LISTING,loader)`** → 命中零 DB、下單/取消自動失效。
+- `assistant-kb.ts`：規則改為「場次/空位務必用 get_dive_sessions 查再答；個人化報價仍不捏造、導 LINE；報名走 LINE」。
+- 工具迴圈（OpenAI function-calling）已支援多工具，dispatch 加 get_dive_sessions 分支。
+- **下次先看**：個人化報價工具（折扣/客製）；token 串流；知識庫課程價同步。
+
+---
+
 ## 2026-07-01 — 後台「系統設定 → 🤖 AI 客服」管理面板（v764）
 
 讓老闆**從後台**管理 AI 客服(免改程式)。

@@ -7,6 +7,7 @@ import { notifyBossNewInquiry } from "@/lib/notify-boss";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildSystemPrompt } from "@/lib/assistant-kb";
 import { getSiteConfigRow } from "@/lib/site-config-cache";
+import { cached, TTL_LISTING } from "@/lib/cache"; // v765：場次查詢（版本號快取，命中零 DB）
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,21 @@ const TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "get_dive_sessions",
+      description:
+        "查詢近期可預約的日潛場次（日期、潛點、時間、剩餘名額）。當訪客問某天/這週/這週末有沒有潛水、有沒有場次、還有沒有位子時，務必呼叫此工具取得真實場次再回答，不要憑空猜測。",
+      parameters: {
+        type: "object",
+        properties: {
+          from: { type: "string", description: "起始日期 YYYY-MM-DD（可省略，預設今天）" },
+          to: { type: "string", description: "結束日期 YYYY-MM-DD（可省略，預設今天+14天）" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "submit_inquiry",
       description:
         "當訪客明確希望教練主動聯繫、或想留下需求時，把詢問送進客服信箱並通知老闆。需要對方提供稱呼與 Email。送出前請先向對方確認內容。",
@@ -68,6 +84,47 @@ const TOOLS = [
     },
   },
 ];
+
+const WD = ["日", "一", "二", "三", "四", "五", "六"];
+/** get_dive_sessions 工具：查近期可預約日潛場次 + 剩餘名額（重用 /api/trips 的版本號快取，命中零 DB）。 */
+async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
+  const todayTw = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const f = from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : todayTw;
+  let t = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : "";
+  if (!t) { const d = new Date(`${f}T00:00:00+08:00`); d.setDate(d.getDate() + 14); t = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }); }
+  try {
+    const lines = await cached(`assistant:sessions:${f}|${t}`, "trips", TTL_LISTING, async () => {
+      const trips = await prisma.divingTrip.findMany({
+        where: { status: { in: ["open", "full"] }, date: { gte: new Date(f), lte: new Date(t) } },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
+      });
+      if (trips.length === 0) return [] as string[];
+      const ids = trips.map((x) => x.id);
+      const grp = await prisma.booking.groupBy({
+        by: ["refId"],
+        where: { refId: { in: ids }, type: "daily", status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] } },
+        _sum: { participants: true },
+      });
+      const bm = new Map(grp.map((b) => [b.refId, b._sum.participants ?? 0]));
+      const siteIds = Array.from(new Set(trips.flatMap((x) => x.diveSiteIds)));
+      const sites = siteIds.length ? await prisma.diveSite.findMany({ where: { id: { in: siteIds } } }) : [];
+      const sm = new Map(sites.map((s) => [s.id, s.name]));
+      return trips.map((x) => {
+        const ds = x.date.toISOString().slice(0, 10);
+        const wd = WD[new Date(`${ds}T00:00:00+08:00`).getDay()];
+        const names = x.diveSiteIds.map((id) => sm.get(id) ?? id).join("、") || "東北角";
+        const booked = bm.get(x.id) ?? 0;
+        const seat = x.capacity == null ? "可預約" : x.capacity - booked <= 0 ? "已滿" : `剩 ${x.capacity - booked} 位`;
+        return `${ds}(${wd}) ${x.startTime} ${names}・${x.isBoat ? "船潛" : "岸潛"}・${x.tankCount}潛・${seat}`;
+      });
+    });
+    if (!lines || lines.length === 0) return `${f} ~ ${t} 目前沒有開放預約的日潛場次。可加 LINE @894bpmew 問汪汪教練，或許願開團 🙂`;
+    return `近期日潛場次（${f} ~ ${t}）：\n${lines.join("\n")}\n（報名／確認名額請加 LINE @894bpmew）`;
+  } catch (e) {
+    console.error("[assistant get_dive_sessions]", e);
+    return "查詢場次時出了點問題，請加 LINE @894bpmew 直接問汪汪教練。";
+  }
+}
 
 /** submit_inquiry 工具：把詢問寫進客服信箱（emailThread/Message）+ 通知老闆。server 端可信、免 Turnstile。 */
 async function runSubmitInquiry(input: { name?: string; email?: string; message?: string }): Promise<string> {
@@ -200,7 +257,11 @@ export async function POST(req: NextRequest) {
         messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
         for (const call of msg.tool_calls) {
           let out = "未知的工具。";
-          if (call.function?.name === "submit_inquiry") {
+          if (call.function?.name === "get_dive_sessions") {
+            let a: { from?: string; to?: string } = {};
+            try { a = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }
+            out = await runGetDiveSessions(a.from, a.to);
+          } else if (call.function?.name === "submit_inquiry") {
             let args: { name?: string; email?: string; message?: string } = {};
             try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }
             out = await runSubmitInquiry(args);
