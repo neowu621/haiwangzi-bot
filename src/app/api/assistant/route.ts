@@ -1,8 +1,7 @@
-// v758+：網站 AI 客服。POST 對話訊息 → Claude Haiku 4.5 回答（知識庫見 lib/assistant-kb）。
-//   工具：submit_inquiry（客戶想被主動聯繫時，把需求送進客服信箱 + 通知老闆，重用 /api/contact 的後端邏輯）。
-//   公開端點：加速率限制；ANTHROPIC_API_KEY 未設時回 503。
+// v760：網站 AI 客服。POST 對話訊息 → OpenRouter（OpenAI 相容）→ Google Gemini 2.0 Flash。
+//   知識庫見 lib/assistant-kb。工具 submit_inquiry：客戶想被主動聯繫時，把需求送進客服信箱 + 通知老闆。
+//   公開端點：加速率限制；OPENROUTER_API_KEY 未設時回 503。
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { notifyBossNewInquiry } from "@/lib/notify-boss";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -11,27 +10,43 @@ import { buildSystemPrompt } from "@/lib/assistant-kb";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = "claude-haiku-4-5"; // 客服 FAQ：快又便宜
-const MAX_HISTORY = 12;           // 只帶最近 N 則，控成本
-const MAX_TURNS = 4;              // 工具迴圈上限
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "google/gemini-2.0-flash-001"; // 便宜快速、FAQ 足夠（可用 OPENROUTER_MODEL 覆寫）
+const MAX_HISTORY = 12; // 只帶最近 N 則，控成本
+const MAX_TURNS = 4;    // 工具迴圈上限
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ChatMsg { role?: string; content?: string }
+// OpenAI 相容訊息（含 tool 角色）
+interface OAIMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: OAIToolCall[];
+  tool_call_id?: string;
+}
+interface OAIToolCall { id: string; type: "function"; function: { name: string; arguments: string } }
+interface OAIResponse {
+  choices?: { message?: OAIMessage; finish_reason?: string }[];
+  error?: { message?: string };
+}
 
-const TOOLS: Anthropic.Tool[] = [
+const TOOLS = [
   {
-    name: "submit_inquiry",
-    description:
-      "當訪客明確希望教練主動聯繫、或想留下需求時，把詢問送進客服信箱並通知老闆。需要對方提供稱呼與 Email。送出前請先向對方確認內容。",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "訪客稱呼" },
-        email: { type: "string", description: "訪客 Email（教練回覆用）" },
-        message: { type: "string", description: "訪客的需求／問題摘要（含想潛的地點、日期、人數等）" },
+    type: "function" as const,
+    function: {
+      name: "submit_inquiry",
+      description:
+        "當訪客明確希望教練主動聯繫、或想留下需求時，把詢問送進客服信箱並通知老闆。需要對方提供稱呼與 Email。送出前請先向對方確認內容。",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "訪客稱呼" },
+          email: { type: "string", description: "訪客 Email（教練回覆用）" },
+          message: { type: "string", description: "訪客的需求／問題摘要（含想潛的地點、日期、人數等）" },
+        },
+        required: ["name", "email", "message"],
       },
-      required: ["name", "email", "message"],
     },
   },
 ];
@@ -86,23 +101,38 @@ async function runSubmitInquiry(input: { name?: string; email?: string; message?
     console.error("[assistant submit_inquiry]", e);
     return "送出時發生問題，請改用 LINE 官方帳號 @894bpmew 直接聯繫教練。";
   }
-  // best-effort 通知老闆
   await notifyBossNewInquiry({ type: "question", subject, name, email, phone: "", bodyText }).catch(() => {});
   return "已把你的詢問送給汪汪教練了，他會盡快透過 Email 或 LINE 跟你聯繫 🙌";
 }
 
+/** 呼叫 OpenRouter chat completions。 */
+async function callOpenRouter(apiKey: string, model: string, messages: OAIMessage[]): Promise<OAIResponse> {
+  const res = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://haiwangzi.xyz",
+      "X-Title": "Haiwangzi AI Assistant",
+    },
+    body: JSON.stringify({ model, messages, tools: TOOLS, tool_choice: "auto", max_tokens: 1024, temperature: 0.3 }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  return (await res.json()) as OAIResponse;
+}
+
 export async function POST(req: NextRequest) {
-  // 公開端點 → 加速率限制（每 IP 每分鐘 20 次）
   const limited = checkRateLimit(req, { scope: "assistant", windowMs: 60_000, max: 20 });
   if (limited) return limited;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "AI 客服尚未啟用（缺少 ANTHROPIC_API_KEY）。請先加 LINE @894bpmew 詢問。" },
+      { error: "AI 客服尚未啟用（缺少 OPENROUTER_API_KEY）。請先加 LINE @894bpmew 詢問。" },
       { status: 503 },
     );
   }
+  const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 
   let body: { messages?: ChatMsg[] };
   try {
@@ -112,8 +142,7 @@ export async function POST(req: NextRequest) {
   }
 
   const raw = Array.isArray(body.messages) ? body.messages : [];
-  // 清洗 + 只留最近 N 則 + 角色正規化
-  const history: Anthropic.MessageParam[] = raw
+  const history: OAIMessage[] = raw
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-MAX_HISTORY)
     .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content).slice(0, 4000) }));
@@ -122,44 +151,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請提供對話訊息（最後一則需為使用者）" }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey });
-  const messages: Anthropic.MessageParam[] = [...history];
+  const messages: OAIMessage[] = [{ role: "system", content: buildSystemPrompt() }, ...history];
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
-      const resp = await client.messages.create({
-        model: MODEL,
-        max_tokens: 1024,
-        system: [{ type: "text", text: buildSystemPrompt(), cache_control: { type: "ephemeral" } }],
-        tools: TOOLS,
-        messages,
-      });
-
-      if (resp.stop_reason === "tool_use") {
-        messages.push({ role: "assistant", content: resp.content });
-        const results: Anthropic.ToolResultBlockParam[] = [];
-        for (const block of resp.content) {
-          if (block.type === "tool_use") {
-            let out = "未知的工具。";
-            if (block.name === "submit_inquiry") {
-              out = await runSubmitInquiry(block.input as { name?: string; email?: string; message?: string });
-            }
-            results.push({ type: "tool_result", tool_use_id: block.id, content: out });
-          }
-        }
-        messages.push({ role: "user", content: results });
-        continue; // 讓模型根據工具結果再產生回覆
+      const data = await callOpenRouter(apiKey, model, messages);
+      if (data.error) {
+        console.error("[assistant openrouter]", data.error.message);
+        return NextResponse.json({ error: "AI 客服暫時無法回覆，請稍後再試或加 LINE @894bpmew。" }, { status: 502 });
+      }
+      const msg = data.choices?.[0]?.message;
+      if (!msg) {
+        return NextResponse.json({ reply: "不好意思，我沒聽懂，可以再說一次嗎？或直接加 LINE @894bpmew 問汪汪教練 🙂" });
       }
 
-      // 一般回覆：收集文字
-      const text = resp.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        // 回填 assistant（含 tool_calls）+ 每個工具結果（role: tool）
+        messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
+        for (const call of msg.tool_calls) {
+          let out = "未知的工具。";
+          if (call.function?.name === "submit_inquiry") {
+            let args: { name?: string; email?: string; message?: string } = {};
+            try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }
+            out = await runSubmitInquiry(args);
+          }
+          messages.push({ role: "tool", tool_call_id: call.id, content: out });
+        }
+        continue;
+      }
+
+      const text = (msg.content ?? "").trim();
       return NextResponse.json({ reply: text || "不好意思，我沒聽懂，可以再說一次嗎？或直接加 LINE @894bpmew 問汪汪教練 🙂" });
     }
-    // 工具迴圈用盡
     return NextResponse.json({ reply: "這題我可能需要請教練協助，建議加 LINE @894bpmew 直接問汪汪教練 🙂" });
   } catch (e) {
     console.error("[assistant]", e);

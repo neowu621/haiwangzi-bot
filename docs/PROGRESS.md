@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-01 — AI 客服改用 OpenRouter + Gemini 2.0 Flash（v760）
+
+線上 = **v20260701_760M**。沿用 v759 的前端/知識庫/留資，只換**模型供應商**。
+
+- `src/app/api/assistant/route.ts`：改打 **OpenRouter**（`https://openrouter.ai/api/v1/chat/completions`，OpenAI 相容）用原生 `fetch`，預設模型 **`google/gemini-2.0-flash-001`**（FAQ 便宜快速；`OPENROUTER_MODEL` 可覆寫）。工具 `submit_inquiry` 改 OpenAI function-calling 格式（`tool_calls` / `role:"tool"`）。
+- env：`OPENROUTER_API_KEY`（取代 `ANTHROPIC_API_KEY`）+ 選用 `OPENROUTER_MODEL`。移除 `@anthropic-ai/sdk`。
+- **決策**：老闆指定走 OpenRouter + Gemini 2.0 Flash 控成本（harness 預設建議 Claude，但使用者明確選定，從之）。知識庫/ChatWidget 與供應商無關，未動。
+- **下次先看**：① Zeabur 設 `OPENROUTER_API_KEY` 後端到端測 ② 即時場次/報價工具（OpenAI function 格式，接 DB 場次層）③ 視需要 token 串流（OpenRouter 支援 `stream:true`，SSE）。
+
+---
+
 ## 2026-07-01 — 網站 AI 客服小幫手（v759）
 
 線上 = **v20260701_759M**。公開頁加一個浮動 AI 客服，回答課程/潛點/潛旅/費用/預約/安全/裝備。

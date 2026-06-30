@@ -1,5 +1,12 @@
 # Changelog
 
+## 20260701_760M - 2026-07-01 (AI 客服改用 OpenRouter + Gemini 2.0 Flash)
+
+- AI 客服 `/api/assistant` 後端從 Anthropic SDK 改為 **OpenRouter（OpenAI 相容）**，預設模型 **Google Gemini 2.0 Flash**（`google/gemini-2.0-flash-001`，FAQ 客服便宜快速）；可用 `OPENROUTER_MODEL` 覆寫（例 `google/gemini-2.0-flash-lite-001` 更省）。
+- 工具 `submit_inquiry` 改為 OpenAI function-calling 格式；其餘（知識庫、ChatWidget、速率限制、留資寫客服信箱）不變。
+- env：`ANTHROPIC_API_KEY` → **`OPENROUTER_API_KEY`**（+ 選用 `OPENROUTER_MODEL`），見 `.env.example`；未設回 503 引導加 LINE。移除依賴 `@anthropic-ai/sdk`（改用原生 fetch，無新依賴）。
+- 動檔：`src/app/api/assistant/route.ts`、`.env.example`、`package.json`。
+
 ## 20260701_759M - 2026-07-01 (網站 AI 客服小幫手 — Claude Haiku 4.5)
 
 - 公開頁右下角新增浮動「💬 AI 小幫手」聊天視窗：客戶可問課程/潛點/潛旅/費用/預約/安全/裝備，由 Claude **Haiku 4.5** 依知識庫回答；後台 `/admin`、LIFF `/liff`、`/pclogin`、教練端自動隱藏。
