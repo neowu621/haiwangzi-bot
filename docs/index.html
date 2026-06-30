@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>海王子潛水團 LIFF App — 專案總覽</title>
+<style>
+  :root{
+    --ink:#0A2342; --muted:#5b6b7d; --line:#dfe5ec; --soft:#f4f7fa; --card:#fff;
+    --teal:#1F8A8A; --amber:#C58A1B; --green:#2E8B57; --coral:#C7503F; --gray:#9AA0A6; --link:#0e6e93;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef2f6;color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    line-height:1.65;padding:24px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 2px}
+  .lead{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:22px}
+  .chip{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted)}
+  h2{font-size:18px;margin:26px 0 10px;display:flex;align-items:center;gap:8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:150px}
+  .bx{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
+  .bx .t{font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px}
+  .bx .s{font-size:12px;color:var(--muted);margin-top:3px}
+  .mk{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+  .arrow{text-align:center;color:#aab4c0;font-size:15px;margin:3px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td.c{text-align:center}
+  .yes{color:var(--green);font-weight:600}.no{color:var(--coral)}
+  code{background:var(--soft);border-radius:5px;padding:1px 5px;font-size:12px}
+  a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+  .docs li{margin:5px 0;font-size:13.5px}
+  .docs b{font-weight:600}
+  .note{font-size:12.5px;color:var(--muted)}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin:2px 3px 2px 0}
+  .btn{display:inline-block;margin-top:6px;padding:7px 13px;border:1px solid var(--teal);color:var(--teal);border-radius:9px;font-size:13px;font-weight:600}
+  @media(max-width:640px){.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🐠 海王子潛水團 LIFF App</h1>
+  <p class="lead">東北角潛水預約系統 — 顧客 LINE LIFF 預約 + 老闆後台營運。本頁是新接手者的視覺入口；版本與進度看文字日誌（見下方文件導覽）。</p>
+  <div class="chips">
+    <span class="chip">Next.js 16 App Router</span><span class="chip">React 19</span>
+    <span class="chip">TypeScript + Zod</span><span class="chip">Prisma 6 / PostgreSQL 16</span>
+    <span class="chip">Tailwind v4</span><span class="chip">LINE LIFF + Messaging</span>
+    <span class="chip">Cloudflare R2</span><span class="chip">Zeabur (Docker)</span>
+  </div>
+
+  <h2>🗺️ 系統地圖</h2>
+  <div class="card">
+    <div class="row">
+      <div class="bx"><div class="t">顧客端（LINE LIFF）</div><div class="s">預約潛水 / 我的訂單 / 抵用金 / 簽名 / 上傳匯款憑證</div></div>
+      <div class="bx"><div class="t">後台</div><div class="s">桌機 <code>/admin</code>（老闆/代理人/IT）· 手機 <code>/admin/m</code> · 教練端 <code>/liff/coach</code></div></div>
+    </div>
+    <div class="arrow">↓ &nbsp; HTTPS / LIFF idToken 驗證（每請求驗 token，無 server session） &nbsp; ↓</div>
+    <div class="bx"><div class="t">Next.js App（App Router + REST API）</div><div class="s">Server Components 直打 Prisma；API routes 處理預約/付款/到場/退款/通知</div></div>
+    <div class="arrow">↓</div>
+    <div class="row">
+      <div class="bx"><div class="t">PostgreSQL + Prisma</div><div class="s">訂單 / 會員 / 場次 / 抵用金 / 付款明細 / 稽核</div></div>
+      <div class="bx"><div class="t">外部服務</div><div class="s">LINE 推播 · Cloudflare R2 圖床 · Email · Zeabur Cron（每日/週報/天氣）</div></div>
+    </div>
+  </div>
+
+  <h2>👥 角色權限矩陣</h2>
+  <div class="card">
+    <table>
+      <tr><th>能力 \ 角色</th><th class="c">老闆 boss</th><th class="c">代理人 admin</th><th class="c">教練 coach</th><th class="c">助教 assistant</th><th class="c">IT</th></tr>
+      <tr><td>到場點名</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td>收款記帳 / 現場收現</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">✕</td><td class="c no">✕</td><td class="c yes">✓</td></tr>
+      <tr><td>退款 / 取消場次</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">✕</td><td class="c no">✕</td><td class="c yes">✓</td></tr>
+      <tr><td>訂單 / 會員 / 場次管理</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">✕</td><td class="c no">✕</td><td class="c yes">✓</td></tr>
+      <tr><td>系統設定</td><td class="c yes">✓</td><td class="c no">✕</td><td class="c no">✕</td><td class="c no">✕</td><td class="c yes">✓</td></tr>
+      <tr><td>永久刪除訂單</td><td class="c yes">✓</td><td class="c no">✕</td><td class="c no">✕</td><td class="c no">✕</td><td class="c yes">✓</td></tr>
+    </table>
+    <p class="note" style="margin:10px 0 0">enum 值見 <code>prisma/schema.prisma</code> / 守門 <code>src/lib/auth.ts requireRole</code>。<b>admin = 代理人</b>（老闆代理，營運全權但不含系統設定/永久刪除），非 boss 別名。bootstrap 建立的初始帳號為 <code>admin</code> → 老闆本人應改 <code>boss</code>。</p>
+  </div>
+
+  <h2>🔁 訂單流程</h2>
+  <div class="card">
+    <p class="note" style="margin:0">下單 → 等待付款 → 上傳匯款憑證 → 老闆核對確認 → 到場點名 →（到場結束 / 未到取消）。分岔：突然取消活動（天氣，整場）、客戶取消、訂單不成立；退款分支 refunding → refunded。</p>
+    <a class="btn" href="./order-flow.html">開啟完整訂單流程圖 →</a>
+  </div>
+
+  <h2>⚡ 資料讀取 / 快取四層（手機/LINE WebView 慢，務必分層）</h2>
+  <div class="card">
+    <div class="row">
+      <div class="bx"><div class="t"><i class="mk" style="background:var(--gray)"></i>1 全域純靜態</div><div class="s">課程/潛點/評價/FAQ → 程式常數 <code>_home/data.tsx</code>，零 DB</div></div>
+      <div class="bx"><div class="t"><i class="mk" style="background:var(--amber)"></i>2 共享偶爾變</div><div class="s">營業設定/政策/價目/VIP（siteConfig）→ 版本號失效快取 <code>getSiteConfigRow()</code></div></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="bx"><div class="t"><i class="mk" style="background:var(--teal)"></i>3 共享會變</div><div class="s">場次/潛旅 + 空位 → 版本號失效快取 <code>cached()</code>，下單/取消自動失效</div></div>
+      <div class="bx"><div class="t"><i class="mk" style="background:var(--green)"></i>4 個人資料</div><div class="s"><code>/api/me</code> 等 → 一律即時、不快取（<code>cache:"no-store"</code>）</div></div>
+    </div>
+    <p class="note" style="margin:10px 0 0">機制（v693 起）：寫入經 Prisma <code>$extends</code> 自動 bumpVersion；讀取端比對版本號。詳見 <code>AGENTS.md</code>。</p>
+  </div>
+
+  <h2>📁 文件導覽（新接手者照這個順序）</h2>
+  <div class="card docs">
+    <ul>
+      <li><b><a href="../README.md">README.md</a></b> — 專案總覽、怎麼跑起來、部署。<span class="pill">第一站</span></li>
+      <li><b><a href="../ARCHITECTURE.md">ARCHITECTURE.md</a></b> — 技術堆疊、資料流、重要機制。<span class="pill">懂設計</span></li>
+      <li><b><a href="./PROGRESS.md">docs/PROGRESS.md</a></b> — 開發日誌（時序 + 決策 + 下次先看）。<span class="pill">最快進入狀況</span></li>
+      <li><b><a href="../status.md">status.md</a></b> — 現況快照（目前版本 / 近期重點）。<span class="pill">現在在哪</span></li>
+      <li><b><a href="../CHANGELOG.md">CHANGELOG.md</a></b> — 逐版變更紀錄。<span class="pill">查功能何時加</span></li>
+      <li><b><a href="../AGENTS.md">AGENTS.md</a> / <a href="../CLAUDE.md">CLAUDE.md</a></b> — 協作鐵則（手機優先、快取分層）。<span class="pill">工程/AI 必讀</span></li>
+      <li><b><a href="./order-flow.html">docs/order-flow.html</a></b> — 訂單流程視覺圖。</li>
+      <li><b><a href="../ZEABUR_DEPLOY.md">ZEABUR_DEPLOY.md</a> / <a href="./DEPLOY_VERIFY.md">docs/DEPLOY_VERIFY.md</a></b> — 部署與驗證。</li>
+    </ul>
+  </div>
+
+  <h2>🚀 部署</h2>
+  <div class="card note">
+    push <code>master</code> → Zeabur 自動建置（約 7–9 分鐘）→ 驗 <code>curl https://haiwangzi.xyz/api/healthz</code> 的 <code>version</code> 即線上版本。版本號在 <code>src/lib/version.ts</code>，每次 push 必 bump（同步更新 CHANGELOG / PROGRESS / status / README）。
+  </div>
+
+  <p class="note" style="margin-top:22px">此頁只放穩定的結構性內容（架構/角色/流程/快取）；版本與進度請看 PROGRESS.md / CHANGELOG.md。檔案：<code>docs/index.html</code></p>
+
+</div>
+</body>
+</html>

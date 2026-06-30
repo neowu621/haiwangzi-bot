@@ -1,6 +1,11 @@
 # 海王子潛水團 LIFF App — 網頁架構說明
 
-版本：`20260511_00`｜最後更新：2026-05-11
+最後更新：2026-07-01（對應線上 `20260701_758M`）｜本檔描述穩定架構；逐版變更見 `CHANGELOG.md`、開發脈絡見 `docs/PROGRESS.md`、視覺總覽見 `docs/index.html`。
+
+> **近期重要機制（讀本檔前先知道）**
+> - **快取分層（v693 起）**：寫入經 Prisma `$extends` 自動 `bumpVersion(domain)`，讀取端 `cached()` 比版本號 → 平時零 DB。四層策略見 `AGENTS.md`。
+> - **角色模型**：`boss`（老闆/最高權）、`admin`（**代理人**，營運全權但不含系統設定/永久刪除）、`coach`/`assistant`（現場到場點名）、`it`（=老闆）。守門 `src/lib/auth.ts` `requireRole`。
+> - **訂單狀態機**：雙維度（BookingStatus + PaymentStatus），UI 用 `src/lib/booking-status.ts` `deriveBookingDisplay()` 衍生單一線性 label；流程圖見 `docs/order-flow.html`。
 
 ---
 

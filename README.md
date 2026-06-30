@@ -10,6 +10,24 @@
 
 ---
 
+## 📁 文件導覽（新接手者請從這裡開始）
+
+> 視覺入口：開 **[`docs/index.html`](docs/index.html)**（架構地圖 + 角色權限矩陣 + 訂單流程 + 快取分層，並連到下列文件）。
+
+| 文件 | 用途 | 何時看 |
+| --- | --- | --- |
+| **README.md** | 專案總覽 / 怎麼跑 / 部署 | 第一站 |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | 技術堆疊、資料流、重要機制 | 想懂「怎麼設計」 |
+| **[docs/PROGRESS.md](docs/PROGRESS.md)** | 開發日誌（時序 + 決策 + 下次先看） | **最快進入狀況** |
+| **[status.md](status.md)** | 現況快照（版本 / 近期重點） | 想知道「現在在哪」 |
+| **[CHANGELOG.md](CHANGELOG.md)** | 逐版變更紀錄 | 查「某功能何時加」 |
+| **[AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md)** | 協作鐵則（手機優先、快取分層） | 工程 / AI 必讀 |
+| **[docs/order-flow.html](docs/order-flow.html)** | 訂單流程視覺圖 | 看流程全貌 |
+
+> 維護原則：版本/進度寫在 **version.ts → CHANGELOG → PROGRESS → status → README（當前版本）**（每次 bump 五個一起）；HTML（index/order-flow）只放穩定的結構性內容。歷史一次性報告收在 `docs/archive/`。
+
+---
+
 ## 目錄
 
 1. [快速開始](#快速開始)
