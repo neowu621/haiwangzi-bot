@@ -133,12 +133,19 @@ const TOOLS = [
 ];
 
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
+const taipeiToday = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+const taipeiPlus = (base: string, days: number) => { const d = new Date(`${base}T00:00:00+08:00`); d.setDate(d.getDate() + days); return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }); };
+const weekdayOf = (ds: string) => WD[new Date(`${ds}T12:00:00+08:00`).getDay()];
 /** get_dive_sessions 工具：查近期可預約日潛場次 + 剩餘名額（重用 /api/trips 的版本號快取，命中零 DB）。 */
 async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
-  const todayTw = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
-  const f = from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : todayTw;
-  let t = to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : "";
-  if (!t) { const d = new Date(`${f}T00:00:00+08:00`); d.setDate(d.getDate() + 14); t = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }); }
+  const today = taipeiToday();
+  const rx = (s?: string) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  let f = rx(from) ? (from as string) : today;
+  let t = rx(to) ? (to as string) : taipeiPlus(today, 14);
+  if (f < today) f = today;                              // 不查過去（模型常算錯日期）
+  if (t < f) t = taipeiPlus(f, 14);                      // to 不合理 → 從 f 起 14 天
+  if (t > taipeiPlus(today, 60)) t = taipeiPlus(today, 60); // 上限 60 天
+  const head = `今天是 ${today}（星期${weekdayOf(today)}）。`;
   try {
     const lines = await cached(`assistant:sessions:${f}|${t}`, "trips", TTL_LISTING, async () => {
       const trips = await prisma.divingTrip.findMany({
@@ -162,11 +169,11 @@ async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
         const names = x.diveSiteIds.map((id) => sm.get(id) ?? id).join("、") || "東北角";
         const booked = bm.get(x.id) ?? 0;
         const seat = x.capacity == null ? "可預約" : x.capacity - booked <= 0 ? "已滿" : `剩 ${x.capacity - booked} 位`;
-        return `${ds}(${wd}) ${x.startTime} ${names}・${x.isBoat ? "船潛" : "岸潛"}・${x.tankCount}潛・${seat}`;
+        return `- ${ds}（${wd}）${x.startTime} ${names}・${x.isBoat ? "船潛" : "岸潛"}・${x.tankCount}潛・${seat}`;
       });
     });
-    if (!lines || lines.length === 0) return `${f} ~ ${t} 目前沒有開放預約的日潛場次。可加 LINE @894bpmew 問汪汪教練，或許願開團 🙂`;
-    return `近期日潛場次（${f} ~ ${t}）：\n${lines.join("\n")}\n（報名／確認名額請加 LINE @894bpmew）`;
+    if (!lines || lines.length === 0) return `${head}查詢區間 ${f} ~ ${t} 目前沒有開放預約的日潛場次。可加 LINE @894bpmew 問汪汪教練，或許願開團 🙂`;
+    return `${head}查詢區間 ${f} ~ ${t} 的日潛場次：\n${lines.join("\n")}\n（報名／確認名額請加 LINE @894bpmew）`;
   } catch (e) {
     console.error("[assistant get_dive_sessions]", e);
     return "查詢場次時出了點問題，請加 LINE @894bpmew 直接問汪汪教練。";
@@ -175,7 +182,7 @@ async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
 
 /** get_dive_tours 工具：查目前開放的潛水旅行（潛旅）+ 名額。寫入 tourPackage/booking 會 bump "tours" 域 → 存檔自動更新。 */
 async function runGetDiveTours(): Promise<string> {
-  const todayTw = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+  const todayTw = taipeiToday();
   try {
     const lines = await cached("assistant:tours", "tours", TTL_LISTING, async () => {
       const tours = await prisma.tourPackage.findMany({
@@ -197,7 +204,7 @@ async function runGetDiveTours(): Promise<string> {
         const booked = bm.get(x.id) ?? 0;
         const seat = x.capacity == null ? "可報名" : x.capacity - booked <= 0 ? "已額滿" : `剩 ${x.capacity - booked} 位`;
         const bf = x.beginnerFriendly ? "・新手友善" : "";
-        return `${x.title}${dur}：${s}~${e}・每人 NT$${x.basePrice.toLocaleString()}（訂金 ${x.deposit.toLocaleString()}）・${seat}${bf}`;
+        return `- ${x.title}${dur}：${s}~${e}・每人 NT$${x.basePrice.toLocaleString()}（訂金 ${x.deposit.toLocaleString()}）・${seat}${bf}`;
       });
     });
     if (!lines || lines.length === 0) return "目前沒有開放報名的潛水旅行（潛旅）。可加 LINE @894bpmew 問汪汪教練，或許願開團 🙂";
@@ -317,8 +324,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請提供對話訊息（最後一則需為使用者）" }, { status: 400 });
   }
 
-  // 系統提示 = 知識庫 + 後台即時價目/政策 + 後台補充的個性/知識
-  let system = buildSystemPrompt() + buildLivePricingBlock(cfg);
+  // 系統提示 = 今天日期 + 知識庫 + 後台即時價目/政策 + 後台補充的個性/知識
+  const todayTw = taipeiToday();
+  const dateLine = `【現在時間】今天是 ${todayTw}（星期${weekdayOf(todayTw)}），時區 Asia/Taipei。需要「今天／明天／本週末／某月某日有沒有場次」時，務必呼叫 get_dive_sessions 工具查真實資料，不要自己推算或臆測日期；工具回覆開頭會再次標明今天日期，以它為準。`;
+  let system = dateLine + "\n\n" + buildSystemPrompt() + buildLivePricingBlock(cfg);
   if ((ai.persona ?? "").trim()) system += `\n\n# 老闆補充的個性／語氣（務必遵循）\n${(ai.persona ?? "").trim()}`;
   if ((ai.extraKnowledge ?? "").trim()) system += `\n\n# 老闆補充的資訊（優先採用）\n${(ai.extraKnowledge ?? "").trim()}`;
   const messages: OAIMessage[] = [{ role: "system", content: system }, ...history];

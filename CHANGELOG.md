@@ -1,5 +1,14 @@
 # Changelog
 
+## 20260701_768M - 2026-07-01 (AI 客服：修「週末場次判斷錯誤」— 注入今天日期 + 場次日期防呆 + Markdown 條列)
+
+- **根因**：`gemini-2.5-flash-lite` 不知道「今天是哪天」，被問「本週末有沒有場次」時自己亂算日期（曾算成 5/15~5/29），導致查無場次而誤答「沒有」。
+- **修法**：
+  1. **system prompt 注入現在時間**——每次請求開頭加「今天是 YYYY-MM-DD（星期X），時區 Asia/Taipei」，並明令「問日期／場次一律呼叫 `get_dive_sessions`，不要自己推算」。
+  2. **`get_dive_sessions` 日期防呆**——`from` 早於今天一律夾成今天（不查過去）、`to` 不合理時自動補成 `from`+14 天、區間上限 60 天；工具回覆開頭再次標明「今天是 …（星期X）」，模型以此為準。
+  3. **Markdown 條列**——場次／潛旅輸出改用 `- ` 條列，模型較不會看錯、前端也較好讀。
+- 動檔：`src/app/api/assistant/route.ts`。
+
 ## 20260701_767M - 2026-07-01 (AI 客服：價目/政策即時讀後台，存檔即生效)
 
 - AI 客服回答時**即時讀後台 `siteConfig`** 的可編輯價目與政策,注入 system prompt：**裝備租借價**(`gearRentalPrices`)、**日潛費用**(`defaultTripPricing` 基本費/每支氣瓶/夜潛/水中推進器)、**取消/退款政策**(`cancellationPolicy`)、**安全須知**(`safetyPolicy`)。老闆在後台「系統設定 → 金額/政策」一改,AI 立刻跟上(走 siteConfig 版本號快取,免 cron)。

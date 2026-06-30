@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-01 — AI 客服修「週末場次判斷錯誤」（v768）
+
+問題：被問「本週末有沒有場次」時答錯（明明有場次卻說沒有）。實測抓到 `get_dive_sessions` 被模型帶入過去的日期區間（如 5/15~5/29，今天卻是 7/1）→ 查無資料 → 誤答。根因不是格式，是 **`gemini-2.5-flash-lite` 不知道今天是哪天**而臆測日期。
+
+- `src/app/api/assistant/route.ts`：
+  - 抽出共用日期工具 `taipeiToday()` / `taipeiPlus(base,days)` / `weekdayOf(ds)`（`WD` 星期表）。
+  - **system prompt 開頭注入現在時間**：「今天是 YYYY-MM-DD（星期X），時區 Asia/Taipei」+ 明令「問日期/場次一律呼叫 `get_dive_sessions`，不要自己推算」。
+  - **`runGetDiveSessions` 日期防呆**：`from < today` → 夾成 today；`to < from` → `from`+14；區間 > 60 天 → 砍到 60；回覆開頭再標「今天是 …」。
+  - 場次/潛旅輸出改 **Markdown 條列（`- `）**，降低模型看錯機率。
+- 下次先看：若仍偶爾誤判，考慮把「本週末」直接在後端算成日期範圍再丟工具，或升級到 `gemini-2.5-flash`（工具呼叫更穩）。
+
 ## 2026-07-01 — AI 客服價目/政策即時讀後台（v767）
 
 選 2：讓後台可編輯的價目/政策也即時同步給 AI（免 cron）。
