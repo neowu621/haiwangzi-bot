@@ -1,5 +1,12 @@
 # Changelog
 
+## 20260701_761M - 2026-07-01 (AI 客服：可愛機器人吉祥物 + 只在桌機首頁顯示)
+
+- AI 客服浮動鈕改為**會動的可愛機器人吉祥物**：漂浮、眨眼、天線發光、小泡泡、左右小鰭擺動；聊天視窗 header 也放同一隻（compact）。純 CSS（inline `<style>`），無新依賴。
+- 支援 `prefers-reduced-motion`：使用者系統設定「減少動畫」時自動停用所有動畫。
+- **顯示範圍收斂**：只在**桌機首頁 `/`** 顯示（`hidden = pathname !== "/"`）；手機（proxy 導 `/mobile`）、LIFF、後台與其他頁皆不顯示，避免手機/LINE WebView 首屏負擔。
+- 動檔 `src/components/assistant/ChatWidget.tsx`。
+
 ## 20260701_760M - 2026-07-01 (AI 客服改用 OpenRouter + Gemini 2.0 Flash)
 
 - AI 客服 `/api/assistant` 後端從 Anthropic SDK 改為 **OpenRouter（OpenAI 相容）**，預設模型 **Google Gemini 2.0 Flash**（`google/gemini-2.0-flash-001`，FAQ 客服便宜快速）；可用 `OPENROUTER_MODEL` 覆寫（例 `google/gemini-2.0-flash-lite-001` 更省）。

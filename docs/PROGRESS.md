@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-01 — AI 客服可愛機器人吉祥物 + 只在桌機首頁（v761）
+
+由使用者操刀 `src/components/assistant/ChatWidget.tsx`：
+
+- 浮動鈕 → 會動的機器人吉祥物（漂浮/眨眼/天線發光/泡泡/小鰭擺動），header 也放同一隻（compact）。純 CSS inline `<style>`，無新依賴；支援 `prefers-reduced-motion`。
+- **顯示範圍收斂**：`hidden = pathname !== "/"` → 只在**桌機首頁 `/`**。手機（proxy 導 `/mobile`）、LIFF、後台、其他頁都不顯示（先前版本是除 admin/liff/pclogin/coach 外都顯示；本版更保守）。
+- tsc + eslint 通過（lint 僅既有 warning）。
+
+---
+
 ## 2026-07-01 — AI 客服改用 OpenRouter + Gemini 2.0 Flash（v760）
 
 線上 = **v20260701_760M**。沿用 v759 的前端/知識庫/留資，只換**模型供應商**。
