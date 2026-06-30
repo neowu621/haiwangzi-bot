@@ -1,5 +1,13 @@
 # Changelog
 
+## 20260701_764M - 2026-07-01 (後台「系統設定 → 🤖 AI 客服」管理面板)
+
+- 後台「系統設定」新增 **🤖 AI 客服** 分頁(限老闆)：可調 **開關 / 模型 / 個性語氣 / 開場招呼語 / 補充知識**,即時生效、免改程式。
+- 設定存進 **SiteConfig 新欄 `ai_bot`(JSONB)**：靠 `scripts/migrate-safety.js` 於部署時以原生 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 安全加欄(避開 prod `prisma db push` drift、且在 app 讀 siteConfig 前完成,不會掛站)。
+- `/api/assistant`：讀 `siteConfig.aiBot` → 後台停用回 503；模型 = 後台 > 環境變數 > 預設;個性/補充知識附加到 system prompt。新增 `GET /api/assistant` 回 `{enabled, greeting}` 給 widget。
+- `ChatWidget`：掛載時抓設定,後台停用則隱藏、套用自訂招呼語。
+- 動檔：`prisma/schema.prisma`(加 `aiBot`)、`scripts/migrate-safety.js`、`site-config/route.ts`(PatchSchema)、`admin/settings/page.tsx`、`api/assistant/route.ts`、`assistant/ChatWidget.tsx`。
+
 ## 20260701_763M - 2026-07-01 (AI 客服：改最便宜 gemini-2.5-flash-lite + 個性活潑)
 
 - 預設模型改為 **`google/gemini-2.5-flash-lite`**（OpenRouter 最便宜，$0.10/$0.40 每百萬 token；實測金鑰可用）。要更穩的工具呼叫可用 `OPENROUTER_MODEL=google/gemini-2.5-flash`。

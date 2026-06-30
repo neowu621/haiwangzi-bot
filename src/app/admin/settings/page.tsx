@@ -64,6 +64,8 @@ interface Config {
   splashDurationMs: number;
   splashCooldownMs: number;
   weatherAutoCancel: boolean;
+  // v764：AI 客服小幫手
+  aiBot?: { enabled?: boolean; model?: string; persona?: string; greeting?: string; extraKnowledge?: string };
   // Money
   gearRentalPrices: Partial<GearPrices>;
   defaultTripPricing: Partial<TripPricing>;
@@ -222,7 +224,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const t = new URLSearchParams(window.location.search).get("tab");
-    const valid = ["home", "links", "payment", "money", "vip", "upload", "policy", "autosend", "danger", "tools"];
+    const valid = ["home", "links", "payment", "money", "vip", "upload", "policy", "autosend", "aibot", "danger", "tools"];
     if (t && valid.includes(t)) setActiveTab(t);
   }, []);
   const [loading, setLoading] = useState(true);
@@ -416,7 +418,7 @@ export default function SettingsPage() {
 
         {/* v255/v345：9 大分類 Tab 切換（含 ⭐ VIP）；支援 ?tab= 直接開特定分頁 */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:grid-cols-10">
+          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-6 lg:grid-cols-11">
             <TabsTrigger value="home">🏠 首頁</TabsTrigger>
             <TabsTrigger value="links">🔗 連結</TabsTrigger>
             <TabsTrigger value="payment">💳 付款</TabsTrigger>
@@ -425,9 +427,68 @@ export default function SettingsPage() {
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
             <TabsTrigger value="autosend">📨 自動發送</TabsTrigger>
+            <TabsTrigger value="aibot">🤖 AI 客服</TabsTrigger>
             <TabsTrigger value="danger">⚠️ 危險</TabsTrigger>
             <TabsTrigger value="tools">🔧 工具</TabsTrigger>
           </TabsList>
+
+        <TabsContent value="aibot" className="mt-4">
+          <SectionCard title="🤖 AI 客服小幫手">
+            <div className="space-y-3">
+              <FieldRow label="啟用 AI 客服">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" checked={cfg.aiBot?.enabled !== false}
+                    onChange={e => setCfg(c => c ? { ...c, aiBot: { ...(c.aiBot ?? {}), enabled: e.target.checked } } : c)}
+                    className="h-4 w-4 accent-[var(--color-phosphor)]" />
+                  <span className="text-sm text-[var(--foreground)]">啟用（關閉後桌機首頁不顯示小幫手）</span>
+                </label>
+              </FieldRow>
+              <FieldRow label="模型">
+                <select value={cfg.aiBot?.model ?? ""}
+                  onChange={e => setCfg(c => c ? { ...c, aiBot: { ...(c.aiBot ?? {}), model: e.target.value } } : c)}
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm">
+                  <option value="">（預設）google/gemini-2.5-flash-lite — 最便宜</option>
+                  <option value="google/gemini-2.5-flash-lite">google/gemini-2.5-flash-lite — 最便宜</option>
+                  <option value="google/gemini-2.5-flash">google/gemini-2.5-flash — 較穩</option>
+                </select>
+              </FieldRow>
+              <FieldRow label="個性 / 語氣">
+                <textarea rows={3} value={cfg.aiBot?.persona ?? ""}
+                  onChange={e => setCfg(c => c ? { ...c, aiBot: { ...(c.aiBot ?? {}), persona: e.target.value } } : c)}
+                  placeholder="例：個性活潑、像愛潛水的海邊好朋友，多給新手鼓勵。（留空用預設）"
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
+              </FieldRow>
+              <FieldRow label="開場招呼語">
+                <Input value={cfg.aiBot?.greeting ?? ""}
+                  onChange={e => setCfg(c => c ? { ...c, aiBot: { ...(c.aiBot ?? {}), greeting: e.target.value } } : c)}
+                  placeholder="留空用預設：嗨！我是海王子潛水的 AI 小幫手 🐠 …" />
+              </FieldRow>
+              <FieldRow label="補充知識 / 注意事項">
+                <textarea rows={4} value={cfg.aiBot?.extraKnowledge ?? ""}
+                  onChange={e => setCfg(c => c ? { ...c, aiBot: { ...(c.aiBot ?? {}), extraKnowledge: e.target.value } } : c)}
+                  placeholder="想讓 AI 多知道的事，例：本月綠島團優惠、某潛點整修中…（會附加給 AI 參考）"
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm" />
+              </FieldRow>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                ※ AI 只回答潛水相關問題；金鑰 <code>OPENROUTER_API_KEY</code> 需在 Zeabur 環境變數設定。回答範圍/規則在程式 <code>src/lib/assistant-kb.ts</code>。
+              </p>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("AI 客服", { aiBot: {
+                  enabled: cfg.aiBot?.enabled !== false,
+                  model: cfg.aiBot?.model ?? "",
+                  persona: cfg.aiBot?.persona ?? "",
+                  greeting: cfg.aiBot?.greeting ?? "",
+                  extraKnowledge: cfg.aiBot?.extraKnowledge ?? "",
+                } })}
+                disabled={saving === "AI 客服"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "AI 客服" ? "儲存中..." : "儲存 AI 客服設定"}
+              </Button>
+            </div>
+          </SectionCard>
+        </TabsContent>
 
         <TabsContent value="home" className="mt-4">
         {/* ── A. 首頁設定 ──────────────────── */}

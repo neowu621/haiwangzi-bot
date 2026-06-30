@@ -224,14 +224,31 @@ export default function ChatWidget() {
   const [msgs, setMsgs] = useState<Msg[]>([{ role: "assistant", content: GREET }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [botEnabled, setBotEnabled] = useState(true); // v764：後台可停用
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  // 只放在桌機首頁 `/`。真人手機會被 proxy 導到 `/mobile`，因此不顯示小幫手，避免 LINE WebView/手機首屏變重。
-  const hidden = pathname !== "/";
+  // 只放在桌機首頁 `/`（手機走 proxy `/mobile`）；後台停用時也隱藏。
+  const onHome = pathname === "/";
+  const hidden = !onHome || !botEnabled;
 
   useEffect(() => {
     if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, open, loading]);
+
+  // v764：抓後台設定（是否啟用 + 自訂招呼語）
+  useEffect(() => {
+    if (!onHome) return;
+    let alive = true;
+    fetch("/api/assistant")
+      .then((r) => r.json())
+      .then((d: { enabled?: boolean; greeting?: string }) => {
+        if (!alive) return;
+        if (d.enabled === false) setBotEnabled(false);
+        if (d.greeting) setMsgs((m) => (m.length === 1 ? [{ role: "assistant", content: d.greeting as string }] : m));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [onHome]);
 
   const send = useCallback(async () => {
     const text = input.trim();

@@ -42,6 +42,14 @@ const PatchSchema = z.object({
   splashDurationMs: z.number().int().min(0).max(60000).optional(),
   splashCooldownMs: z.number().int().min(0).max(86400000).optional(),
   weatherAutoCancel: z.boolean().optional(),
+  // v764：AI 客服小幫手後台設定
+  aiBot: z.object({
+    enabled: z.boolean(),
+    model: z.string().max(80),
+    persona: z.string().max(2000),
+    greeting: z.string().max(500),
+    extraKnowledge: z.string().max(4000),
+  }).partial().optional(),
   gearRentalPrices: z.record(z.number()).optional(),
   defaultTripPricing: z.object({
     baseTrip: z.number().int().min(0),

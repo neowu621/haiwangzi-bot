@@ -6,9 +6,27 @@ import { prisma } from "@/lib/prisma";
 import { notifyBossNewInquiry } from "@/lib/notify-boss";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildSystemPrompt } from "@/lib/assistant-kb";
+import { getSiteConfigRow } from "@/lib/site-config-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+interface AiBotCfg { enabled?: boolean; model?: string; persona?: string; greeting?: string; extraKnowledge?: string }
+async function readAiBotCfg(): Promise<AiBotCfg> {
+  try {
+    const cfg = await getSiteConfigRow();
+    return ((cfg as { aiBot?: AiBotCfg } | null)?.aiBot ?? {}) as AiBotCfg;
+  } catch { return {}; }
+}
+
+// GET：給前端 widget 取「是否啟用 + 招呼語」（公開、輕量、走 siteConfig 快取）
+export async function GET() {
+  const ai = await readAiBotCfg();
+  return NextResponse.json({
+    enabled: ai.enabled !== false, // 後台未設或 true → 顯示；明確 false → 隱藏
+    greeting: (ai.greeting ?? "").trim(),
+  });
+}
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // 最便宜；要更穩工具呼叫可用 OPENROUTER_MODEL=google/gemini-2.5-flash
@@ -125,6 +143,13 @@ export async function POST(req: NextRequest) {
   const limited = checkRateLimit(req, { scope: "assistant", windowMs: 60_000, max: 20 });
   if (limited) return limited;
 
+  const ai = await readAiBotCfg();
+  if (ai.enabled === false) {
+    return NextResponse.json(
+      { error: "AI 客服目前已由後台停用，歡迎加 LINE @894bpmew 直接詢問汪汪教練 🙂" },
+      { status: 503 },
+    );
+  }
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -132,7 +157,8 @@ export async function POST(req: NextRequest) {
       { status: 503 },
     );
   }
-  const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+  // 模型：後台設定 > 環境變數 > 預設
+  const model = (ai.model ?? "").trim() || process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 
   let body: { messages?: ChatMsg[] };
   try {
@@ -151,7 +177,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請提供對話訊息（最後一則需為使用者）" }, { status: 400 });
   }
 
-  const messages: OAIMessage[] = [{ role: "system", content: buildSystemPrompt() }, ...history];
+  // 系統提示 = 知識庫 + 後台補充的個性/知識
+  let system = buildSystemPrompt();
+  if ((ai.persona ?? "").trim()) system += `\n\n# 老闆補充的個性／語氣（務必遵循）\n${(ai.persona ?? "").trim()}`;
+  if ((ai.extraKnowledge ?? "").trim()) system += `\n\n# 老闆補充的資訊（優先採用）\n${(ai.extraKnowledge ?? "").trim()}`;
+  const messages: OAIMessage[] = [{ role: "system", content: system }, ...history];
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {

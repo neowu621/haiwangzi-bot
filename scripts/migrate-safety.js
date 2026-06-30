@@ -143,6 +143,9 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_marine_points JSONB NOT NULL DEFAULT '[{"label":"龍洞區","buoyId":"46694A","tideId":"C4A02"},{"label":"基隆區","buoyId":"C6B01","tideId":"C4B01"}]'::jsonb`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS weather_marine_fields JSONB NOT NULL DEFAULT '{"waveHeight":true,"waveDir":true,"wavePeriod":true,"seaTemp":true,"current":true,"tide":true}'::jsonb`,
 
+  // v764：網站 AI 客服小幫手後台設定（單一 JSON：enabled/model/persona/greeting/extraKnowledge）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS ai_bot JSONB NOT NULL DEFAULT '{}'::jsonb`,
+
   // v275: 退款備註
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_note TEXT`,
   `ALTER TABLE refund_requests ADD COLUMN IF NOT EXISTS refund_note TEXT`,

@@ -748,6 +748,9 @@ model SiteConfig {
   // 付款資訊（銀行 + LINE Pay）— v160 起改用 DB 管理
   // { bank: {name, branch, account, holder}, linepay: {qrUrl, liteId} }
   paymentInfo          Json   @default("{}") @map("payment_info")
+  // v764：網站 AI 客服小幫手後台設定（單一 JSON）
+  //   { enabled, model, persona, greeting, extraKnowledge }
+  aiBot                Json   @default("{}") @map("ai_bot")
   // v227：取消政策（admin 可編輯，FAQ + 預約頁同步顯示）
   cancellationPolicy   String @default("") @map("cancellation_policy") @db.Text
   // v257：安全政策（admin 可編輯，FAQ + 預約頁同步顯示）

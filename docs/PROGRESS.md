@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-01 — 後台「系統設定 → 🤖 AI 客服」管理面板（v764）
+
+讓老闆**從後台**管理 AI 客服(免改程式)。
+
+- **存儲**：`SiteConfig` 加 `aiBot Json @default("{}")`（`prisma/schema.prisma`）。**關鍵**：本機 `.env` 是 localhost（無 prod 連線），prod 又有 `prisma db push` drift → 改用 **`scripts/migrate-safety.js`** 加 `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS ai_bot jsonb ...`，部署時(讀 siteConfig 前)以原生 SQL 安全建欄。現有 email_threads/home_videos 等欄都這樣加、運作正常 → 證明 migrate-safety 確實在 Zeabur 部署跑。**順序安全：欄先建、app 才服務**，故可直接部署、不會掛站、不用手動 SQL。
+- **後台 UI**：`admin/settings/page.tsx` 新增 `aibot` 分頁(SectionCard)：開關 / 模型 select / 個性 textarea / 招呼語 / 補充知識 → `save("AI 客服", { aiBot })` 經 site-config POST(PatchSchema 加 `aiBot`，限老闆)。
+- **API**：`/api/assistant` 讀 `getSiteConfigRow().aiBot`：停用→503；模型 = 後台>env>預設；persona/extraKnowledge 附加到 system prompt。新增 `GET` 回 `{enabled, greeting}`。`ChatWidget` 掛載抓設定(停用隱藏、套自訂招呼語)。
+- **設定面板總覽**：個性/招呼語/補充知識 → 後台「🤖 AI 客服」分頁(即時)；硬性規則/知識庫 → `src/lib/assistant-kb.ts`(改程式)；模型 → 後台或 env `OPENROUTER_MODEL`；金鑰 `OPENROUTER_API_KEY` → Zeabur env。
+- 仍待：Zeabur 設 `OPENROUTER_API_KEY` 才會真的回答。
+
+---
+
 ## 2026-07-01 — AI 客服改最便宜模型 + 個性活潑（v763）
 
 - 模型：`DEFAULT_MODEL` 改 **`google/gemini-2.5-flash-lite`**（最便宜 $0.10/$0.40；以成本為主）。工具呼叫想更穩 → `OPENROUTER_MODEL=google/gemini-2.5-flash`。
