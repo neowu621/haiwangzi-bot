@@ -1,5 +1,14 @@
 # Changelog
 
+## 20260630_756M - 2026-06-30 (修 v755 權限瑕疵：現場收現限老闆 + 訂單流程說明頁)
+
+- **修 v755 回歸**：`payment-entry`（付款/折抵記帳）改為**僅老闆**（boss/admin/it），移除 coach —— 教練/助教不可記帳收款。
+- **到場點名依角色分流**：老闆點「未付清＋到場」→ 現場收現結清（現場付金）；教練/助教 → 只標到場 + 提醒「請現場收現並通知老闆記帳」（不再呼叫 payment-entry，避免 403 失敗）。桌機 `/admin/attendance`、手機 `/admin/m/attendance` 皆依登入者 `effectiveRoles` 判斷。
+- **未到退款提醒統一**：三介面（桌機/手機/教練端）標未到後提示一律改為「請通知老闆處理退款」（教練/助教無退款權限，原「請到訂單詳情」對他們不可行）。
+- 教練端 LIFF `/liff/coach/today` 移除自動結算（教練不能記帳）。
+- 新增訂單流程說明文件 `docs/order-flow.html`（權限模型 + 正常流程 + 突然取消活動 + 三種取消對照 + 退款分支）。
+- 動檔：`payment-entry/route.ts`、`admin/attendance/page.tsx`、`admin/m/attendance/page.tsx`、`liff/coach/today/page.tsx`、`docs/order-flow.html`。
+
 ## 20260630_755M - 2026-06-30 (到場點名：所有按鈕加確認 + 未付清現場收現 + 未到退款提醒)
 
 - **所有「到場 / 未到」按鈕一律先跳確認**（達成 /goal）：桌機 `/admin/attendance`、手機 `/admin/m/attendance`、教練端 LIFF `/liff/coach/today` 三處皆是。

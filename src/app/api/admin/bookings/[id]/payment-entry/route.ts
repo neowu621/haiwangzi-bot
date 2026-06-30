@@ -53,7 +53,7 @@ export async function GET(
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["admin", "coach"]);
+  const role = requireRole(auth.user, ["admin"]); // v756：付款/折抵記帳僅老闆(boss/admin/it)，教練/助教不可
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
@@ -82,7 +82,7 @@ export async function POST(
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["admin", "coach"]);
+  const role = requireRole(auth.user, ["admin"]); // v756：付款/折抵記帳僅老闆(boss/admin/it)，教練/助教不可
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
@@ -171,7 +171,7 @@ export async function DELETE(
   const auth = await authFromRequest(req);
   if (!auth.ok)
     return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const role = requireRole(auth.user, ["admin", "coach"]);
+  const role = requireRole(auth.user, ["admin"]); // v756：付款/折抵記帳僅老闆(boss/admin/it)，教練/助教不可
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 

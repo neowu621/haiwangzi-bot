@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>海王子 — 訂單流程說明</title>
+<style>
+  :root{
+    --ink:#0A2342; --muted:#5b6b7d; --line:#dfe5ec; --soft:#f4f7fa; --card:#fff;
+    --amber:#C58A1B; --teal:#1F8A8A; --green:#2E8B57; --coral:#C7503F; --gray:#9AA0A6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef2f6;color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    line-height:1.65;padding:24px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px}
+  .lead{color:var(--muted);font-size:14px;margin:0 0 20px}
+  h2{font-size:17px;margin:28px 0 10px;display:flex;align-items:center;gap:8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:8px}
+  .legend b{font-weight:600;color:var(--ink)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .bx{border:1px solid var(--line);border-radius:11px;padding:10px 13px;display:flex;gap:10px;background:#fff}
+  .bx .mk{width:4px;border-radius:4px;flex:none}
+  .bx .ttl{font-weight:600;font-size:14.5px}
+  .bx .tag{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--muted);font-weight:400;margin-left:6px}
+  .bx .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .arrow{text-align:center;color:#aab4c0;font-size:16px;line-height:1;margin:4px 0}
+  .row{display:flex;gap:12px}.row>*{flex:1}
+  .pill{display:inline-block;font-size:12px;padding:1px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);margin:2px 4px 2px 0}
+  .panel{border:1.5px solid var(--coral);border-radius:14px;padding:14px;background:#fff;margin-bottom:14px}
+  .panel .ph{font-weight:600;color:var(--coral);margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12.5px}
+  code{background:var(--soft);border-radius:5px;padding:1px 5px;font-size:12px}
+  .note{font-size:13px;color:var(--muted)}
+  @media(max-width:640px){.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>海王子 — 訂單流程說明</h1>
+  <p class="lead">從客戶下單、付款、到場點名，到取消與退款的完整路徑。狀態名稱對應程式碼 <code>src/lib/booking-status.ts</code>。</p>
+
+  <h2>權限模型</h2>
+  <div class="card note">
+    <b>桌機後台</b>（完整管理：訂單/會員/場次/退款/設定）— 僅 <b>老闆 (boss) 與 IT</b>（admin 同等）。<br>
+    <b>教練 (coach) / 助教 (assistant)</b> — 主要用 <b>手機後台</b>（<code>/admin/m/attendance</code>）；即使登入桌機，導覽也只開放「到場點名」。<br>
+    <b>退款</b>為 boss / admin 專屬，教練/助教不可執行。
+  </div>
+
+  <h2>狀態圖例</h2>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--amber)"></i><b>待處理</b></span>
+    <span><i class="dot" style="background:var(--teal)"></i><b>已確認 / 進行中</b></span>
+    <span><i class="dot" style="background:var(--green)"></i><b>完成</b></span>
+    <span><i class="dot" style="background:var(--coral)"></i><b>取消 / 退款</b></span>
+  </div>
+
+  <h2>正常流程</h2>
+  <div class="card">
+    <div class="bx"><div class="mk" style="background:var(--amber)"></div><div><div class="ttl">客戶下單<span class="tag">pending</span></div><div class="sub">選場次、人數、氣瓶、裝備、簽名</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--amber)"></div><div><div class="ttl">等待付款<span class="tag">awaiting_pay</span></div>
+      <div class="sub"><span class="pill">抵用金折抵</span><span class="pill">轉帳</span><span class="pill">LINE Pay</span><span class="pill">訂金 30 / 50%</span></div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--amber)"></div><div><div class="ttl">上傳匯款憑證<span class="tag">awaiting_verify</span></div><div class="sub">客戶上傳截圖，等老闆核對</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--teal)"></div><div><div class="ttl">老闆核對 → 已確認付款<span class="tag">confirmed</span></div><div class="sub">訂金（deposit_paid）或全額付清（fully_paid）</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--teal)"></div><div><div class="ttl">活動當天・到場點名</div><div class="sub">桌機 / 手機 / 教練端，皆先跳確認</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="row">
+      <div class="bx"><div class="mk" style="background:var(--green)"></div><div><div class="ttl">到場 → 活動結束<span class="tag">completed</span></div><div class="sub">未付清者先「現場收現（現場付金）」結清；累計潛數、重算 VIP、發通知/獎勵</div></div></div>
+      <div class="bx"><div class="mk" style="background:var(--coral)"></div><div><div class="ttl">未到 → 活動取消<span class="tag">no_show</span></div><div class="sub">未到場；有付款 → 提醒退款</div></div></div>
+    </div>
+  </div>
+
+  <h2>突然取消活動（整場場次取消）</h2>
+  <div class="panel">
+    <div class="ph">老闆 / 教練觸發「場次天氣・海況取消」<span class="tag">POST /api/coach/trips/weather-cancel</span></div>
+    <div class="bx"><div class="mk" style="background:var(--coral)"></div><div><div class="ttl">整場訂單批次標「活動取消（天氣）」<span class="tag">cancelled_by_weather</span></div><div class="sub">該場次所有訂單一次處理（已被客戶取消者除外）</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--coral)"></div><div><div class="ttl">系統自動：退折抵抵用金 + 推播全體</div><div class="sub">下單折抵的抵用金原額退回（冪等）；LINE / Email / 站內通知</div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--coral)"></div><div><div class="ttl">客戶選擇</div><div class="sub"><span class="pill">改期</span><span class="pill">全額退費</span><span class="pill">轉抵用金 +10%</span></div></div></div>
+    <div class="arrow">↓</div>
+    <div class="bx"><div class="mk" style="background:var(--coral)"></div><div><div class="ttl">已付現金 → 退款流程<span class="tag">refunding → refunded</span></div><div class="sub">退現金或轉抵用金 +10%；退款後訂單鎖定（目前由老闆手動處理）</div></div></div>
+  </div>
+
+  <h2>三種「取消」對照</h2>
+  <div class="card">
+    <table>
+      <tr><th>類型</th><th>狀態</th><th>觸發</th><th>範圍</th><th>退款</th></tr>
+      <tr><td>突然取消活動（天氣/海況）</td><td><code>cancelled_by_weather</code></td><td>老闆/教練</td><td>整場一次</td><td>自動退折抵抵用金 + 推播；現金手動退</td></tr>
+      <tr><td>客戶取消</td><td><code>cancelled_by_user</code></td><td>客戶/老闆</td><td>單筆</td><td>依退款政策（天數比例）</td></tr>
+      <tr><td>未到場</td><td><code>no_show</code></td><td>到場點名</td><td>單筆</td><td>有付款 → 提醒老闆退款</td></tr>
+      <tr><td>訂單不成立</td><td><code>cancelled_unpaid</code></td><td>系統自動</td><td>單筆</td><td>D+10 未付款自動取消（無金流）</td></tr>
+    </table>
+  </div>
+
+  <h2>退款分支</h2>
+  <div class="card">
+    <div class="row">
+      <div class="bx"><div class="mk" style="background:var(--coral)"></div><div><div class="ttl">退款處理中<span class="tag">refunding</span></div><div class="sub">退現金，或轉抵用金 +10%</div></div></div>
+      <div class="bx"><div class="mk" style="background:var(--gray)"></div><div><div class="ttl">已退款<span class="tag">refunded</span></div><div class="sub">訂單鎖定，不可再改金額</div></div></div>
+    </div>
+    <p class="note" style="margin:10px 0 0">退款一旦進入（refunding / refunded）即壓過原訂單狀態。</p>
+  </div>
+
+  <p class="note" style="margin-top:24px">文件：<code>docs/order-flow.html</code>　·　狀態定義：<code>src/lib/booking-status.ts</code>　·　場次取消：<code>src/app/api/coach/trips/weather-cancel/route.ts</code></p>
+
+</div>
+</body>
+</html>

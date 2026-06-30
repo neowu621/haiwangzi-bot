@@ -34,7 +34,9 @@ function fmtDateW(d: string): string {
 }
 
 export default function MobileAttendancePage() {
-  const { ready } = useAdminAuth();
+  const { ready, adminUser } = useAdminAuth();
+  // v756：只有老闆(boss/admin/it)能現場收現記帳；教練/助教只標到場、提醒通知老闆
+  const canRecordPayment = (adminUser?.effectiveRoles ?? []).some((r) => ["boss", "admin", "it"].includes(r));
   const [date, setDate] = useState("");
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [acting, setActing] = useState<string | null>(null);
@@ -65,21 +67,25 @@ export default function MobileAttendancePage() {
   async function mark(b: AttBooking, action: "completed" | "no_show") {
     const owed = Math.max(0, (b.totalAmount ?? 0) - (b.paidAmount ?? 0));
     const paid = b.paidAmount ?? 0;
+    // v756：老闆可現場收現結清；教練/助教不能記帳 → 只標到場、提醒通知老闆收款
+    const settle = action === "completed" && owed > 0 && canRecordPayment;
     if (action === "completed") {
       const ok = owed > 0
-        ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n按「確定」＝現場收現 NT$${owed.toLocaleString()}（現場付金）並標記到場。\n若未收到現金請按「取消」。`)
+        ? (canRecordPayment
+            ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n按「確定」＝現場收現 NT$${owed.toLocaleString()}（現場付金）並標記到場。\n若未收到現金請按「取消」。`)
+            : confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n請現場向客戶收現金，並通知老闆記帳。\n確認標記到場？`))
         : confirm(`確認 ${b.name} 到場？`);
       if (!ok) return;
     } else {
       const ok = paid > 0
-        ? confirm(`⚠️ ${b.name} 已付 NT$${paid.toLocaleString()}。\n標記「未到」後，請到「訂單詳情」走退款流程。\n\n確認標記未到？`)
+        ? confirm(`⚠️ ${b.name} 已付 NT$${paid.toLocaleString()}。\n標記「未到」後，請通知老闆處理退款。\n\n確認標記未到？`)
         : confirm(`確認 ${b.name} 未到？`);
       if (!ok) return;
     }
     setActing(b.id);
     try {
-      // 未付清 + 到場：先記一筆「現金（實收）= 剩餘」＝現場付金，再標到場
-      if (action === "completed" && owed > 0) {
+      // 未付清 + 到場 + 有記帳權限：先記一筆「現金（實收）= 剩餘」＝現場付金，再標到場
+      if (settle) {
         await adminFetch(`/api/admin/bookings/${b.id}/payment-entry`, {
           method: "POST",
           body: JSON.stringify({ kind: "cash", amount: owed }),
@@ -93,14 +99,16 @@ export default function MobileAttendancePage() {
         (prev ?? []).map((s) => ({
           ...s,
           bookings: s.bookings.map((x) => (x.id === b.id
-            ? { ...x, status: action, ...(action === "completed" && owed > 0 ? { paidAmount: x.totalAmount, paymentStatus: "fully_paid" } : {}) }
+            ? { ...x, status: action, ...(settle ? { paidAmount: x.totalAmount, paymentStatus: "fully_paid" } : {}) }
             : x)),
         })),
       );
       setMsg(
         action === "completed"
-          ? (owed > 0 ? `✓ ${b.name} → 到場（現場收現 NT$${owed.toLocaleString()}）` : `✓ ${b.name} → 到場`)
-          : (paid > 0 ? `✓ ${b.name} → 未到場（已付 NT$${paid.toLocaleString()}，請至訂單詳情退款）` : `✓ ${b.name} → 未到場`),
+          ? (settle ? `✓ ${b.name} → 到場（現場收現 NT$${owed.toLocaleString()}）`
+              : owed > 0 ? `✓ ${b.name} → 到場（未付清 NT$${owed.toLocaleString()}，請通知老闆收款）`
+              : `✓ ${b.name} → 到場`)
+          : (paid > 0 ? `✓ ${b.name} → 未到場（已付 NT$${paid.toLocaleString()}，請通知老闆退款）` : `✓ ${b.name} → 未到場`),
       );
     } catch (e) {
       setMsg("失敗：" + (e instanceof Error ? e.message : String(e)));

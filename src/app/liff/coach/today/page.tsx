@@ -98,26 +98,20 @@ export default function CoachTodayPage() {
   ) {
     const owed = Math.max(0, (b.totalAmount ?? 0) - (b.paidAmount ?? 0));
     const paid = b.paidAmount ?? 0;
+    // v756：教練/助教不能記帳收款（限老闆）→ 未付清只標到場 + 提醒通知老闆收款
     if (action === "completed") {
       const ok = owed > 0
-        ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n按「確定」＝現場收現 NT$${owed.toLocaleString()}（現場付金）並標記到場。\n若未收到現金請按「取消」。`)
+        ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n請現場向客戶收現金，並通知老闆記帳。\n確認標記到場？`)
         : confirm(`確認 ${b.name} 到場？`);
       if (!ok) return;
     } else {
       const ok = paid > 0
-        ? confirm(`⚠️ ${b.name} 已付 NT$${paid.toLocaleString()}。\n標記「缺席」後，請通知老闆到「訂單詳情」走退款流程。\n\n確認標記缺席？`)
+        ? confirm(`⚠️ ${b.name} 已付 NT$${paid.toLocaleString()}。\n標記「缺席」後，請通知老闆處理退款。\n\n確認標記缺席？`)
         : confirm(`確認 ${b.name} 缺席？`);
       if (!ok) return;
     }
     setUpdating(b.id);
     try {
-      // 未付清 + 到場：先記一筆「現金（實收）= 剩餘」＝現場付金，再標到場
-      if (action === "completed" && owed > 0) {
-        await liff.fetchWithAuth(`/api/admin/bookings/${b.id}/payment-entry`, {
-          method: "POST",
-          body: JSON.stringify({ kind: "cash", amount: owed }),
-        });
-      }
       await liff.fetchWithAuth(`/api/coach/bookings/${b.id}/attendance`, {
         method: "POST",
         body: JSON.stringify({ action }),
