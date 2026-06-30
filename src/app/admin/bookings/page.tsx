@@ -136,6 +136,15 @@ function fmtEntryDate(iso: string) {
   } catch { return iso.slice(5, 16); }
 }
 
+// v757：待退款 = 取消類/未到 且 仍有現金未退（提醒老闆別漏退；客戶選改期則自行排除）
+const REFUND_PENDING_STATUSES = ["no_show", "cancelled_by_user", "cancelled_by_weather"];
+function bookingNeedsRefund(b: { status: string; paymentStatus: string; paidAmount: number; creditUsed?: number }): boolean {
+  const cash = b.paidAmount - (b.creditUsed ?? 0); // 現金部分（折抵抵用金已自動退、不算）
+  return cash > 0
+    && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding"
+    && REFUND_PENDING_STATUSES.includes(b.status);
+}
+
 // v609：訂單管理預設篩選 — 正常流程進行中、需關注付款的狀態（紅框那組）
 // v662：加入 created（建立訂單）→ 剛下單未滿 1 天的新訂單也要在預設視圖看得到（與「等待付款」同屬未付款）
 const DEFAULT_STATUS_FILTER: string[] = ["created", "awaiting_pay", "awaiting_verify", "deposit_paid", "fully_paid"];
@@ -206,6 +215,7 @@ export default function AdminBookingsPage() {
   const [contactBusy, setContactBusy] = useState(false);
   const [contactResult, setContactResult] = useState<string | null>(null);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
+  const [filterNeedRefund, setFilterNeedRefund] = useState(false); // v757：只看「待退款」
   // v294/v329：依 URL ?status= 讀預設值，支援多選（逗號分隔）
   //   filterStatusSet 為 empty Set = "全部"；有東西在 set 內 = 只顯示這些
   // v609/v662：預設顯示「正常流程進行中、需關注付款」的訂單（建立訂單/等待付款/待確認匯款/已確認付款訂金/已完成付款）
@@ -500,7 +510,10 @@ export default function AdminBookingsPage() {
     return true;
   }
 
+  const refundPendingCount = bookings.filter(bookingNeedsRefund).length; // v757
   const filteredBookings = bookings.filter((b) => {
+    // v757：「待退款」模式 → 只看需退款的單，略過狀態/付款/場次/期間篩選
+    if (filterNeedRefund) return bookingNeedsRefund(b);
     const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
     if (!payOk) return false;
     // v294：booking.status filter — 給「待確認付款」快捷連結 (?status=awaiting_verify)
@@ -947,6 +960,22 @@ export default function AdminBookingsPage() {
                   )}
                 >
                   全部
+                </button>
+                {/* v757：待退款 — 取消/未到仍有現金未退 */}
+                <button
+                  type="button"
+                  onClick={() => setFilterNeedRefund((v) => !v)}
+                  title="取消/未到但仍有現金未退的訂單，提醒別漏退"
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1",
+                    filterNeedRefund
+                      ? "bg-[var(--color-coral)] text-white"
+                      : refundPendingCount > 0
+                        ? "bg-[var(--color-coral)]/15 text-[var(--color-coral)] hover:bg-[var(--color-coral)]/25"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                  )}
+                >
+                  ⏳ 待退款{refundPendingCount > 0 ? ` ${refundPendingCount}` : ""}
                 </button>
                 {filterStatusSet.size > 0 && (
                   <div className="flex items-center gap-2 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs">
