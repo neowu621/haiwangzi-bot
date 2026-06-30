@@ -1,4 +1,4 @@
-// v760：網站 AI 客服。POST 對話訊息 → OpenRouter（OpenAI 相容）→ Google Gemini 2.0 Flash。
+// v762：網站 AI 客服。POST 對話訊息 → OpenRouter（OpenAI 相容）→ Google Gemini 2.5 Flash。
 //   知識庫見 lib/assistant-kb。工具 submit_inquiry：客戶想被主動聯繫時，把需求送進客服信箱 + 通知老闆。
 //   公開端點：加速率限制；OPENROUTER_API_KEY 未設時回 503。
 import { NextRequest, NextResponse } from "next/server";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.0-flash-001"; // 便宜快速、FAQ 足夠（可用 OPENROUTER_MODEL 覆寫）
+const DEFAULT_MODEL = "google/gemini-2.5-flash"; // 便宜快速、工具呼叫穩；更省可用 OPENROUTER_MODEL=google/gemini-2.5-flash-lite
 const MAX_HISTORY = 12; // 只帶最近 N 則，控成本
 const MAX_TURNS = 4;    // 工具迴圈上限
 

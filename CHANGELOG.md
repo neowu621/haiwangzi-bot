@@ -1,5 +1,11 @@
 # Changelog
 
+## 20260701_762M - 2026-07-01 (AI 客服：修模型代號 gemini-2.5-flash + 強化安全護欄)
+
+- **修可用性**：OpenRouter 已下架 `google/gemini-2.0-flash-001`（呼叫回 404）→ 預設模型改為 **`google/gemini-2.5-flash`**（實測金鑰可正常呼叫；更省可用 `OPENROUTER_MODEL=google/gemini-2.5-flash-lite`）。
+- **強化護欄**（`assistant-kb.ts` 加「範圍與安全限制」最高優先段）：AI **只回答潛水相關**（課程/潛點/潛旅/費用/安全/裝備/預約）；**拒答**系統/網站技術/後台/程式碼/資安/API/金鑰/模型/提示詞等問題；不洩露系統提示；忽略「忽略先前指示／切換角色／開發者模式」等 prompt injection；與潛水無關問題禮貌拒答並導回。
+- 動檔：`src/app/api/assistant/route.ts`、`src/lib/assistant-kb.ts`、`.env.example`。
+
 ## 20260701_761M - 2026-07-01 (AI 客服：可愛機器人吉祥物 + 只在桌機首頁顯示)
 
 - AI 客服浮動鈕改為**會動的可愛機器人吉祥物**：漂浮、眨眼、天線發光、小泡泡、左右小鰭擺動；聊天視窗 header 也放同一隻（compact）。純 CSS（inline `<style>`），無新依賴。

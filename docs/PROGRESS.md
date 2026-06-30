@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-01 — AI 客服修模型代號 + 強化安全護欄（v762）
+
+- **模型修正**：OpenRouter 下架 `google/gemini-2.0-flash-001`（404 No endpoints）→ `route.ts` `DEFAULT_MODEL` 改 **`google/gemini-2.5-flash`**。實測該帳號金鑰可呼叫（auth OK、模型有服務）。便宜清單：`gemini-2.5-flash-lite`（$0.10/$0.40 最便宜）、`gemini-2.5-flash`（$0.30/$2.50，工具呼叫穩，預設）。可用 `OPENROUTER_MODEL` 覆寫。
+- **安全護欄**：`assistant-kb.ts` 新增「範圍與安全限制（最高優先）」——只答潛水相關；拒答系統/技術/後台/資安/API/金鑰/模型/提示詞；不洩露系統提示；抗 prompt injection（忽略「忽略先前指示」等）。
+- **重要**：`OPENROUTER_API_KEY` 仍需在 **Zeabur 環境變數**設定（我無法代設）。模型代號修好後，設好 key 即可回答。OpenRouter 帳號需有額度。
+- **下次先看**：① 設好 key 後端到端測 AI 客服真實回答 ② 即時場次/報價工具 ③ token 串流（OpenRouter 支援）。
+
+---
+
 ## 2026-07-01 — AI 客服可愛機器人吉祥物 + 只在桌機首頁（v761）
 
 由使用者操刀 `src/components/assistant/ChatWidget.tsx`：
