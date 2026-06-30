@@ -1,5 +1,13 @@
 # Changelog
 
+## 20260630_755M - 2026-06-30 (到場點名：所有按鈕加確認 + 未付清現場收現 + 未到退款提醒)
+
+- **所有「到場 / 未到」按鈕一律先跳確認**（達成 /goal）：桌機 `/admin/attendance`、手機 `/admin/m/attendance`、教練端 LIFF `/liff/coach/today` 三處皆是。
+- **未付清 + 點到場**：確認框提示剩餘款 NT$X，按確定＝**現場收現（現場付金）**——前端先打 `payment-entry`（kind=cash＝剩餘）結清、再標到場，付款狀態變付清。重用 v753 結算端點（`requireRole(admin/coach)`，三介面都有權限）。
+- **已付款 + 點未到**：確認框提示「已付 NT$X，需退款」，標記未到後提醒「請到訂單詳情走退款流程」。（自動扣款/自動轉退款牽涉退款政策與狀態轉換，風險高，本版先做提醒，不自動退款。）
+- 後端 `GET /api/admin/attendance/today` 回傳補上 `totalAmount` / `paidAmount`，供確認框顯示剩餘款與判斷有無付款。
+- 動檔：`src/app/api/admin/attendance/today/route.ts`、`src/app/admin/attendance/page.tsx`、`src/app/admin/m/attendance/page.tsx`、`src/app/liff/coach/today/page.tsx`。
+
 ## 20260630_754M - 2026-06-30 (訂單詳情：付款紀錄 + 狀態歷史合併成單一時間軸)
 
 - 訂單詳情把右欄「🧾 付款紀錄」與左欄「📋 訂單狀態歷史」合併成單一「📋 訂單歷程（付款 + 狀態）」時間軸，依時間**舊→新**交錯顯示：下單/改期/完成等狀態事件 + 抵用金折抵/現場收現/轉帳等付款事件同列一條，老闆一眼看完整筆訂單金流與狀態演變、不用左右兩欄對照。

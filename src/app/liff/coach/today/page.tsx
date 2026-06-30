@@ -91,13 +91,34 @@ export default function CoachTodayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liff.ready]);
 
+  // v755：先跳確認；未付清+到場→現場收現結清(現場付金)；已付+缺席→提醒走退款
   async function markAttendance(
-    bookingId: string,
+    b: CoachTripBooking,
     action: "completed" | "no_show",
   ) {
-    setUpdating(bookingId);
+    const owed = Math.max(0, (b.totalAmount ?? 0) - (b.paidAmount ?? 0));
+    const paid = b.paidAmount ?? 0;
+    if (action === "completed") {
+      const ok = owed > 0
+        ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n按「確定」＝現場收現 NT$${owed.toLocaleString()}（現場付金）並標記到場。\n若未收到現金請按「取消」。`)
+        : confirm(`確認 ${b.name} 到場？`);
+      if (!ok) return;
+    } else {
+      const ok = paid > 0
+        ? confirm(`⚠️ ${b.name} 已付 NT$${paid.toLocaleString()}。\n標記「缺席」後，請通知老闆到「訂單詳情」走退款流程。\n\n確認標記缺席？`)
+        : confirm(`確認 ${b.name} 缺席？`);
+      if (!ok) return;
+    }
+    setUpdating(b.id);
     try {
-      await liff.fetchWithAuth(`/api/coach/bookings/${bookingId}/attendance`, {
+      // 未付清 + 到場：先記一筆「現金（實收）= 剩餘」＝現場付金，再標到場
+      if (action === "completed" && owed > 0) {
+        await liff.fetchWithAuth(`/api/admin/bookings/${b.id}/payment-entry`, {
+          method: "POST",
+          body: JSON.stringify({ kind: "cash", amount: owed }),
+        });
+      }
+      await liff.fetchWithAuth(`/api/coach/bookings/${b.id}/attendance`, {
         method: "POST",
         body: JSON.stringify({ action }),
       });
@@ -322,7 +343,7 @@ export default function CoachTodayPage() {
                             size="sm"
                             variant="outline"
                             disabled={updating === b.id}
-                            onClick={() => markAttendance(b.id, "completed")}
+                            onClick={() => markAttendance(b, "completed")}
                             className="flex-1 border-[var(--color-phosphor)] text-[var(--color-phosphor)]"
                           >
                             <Check className="h-3 w-3" />
@@ -332,7 +353,7 @@ export default function CoachTodayPage() {
                             size="sm"
                             variant="outline"
                             disabled={updating === b.id}
-                            onClick={() => markAttendance(b.id, "no_show")}
+                            onClick={() => markAttendance(b, "no_show")}
                             className="flex-1 border-[var(--color-coral)] text-[var(--color-coral)]"
                           >
                             <X className="h-3 w-3" />

@@ -14,6 +14,8 @@ interface AttBooking {
   status: string;
   paymentStatus: string;
   signed: boolean;
+  totalAmount: number; // v755
+  paidAmount: number;  // v755：剩餘 = totalAmount - paidAmount
 }
 interface Session {
   key: string;
@@ -59,9 +61,30 @@ export default function MobileAttendancePage() {
 
   useEffect(() => { const c = load(); return c; }, [load]);
 
+  // v755：所有到場/未到都先跳確認；未付清+到場→現場收現結清(現場付金)；已付+未到→提醒走退款
   async function mark(b: AttBooking, action: "completed" | "no_show") {
+    const owed = Math.max(0, (b.totalAmount ?? 0) - (b.paidAmount ?? 0));
+    const paid = b.paidAmount ?? 0;
+    if (action === "completed") {
+      const ok = owed > 0
+        ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n按「確定」＝現場收現 NT$${owed.toLocaleString()}（現場付金）並標記到場。\n若未收到現金請按「取消」。`)
+        : confirm(`確認 ${b.name} 到場？`);
+      if (!ok) return;
+    } else {
+      const ok = paid > 0
+        ? confirm(`⚠️ ${b.name} 已付 NT$${paid.toLocaleString()}。\n標記「未到」後，請到「訂單詳情」走退款流程。\n\n確認標記未到？`)
+        : confirm(`確認 ${b.name} 未到？`);
+      if (!ok) return;
+    }
     setActing(b.id);
     try {
+      // 未付清 + 到場：先記一筆「現金（實收）= 剩餘」＝現場付金，再標到場
+      if (action === "completed" && owed > 0) {
+        await adminFetch(`/api/admin/bookings/${b.id}/payment-entry`, {
+          method: "POST",
+          body: JSON.stringify({ kind: "cash", amount: owed }),
+        });
+      }
       await adminFetch(`/api/coach/bookings/${b.id}/attendance`, {
         method: "POST",
         body: JSON.stringify({ action }),
@@ -69,10 +92,16 @@ export default function MobileAttendancePage() {
       setSessions((prev) =>
         (prev ?? []).map((s) => ({
           ...s,
-          bookings: s.bookings.map((x) => (x.id === b.id ? { ...x, status: action } : x)),
+          bookings: s.bookings.map((x) => (x.id === b.id
+            ? { ...x, status: action, ...(action === "completed" && owed > 0 ? { paidAmount: x.totalAmount, paymentStatus: "fully_paid" } : {}) }
+            : x)),
         })),
       );
-      setMsg(`✓ ${b.name} → ${action === "completed" ? "到場" : "未到場"}`);
+      setMsg(
+        action === "completed"
+          ? (owed > 0 ? `✓ ${b.name} → 到場（現場收現 NT$${owed.toLocaleString()}）` : `✓ ${b.name} → 到場`)
+          : (paid > 0 ? `✓ ${b.name} → 未到場（已付 NT$${paid.toLocaleString()}，請至訂單詳情退款）` : `✓ ${b.name} → 未到場`),
+      );
     } catch (e) {
       setMsg("失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
