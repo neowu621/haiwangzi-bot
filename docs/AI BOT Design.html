@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 小幫手 — 設計與維護手冊</title>
+<style>
+  :root{
+    --ink:#0A2342; --muted:#5b6b7d; --line:#dfe5ec; --soft:#f4f7fa; --card:#fff;
+    --teal:#0e9f93; --amber:#C58A1B; --green:#2E8B57; --coral:#C7503F; --gray:#9AA0A6; --link:#0e6e93;
+    --line-green:#06C755;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef2f6;color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    line-height:1.65;padding:24px}
+  .wrap{max-width:940px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 2px}
+  .lead{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:22px}
+  .chip{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted)}
+  h2{font-size:18px;margin:28px 0 10px;display:flex;align-items:center;gap:8px}
+  h3{font-size:15px;margin:16px 0 6px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:150px}
+  .bx{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
+  .bx .t{font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px}
+  .bx .s{font-size:12px;color:var(--muted);margin-top:3px}
+  .mk{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+  .arrow{text-align:center;color:#aab4c0;font-size:15px;margin:5px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td.c{text-align:center}
+  .yes{color:var(--green);font-weight:600}.no{color:var(--coral)}
+  code{background:var(--soft);border-radius:5px;padding:1px 5px;font-size:12px;font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+  pre{background:#0d1b2a;color:#e6edf3;border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.6;margin:8px 0}
+  pre code{background:none;color:inherit;padding:0;font-size:12.5px}
+  a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+  ul{margin:6px 0;padding-left:20px}li{margin:4px 0;font-size:13.5px}
+  .note{font-size:12.5px;color:var(--muted)}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin:2px 3px 2px 0}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px}
+  .tag.free{background:#e1f5ee;color:#0F6E56}
+  .tag.token{background:#e6f1fb;color:#0C447C}
+  .tag.human{background:#eafaf0;color:#087443}
+  .step{display:flex;gap:10px;margin:8px 0}
+  .step .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .step .b{font-size:13.5px}
+  .callout{border-left:4px solid var(--teal);background:var(--soft);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:13px}
+  .callout.warn{border-left-color:var(--coral)}
+  .toc{columns:2;font-size:13px}.toc a{display:block;margin:3px 0}
+  @media(max-width:640px){.row{flex-direction:column}.toc{columns:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🤖 AI 小幫手 — 設計與維護手冊</h1>
+  <p class="lead">網站公開頁右下角的浮動 AI 客服。v771 起改為「導引式選單」三層漏斗：先點選（零 token）→ 答不到再打字問 AI → 最後找真人。本頁給維護者：架構、檔案、怎麼改。</p>
+  <div class="chips">
+    <span class="chip">v20260701_771 起</span>
+    <span class="chip">三層漏斗</span>
+    <span class="chip">點選＝零 token / 零 DB</span>
+    <span class="chip">即時資料走版本號快取</span>
+    <span class="chip">LINE 真人兜底</span>
+  </div>
+
+  <div class="card">
+    <div class="toc">
+      <a href="#why">1. 為什麼這樣設計</a>
+      <a href="#flow">2. 三層漏斗 · 流程圖</a>
+      <a href="#files">3. 檔案地圖</a>
+      <a href="#tree">4. 選單樹結構</a>
+      <a href="#live">5. 即時節點對應 API</a>
+      <a href="#maintain">6. 維護手冊（怎麼改）</a>
+      <a href="#recipes">7. 常見維護情境</a>
+      <a href="#rules">8. 注意事項 / 鐵則</a>
+      <a href="#deploy">9. 部署</a>
+    </div>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="why">🎯 1. 為什麼這樣設計</h2>
+  <div class="card">
+    <p style="margin:0 0 8px">潛水店的資料 <b>80% 是固定的</b>（課程、費用、潛點、潛旅地點、新手 FAQ、預約方式），舊版卻每題都丟給 AI（附一大段 system prompt + 即時資料），造成：浪費 token、回覆慢（LINE WebView 更慢）、弱模型還常算錯日期。</p>
+    <p style="margin:0">新版把問題分流到「成本越低越優先」的四條路：</p>
+    <table style="margin-top:10px">
+      <tr><th>層級</th><th>方式</th><th>成本</th><th>負責內容</th></tr>
+      <tr><td><b>L1 點選導引</b>（主力）</td><td>快捷按鈕 → 下鑽 → 答案卡</td><td><span class="tag free">零 token / 零 DB</span></td><td>課程、費用、潛點、潛旅地點、新手 FAQ、預約</td></tr>
+      <tr><td><b>L1.5 即時查詢</b></td><td>點按鈕直接打既有 API</td><td><span class="tag free">零 token</span>（快取命中零 DB）</td><td>場次名額、潛旅團況、後台價目、取消/安全政策</td></tr>
+      <tr><td><b>L2 打字問 AI</b></td><td>輸入框 → <code>/api/assistant</code></td><td><span class="tag token">耗 token</span></td><td>選單答不到的長尾自由問答</td></tr>
+      <tr><td><b>L3 真人</b></td><td>加 LINE 找汪汪教練</td><td><span class="tag human">真人</span></td><td>AI 也搞不定 / 要真的預約</td></tr>
+    </table>
+    <div class="callout">維護心法：<b>能放進選單就別讓 AI 回答。</b>固定內容進 <code>assistant-menu.ts</code>；會變的資料交給後台（自動即時）；只有真的無法預期的問題才留給 L2 的 AI。</div>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="flow">🔀 2. 三層漏斗 · 流程圖</h2>
+  <div class="card">
+    <div class="bx"><div class="t">客戶點開小幫手</div><div class="s">顯示招呼語 + 主選單按鈕（7 大類）</div></div>
+    <div class="arrow">↓ 客戶怎麼互動？</div>
+    <div class="row">
+      <div class="bx">
+        <div class="t"><i class="mk" style="background:var(--teal)"></i>點選單</div>
+        <div class="s">分支 → 下鑽子選單；葉節點 →<br>· 固定內容：顯示答案卡 <span class="tag free">零 token</span><br>· 即時節點：打 API 查最新 <span class="tag free">零 token</span></div>
+      </div>
+      <div class="bx">
+        <div class="t"><i class="mk" style="background:#0C447C"></i>打字自由問</div>
+        <div class="s">POST <code>/api/assistant</code> <span class="tag token">耗 token</span><br>→ 有把握就答 + 附連結<br>→ 沒把握 → 引導 LINE</div>
+      </div>
+      <div class="bx">
+        <div class="t"><i class="mk" style="background:var(--line-green)"></i>直接找真人</div>
+        <div class="s">每一層底部固定「加 LINE 問汪汪教練」<br>→ 真人接手 / 老闆回覆</div>
+      </div>
+    </div>
+    <div class="arrow">↓ 答案卡底部永遠有出口</div>
+    <div class="bx"><div class="t">回上一層 / 回主選單 / 加 LINE</div><div class="s">客戶永遠有下一步，不會卡死</div></div>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="files">📁 3. 檔案地圖</h2>
+  <div class="card">
+    <table>
+      <tr><th>檔案</th><th>職責</th><th>改這裡當你要…</th></tr>
+      <tr><td><code>src/lib/assistant-menu.ts</code></td><td><b>選單樹</b>（前端純靜態常數）。所有可點選的分類、子項、答案卡文字都在這</td><td>新增/修改「點選」內容、價格、課程說明、FAQ</td></tr>
+      <tr><td><code>src/components/assistant/ChatWidget.tsx</code></td><td>浮動 widget 本體。渲染選單/答案卡/連結；<code>fetchLive()</code> 即時查詢；打字送 <code>/api/assistant</code></td><td>調整外觀、互動、或新增一種「即時」查詢</td></tr>
+      <tr><td><code>src/lib/assistant-kb.ts</code></td><td><b>打字問 AI 的知識庫</b>（system prompt 固定字串）。只在 L2 自由問答時用到</td><td>調整 AI 回答口吻、補 AI 該懂的背景知識</td></tr>
+      <tr><td><code>src/app/api/assistant/route.ts</code></td><td>L2 後端：組 prompt + 呼叫 OpenRouter（Gemini 2.5 Flash）+ 工具查場次/潛旅</td><td>換模型、調 AI 行為規則（一般不用動）</td></tr>
+      <tr><td class="note" colspan="3"><b>即時資料不在上面任何檔案</b> —— 場次/潛旅/價目/政策都由後台維護，widget 直接讀，改後台即生效（見第 5 節）。</td></tr>
+    </table>
+    <div class="callout"><b>內容三分工，別放錯地方：</b><br>· 點選看到的字 → <code>assistant-menu.ts</code><br>· AI 打字回答的知識 → <code>assistant-kb.ts</code> + 後台「補充資訊/個性」<br>· 會變的即時資料（場次/團/價/政策）→ <b>後台</b>，兩個檔案都別寫死</div>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="tree">🌲 4. 選單樹結構（目前 7 大類）</h2>
+  <div class="card">
+<pre><code>🤿 我想學潛水（課程/費用）
+   ├─ 體驗潛水（免證照）      → 答案卡 NT$2,500
+   ├─ OW 開放水域考證         → 答案卡 NT$14,500
+   ├─ AOW 進階考證            → 答案卡 NT$14,500
+   ├─ 持證 Fun Dive           → 純文字 + 連結
+   └─ 裝備租借費用            → ⟳ 即時(gear)
+🐠 想知道去哪潛（潛點）
+   ├─ 東北角熱門潛點          → 答案卡
+   └─ 船潛路線                → 答案卡
+📅 最近有場次 / 還有位子？
+   ├─ 本週末的場次            → ⟳ 即時(sessions-weekend)
+   └─ 近兩週的場次            → ⟳ 即時(sessions-2w)
+🌴 潛水旅行（潛旅）
+   ├─ 現在開放報名的團        → ⟳ 即時(tours)
+   └─ 潛旅地點介紹            → 答案卡
+😅 新手常見問題
+   ├─ 不會游泳、會怕          → 純文字
+   ├─ 耳壓會痛嗎              → 純文字
+   ├─ 有鯊魚嗎/危險嗎         → 純文字
+   ├─ 健康狀況能潛嗎          → 純文字
+   └─ 要帶什麼/裝備           → 純文字
+📋 費用 / 取消退款 / 安全須知
+   ├─ 取消／退款政策          → ⟳ 即時(cancel)
+   ├─ 安全須知                → ⟳ 即時(safety)
+   └─ 裝備租借／日潛費用      → ⟳ 即時(gear)
+📝 怎麼預約？                 → 純文字 + 連結（葉節點，無子項）</code></pre>
+    <p class="note" style="margin:6px 0 0">每個節點的型別（<code>MenuNode</code>）：分支有 <code>children</code>；靜態葉有 <code>card</code>（結構化卡）或 <code>answer</code>（純文字），可加 <code>links</code>；即時葉有 <code>live</code>。按鈕右側符號：<code>›</code>=下鑽、<code>⟳</code>=即時查、<code>＋</code>=展開答案。</p>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="live">⚡ 5. 即時節點對應的 API（改後台即生效）</h2>
+  <div class="card">
+    <table>
+      <tr><th><code>live</code> 值</th><th>打的 API</th><th>資料層</th><th>後台在哪維護</th></tr>
+      <tr><td><code>sessions-weekend</code> / <code>sessions-2w</code></td><td><code>/api/trips?from=&amp;to=</code></td><td><span class="tag free">第3層</span> 版本號快取</td><td>後台場次管理（新增/改場次、有人下單自動失效）</td></tr>
+      <tr><td><code>tours</code></td><td><code>/api/tours</code></td><td><span class="tag free">第3層</span> 版本號快取</td><td>後台潛旅管理</td></tr>
+      <tr><td><code>gear</code></td><td><code>/api/site-config</code></td><td><span class="tag free">第2層</span> siteConfig 快取</td><td>後台 → 系統設定 → 裝備租借價 / 日潛費用</td></tr>
+      <tr><td><code>cancel</code> / <code>safety</code></td><td><code>/api/config</code></td><td><span class="tag free">第2層</span> siteConfig 快取</td><td>後台 → 系統設定 → 取消政策 / 安全須知</td></tr>
+    </table>
+    <div class="callout"><b>好消息：</b>這些內容要更新，<u>完全不用改程式</u> —— 老闆在後台存檔，版本號自動失效，下次客戶點就是最新的。維護者只在「要新增一種新的即時查詢類型」時才需動碼（見 6C）。</div>
+    <div class="callout warn"><b>降級行為：</b>即時 API 若掛掉（例：DB 連不到），widget 會 catch 錯誤並顯示「加 LINE 問汪汪教練」，不會白畫面。靜態答案卡完全不受影響。</div>
+  </div>
+
+  <!-- 6 -->
+  <h2 id="maintain">🛠️ 6. 維護手冊（怎麼改）</h2>
+
+  <div class="card">
+    <h3>6A. 改文字 / 價格 / 課程內容（最常見）</h3>
+    <div class="step"><div class="n">1</div><div class="b">開 <code>src/lib/assistant-menu.ts</code>，找到對應節點（用 <code>id</code> 或 <code>label</code> 搜尋）</div></div>
+    <div class="step"><div class="n">2</div><div class="b">改 <code>card.price</code> / <code>card.bullets</code> / <code>answer</code> 文字，存檔</div></div>
+    <div class="step"><div class="n">3</div><div class="b">bump 版本 + CHANGELOG → push（見第 9 節）</div></div>
+    <div class="callout warn">⚠️ 這裡是「行銷快照」文字。<b>會頻繁變動的價目（裝備租借/日潛費）建議走即時節點（gear）讓老闆自己在後台改</b>，不要寫死在卡片 bullets 裡，否則每次調價都要工程改碼＋部署。</div>
+  </div>
+
+  <div class="card">
+    <h3>6B. 新增一個分類 / 子項 / 答案卡</h3>
+    <p class="note" style="margin:0 0 6px">只改 <code>assistant-menu.ts</code> 一個檔，前端純靜態、零後端。加在 <code>ASSISTANT_MENU</code> 陣列（新分類）或某節點的 <code>children</code>（新子項）。</p>
+<pre><code>// 一個「答案卡」葉節點
+{
+  id: "course-rescue",              // 全樹唯一
+  label: "救援潛水員 Rescue",       // 按鈕文字（可含 emoji）
+  card: {
+    title: "救援潛水員（Rescue）",
+    price: "NT$16,000",
+    bullets: ["學會自救與救人", "含教材/裝備", "訂金 NT$6,000"],
+    note: "需先具備 AOW",           // 可省略
+  },
+  links: [{ label: "課程介紹", href: "/#courses" }],  // 可省略
+}
+
+// 一個「純文字」葉節點（適合 FAQ）
+{ id: "faq-cold", label: "冬天會冷嗎？", answer: "有 5mm 防寒衣…" }
+
+// 一個「分支」（帶子選單）
+{ id: "xxx", label: "新分類", intro: "想看哪個？", children: [ /* 上面那種葉節點 */ ] }</code></pre>
+    <div class="callout">連結 <code>href</code> 用站內相對路徑：<code>/schedule</code>、<code>/pclogin</code>、<code>/contact</code>、<code>/#courses</code>、<code>/#spots</code>、<code>/#trips</code>。</div>
+  </div>
+
+  <div class="card">
+    <h3>6C. 新增一種「即時」查詢節點（要動兩個檔）</h3>
+    <div class="step"><div class="n">1</div><div class="b"><code>assistant-menu.ts</code>：在 <code>LiveKind</code> 型別加上新種類，例如 <code>"reviews"</code>；並加一個 <code>{ id, label, live:"reviews" }</code> 節點</div></div>
+    <div class="step"><div class="n">2</div><div class="b"><code>ChatWidget.tsx</code> 的 <code>fetchLive()</code> 加一個分支：打你要的公開 API、把結果組成 <code>{ content, links }</code> 回傳</div></div>
+    <div class="callout warn"><b>鐵則：</b>要打的 API 若讀「共享資料」，務必是已包 <code>cached()</code> 或 <code>getSiteConfigRow()</code> 的既有端點（命中零 DB），<u>不要為了小幫手裸打 Prisma</u>。找不到合適端點就先建一支輕量 GET（比照 <code>/api/tours</code>）。</div>
+  </div>
+
+  <div class="card">
+    <h3>6D. 停用小幫手 / 改招呼語（免改碼）</h3>
+    <p style="margin:0">後台 → 系統設定 → AI 客服：可「停用」（widget 直接隱藏）或設「自訂招呼語」。widget 開啟時打 <code>GET /api/assistant</code> 讀這兩個值。</p>
+  </div>
+
+  <div class="card">
+    <h3>6E. 調整「打字問 AI」的回答（L2）</h3>
+    <ul style="margin:4px 0">
+      <li>改口吻/範圍/背景知識 → <code>src/lib/assistant-kb.ts</code>（system prompt）。⚠️ 保持字串固定不變才能命中 prompt cache，別插入日期/隨機值。</li>
+      <li>臨時補充、活動公告 → 後台「補充資訊 / 個性語氣」欄位（免改碼，會加到 prompt 後段）。</li>
+      <li>換模型 → 後台 <code>aiBot.model</code> 或環境變數 <code>OPENROUTER_MODEL</code>，皆可覆寫預設 <code>google/gemini-2.5-flash</code>。</li>
+    </ul>
+  </div>
+
+  <!-- 7 -->
+  <h2 id="recipes">🍳 7. 常見維護情境 · 小抄</h2>
+  <div class="card">
+    <table>
+      <tr><th>我想…</th><th>去哪改</th><th>要部署嗎</th></tr>
+      <tr><td>改體驗潛水價格顯示</td><td><code>assistant-menu.ts</code> → <code>course-dsd.card.price</code></td><td class="c yes">要</td></tr>
+      <tr><td>新增一則新手 FAQ</td><td><code>assistant-menu.ts</code> → <code>faq.children</code> 加葉節點</td><td class="c yes">要</td></tr>
+      <tr><td>調裝備租借價 / 日潛費</td><td><b>後台</b>系統設定（即時節點自動讀）</td><td class="c no">不用</td></tr>
+      <tr><td>改取消政策 / 安全須知</td><td><b>後台</b>系統設定</td><td class="c no">不用</td></tr>
+      <tr><td>新增/取消一個場次或潛旅團</td><td><b>後台</b>場次 / 潛旅管理</td><td class="c no">不用</td></tr>
+      <tr><td>暫時關掉小幫手</td><td><b>後台</b> AI 客服 → 停用</td><td class="c no">不用</td></tr>
+      <tr><td>改 AI 打字回答的口吻</td><td><code>assistant-kb.ts</code> 或後台「個性」欄</td><td class="c">看情況</td></tr>
+    </table>
+    <p class="note" style="margin:8px 0 0">口訣：<b>「點選內容/新增選單」→ 改碼要部署；「會變的資料/開關」→ 後台即時。</b></p>
+  </div>
+
+  <!-- 8 -->
+  <h2 id="rules">🚦 8. 注意事項 / 鐵則</h2>
+  <div class="card">
+    <ul>
+      <li><b>別把即時資料寫死進選單樹。</b>場次/團/價/政策一律走 <code>live</code> 節點讀後台，否則資料會過期又要改碼。</li>
+      <li><b>別為小幫手裸打 Prisma。</b>即時查詢重用已包版本號快取的公開端點（命中零 DB）；這是全站快取分層鐵則（見 <a href="../AGENTS.md">AGENTS.md</a>、<a href="./index.html">index.html</a> 第「資料讀取四層」）。</li>
+      <li><b>手機/LINE WebView 優先。</b>選單與答案卡都是純文字 + inline 樣式、無外部字體/圖，首屏零額外請求；即時節點才發 1 個 API。</li>
+      <li><b>每層都要有真人出口。</b>LINE 綠色鈕固定在快捷區底部，別移除。</li>
+      <li><b>id 全樹唯一</b>（React key）。新增節點記得給不重複的 <code>id</code>。</li>
+      <li>widget 目前只掛在桌機首頁 <code>/</code>；手機走 <code>/mobile</code> proxy。這行邏輯在 <code>ChatWidget.tsx</code> 的 <code>onHome</code>。</li>
+    </ul>
+  </div>
+
+  <!-- 9 -->
+  <h2 id="deploy">🚀 9. 部署</h2>
+  <div class="card note">
+    改到 <code>assistant-menu.ts</code> / <code>ChatWidget.tsx</code> / <code>assistant-kb.ts</code> 都要走部署：bump <code>src/lib/version.ts</code> + 更新 <code>CHANGELOG.md</code> → push <code>master</code> → Zeabur 自動建置（約 7–9 分鐘）→ <code>curl https://haiwangzi.xyz/api/healthz</code> 確認 <code>version</code> 已是新版。只改「後台資料」則不需部署，存檔即生效。
+  </div>
+
+  <p class="note" style="margin-top:22px">相關文件：<a href="./index.html">docs/index.html（專案總覽）</a>、<a href="../CHANGELOG.md">CHANGELOG.md</a>、<a href="../AGENTS.md">AGENTS.md</a>。檔案：<code>docs/AI BOT Design.html</code></p>
+
+</div>
+</body>
+</html>

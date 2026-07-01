@@ -101,6 +101,12 @@
     <p class="note" style="margin:10px 0 0">機制（v693 起）：寫入經 Prisma <code>$extends</code> 自動 bumpVersion；讀取端比對版本號。詳見 <code>AGENTS.md</code>。</p>
   </div>
 
+  <h2>🤖 AI 小幫手（網站客服）</h2>
+  <div class="card">
+    <p class="note" style="margin:0 0 8px">公開頁右下角浮動客服。v771 起改「導引式選單」三層漏斗：先點選（零 token）→ 答不到打字問 AI → 最後加 LINE 找真人。固定內容 <code>src/lib/assistant-menu.ts</code>、widget <code>src/components/assistant/ChatWidget.tsx</code>、AI 知識 <code>src/lib/assistant-kb.ts</code>。</p>
+    <a class="btn" href="./AI%20BOT%20Design.html">開啟 AI 小幫手設計與維護手冊 →</a>
+  </div>
+
   <h2>📁 文件導覽（新接手者照這個順序）</h2>
   <div class="card docs">
     <ul>
@@ -111,6 +117,7 @@
       <li><b><a href="../CHANGELOG.md">CHANGELOG.md</a></b> — 逐版變更紀錄。<span class="pill">查功能何時加</span></li>
       <li><b><a href="../AGENTS.md">AGENTS.md</a> / <a href="../CLAUDE.md">CLAUDE.md</a></b> — 協作鐵則（手機優先、快取分層）。<span class="pill">工程/AI 必讀</span></li>
       <li><b><a href="./order-flow.html">docs/order-flow.html</a></b> — 訂單流程視覺圖。</li>
+      <li><b><a href="./AI%20BOT%20Design.html">docs/AI BOT Design.html</a></b> — AI 小幫手設計與維護手冊（三層漏斗/選單樹/怎麼改）。<span class="pill">改客服前先看</span></li>
       <li><b><a href="../ZEABUR_DEPLOY.md">ZEABUR_DEPLOY.md</a> / <a href="./DEPLOY_VERIFY.md">docs/DEPLOY_VERIFY.md</a></b> — 部署與驗證。</li>
     </ul>
   </div>
