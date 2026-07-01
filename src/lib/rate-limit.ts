@@ -45,8 +45,9 @@ export interface RateLimitOptions {
 
 /**
  * 從 request 取出客戶端 IP（Zeabur 透過 proxy，看 x-forwarded-for header）
+ * v772：匯出供其他模組（如 AI 客服的 denial-of-wallet 閘）共用同一套取 IP 邏輯。
  */
-function getClientIp(req: NextRequest): string {
+export function getClientIp(req: NextRequest): string {
   // v355：優先用代理（Zeabur 邊緣）填入的 x-real-ip —— 客戶端無法偽造。
   //   x-forwarded-for 最左欄是客戶端可任意塞的值，拿來當 rate-limit key 會被輪換繞過；
   //   退而求其次取 XFF 最右欄（最接近我方代理）。

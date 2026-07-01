@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-01 — AI 客服防濫用／防燒帳單（v772）
+
+老闆問「如何預防有人非正常方式狂問、亂問、攻擊 AI 或問非潛水內容」。選「中等防護」。分層（in-memory、單實例、重啟歸零）：
+
+- 速率：單 IP 12/分 + **新增單 IP 100/日**；全站斷路器 60/分、1500/日（`globalLlmGate`）→ 超過不打 OpenRouter、引導 LINE（Denial-of-Wallet）。
+- 呼叫 AI 前廉價預過濾（省 token）：`precheckAbuse` 高信心注入字樣→罐頭婉拒不打 AI；`isFlood` 同 IP 60 秒內同句第 3 次起擋。
+- 瘦身：每則 4000→**800 字**、messages 上限 40 則。
+- 留資防灌爆：`inquiryGate`（單 IP 3/10 分、全站 100/日）。
+- 動檔：`src/app/api/assistant/route.ts`、`src/lib/rate-limit.ts`（匯出 `getClientIp`）。全站每日上限可用 `ASSISTANT_DAILY_CAP`… 註：目前用 `globalLlmGate` 的 1500/日常數，如需環境變數化再抽。
+- 下次先看：若 scale 成多實例，計數要改 Redis/DB；可加「注入嘗試超標通知老闆」。
+
+> 註：v771（`42d63d6`，另一線工作）＝ ChatWidget 導引式選單三層漏斗 + `assistant-menu.ts` + 設計文件，與本版互不衝突（沒動 route.ts）。
+
 ## 2026-07-01 — AI 客服修「星期標錯一天」（v770）
 
 v769 上線後自測 7 題：架構成功（模型在讀注入的真實資料、日期對、有附連結、資安題正確拒答），但抓到一個 weekday bug——場次清單星期少一天（7/4 標「五」應「六」）。根因：`runGetDiveSessions` 用 `T00:00:00+08:00`+`getDay()`，伺服器 UTC 下午夜+8 退前一天。改 `weekdayOf(ds)`（中午換算）。同時【即時資料】明天/週末補上星期，避免模型自己猜。自測通過後即此版。

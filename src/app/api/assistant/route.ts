@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyBossNewInquiry } from "@/lib/notify-boss";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { buildSystemPrompt } from "@/lib/assistant-kb";
 import { getSiteConfigRow } from "@/lib/site-config-cache";
 import { cached, TTL_LISTING } from "@/lib/cache"; // v765：場次查詢（版本號快取，命中零 DB）
@@ -65,6 +65,41 @@ export async function GET() {
     enabled: ai.enabled !== false, // 後台未設或 true → 顯示；明確 false → 隱藏
     greeting: (ai.greeting ?? "").trim(),
   });
+}
+
+// ── v772：安全後備閘（in-memory，單實例；重啟歸零，與 rate-limit.ts 同設計取捨）──
+//   目的：擋 Denial-of-Wallet（狂打耗 OpenRouter 帳單）與 submit_inquiry 灌爆老闆通知。
+//   多實例 scale 時需改共用儲存（Redis / DB 一列），介面不變。
+const GLOBAL_MINUTE_MAX = 60;          // 全站每分鐘最多幾次 LLM 請求（跨所有 IP）
+const GLOBAL_DAY_MAX = 1500;           // 全站每日 LLM 請求上限（保護帳單）
+const REQ_BODY_MAX_MESSAGES = 40;      // 單次請求 messages 陣列上限（擋超大 body）
+const INQUIRY_IP_MAX = 3;              // 單 IP 每 10 分鐘最多送幾次 submit_inquiry
+const INQUIRY_IP_WINDOW = 10 * 60_000;
+const INQUIRY_DAY_MAX = 100;           // 全站每日 submit_inquiry 上限（防灌爆老闆）
+
+let gMinCount = 0, gMinReset = 0, gDayCount = 0, gDayReset = 0;
+/** 全站 LLM 請求後備閘：回 true=擋下（超過每分鐘或每日上限）。通過才計數。 */
+function globalLlmGate(): boolean {
+  const now = Date.now();
+  if (now > gMinReset) { gMinCount = 0; gMinReset = now + 60_000; }
+  if (now > gDayReset) { gDayCount = 0; gDayReset = now + 86_400_000; }
+  if (gMinCount >= GLOBAL_MINUTE_MAX || gDayCount >= GLOBAL_DAY_MAX) return true;
+  gMinCount += 1; gDayCount += 1;
+  return false;
+}
+
+const inquiryIpMap = new Map<string, { c: number; reset: number }>();
+let inqDayCount = 0, inqDayReset = 0;
+/** submit_inquiry 專屬閘：回 true=擋下（單 IP 頻繁 或 全站每日超量）。通過才計數。 */
+function inquiryGate(ip: string): boolean {
+  const now = Date.now();
+  if (now > inqDayReset) { inqDayCount = 0; inqDayReset = now + 86_400_000; }
+  if (inqDayCount >= INQUIRY_DAY_MAX) return true;
+  const s = inquiryIpMap.get(ip);
+  if (!s || now > s.reset) { inquiryIpMap.set(ip, { c: 1, reset: now + INQUIRY_IP_WINDOW }); inqDayCount += 1; return false; }
+  if (s.c >= INQUIRY_IP_MAX) return true;
+  s.c += 1; inqDayCount += 1;
+  return false;
 }
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -150,6 +185,37 @@ const WD = ["日", "一", "二", "三", "四", "五", "六"];
 const taipeiToday = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
 const taipeiPlus = (base: string, days: number) => { const d = new Date(`${base}T00:00:00+08:00`); d.setDate(d.getDate() + days); return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }); };
 const weekdayOf = (ds: string) => WD[new Date(`${ds}T12:00:00+08:00`).getDay()];
+
+// ── 濫用防護（v772，中等強度）──────────────────────────────
+const MAX_MSG_LEN = 800;           // 每則訊息長度上限（原 4000；避免被灌長文放大 token 成本）
+const REFUSE_LINE = "這部分我無法協助，我只負責潛水相關諮詢喔 🙂 想了解課程、場次、潛旅或費用都可以問我～";
+
+// 廉價預過濾：高信心的提示詞注入／越獄嘗試 → 直接罐頭回覆，不呼叫付費 AI（省 token）。
+//   只攔「明確的攻擊字樣」，避免誤傷正常提問；一般離題交給模型的護欄處理（已驗證會婉拒）。
+const INJECTION_RE =
+  /(ignore|disregard|forget|override)\b.{0,24}(previous|above|prior|earlier|all|your|the)?\s*(instruction|prompt|rule|context)|system\s*prompt|developer\s*mode|jailbreak|prompt\s*injection|reveal.{0,20}(prompt|instruction)|你的(系統)?(提示詞|指令|規則|prompt)|系統提示詞?|(忽略|無視|忘記).{0,8}(上面|先前|之前|所有|你的).{0,4}(指示|指令|規則|設定)|進入.{0,4}開發者模式|越獄/i;
+
+function precheckAbuse(text: string): string | null {
+  const t = text.trim();
+  if (INJECTION_RE.test(t)) return REFUSE_LINE;
+  return null; // 放行給 AI
+}
+
+// 重複洪水節流：同 IP 在 60 秒內連送同一句，第 3 次起直接罐頭擋掉（不呼叫 AI）。
+const floodMap = new Map<string, { msg: string; n: number; at: number }>();
+function isFlood(ip: string, msg: string): boolean {
+  const now = Date.now();
+  if (floodMap.size > 5000) floodMap.clear(); // 防記憶體膨脹（低流量足夠）
+  const prev = floodMap.get(ip);
+  if (prev && prev.msg === msg && now - prev.at < 60_000) {
+    prev.n += 1; prev.at = now;
+    return prev.n >= 3;
+  }
+  floodMap.set(ip, { msg, n: 1, at: now });
+  return false;
+}
+// 註：全站每分鐘/每日總量斷路器見上方 globalLlmGate()；此處不重複。
+
 /** get_dive_sessions 工具：查近期可預約日潛場次 + 剩餘名額（重用 /api/trips 的版本號快取，命中零 DB）。 */
 async function runGetDiveSessions(from?: string, to?: string): Promise<string> {
   const today = taipeiToday();
@@ -328,8 +394,13 @@ async function callOpenRouter(apiKey: string, model: string, messages: OAIMessag
 }
 
 export async function POST(req: NextRequest) {
-  const limited = checkRateLimit(req, { scope: "assistant", windowMs: 60_000, max: 20 });
+  // 單 IP 限流：12 次/分（人類綽綽有餘；壓低 Denial-of-Wallet 攻擊面）
+  const limited = checkRateLimit(req, { scope: "assistant", windowMs: 60_000, max: 12 });
   if (limited) return limited;
+  // v772：單 IP 每日上限（分鐘級擋不住「整天慢慢問」的耗帳單）
+  const limitedDay = checkRateLimit(req, { scope: "assistant-day", windowMs: 86_400_000, max: 100 });
+  if (limitedDay) return limitedDay;
+  const clientIp = getClientIp(req);
 
   const cfg = await readSiteCfg();
   const ai = cfg?.aiBot ?? {};
@@ -357,13 +428,25 @@ export async function POST(req: NextRequest) {
   }
 
   const raw = Array.isArray(body.messages) ? body.messages : [];
+  // v772：擋超大 body（只用最近 MAX_HISTORY 則，過長純屬灌爆/DoS）
+  if (raw.length > REQ_BODY_MAX_MESSAGES) {
+    return NextResponse.json({ error: "訊息太多了，請重新整理對話再試 🙂" }, { status: 413 });
+  }
   const history: OAIMessage[] = raw
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-MAX_HISTORY)
-    .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content).slice(0, 4000) }));
+    .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content).slice(0, MAX_MSG_LEN) }));
 
   if (history.length === 0 || history[history.length - 1].role !== "user") {
     return NextResponse.json({ error: "請提供對話訊息（最後一則需為使用者）" }, { status: 400 });
+  }
+
+  // v772：呼叫付費 AI 前的廉價防護——省 token、擋洪水/注入
+  const lastUser = String(history[history.length - 1].content ?? "");
+  const canned = precheckAbuse(lastUser);
+  if (canned) return NextResponse.json({ reply: canned }); // 高信心注入 → 罐頭回覆，不打 AI
+  if (isFlood(clientIp, lastUser)) {
+    return NextResponse.json({ reply: "同樣的問題我剛回過囉 🙂 想更詳細可以加 LINE @894bpmew 問汪汪教練～" });
   }
 
   // 系統提示（v769）= 最高優先規則 + 連結 + 即時資料 + 知識庫 + 後台即時價目/政策 + 後台補充
@@ -382,6 +465,14 @@ export async function POST(req: NextRequest) {
   if ((ai.persona ?? "").trim()) system += `\n\n# 老闆補充的個性／語氣（務必遵循）\n${(ai.persona ?? "").trim()}`;
   if ((ai.extraKnowledge ?? "").trim()) system += `\n\n# 老闆補充的資訊（優先採用）\n${(ai.extraKnowledge ?? "").trim()}`;
   const messages: OAIMessage[] = [{ role: "system", content: system }, ...history];
+
+  // v772：Denial-of-Wallet 後備閘——超過全站每分鐘/每日上限就不打 OpenRouter，直接引導 LINE
+  if (globalLlmGate()) {
+    return NextResponse.json(
+      { error: "AI 客服目前使用量較大，請稍後再試，或直接加 LINE @894bpmew 問汪汪教練 🙂" },
+      { status: 503 },
+    );
+  }
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -407,9 +498,14 @@ export async function POST(req: NextRequest) {
           } else if (call.function?.name === "get_dive_tours") {
             out = await runGetDiveTours();
           } else if (call.function?.name === "submit_inquiry") {
-            let args: { name?: string; email?: string; message?: string } = {};
-            try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }
-            out = await runSubmitInquiry(args);
+            // v772：防灌爆——單 IP 頻繁 or 全站每日超量時，不寫 DB/不通知老闆，改引導 LINE
+            if (inquiryGate(clientIp)) {
+              out = "今天送出的詢問較多了，這部分請直接加 LINE @894bpmew 找汪汪教練，會更快喔 🙂";
+            } else {
+              let args: { name?: string; email?: string; message?: string } = {};
+              try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* ignore */ }
+              out = await runSubmitInquiry(args);
+            }
           }
           messages.push({ role: "tool", tool_call_id: call.id, content: out });
         }
