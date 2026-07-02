@@ -1,5 +1,13 @@
 # Changelog
 
+## 20260702_775 - 2026-07-02 (安全收尾：清版控內硬編碼金鑰 + 訂單編輯最小權限)
+
+- **🔴 版控內硬編碼金鑰（新發現，已清除）**：安全掃描（`git grep` 已知外洩值）發現 `ZEABUR_DEPLOY.md`、`docs/CRON_SETUP.md` 內硬編碼了**真實的** LINE Channel Access Token／Channel Secret、`JWT_SECRET`、`CRON_SECRET`——比 .env 更糟（.env 未進版控，這些卻在版控與 git 歷史裡）。全部改為 `<佔位符>` 並指向 `docs/runbooks/SECRET_ROTATION.md`。
+  - ⚠️ 舊值仍存在於 git 歷史；**依手冊 rotate 後即失效無害**。要徹底清歷史才需 BFG/git-filter-repo（rotate 後非必要）。
+  - 確認乾淨：R2 存取金鑰、`src/**` 原始碼皆無硬編碼密鑰；`.env` 未進版控（僅 `.env.example`）。
+- **#13 最小權限（OWASP A01）**：`PATCH /api/admin/bookings/[id]` 由「黑名單」改「白名單」——教練（非 admin/boss/it）只能改現場欄位（`participants`／`paidAmount`／`status`／`paymentMethod`／`notes`／`siteNotes`／`cancellationReason`）；金額結構（`totalAmount`／`depositAmount`／`paymentStatus`）與 `adminNotes` 收歸 admin/boss/it，未授權欄位一律忽略。
+- 動檔：`ZEABUR_DEPLOY.md`、`docs/CRON_SETUP.md`、`src/app/api/admin/bookings/[id]/route.ts`。
+
 ## 20260702_774 - 2026-07-02 (文件：金鑰輪換操作手冊)
 
 - 新增 `docs/runbooks/SECRET_ROTATION.md`：承接 v773 稽核發現的「.env 於 2026-05-11 外洩」，用實際環境變數名稱、分平台（LINE／Cloudflare R2／Zeabur／Cronicle／Google／Gmail…）列出 rotate 步驟、副作用（如換 JWT_SECRET 會登出所有 session、換 CRON_SECRET 需與 Cronicle `HAIWANGZI_CRON_SECRET` 同步）、驗證方式與完成檢查清單。

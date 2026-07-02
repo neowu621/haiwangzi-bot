@@ -65,12 +65,17 @@ export async function PATCH(
   }
   const data = parsed.data;
   const isAdminOrBoss = getUserRoles(auth.user).some((r) => r === "admin" || r === "boss" || r === "it");
+  // v775 最小權限（改黑名單為白名單）：非 admin/boss（即教練）只能改「現場需要」的欄位。
+  //   金額結構（totalAmount / depositAmount / paymentStatus）與 adminNotes 一律 admin/boss/it 專屬，
+  //   避免教練帳號（或未來新增的 schema 欄位）被越權寫入。
+  const COACH_FIELDS = new Set([
+    "participants", "paidAmount", "status", "paymentMethod", "notes", "siteNotes", "cancellationReason",
+  ]);
 
   const patch: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     if (v === undefined) continue;
-    // 管理備註只有 admin/boss 可寫
-    if (k === "adminNotes" && !isAdminOrBoss) continue;
+    if (!isAdminOrBoss && !COACH_FIELDS.has(k)) continue; // 白名單守門
     patch[k] = v === "" ? null : v;
   }
   try {

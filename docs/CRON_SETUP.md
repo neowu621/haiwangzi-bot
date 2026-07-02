@@ -225,7 +225,7 @@ curl -fsS -X POST \
 openssl rand -hex 32
 ```
 
-得到一段 64 字元 hex，例如：`8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS`
+得到一段 64 字元 hex，例如：`<CRON_SECRET>`
 
 ### 2. Zeabur — haiwangzi-bot service
 
@@ -289,12 +289,12 @@ Cronicle UI → 該 event → **Run Now** → 看 Log。
 ```bash
 # Production
 curl -X POST \
-  -H "Authorization: Bearer 8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS" \
+  -H "Authorization: Bearer <CRON_SECRET>" \
   "https://haiwangzi.xyz/api/cron/reminders?pollWindowMinutes=30"
 
 # Local dev
 curl -X POST \
-  -H "Authorization: Bearer 8upfLU5qr7i4a2mP3VocnRNKwMytABXEl0e1h9YS" \
+  -H "Authorization: Bearer <CRON_SECRET>" \
   "http://localhost:3000/api/cron/reminders?pollWindowMinutes=30"
 ```
 
