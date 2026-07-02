@@ -1,5 +1,10 @@
 # Changelog
 
+## 20260702_774 - 2026-07-02 (文件：金鑰輪換操作手冊)
+
+- 新增 `docs/runbooks/SECRET_ROTATION.md`：承接 v773 稽核發現的「.env 於 2026-05-11 外洩」，用實際環境變數名稱、分平台（LINE／Cloudflare R2／Zeabur／Cronicle／Google／Gmail…）列出 rotate 步驟、副作用（如換 JWT_SECRET 會登出所有 session、換 CRON_SECRET 需與 Cronicle `HAIWANGZI_CRON_SECRET` 同步）、驗證方式與完成檢查清單。
+- `docs/index.html` 文件導覽加上該手冊連結。純文件，無程式邏輯變更。
+
 ## 20260702_773 - 2026-07-02 (全站安全稽核 OWASP Top10:2025／20 項 + 縱深防禦修補)
 
 - **稽核範圍**：依 OWASP Top 10:2025 + Next.js 實務展開「網站安全 20 大問題」全站掃描（4 個平行掃描代理 + `npm audit`）。
