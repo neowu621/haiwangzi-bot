@@ -52,8 +52,14 @@ async function run(req: NextRequest) {
   }
   if (!authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  // v772 縱深防禦：$executeRawUnsafe 的表名/欄名無法參數化，這裡強制白名單格式，
+  //   即使未來把 TEXT_PATCHES/JSON_PATCHES 改成動態來源也不會被 SQL 識別字注入。
+  const IDENT_RE = /^[a-z_][a-z0-9_]*$/;
+  const safeIdent = (s: string) => IDENT_RE.test(s);
+
   const results: Record<string, number> = {};
   for (const [tbl, col] of TEXT_PATCHES) {
+    if (!safeIdent(tbl) || !safeIdent(col)) { results[`${tbl}.${col}__BADIDENT`] = -1; continue; }
     try {
       const n = await prisma.$executeRawUnsafe(
         `UPDATE ${tbl} SET ${col} = REPLACE(${col}, $1, $2) WHERE ${col} LIKE '%' || $1 || '%'`,
@@ -63,6 +69,7 @@ async function run(req: NextRequest) {
     } catch (e) { results[`${tbl}.${col}__ERR`] = -1; console.error(`[migrate-domain ${tbl}.${col}]`, e); }
   }
   for (const [tbl, col, cast] of JSON_PATCHES) {
+    if (!safeIdent(tbl) || !safeIdent(col) || (cast !== "json" && cast !== "jsonb")) { results[`${tbl}.${col}__BADIDENT`] = -1; continue; }
     try {
       const n = await prisma.$executeRawUnsafe(
         `UPDATE ${tbl} SET ${col} = REPLACE(${col}::text, $1, $2)::${cast} WHERE ${col}::text LIKE '%' || $1 || '%'`,

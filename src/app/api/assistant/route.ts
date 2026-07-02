@@ -402,6 +402,18 @@ export async function POST(req: NextRequest) {
   if (limitedDay) return limitedDay;
   const clientIp = getClientIp(req);
 
+  // v772：先擋壞 JSON / 超大 body——便宜的拒絕排在 DB 設定讀取與金鑰檢查之前，省資源也擋 DoS
+  let body: { messages?: ChatMsg[] };
+  try {
+    body = (await req.json()) as { messages?: ChatMsg[] };
+  } catch {
+    return NextResponse.json({ error: "bad json" }, { status: 400 });
+  }
+  const raw = Array.isArray(body.messages) ? body.messages : [];
+  if (raw.length > REQ_BODY_MAX_MESSAGES) {
+    return NextResponse.json({ error: "訊息太多了，請重新整理對話再試 🙂" }, { status: 413 });
+  }
+
   const cfg = await readSiteCfg();
   const ai = cfg?.aiBot ?? {};
   if (ai.enabled === false) {
@@ -420,18 +432,6 @@ export async function POST(req: NextRequest) {
   // 模型：後台設定 > 環境變數 > 預設
   const model = (ai.model ?? "").trim() || process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 
-  let body: { messages?: ChatMsg[] };
-  try {
-    body = (await req.json()) as { messages?: ChatMsg[] };
-  } catch {
-    return NextResponse.json({ error: "bad json" }, { status: 400 });
-  }
-
-  const raw = Array.isArray(body.messages) ? body.messages : [];
-  // v772：擋超大 body（只用最近 MAX_HISTORY 則，過長純屬灌爆/DoS）
-  if (raw.length > REQ_BODY_MAX_MESSAGES) {
-    return NextResponse.json({ error: "訊息太多了，請重新整理對話再試 🙂" }, { status: 413 });
-  }
   const history: OAIMessage[] = raw
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-MAX_HISTORY)

@@ -1,5 +1,18 @@
 # Changelog
 
+## 20260702_773 - 2026-07-02 (全站安全稽核 OWASP Top10:2025／20 項 + 縱深防禦修補)
+
+- **稽核範圍**：依 OWASP Top 10:2025 + Next.js 實務展開「網站安全 20 大問題」全站掃描（4 個平行掃描代理 + `npm audit`）。
+- **結論：核心防護良好**——存取控制/IDOR、後台守門（91 路由 100% requireRole）、XSS、CSRF（state cookie+SameSite）、安全標頭（CSP/HSTS/X-Frame/nosniff/Referrer/Permissions 皆已設於 `next.config.ts`）、檔案上傳白名單（type/8MB/presign TTL）、SSRF、路徑遍歷、開放轉址、密碼（scrypt+salt+timingSafe）、供應鏈（`npm audit` 0 漏洞）全數通過。
+- **誤報澄清**：掃描代理曾指「付款憑證可越權讀取」，實際讀檔驗證為**誤報**——`[proofId]` 僅 DELETE 且有 `booking.userId` 擁有者檢查，無未授權 GET 讀取端點。
+- **本版修補（縱深防禦）**：
+  1. **DEV 冒充身分閘收緊**：`NODE_ENV !== "production"` → `=== "development"`，關掉 NODE_ENV 未設／test／staging 灰色狀態下 `?lineUserId` 冒充任意身分的窗口（`src/lib/auth.ts`）。
+  2. **raw SQL 識別字白名單**：`migrate-domain` 的 `$executeRawUnsafe` 表名/欄名強制 `^[a-z_][a-z0-9_]*$`，即使未來改動態來源也擋得住 SQL 識別字注入（`src/app/api/admin/migrate-domain/route.ts`）。
+  3. **AI 客服 body 上限前移**：超大 body（>40 則）與壞 JSON 的拒絕移到限流之後、DB 設定/金鑰檢查之前——便宜的拒絕先做，省資源、擋 DoS（`src/app/api/assistant/route.ts`）。
+- **測試（本機 dev 伺服器實打）**：migrate-domain 無授權→401、單 IP 限流 12/分→429、超大 body(41 則)→413、壞 JSON→400、DEV 冒充回歸（development 仍可用、無授權→401）全數通過。
+- **⚠️ 待老闆處理（非程式、最高優先）**：`.env` 內 LINE Channel Token / R2 金鑰 / JWT_SECRET / CRON_SECRET 已於 2026-05-11 對話中外洩，務必到 LINE Developers Console／Cloudflare／Zeabur **全部 rotate 重簽**（`.env` 已在 .gitignore、未進版控，但外洩的舊值仍有效需作廢）。
+- 前置：v772 已上「AI 客服防濫用/防燒帳單」（單 IP 每日上限＋全站斷路器＋注入預過濾＋洪水節流＋訊息瘦身），對應 OWASP LLM01/資源耗盡。
+
 ## 20260701_772 - 2026-07-01 (AI 客服：防濫用／防燒帳單分層防護，中等強度)
 
 防止有人用非正常方式狂問、亂問、注入攻擊 AI，或問非潛水內容。多層防護（in-memory、單實例、重啟歸零，與 rate-limit 同設計；多實例 scale 再接 Redis）：

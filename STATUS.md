@@ -1,7 +1,7 @@
 # STATUS — 海王子潛水團 LIFF App
 
-**Last update：** 2026-07-01
-**Version：** `20260701_772`（AI 客服防濫用／防燒帳單分層防護：單 IP 12/分+100/日、全站 60/分+1500/日斷路器、注入預過濾、重複洪水節流、訊息瘦身 800 字）
+**Last update：** 2026-07-02
+**Version：** `20260702_773`（全站安全稽核 OWASP Top10:2025／20 項：核心防護皆通過、npm audit 0 漏洞；縱深修補 DEV 冒充閘收緊+raw SQL 白名單+AI body 上限前移；⚠️ .env 外洩金鑰待 rotate）
 **Phase：** ✅ 已上線營運中 — `https://haiwangzi.xyz`（Zeabur 自動部署）
 **部署驗證：** `curl https://haiwangzi.xyz/api/healthz` 回的 version 即線上版本。
 **近期重點（詳見 docs/PROGRESS.md）：** 新增網站 AI 客服小幫手（公開頁右下角，Claude Haiku 4.5，`/api/assistant`，含留資工具，需 `ANTHROPIC_API_KEY`）、訂單詳情移除「修改總金額」、付款紀錄+狀態歷史合併「訂單歷程」、到場點名三介面加確認+未付清現場收現+未到退款提醒、現場收款權限收緊為老闆、訂單管理「待退款」清單、角色釐清（boss=老闆／admin=代理人）、`docs/order-flow.html`/`docs/index.html` 文件。

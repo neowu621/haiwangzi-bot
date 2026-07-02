@@ -46,9 +46,10 @@ export async function authFromRequest(req: NextRequest): Promise<AuthResult> {
     return await tryVerifyMemberWebJwt(memberCookie);
   }
 
-  // dev fallback：只在「真的非 production」才開啟。
-  // v293 安全強化：production 環境即使 DEV_MODE_ENABLED=1 也拒絕；避免誤設導致任何人冒充任意身份
-  const devEnabled = process.env.NODE_ENV !== "production";
+  // dev fallback：只在「明確 development」才開啟（?lineUserId 冒充任意身分）。
+  // v293：production 一律拒絕。v772 安全強化：由 `!== "production"` 收緊為 `=== "development"`，
+  //   避免 NODE_ENV 未設 / test / staging 等灰色狀態意外開放冒充窗口；本機 `next dev` 仍是 development。
+  const devEnabled = process.env.NODE_ENV === "development";
   if (devEnabled) {
     const url = new URL(req.url);
     const lineUserId = url.searchParams.get("lineUserId");
