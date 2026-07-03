@@ -257,7 +257,7 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
       return `${s(p.bookingTitle)}\n本次 +${s(p.addLogs)} 潛・海王子累積 ${s(p.totalLogs)} 潛\n會員等級：${/^\d+$/.test(lv) ? `LV${lv}` : lv}`
         + `\n\n🎉 謝謝你和東北海王子潛水一起下水！玩得開心嗎？`
         + `\n喜歡今天的旅程，給我們海王子評論鼓勵一下，`
-        + `\n只要一分鐘就好 🙏 給我們五星評價`
+        + `\n只要一分鐘就好 🙏 給我們 Google 五星評價`
         + `\n任何建議或想說的，也超歡迎直接回訊息告訴我們 💙`;
     }
     // ── 旅遊潛水（訂金 + 尾款）──

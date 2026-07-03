@@ -105,7 +105,7 @@ export function attendanceConfirmed(
         },
         {
           type: "text",
-          text: "只要一分鐘就好 🙏 給我們五星評價",
+          text: "只要一分鐘就好 🙏 給我們 Google 五星評價",
           color: COLORS.mute,
           size: "xs",
           align: "center",
