@@ -20,7 +20,6 @@ export function attendanceConfirmed(
   const addLogs = asString(params.addLogs, "");
   const totalLogs = asString(params.totalLogs, "");
   const vipLevel = asString(params.vipLevel, "1");
-  const liffUrl = asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm");
   // v782：五星好評連結（Google Maps）。可由 params.reviewUrl 覆寫。
   const reviewUrl = asString(params.reviewUrl, "https://maps.app.goo.gl/L58ukZuJroo5vbjv5");
 
@@ -131,27 +130,17 @@ export function attendanceConfirmed(
     footer: {
       type: "box",
       layout: "vertical",
-      spacing: "sm",
       paddingAll: "12px",
       contents: [
         {
+          // v788：合併為單一「評價」按鈕（原「⭐ 海王子評論」＋「查看紀錄」兩顆合一）→ Google 評論
           type: "button",
           style: "primary",
           color: COLORS.phosphor,
           action: {
             type: "uri",
-            label: "⭐ 海王子評論",
+            label: ovr(override, "buttonLabel", "給予我們 ⭐⭐⭐⭐⭐ 評價"),
             uri: reviewUrl,
-          },
-        },
-        {
-          type: "button",
-          style: "link",
-          height: "sm",
-          action: {
-            type: "uri",
-            label: ovr(override, "buttonLabel", "查看我的潛水紀錄"),
-            uri: liffUrl,
           },
         },
       ],

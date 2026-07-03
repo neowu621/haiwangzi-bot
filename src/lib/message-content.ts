@@ -98,7 +98,7 @@ export const MSG_EDITABLE_FIELDS: Record<
   attendance_confirmed: [
     { key: "title", label: "標題", defaultValue: "已記錄您的到場" },
     { key: "bodyText", label: "說明文字", defaultValue: "🎉 謝謝你和東北海王子潛水一起下水！今天玩得開心嗎？" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的潛水紀錄" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "給予我們 ⭐⭐⭐⭐⭐ 評價" },
     { key: "altText", label: "通知列文字", defaultValue: "已記錄到場・給我們五星好評 ⭐" },
   ],
   first_order_reward_grant: [
