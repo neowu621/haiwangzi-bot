@@ -352,7 +352,10 @@ export function composeEmail(
   const dyn = buildDynamicBody(key, params);
   const footer = EXTRA_FOOTER[key] ?? "";
   // v600b：Email 按鈕一律導小編 LINE OA(避開 awstrack 追蹤破壞 LIFF);忽略 params.url/liffUrl
-  const buttonUrl = EMAIL_BUTTON_URL;
+  // v791：到場確認例外 —— 按鈕要連到 Google 評論(海王子五星評價)，非小編 LINE
+  const buttonUrl = key === "attendance_confirmed"
+    ? (typeof params.reviewUrl === "string" && params.reviewUrl ? params.reviewUrl : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5")
+    : EMAIL_BUTTON_URL;
   const heroEmoji = HERO_EMOJI[key] ?? "📩";
   const subject = `${opts?.subjectPrefix ?? ""}${title}`;
   const footnote = opts?.footnote ?? "系統自動通知信 · 動態欄位由系統自動帶入";
