@@ -69,14 +69,19 @@ export default function CoachTodayPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  // v776：老闆(boss/admin/it)才可現場收現結清；教練/助教只標到場
+  const [canRecordPayment, setCanRecordPayment] = useState(false);
 
   async function reload() {
     setLoading(true);
     try {
-      const d = await liff.fetchWithAuth<{ trips: CoachTrip[] }>(
+      const d = await liff.fetchWithAuth<{ trips: CoachTrip[]; viewerRoles?: string[] }>(
         "/api/coach/today",
       );
       setTrips(d.trips);
+      setCanRecordPayment(
+        (d.viewerRoles ?? []).some((r) => r === "boss" || r === "admin" || r === "it"),
+      );
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -98,10 +103,14 @@ export default function CoachTodayPage() {
   ) {
     const owed = Math.max(0, (b.totalAmount ?? 0) - (b.paidAmount ?? 0));
     const paid = b.paidAmount ?? 0;
-    // v756：教練/助教不能記帳收款（限老闆）→ 未付清只標到場 + 提醒通知老闆收款
+    // v776：老闆可現場收現結清（收現→標到場，一次同步 paidAmount/paymentStatus/paymentMethod/status）；
+    //   教練/助教不能記帳(v756) → 未付清只標到場 + 提醒通知老闆收款。
+    const settle = action === "completed" && owed > 0 && canRecordPayment;
     if (action === "completed") {
       const ok = owed > 0
-        ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n請現場向客戶收現金，並通知老闆記帳。\n確認標記到場？`)
+        ? (canRecordPayment
+            ? confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n按「確定」＝現場收現 NT$${owed.toLocaleString()}（現場付金）並標記到場。\n若未收到現金請按「取消」。`)
+            : confirm(`⚠️ ${b.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。\n\n請現場向客戶收現金，並通知老闆記帳。\n確認標記到場？`))
         : confirm(`確認 ${b.name} 到場？`);
       if (!ok) return;
     } else {
@@ -112,6 +121,13 @@ export default function CoachTodayPage() {
     }
     setUpdating(b.id);
     try {
+      // 老闆現場收現：先記一筆「現金（實收）= 剩餘」＝現場付金（會一併標 paymentMethod=cash），再標到場
+      if (settle) {
+        await liff.fetchWithAuth(`/api/admin/bookings/${b.id}/payment-entry`, {
+          method: "POST",
+          body: JSON.stringify({ kind: "cash", amount: owed }),
+        });
+      }
       await liff.fetchWithAuth(`/api/coach/bookings/${b.id}/attendance`, {
         method: "POST",
         body: JSON.stringify({ action }),

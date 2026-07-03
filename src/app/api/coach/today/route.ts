@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authFromRequest, requireRole } from "@/lib/auth";
+import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +50,11 @@ export async function GET(req: NextRequest) {
   const sites = await prisma.diveSite.findMany({ where: { id: { in: allSiteIds } } });
   const siteMap = new Map(sites.map((s) => [s.id, s.name]));
 
+  // v776：回傳呼叫者角色 → LIFF 端據此決定是否顯示「現場收現結清」(限老闆 boss/admin/it)
+  const viewerRoles = getUserRoles(auth.user);
+
   return NextResponse.json({
+    viewerRoles,
     trips: trips.map((t) => ({
       id: t.id,
       date: t.date.toISOString().slice(0, 10),

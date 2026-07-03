@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-03 — 手機 LINE 登入即可現場收現（老闆免帳密）（v777）
+
+老闆要求「手機用 LINE 登入就能處理現場/即時，不用再輸入帳密」。**關鍵發現：認證早就通了**——`authFromRequest`（[auth.ts:39](src/lib/auth.ts:39)）本來就吃 LINE idToken，`requireRole` 依 DB 角色判斷；所以老闆在 LINE 裡開任何 LIFF 頁，就是以 boss 身分登入（`/liff/coach/today` 教練端本來就這樣跑）。缺的只是：LIFF 今日場次頁**沒給老闆「現場收現結清」按鈕**（連老闆都被叫去「通知老闆記帳」）。
+
+- **修補（對齊已上線的 `/admin/m/attendance` 流程）**：
+  - `/api/coach/today` 回傳 `viewerRoles`（[route.ts](src/app/api/coach/today/route.ts)）。
+  - `/liff/coach/today`：老闆(boss/admin/it) 標到場時，未付清 → 先 `POST /api/admin/bookings/[id]/payment-entry {kind:cash, amount:剩餘}`（會一併寫 `paymentMethod=cash`，v776）再標到場；教練/助教維持只標到場、提醒老闆（v756）。
+  - 安全：`payment-entry` 伺服器端仍限 `["admin"]`；就算前端誤顯示按鈕，教練呼叫也會 403（前端 gating 錯不會開洞）。
+- **結果**：老闆手機開 LINE → `/liff/coach` → 今日場次 → 按到場 → 自動現場收現結清，一次同步 paidAmount/paymentStatus/paymentMethod/status。**全程 LINE 登入、免帳密。**
+- **⚠️ 待真機驗證**：LIFF 只能在 LINE App 內跑，本機無法端到端測；`npm run build` 已過（exit 0）。此改動是複製已上線的 `/admin/m` 流程 + 伺服器端權限不變，風險低，但**建議老闆用手機在 LINE 實跑一次**確認。
+- 仍待（更大範圍）：把整個手機老闆後台（老闆結帳/訂單…）都搬進 LIFF；目前只補了最關鍵的「現場點名＋收現」。
+
 ## 2026-07-03 — 老闆結帳：現場付款/逾期單不再進「待匯款催繳」（v776）
 
 老闆回報：一張 6/30（已過期）、客戶選「現場付款」的單，仍出現在「已下單·待匯款」催繳清單。
