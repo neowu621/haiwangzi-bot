@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
 
@@ -742,6 +743,14 @@ export default function PaymentUploadPage({
             <Upload className="h-4 w-4" />
             {uploading ? (file ? "上傳中..." : "送出中...") : "送出付款證明"}
           </Button>
+        )}
+        {/* v781：上傳中 → 潛水員踢水動畫遮罩，明確告知正在上傳、擋重複送出 */}
+        {uploading && (
+          <DiverLoader
+            overlay
+            label={file ? "上傳中，請稍候…" : "送出中，請稍候…"}
+            subLabel="依你的網路速度，可能需要幾秒；請勿關閉或重複送出"
+          />
         )}
 
         {error && (

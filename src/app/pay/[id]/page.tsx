@@ -2,6 +2,7 @@
 import { use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SignaturePad } from "@/components/ui/SignaturePad";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 
 interface BookingPublic {
   id: string;
@@ -389,13 +390,21 @@ export default function PublicPayPage({
             </div>
           )}
 
+          {/* v781：上傳中 → 潛水員踢水動畫全螢幕遮罩，明確告知「正在上傳」並擋重複送出 */}
+          {submitting && (
+            <DiverLoader
+              overlay
+              label="上傳中，請稍候…"
+              subLabel="依你的網路速度，可能需要幾秒；請勿關閉或重複送出"
+            />
+          )}
           <button
             type="button"
             onClick={submit}
             disabled={submitting}
             className="w-full rounded-md bg-cyan-700 px-4 py-3 text-white font-bold text-sm disabled:opacity-50"
           >
-            {submitting ? "送出中⋯" : "💸 送出付款證明"}
+            {submitting ? "上傳中…" : "💸 送出付款證明"}
           </button>
         </section>
       )}

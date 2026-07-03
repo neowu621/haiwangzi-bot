@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-03 — 潛水員踢水 loading 動畫（上傳/讀取「處理中」回饋）（v781）
+
+老闆反映：手機上傳付款證明時，因每人網速不同，看不出是否正在上傳。做一個**純 CSS 潛水員踢水動畫**當「處理中」回饋，並盤點上傳/大量讀取的頁面一起導入。
+
+- **元件** `src/components/ui/DiverLoader.tsx`：inline SVG 潛水員（氣瓶/面鏡/蛙鞋）+ 交替踢水 + 上升氣泡，keyframes 放 `globals.css`（`.hwz-diver-*`，全域一次不重複注入）。純 CSS 無外部資源（~1KB，合手機鐵則）；支援 `prefers-reduced-motion`。props：`label`/`subLabel`/`size`/`overlay`（全螢幕半透明遮罩擋重複送出）。
+- **導入（上傳類，overlay 遮罩）**：付款證明上傳 `/pay/[id]`、`/liff/payment/[bookingId]`；預約送出（含簽名上傳）`/liff/dive/trip/[tripId]`、`/liff/tour/[packageId]`。
+- **導入（大量讀取，一次全換）**：共用 `LiffLoading` 的 `bubbles` 變體（首頁/內容載入用）**升級為潛水員** → 所有用 `variant="bubbles"` 的頁面（潛旅/場次詳情/社群/付款頁初載）自動換上，免逐頁改。`skeleton`（列表骨架）與 `ring`（短操作）維持不變。
+- `npm run build` 通過（exit 0）。
+- 待辦（同模式可續接）：m2 下單送出、教練照片上傳、後台大型列表初載。
+
 ## 2026-07-03 — 手機 LIFF 老闆結帳待收款 + 訂單管理結清也同步狀態（v779）
 
 承 v778：老闆要「一筆訂單兩個狀態（`status` 到場軸 ↔ `paymentStatus` 收款軸）要同步」，並要手機版老闆結帳。

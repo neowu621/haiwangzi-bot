@@ -22,6 +22,7 @@ import { MissingContactInfoModal } from "@/components/liff/MissingContactInfoMod
 import { Separator } from "@/components/ui/separator";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
@@ -721,6 +722,14 @@ export default function TourDetailPage({
                 {submitting ? "送出中..." : "送出報名"}
               </Button>
             </div>
+            {/* v781：送出報名（含簽名上傳）→ 潛水員踢水遮罩 */}
+            {submitting && (
+              <DiverLoader
+                overlay
+                label="送出報名中，請稍候…"
+                subLabel="正在上傳簽名與建立訂單；請勿關閉或重複送出"
+              />
+            )}
           </CardContent>
         </Card>
 

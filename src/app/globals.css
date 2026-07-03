@@ -93,3 +93,41 @@
     padding-bottom: max(env(safe-area-inset-bottom), 1rem);
   }
 }
+
+/* v781：潛水員踢水 loading 動畫（純 CSS，無外部資源）—— 上傳/讀取時的「處理中」回饋。
+   由 <DiverLoader> 使用；keyframes 放全域一次，避免每個實例重複注入 <style>。 */
+.hwz-diver-body {
+  animation: hwz-swim 2s ease-in-out infinite;
+  transform-origin: 92px 58px;
+}
+.hwz-diver-leg {
+  transform-box: fill-box;
+  transform-origin: 100% 50%;
+}
+.hwz-diver-legA { animation: hwz-kickA 0.55s ease-in-out infinite; }
+.hwz-diver-legB { animation: hwz-kickB 0.55s ease-in-out infinite; }
+.hwz-diver-bub { opacity: 0; }
+.hwz-diver-b1 { animation: hwz-bub 1.7s ease-in infinite; }
+.hwz-diver-b2 { animation: hwz-bub 1.7s ease-in 0.55s infinite; }
+.hwz-diver-b3 { animation: hwz-bub 1.7s ease-in 1s infinite; }
+@keyframes hwz-swim {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-5px) rotate(3deg); }
+}
+@keyframes hwz-kickA {
+  0%, 100% { transform: rotate(18deg); }
+  50% { transform: rotate(-16deg); }
+}
+@keyframes hwz-kickB {
+  0%, 100% { transform: rotate(-16deg); }
+  50% { transform: rotate(18deg); }
+}
+@keyframes hwz-bub {
+  0% { opacity: 0; transform: translateY(0) scale(0.5); }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-30px) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hwz-diver-body, .hwz-diver-legA, .hwz-diver-legB, .hwz-diver-bub { animation: none; }
+  .hwz-diver-bub { opacity: 0.5; }
+}

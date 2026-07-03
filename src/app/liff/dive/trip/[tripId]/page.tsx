@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
@@ -1249,6 +1250,14 @@ export default function TripBookingPage({
                 {bookingClosed ? "已截止預約" : submitting ? "送出中..." : "確認預約"}
               </Button>
             </div>
+            {/* v781：送出預約（含簽名上傳，較慢）→ 潛水員踢水遮罩，明確告知處理中、擋重複送出 */}
+            {submitting && (
+              <DiverLoader
+                overlay
+                label="送出預約中，請稍候…"
+                subLabel="正在上傳簽名與建立訂單；請勿關閉或重複送出"
+              />
+            )}
             {/* v703：未填完時提示還差哪些必填，按鈕才不會「無聲變灰」 */}
             {!bookingClosed && !submitting && missing.length > 0 && (
               <div className="mt-2 rounded-lg bg-[var(--color-coral)]/10 p-2.5 text-xs leading-relaxed text-[var(--color-coral)]">

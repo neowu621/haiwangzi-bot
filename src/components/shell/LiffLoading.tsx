@@ -1,12 +1,13 @@
 "use client";
 import { cn } from "@/lib/utils";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 
 /**
  * v240：客戶端 LIFF 共用 loading 動畫
  * 避免「載入中...」純文字讓客戶以為當機
  *
  * 三種變體：
- *   - "bubbles"  ：海洋氣泡上升（首頁、列表頁載入）
+ *   - "bubbles"  ：潛水員踢水（v781 起，首頁/內容載入用；原氣泡升級成潛水員）
  *   - "ring"     ：海洋色旋轉環（短暫操作 / 表單載入）
  *   - "skeleton" ：卡片骨架（已知會出現多筆卡片的列表）
  *
@@ -72,56 +73,10 @@ export function LiffLoading({
     );
   }
 
-  // bubbles (default)
+  // bubbles (default) — v781：升級為潛水員踢水動畫（首頁/內容載入頁一次全換）
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center gap-4 py-16",
-        className,
-      )}
-    >
-      <div className="relative h-16 w-16">
-        {/* 三顆氣泡上升動畫 */}
-        <span
-          className="absolute left-1 bottom-0 h-3 w-3 rounded-full bg-[var(--color-phosphor)] opacity-70"
-          style={{
-            animation: "liff-bubble 1.4s ease-in infinite",
-            animationDelay: "0s",
-          }}
-        />
-        <span
-          className="absolute left-1/2 -translate-x-1/2 bottom-0 h-4 w-4 rounded-full bg-[var(--color-phosphor)] opacity-80"
-          style={{
-            animation: "liff-bubble 1.4s ease-in infinite",
-            animationDelay: "0.25s",
-          }}
-        />
-        <span
-          className="absolute right-1 bottom-0 h-3 w-3 rounded-full bg-[var(--color-phosphor)] opacity-70"
-          style={{
-            animation: "liff-bubble 1.4s ease-in infinite",
-            animationDelay: "0.5s",
-          }}
-        />
-      </div>
-      {label && (
-        <div className="text-sm text-[var(--muted-foreground)]">{label}</div>
-      )}
-      <style jsx>{`
-        @keyframes liff-bubble {
-          0% {
-            transform: translateY(0);
-            opacity: 0;
-          }
-          20% {
-            opacity: 0.9;
-          }
-          100% {
-            transform: translateY(-44px);
-            opacity: 0;
-          }
-        }
-      `}</style>
+    <div className={cn("flex items-center justify-center py-14", className)}>
+      <DiverLoader label={label} size={104} />
     </div>
   );
 }
