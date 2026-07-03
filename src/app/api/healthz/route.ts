@@ -9,11 +9,22 @@ export const dynamic = "force-dynamic";
 // v694：?db=1 → 量一次「DB 連線往返」(SELECT 1) 毫秒，判斷 DB 距離/連線是否為延遲主因
 //   (預設不打 DB，健康檢查維持輕量)
 export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
   let dbPingMs: number | null = null;
-  if (new URL(req.url).searchParams.has("db")) {
+  if (url.searchParams.has("db")) {
     const t0 = performance.now();
     try { await prisma.$queryRaw`SELECT 1`; dbPingMs = Math.round(performance.now() - t0); }
     catch { dbPingMs = -1; }
+  }
+  // v784：?email=1 → 診斷 Gmail SMTP 是否可登入（不寄信、不外洩金鑰）。
+  let email: unknown = undefined;
+  if (url.searchParams.has("email")) {
+    try {
+      const { verifyEmailTransport } = await import("@/lib/email/send");
+      email = await verifyEmailTransport();
+    } catch (e) {
+      email = { verify: e instanceof Error ? e.message : String(e) };
+    }
   }
   return NextResponse.json({
     ok: true,
@@ -21,5 +32,6 @@ export async function GET(req: NextRequest) {
     env: process.env.NODE_ENV ?? "unknown",
     time: new Date().toISOString(),
     ...(dbPingMs !== null ? { dbPingMs } : {}),
+    ...(email !== undefined ? { email } : {}),
   });
 }

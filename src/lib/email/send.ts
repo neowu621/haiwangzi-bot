@@ -71,6 +71,31 @@ function getTransporter(): Transporter {
   return _transporter;
 }
 
+// v784：Email 寄信診斷（給 /api/healthz?email=1 用）。
+//   只回布林與錯誤訊息，不外洩任何金鑰值。verify() 會實際對 Gmail SMTP 登入(不寄信)，
+//   能區分「env 沒設」vs「App Password 錯/被撤銷」。
+export async function verifyEmailTransport(): Promise<{
+  gmailUserSet: boolean;
+  gmailPasswordSet: boolean;
+  gmailConfigured: boolean;
+  zsendConfigured: boolean;
+  verify: "ok" | "skipped" | string;
+}> {
+  const base = {
+    gmailUserSet: Boolean(GMAIL_USER),
+    gmailPasswordSet: Boolean(GMAIL_APP_PASSWORD),
+    gmailConfigured: gmailConfigured(),
+    zsendConfigured: zsendConfigured(),
+  };
+  if (!gmailConfigured()) return { ...base, verify: "skipped" };
+  try {
+    await getTransporter().verify();
+    return { ...base, verify: "ok" };
+  } catch (e) {
+    return { ...base, verify: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export interface SendEmailAttachment {
   filename: string;
   content: Buffer | string;
