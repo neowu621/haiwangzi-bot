@@ -65,7 +65,14 @@ export function notifyCustomer(opts: {
       const label = FLEX_TEMPLATE_LABELS[key] ?? "通知";
       // 通知列文字（altText）＝後台「通知列文字」欄位（含預設）
       const altText = msgField(key, "altText", tpl) || label;
-      const linkUrl = opts.linkUrl ?? resolveLinkUrl(opts.params);
+      // v785：到場確認的站內通知 → 點擊直接開「海王子評論」；其餘沿用既有邏輯
+      const reviewUrl =
+        typeof opts.params?.reviewUrl === "string" && opts.params.reviewUrl
+          ? opts.params.reviewUrl
+          : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5";
+      const linkUrl =
+        opts.linkUrl ??
+        (key === "attendance_confirmed" ? reviewUrl : resolveLinkUrl(opts.params));
 
       // ── LINE flex ──
       if (!opts.skipLine && lineOn && (user.notifyByLine ?? true)) {

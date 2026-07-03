@@ -127,7 +127,7 @@ export function attendanceConfirmed(
           color: COLORS.phosphor,
           action: {
             type: "uri",
-            label: "⭐ 給我們五星好評",
+            label: "⭐ 海王子評論",
             uri: reviewUrl,
           },
         },
