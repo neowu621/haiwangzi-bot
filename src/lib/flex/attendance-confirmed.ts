@@ -87,7 +87,7 @@ export function attendanceConfirmed(
         },
         {
           type: "text",
-          text: ovr(override, "bodyText", "🎉 謝謝你和東北海王子潛水一起下水！今天玩得開心嗎？"),
+          text: ovr(override, "bodyText", "🎉 謝謝你和東北海王子潛水一起下水！玩得開心嗎？"),
           color: COLORS.oceanDeep,
           size: "sm",
           weight: "bold",
@@ -97,7 +97,7 @@ export function attendanceConfirmed(
         },
         {
           type: "text",
-          text: "喜歡今天的旅程的話，給我們 ⭐⭐⭐⭐⭐ 鼓勵一下，是我們最大的動力！",
+          text: "喜歡今天的旅程，給我們海王子評論鼓勵一下，只要一分鐘就好 🙏",
           color: COLORS.mute,
           size: "xs",
           align: "center",
@@ -105,8 +105,21 @@ export function attendanceConfirmed(
           wrap: true,
         },
         {
+          // v787：內嵌可點連結 —— 整行點下去 → Google 評論
           type: "text",
-          text: "有任何建議或想說的，也超歡迎直接回訊息告訴我們 💙",
+          text: "👉 請點這裡給我們 ⭐⭐⭐⭐⭐",
+          color: "#1a73e8",
+          size: "md",
+          weight: "bold",
+          align: "center",
+          margin: "md",
+          decoration: "underline",
+          wrap: true,
+          action: { type: "uri", label: "海王子評論", uri: reviewUrl },
+        },
+        {
+          type: "text",
+          text: "任何建議或想說的，也超歡迎直接回訊息告訴我們 💙",
           color: COLORS.mute,
           size: "xs",
           align: "center",
