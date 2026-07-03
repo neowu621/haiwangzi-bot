@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-07-03 — Email 寄不出去排查 + 到場確認「海王子評論」可點連結（v784–785）
+
+- **v784 Email 診斷**：老闆反映「Email 寄不出去」。查證近期無寄信碼變更（最後一次 v615），寄信走 Gmail SMTP（`src/lib/email/send.ts`，`GMAIL_USER`+`GMAIL_APP_PASSWORD`）→ 疑似**金鑰輪換(v773–775)後 Zeabur `GMAIL_APP_PASSWORD` 未同步/被撤銷**。加 `verifyEmailTransport()` + `/api/healthz?email=1`（實際對 Gmail SMTP `verify()`、不寄信、不外洩金鑰），可遠端區分「env 沒設」vs「密碼錯」。**修法在 Zeabur 端**（老闆自行：Google 應用程式密碼重建 → 更新 Zeabur 變數 → 重啟）。診斷端點另有既有 `/api/dev/test-email`（Bearer CRON_SECRET）。
+- **v785 到場確認評論連結**：老闆要 URL 變可點的「海王子評論」而非裸網址。純文字管道(站內/email body)無法藏 href，故改用各管道連結機制：LINE flex 好評按鈕標籤→「⭐ 海王子評論」；站內通知 `linkUrl`(attendance_confirmed)→評論網址(點卡片即開)；內文移除長網址改乾淨 CTA。`message-content.ts`/`notify-template.ts`/`flex/attendance-confirmed.ts`。
+- build 皆通過(exit 0)。
+
 ## 2026-07-03 — 付款方式按鈕加大 + 停用匯款自動取消(留提醒) + 已付老闆提示（v783）
 
 老闆三點：
