@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-03 — 到場確認加五星好評邀請 + 一鍵補推 + 場次備註欄合併（v782）
+
+老闆三件事：
+
+1. **場次表單合併欄位**：移除「日潛水備註(內部)」(`notes`)，只留「📣 活動提醒事項」(`activityNote`，客戶可見)，placeholder/說明補上「天氣/裝備/注意事項」。以後一個欄位、不再有內部/客戶兩套造成混淆。動 `src/app/admin/trips/page.tsx`。
+2. **到場確認訊息(attendance_confirmed)加料 + 活潑化**：`src/lib/flex/attendance-confirmed.ts` body 改「🎉 謝謝你和東北海王子潛水一起下水！」+ 五星好評邀請 + 歡迎回饋；footer 加主按鈕「⭐ 給我們五星好評」(Google Maps 連結 `https://maps.app.goo.gl/L58ukZuJroo5vbjv5`，可由 `params.reviewUrl` 覆寫)，原「查看紀錄」降為次要 link。text/email 版同步(`message-content.ts`)。
+3. **一鍵補推**（之前有客戶沒收到）：
+   - 新欄位 `Booking.reviewSentAt`（schema + `migrate-safety.js` `ADD COLUMN IF NOT EXISTS review_sent_at`）。到場點名發送 attendance_confirmed 時蓋章。
+   - 新 API `/api/admin/backfill-attendance-review`（限老闆）：GET 回近 N 天(預設45) `status=completed && review_sent_at IS NULL` 筆數；POST 補發 attendance_confirmed 並蓋章(防重複，單批上限 200)。
+   - 訊息模板頁「到場確認」面板加按鈕「🔔 一鍵補推近 45 天漏發的」→ 先問數量再送。
+- `npm run db:generate` + `npm run build` 通過（exit 0，新路由已註冊）。
+- **⚠️ 部署注意**：`review_sent_at` 欄由 migrate-safety 於部署時建（app 服務前），安全；attendance 蓋章有 `.catch()` 不擋點名。LINE 實際推播需真機看。
+
 ## 2026-07-03 — 潛水員踢水 loading 動畫（上傳/讀取「處理中」回饋）（v781）
 
 老闆反映：手機上傳付款證明時，因每人網速不同，看不出是否正在上傳。做一個**純 CSS 潛水員踢水動畫**當「處理中」回饋，並盤點上傳/大量讀取的頁面一起導入。

@@ -471,6 +471,8 @@ model Booking {
   signaturePendingAt  DateTime?      @map("signature_pending_at") @db.Timestamptz
   // 超賣標記：booking 接受但容量已滿，提醒教練處理
   overCapacity        Boolean        @default(false) @map("over_capacity")
+  // v782：到場確認/五星好評 訊息已推送時間（防一鍵補推重複發；到場點名發送時也蓋章）
+  reviewSentAt        DateTime?      @map("review_sent_at") @db.Timestamptz
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

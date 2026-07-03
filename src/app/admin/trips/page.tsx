@@ -1832,27 +1832,16 @@ export default function AdminTripsPage() {
               </div>
             </div>
 
-            {/* 日潛水備註 */}
+            {/* v782：原「日潛水備註(內部)」已合併進「活動提醒事項」，只留一個客戶可見欄位 */}
             <div>
-              <Label className="mb-1 block text-xs">日潛水備註<span className="ml-1 text-[10px] text-[var(--muted-foreground)]">(內部)</span></Label>
-              <textarea
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
-                rows={2}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="天氣/裝備/注意事項...(僅內部)"
-              />
-            </div>
-            {/* v664：活動提醒事項（客戶可見，全部參加者都看得到）*/}
-            <div>
-              <Label className="mb-1 block text-xs">📣 活動提醒事項<span className="ml-1 text-[10px]" style={{ color: "#0a7d4f" }}>客戶可見・這場全員都看得到</span></Label>
+              <Label className="mb-1 block text-xs">📣 活動提醒事項<span className="ml-1 text-[10px]" style={{ color: "#0a7d4f" }}>客戶可見・這場全員都看得到（天氣／裝備／注意事項）</span></Label>
               <textarea
                 className="w-full rounded-md border px-2 py-1.5 text-sm"
                 style={{ borderColor: "#bfe9d4", background: "#f0fbf6" }}
-                rows={2}
+                rows={3}
                 value={form.activityNote}
                 onChange={(e) => setForm({ ...form, activityNote: e.target.value })}
-                placeholder="例：本場水溫偏低，建議厚防寒衣；集合後先做裝備檢查"
+                placeholder="例：本場水溫偏低，建議厚防寒衣；天氣/裝備/注意事項；集合後先做裝備檢查"
               />
             </div>
             </div>

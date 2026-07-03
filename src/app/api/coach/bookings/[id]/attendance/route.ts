@@ -204,6 +204,10 @@ export async function POST(
               liffUrl: process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm",
             },
           });
+          // v782：標記已發到場確認/五星好評 → 一鍵補推不會重複發這筆
+          await prisma.booking
+            .update({ where: { id }, data: { reviewSentAt: new Date() } })
+            .catch(() => {});
         } catch (e) {
           console.error("[attendance notify]", e);
         }

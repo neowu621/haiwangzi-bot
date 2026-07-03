@@ -143,6 +143,29 @@ export default function AdminTemplatesPage() {
   // v519：訊息模板「提前幾天通知」設定（存 site-config）
   const [leadDays, setLeadDays] = useState<Record<string, number>>({});
   const [leadSaving, setLeadSaving] = useState(false);
+  const [backfilling, setBackfilling] = useState(false); // v782：一鍵補推到場確認/五星好評
+
+  // v782：補推「到場確認／五星好評」給之前已到場但沒收到的客戶
+  async function backfillReview() {
+    setBackfilling(true);
+    setErr(null);
+    try {
+      const c = await adminFetch<{ eligible: number; days: number }>(
+        "/api/admin/backfill-attendance-review?days=45",
+      );
+      if (c.eligible === 0) { setToast("近 45 天沒有漏發的到場客戶 🎉"); return; }
+      if (!window.confirm(`近 45 天有 ${c.eligible} 位已到場、但沒收到「到場確認／五星好評」。\n\n要一鍵補推給他們嗎？（每位只發一次，不會重複打擾）`)) return;
+      const r = await adminFetch<{ sent: number; remaining: number }>(
+        "/api/admin/backfill-attendance-review",
+        { method: "POST", body: JSON.stringify({ days: 45 }) },
+      );
+      setToast(`✓ 已補推 ${r.sent} 位${r.remaining > 0 ? `，還剩 ${r.remaining} 位（可再按一次）` : ""}`);
+    } catch (e) {
+      setToast("補推失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBackfilling(false);
+    }
+  }
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -461,6 +484,31 @@ export default function AdminTemplatesPage() {
                         <b style={{ color: "#b4791b", marginRight: 5 }}>觸發時機</b>
                         {TRIGGER_TIMING[cur.key].when}
                       </div>
+                    </div>
+                  )}
+
+                  {/* v782：到場確認 — 一鍵補推給之前漏發的客戶（含五星好評邀請）*/}
+                  {cur.key === "attendance_confirmed" && (
+                    <div style={{
+                      margin: "0 4px 12px", padding: "11px 13px",
+                      background: "#eef6f6", border: "1px solid #cfe6e4", borderRadius: 11,
+                    }}>
+                      <div style={{ fontSize: 12.5, color: "#33464e", marginBottom: 8, lineHeight: 1.6 }}>
+                        🔔 <b>一鍵補推</b>：之前已到場、但沒收到這則（含 ⭐ 五星好評邀請）的客戶，補發給他們。近 45 天、每位只發一次。
+                      </div>
+                      <button
+                        type="button"
+                        onClick={backfillReview}
+                        disabled={backfilling}
+                        style={{
+                          fontSize: 12.5, fontWeight: 700, padding: "7px 14px",
+                          borderRadius: 9, border: "none", background: "#0e7490",
+                          color: "#fff", cursor: backfilling ? "default" : "pointer",
+                          opacity: backfilling ? 0.6 : 1,
+                        }}
+                      >
+                        {backfilling ? "處理中…" : "🔔 一鍵補推近 45 天漏發的"}
+                      </button>
                     </div>
                   )}
 

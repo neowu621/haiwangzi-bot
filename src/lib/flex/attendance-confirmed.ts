@@ -21,6 +21,8 @@ export function attendanceConfirmed(
   const totalLogs = asString(params.totalLogs, "");
   const vipLevel = asString(params.vipLevel, "1");
   const liffUrl = asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm");
+  // v782：五星好評連結（Google Maps）。可由 params.reviewUrl 覆寫。
+  const reviewUrl = asString(params.reviewUrl, "https://maps.app.goo.gl/L58ukZuJroo5vbjv5");
 
   return flex(altText, {
     type: "bubble",
@@ -85,11 +87,30 @@ export function attendanceConfirmed(
         },
         {
           type: "text",
-          text: ovr(override, "bodyText", "感謝您今日的參與，期待下次海上見！"),
+          text: ovr(override, "bodyText", "🎉 謝謝你和東北海王子潛水一起下水！今天玩得開心嗎？"),
+          color: COLORS.oceanDeep,
+          size: "sm",
+          weight: "bold",
+          align: "center",
+          margin: "lg",
+          wrap: true,
+        },
+        {
+          type: "text",
+          text: "喜歡今天的旅程的話，給我們 ⭐⭐⭐⭐⭐ 鼓勵一下，是我們最大的動力！",
           color: COLORS.mute,
           size: "xs",
           align: "center",
-          margin: "md",
+          margin: "sm",
+          wrap: true,
+        },
+        {
+          type: "text",
+          text: "有任何建議或想說的，也超歡迎直接回訊息告訴我們 💙",
+          color: COLORS.mute,
+          size: "xs",
+          align: "center",
+          margin: "sm",
           wrap: true,
         },
       ],
@@ -97,6 +118,7 @@ export function attendanceConfirmed(
     footer: {
       type: "box",
       layout: "vertical",
+      spacing: "sm",
       paddingAll: "12px",
       contents: [
         {
@@ -105,7 +127,17 @@ export function attendanceConfirmed(
           color: COLORS.phosphor,
           action: {
             type: "uri",
-            label: ovr(override, "buttonLabel", "查看我的紀錄"),
+            label: "⭐ 給我們五星好評",
+            uri: reviewUrl,
+          },
+        },
+        {
+          type: "button",
+          style: "link",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: ovr(override, "buttonLabel", "查看我的潛水紀錄"),
             uri: liffUrl,
           },
         },

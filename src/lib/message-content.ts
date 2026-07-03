@@ -97,9 +97,9 @@ export const MSG_EDITABLE_FIELDS: Record<
   ],
   attendance_confirmed: [
     { key: "title", label: "標題", defaultValue: "已記錄您的到場" },
-    { key: "bodyText", label: "說明文字", defaultValue: "感謝您今日的參與，期待下次海上見！" },
-    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的紀錄" },
-    { key: "altText", label: "通知列文字", defaultValue: "已記錄到場" },
+    { key: "bodyText", label: "說明文字", defaultValue: "🎉 謝謝你和東北海王子潛水一起下水！今天玩得開心嗎？" },
+    { key: "buttonLabel", label: "按鈕文字", defaultValue: "查看我的潛水紀錄" },
+    { key: "altText", label: "通知列文字", defaultValue: "已記錄到場・給我們五星好評 ⭐" },
   ],
   first_order_reward_grant: [
     { key: "title", label: "標題", defaultValue: "首單獎勵入帳" },
@@ -211,7 +211,7 @@ export const MSG_SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
   admin_weekly: { weekRange: "2026-06-02 ~ 06-08", revenue: 86400, bookings: 23, newMembers: 6, pending: 3 },
   overcap_alert: { tripDate: "2026-06-14", tripTime: "08:30", site: "鶯歌石", customerName: "王小明", requestedCount: 2, currentBooked: 8, capacity: 8, url: `${SAMPLE_BASE}/liff/coach/today` },
   welcome: { liffUrl: "https://liff.line.me" },
-  attendance_confirmed: { bookingTitle: "6/14 龍洞灣 體驗潛水", addLogs: 2, totalLogs: 38, vipLevel: "LV2 小丑魚", liffUrl: "https://liff.line.me" },
+  attendance_confirmed: { bookingTitle: "6/14 龍洞灣 體驗潛水", addLogs: 2, totalLogs: 38, vipLevel: "LV2 小丑魚", liffUrl: "https://liff.line.me", reviewUrl: "https://maps.app.goo.gl/L58ukZuJroo5vbjv5" },
   first_order_reward_grant: { amount: 100, balance: 100, expiresAt: "2027-06-14", bookingTitle: "6/14 龍洞灣 體驗潛水", liffUrl: "https://liff.line.me" },
   refund_request: { bookingTitle: "6/14 龍洞灣 體驗潛水", amount: 2400, method: "credit", creditBonus: 10, reason: "臨時有事無法參加", liffUrl: "https://liff.line.me" },
   payment_reject: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "轉帳金額與應繳不符（少 200 元），請確認後重新上傳", liffUrl: "https://liff.line.me" },
@@ -253,7 +253,11 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
     }
     case "attendance_confirmed": {
       const lv = s(p.vipLevel);
-      return `${s(p.bookingTitle)}\n本次 +${s(p.addLogs)} 潛・海王子累積 ${s(p.totalLogs)} 潛\n會員等級：${/^\d+$/.test(lv) ? `LV${lv}` : lv}`;
+      const reviewUrl = p.reviewUrl ? s(p.reviewUrl) : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5";
+      return `${s(p.bookingTitle)}\n本次 +${s(p.addLogs)} 潛・海王子累積 ${s(p.totalLogs)} 潛\n會員等級：${/^\d+$/.test(lv) ? `LV${lv}` : lv}`
+        + `\n\n🎉 謝謝你和東北海王子潛水一起下水！玩得開心嗎？`
+        + `\n喜歡今天的旅程，給我們 ⭐⭐⭐⭐⭐ 鼓勵一下 👉 ${reviewUrl}`
+        + `\n任何建議或想說的，也超歡迎直接回訊息告訴我們 💙`;
     }
     // ── 旅遊潛水（訂金 + 尾款）──
     case "deposit_notice":
