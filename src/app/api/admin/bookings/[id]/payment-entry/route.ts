@@ -143,7 +143,13 @@ export async function POST(
     }),
     prisma.booking.update({
       where: { id },
-      data: { paidAmount: newPaid, paymentStatus: newStatus as never },
+      data: {
+        paidAmount: newPaid,
+        paymentStatus: newStatus as never,
+        // v776：收到現金即標記付款方式＝現場支付（cash）。
+        //   讓「老闆按到場→現場收現結清」一次把 paidAmount / paymentStatus / paymentMethod 全部同步。
+        ...(kind === "cash" ? { paymentMethod: "cash" as never } : {}),
+      },
     }),
   ]);
 

@@ -5,6 +5,53 @@
 
 ---
 
+## 2026-07-03 — 老闆結帳：現場付款/逾期單不再進「待匯款催繳」（v776）
+
+老闆回報：一張 6/30（已過期）、客戶選「現場付款」的單，仍出現在「已下單·待匯款」催繳清單。
+
+- **根因（機制漏洞，非資料錯）**：`/admin/tonight` 的「待匯款」清單過濾條件只有 `booking.status === "pending"` 一條（`src/app/admin/tonight/page.tsx`），不看①付款方式 `paymentMethod`（`cash`=現場支付的客戶根本不會匯款）②活動日期是否已過③已付金額。而 `payment-entry`（現場收現）只改 `paidAmount`/`paymentStatus`，**從不動 `booking.status`**（[payment-entry/route.ts:144](src/app/api/admin/bookings/[id]/payment-entry/route.ts:144)）；到場點名才會把 status 轉 `completed`（[attendance/route.ts:69](src/app/api/coach/bookings/[id]/attendance/route.ts:69)）。所以「現場付款 + 沒點名」的 pending 單被那條粗規則硬留在催繳清單。
+- **修法（純前端過濾，API 已回 `...b` 全欄，`paymentMethod`/日期都拿得到）**：
+  - `pendingAll` 先加 `totalAmount - paidAmount > 0` 條件（已付清但 status 沒同步的不再催）。
+  - 拆兩流：`paymentMethod === "cash"` 或 活動日 < 今天（台北時區）→ 移出「待匯款」，改列**新區塊「💵 現場付款 / 逾期待結案」**（提醒老闆去現場收現／點名／取消，勿催匯款）；其餘（未過期·非現場付款·仍欠款）才留在「🧾 已下單·待匯款」。
+  - 卡片渲染抽成共用 `renderPendingRow(b, variant)`；現場付款掛 💵、逾期掛 ⏰ 標籤。
+- **狀態機補強（同版 v776，第二輪）**：老闆要求「按到場＝現場付款＝一次更新所有狀態」。三個獨立旗標定義：`status`(BookingStatus)、`paymentStatus`(PaymentStatus pending/deposit_paid/fully_paid/refunding/refunded)、`paymentMethod`(cash/bank/linepay/other)。決策後實作：
+  1. **現金即標付款方式**：`payment-entry` POST 收到 `kind:"cash"` → 同交易一併寫 `booking.paymentMethod="cash"`（[payment-entry/route.ts:144](src/app/api/admin/bookings/[id]/payment-entry/route.ts:144)）。手機/桌機「到場結清」「一鍵現場收現」都送 cash → 全自動涵蓋。決策：混合付款（訂金轉帳+尾款現金）**一律覆寫成 cash**（逐筆 PaymentEntry 仍留 transfer/cash 兩筆真實軌跡，不丟）。
+  2. **「已到場・未付清」進老闆待辦**：決策 = 教練/助教只標到場（維持 v756 不記帳），款進老闆待收。tonight 頁新增第三區塊「✅ 已到場・未付清」= `status==="completed" && 應付>0 && 非退款`。
+- **未做（更大範圍）**：手機老闆後台改 LINE 免帳密登入（現 `/admin/m` 走密碼、`/liff/coach` 才 LINE 登入）——決策為**下一輪**專做。
+- **驗證**：這台桌機原本沒 Node → 用 winget 裝了 Node 24.18.0（user scope，路徑 `%LOCALAPPDATA%\Microsoft\WinGet\Packages\OpenJS.NodeJS.LTS_*\node-v24.18.0-win-x64`，**不在預設 PATH**，新 shell 或手動加 PATH 才可用）。`npm run build` **通過**（Compiled successfully、94/94 靜態頁、exit 0）。版本 `20260703_776`，已部署。
+
+## 2026-07-03 — SETUP.md：重灌電腦一次裝好環境的完整清單（docs）
+
+老闆要「換/重灌電腦後能一次把開發環境裝回來」。純文件、無程式變更。
+
+- 新增 `SETUP.md`：工具（Node 24、Git、pnpm/npm）、env 變數清單、DB（Prisma / `db push` / migrate-safety）、認證（GitHub、Zeabur、各家金鑰）、備份 `.claude/` 設定；`README.md` 加連結。
+- 補 §「系統／硬體需求」+ §11「雙機（桌機↔筆電）同步實務」——兩台機器如何各自 clone、共用 origin、`.env` 不進版控要各自建、`.claude/` 手動同步。
+- **下次先看**：env 清單要與 `.env.example` 對齊（新增變數時兩邊都補）；金鑰實際值走 [[SECRET_ROTATION]] 手冊，不進文件。
+
+## 2026-07-02 — 安全稽核三連發：OWASP 掃描 + 金鑰輪換手冊 + 清外洩金鑰（v773→v775）
+
+線上 = **v20260702_775**。承 v772 防濫用後做一輪完整資安。
+
+### v773 — 全站安全稽核 OWASP Top 10:2025（20 項）
+- 4 個平行代理 + `npm audit` 展開 20 項掃描。**結論：核心防護良好**（存取控制／IDOR／後台守門／XSS／CSRF／安全標頭／上傳／SSRF／密碼／供應鏈皆通過）。
+- 修補三處縱深防禦：
+  1. `src/lib/auth.ts` DEV 冒充閘 `!== production` → **`=== development`**（關掉灰色狀態〔staging/preview〕的身分冒充窗口）。
+  2. `migrate-domain` 的 `$executeRawUnsafe` 表名/欄名加白名單 `^[a-z_][a-z0-9_]*$`。
+  3. assistant body 上限(413)/壞 JSON(400) 檢查**前移到限流後、DB/金鑰檢查前**（省資源、先擋壞請求）。
+- 測試：401/429/413/400/dev 回歸全通過。
+- ⚠️ **抓到重點洞**：`.env` 內 LINE/R2/JWT/CRON 金鑰曾於 2026-05-11 外洩，待 rotate → 催生 v774/v775。
+
+### v774 — 金鑰輪換操作手冊 `docs/runbooks/SECRET_ROTATION.md`
+- 依 v773 稽核發現的 `.env` 外洩，用**實際變數名**分平台（LINE/Zeabur/R2/JWT/CRON…）列出 rotate 步驟／副作用／驗證／檢查清單。純文件，index 加連結。
+
+### v775 — 清版控內硬編碼外洩金鑰 + 訂單編輯最小權限
+- **清金鑰**：安全掃描發現 `ZEABUR_DEPLOY.md`、`docs/CRON_SETUP.md` 內硬編碼**真實** LINE token/secret、`JWT_SECRET`、`CRON_SECRET`（已進版控與 git 歷史）→ 全改佔位符、指向 SECRET_ROTATION 手冊。**⚠️ 舊值仍存在於 git 歷史，必須實際 rotate 才會失效**（改文件只是止血）。確認 R2 金鑰與 `src/` 原始碼無硬編碼密鑰、`.env` 未進版控。
+- **最小權限（issue #13）**：`admin/bookings` PATCH 由**黑名單改白名單**——教練只能改現場欄位，金額結構／`adminNotes` 收歸 admin/boss/it。
+
+### 下次先看 / 未結
+- **最關鍵**：外洩金鑰**尚未 rotate**（v774/v775 只備好手冊 + 止血文件）。老闆需照 [[SECRET_ROTATION]] 逐平台換發，否則舊金鑰仍有效。
+- 版控中還有兩張 AI 客服吉祥物 mockup 未提交：`docs/mockups/ai-bot-desktop-{closed,open}.png`。
+
 ## 2026-07-01 — AI 客服防濫用／防燒帳單（v772）
 
 老闆問「如何預防有人非正常方式狂問、亂問、攻擊 AI 或問非潛水內容」。選「中等防護」。分層（in-memory、單實例、重啟歸零）：

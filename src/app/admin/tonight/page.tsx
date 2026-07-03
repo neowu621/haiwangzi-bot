@@ -66,6 +66,7 @@ interface BookingRow {
   paidAmount: number;
   status: string;
   paymentStatus: string;
+  paymentMethod?: string | null; // v776：客戶選的付款方式（cash=現場支付 → 不催匯款）
   priceBreakdown?: PriceBreakdownData | null; // v712
   creditUsed?: number;
   rentalGear?: GearItem[];
@@ -86,6 +87,10 @@ export default function TonightPage() {
   const [orphanAwaitingVerify, setOrphanAwaitingVerify] = React.useState<BookingRow[]>([]);
   // v667：已下單但尚未匯款（status=pending，客戶還沒上傳任何付款證明）— 讓老闆知道有單在等收款
   const [pendingUnpaid, setPendingUnpaid] = React.useState<BookingRow[]>([]);
+  // v776：現場付款(cash) 或 活動已過期 的 pending 單 — 不催匯款，改提醒老闆去現場收現／點名／取消
+  const [pendingOnsite, setPendingOnsite] = React.useState<BookingRow[]>([]);
+  // v776：已到場(completed) 但未付清 — 教練只標到場、款進老闆待辦（要老闆補收現）
+  const [pendingCompleted, setPendingCompleted] = React.useState<BookingRow[]>([]);
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
   const [imgLoading, setImgLoading] = React.useState<string | null>(null); // v722：正在載入圖片的 proof id
@@ -126,15 +131,38 @@ export default function TonightPage() {
       );
       setOrphanAwaitingVerify(orphans);
 
-      // v667：已下單·待匯款 = status pending（尚未上傳付款證明）；近的排前面
-      const pending = allBookings
-        .filter((b) => b.status === "pending")
-        .sort((a, b) => {
-          const da = a.ref?.date ?? a.ref?.dateStart ?? "";
-          const db = b.ref?.date ?? b.ref?.dateStart ?? "";
-          return da < db ? -1 : da > db ? 1 : 0;
-        });
-      setPendingUnpaid(pending);
+      // v776：pending 且「還有錢沒收」才需要老闆處理（已付清但 status 沒同步的不催）。
+      //   再分兩流：真的在等匯款 vs 現場付款/活動已過期（後者改走現場收現/點名，不催客戶匯款）。
+      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+      const activityDateOf = (b: BookingRow) => b.ref?.date ?? b.ref?.dateStart ?? "";
+      const byActivityDate = (a: BookingRow, b: BookingRow) => {
+        const da = activityDateOf(a);
+        const db = activityDateOf(b);
+        return da < db ? -1 : da > db ? 1 : 0;
+      };
+      const pendingAll = allBookings.filter(
+        (b) => b.status === "pending" && b.totalAmount - b.paidAmount > 0,
+      );
+      // 現場付款(cash) 或 活動日已過（< 今天，台北時區）→ 不催匯款
+      const isOnsiteOrOverdue = (b: BookingRow) => {
+        const d = activityDateOf(b);
+        return b.paymentMethod === "cash" || (d !== "" && d < todayStr);
+      };
+      setPendingUnpaid(pendingAll.filter((b) => !isOnsiteOrOverdue(b)).sort(byActivityDate));
+      setPendingOnsite(pendingAll.filter(isOnsiteOrOverdue).sort(byActivityDate));
+
+      // v776：已到場但未付清（教練標到場、款未收）→ 提醒老闆補收款。排除退款中/已退。
+      setPendingCompleted(
+        allBookings
+          .filter(
+            (b) =>
+              b.status === "completed" &&
+              b.totalAmount - b.paidAmount > 0 &&
+              b.paymentStatus !== "refunded" &&
+              b.paymentStatus !== "refunding",
+          )
+          .sort(byActivityDate),
+      );
 
       setSelectedProofs(new Set());
     } catch (e) {
@@ -201,7 +229,69 @@ export default function TonightPage() {
     void reload();
   }
 
-  const allEmpty = !loading && proofs.length === 0 && orphanAwaitingVerify.length === 0 && pendingUnpaid.length === 0;
+  const allEmpty = !loading && proofs.length === 0 && orphanAwaitingVerify.length === 0 && pendingUnpaid.length === 0 && pendingOnsite.length === 0 && pendingCompleted.length === 0;
+
+  // v776：待處理訂單卡片（待匯款 / 現場付款·逾期 共用）
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+  const renderPendingRow = (b: BookingRow, variant: "transfer" | "onsite" | "attended") => {
+    const refDate = b.ref?.date ?? b.ref?.dateStart;
+    const refLabel = b.ref?.title
+      ? b.ref.title
+      : `${refDate ?? ""} ${b.ref?.startTime ?? ""} ${b.ref?.sites?.join("/") ?? ""}`.trim();
+    const isCash = b.paymentMethod === "cash";
+    const isOverdue = (refDate ?? "") !== "" && (refDate ?? "") < todayStr;
+    return (
+      <div key={b.id} className="flex items-center justify-between gap-3 p-3 flex-wrap">
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-semibold text-slate-700">
+            {b.ref?.title ? "✈️" : "🔱"} {refLabel || "—"}
+            <span className="ml-1 font-normal text-[var(--muted-foreground)]">· {b.participants} 位</span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-2 text-sm flex-wrap">
+            <button
+              type="button"
+              onClick={() => setOpenCustomerId(b.userId)}
+              className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+            >
+              {b.user.realName ?? b.user.displayName}
+            </button>
+            <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
+              {b.code ?? b.id.slice(0, 8)}
+            </span>
+            {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
+            {/* v732：顯示應付 = 總額 − 已付(含抵用金) */}
+            <span className="font-bold tabular-nums text-[var(--color-coral)]">NT$ {Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}</span>
+            {(b.creditUsed ?? 0) > 0 && <span className="text-[10px] text-[var(--muted-foreground)]">已折 NT$ {(b.creditUsed ?? 0).toLocaleString()}</span>}
+            {variant === "transfer" && (
+              <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">待匯款</span>
+            )}
+            {variant === "onsite" && (
+              <>
+                {isCash && <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">💵 現場付款</span>}
+                {isOverdue && <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">⏰ 已過期</span>}
+              </>
+            )}
+            {variant === "attended" && (
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✅ 已到場・待收款</span>
+            )}
+          </div>
+          <button type="button" onClick={() => toggleDetail(b.id)} className="mt-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2">
+            {openDetail.has(b.id) ? "收起明細 ▴" : "金額明細 ▾"}
+          </button>
+          {openDetail.has(b.id) && (
+            <div className="mt-1.5 rounded-lg bg-[var(--muted)]/50 p-2.5">
+              <PriceBreakdown pb={b.priceBreakdown ?? null} fallback={{ type: b.type, totalAmount: b.totalAmount, creditUsed: b.creditUsed, rentalGear: b.rentalGear, tankCount: b.tankCount ?? b.ref?.tankCount, participants: b.participants, extraTank: b.ref?.extraTank, baseTrip: b.ref?.baseTrip, isBoat: b.ref?.isBoat }} />
+            </div>
+          )}
+        </div>
+        <Link href={`/admin/bookings?status=created`}>
+          <Button size="sm" variant="outline" className="h-7 text-[11px]">
+            {variant === "transfer" ? "→ 訂單管理催繳" : "→ 現場收現 / 結清"}
+          </Button>
+        </Link>
+      </div>
+    );
+  };
 
   return (
     <AdminShell>
@@ -213,7 +303,7 @@ export default function TonightPage() {
               老闆結帳
             </h1>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-              🧾 已下單·待匯款 ＋ 💰 待確認匯款（不限日期）＋ ✅ 今／昨日 confirmed 待勾到場。可批次處理。
+              🧾 已下單·待匯款（未過期·非現場付款）＋ 💵 現場付款/逾期待結案 ＋ ✅ 已到場·未付清 ＋ 💰 待確認匯款（不限日期）。可批次處理。
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => void reload()} disabled={loading}>
@@ -291,62 +381,47 @@ export default function TonightPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* ===== Section 0: 已下單·待匯款（v667）===== */}
+            {/* ===== Section 0: 已下單·待匯款（v667；v776 排除現場付款/逾期）===== */}
             {pendingUnpaid.length > 0 && (
               <section>
                 <div className="mb-2 flex items-center justify-between">
                   <h2 className="text-base font-bold flex items-center gap-1.5">
                     🧾 已下單·待匯款（{pendingUnpaid.length} 筆）
                   </h2>
-                  <span className="text-[11px] text-[var(--muted-foreground)]">客戶已下單但尚未上傳付款證明</span>
+                  <span className="text-[11px] text-[var(--muted-foreground)]">未過期 · 非現場付款 · 尚未上傳付款證明</span>
                 </div>
                 <div className="rounded-xl border bg-white divide-y" style={{ borderColor: "var(--border)" }}>
-                  {pendingUnpaid.map((b) => {
-                    const refDate = b.ref?.date ?? b.ref?.dateStart;
-                    const refLabel = b.ref?.title
-                      ? b.ref.title
-                      : `${refDate ?? ""} ${b.ref?.startTime ?? ""} ${b.ref?.sites?.join("/") ?? ""}`.trim();
-                    return (
-                      <div key={b.id} className="flex items-center justify-between gap-3 p-3 flex-wrap">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[12px] font-semibold text-slate-700">
-                            {b.ref?.title ? "✈️" : "🔱"} {refLabel || "—"}
-                            <span className="ml-1 font-normal text-[var(--muted-foreground)]">· {b.participants} 位</span>
-                          </div>
-                          <div className="mt-0.5 flex items-center gap-2 text-sm flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => setOpenCustomerId(b.userId)}
-                              className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
-                            >
-                              {b.user.realName ?? b.user.displayName}
-                            </button>
-                            <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
-                              {b.code ?? b.id.slice(0, 8)}
-                            </span>
-                            {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
-                            {/* v732：顯示應付 = 總額 − 已付(含抵用金) */}
-                            <span className="font-bold tabular-nums text-[var(--color-coral)]">NT$ {Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}</span>
-                            {(b.creditUsed ?? 0) > 0 && <span className="text-[10px] text-[var(--muted-foreground)]">已折 NT$ {(b.creditUsed ?? 0).toLocaleString()}</span>}
-                            <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">待匯款</span>
-                          </div>
-                          <button type="button" onClick={() => toggleDetail(b.id)} className="mt-1 text-[11px] text-[var(--color-ocean-deep)] underline underline-offset-2">
-                            {openDetail.has(b.id) ? "收起明細 ▴" : "金額明細 ▾"}
-                          </button>
-                          {openDetail.has(b.id) && (
-                            <div className="mt-1.5 rounded-lg bg-[var(--muted)]/50 p-2.5">
-                              <PriceBreakdown pb={b.priceBreakdown ?? null} fallback={{ type: b.type, totalAmount: b.totalAmount, creditUsed: b.creditUsed, rentalGear: b.rentalGear, tankCount: b.tankCount ?? b.ref?.tankCount, participants: b.participants, extraTank: b.ref?.extraTank, baseTrip: b.ref?.baseTrip, isBoat: b.ref?.isBoat }} />
-                            </div>
-                          )}
-                        </div>
-                        <Link href={`/admin/bookings?status=created`}>
-                          <Button size="sm" variant="outline" className="h-7 text-[11px]">
-                            → 訂單管理催繳
-                          </Button>
-                        </Link>
-                      </div>
-                    );
-                  })}
+                  {pendingUnpaid.map((b) => renderPendingRow(b, "transfer"))}
+                </div>
+              </section>
+            )}
+
+            {/* ===== Section 0b: 現場付款 / 逾期待結案（v776）===== */}
+            {pendingOnsite.length > 0 && (
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-base font-bold flex items-center gap-1.5">
+                    💵 現場付款 / 逾期待結案（{pendingOnsite.length} 筆）
+                  </h2>
+                  <span className="text-[11px] text-[var(--muted-foreground)]">客戶選現場付款或活動已過期 → 請現場收現／點名，勿催匯款</span>
+                </div>
+                <div className="rounded-xl border bg-white divide-y" style={{ borderColor: "var(--border)" }}>
+                  {pendingOnsite.map((b) => renderPendingRow(b, "onsite"))}
+                </div>
+              </section>
+            )}
+
+            {/* ===== Section 0c: 已到場・未付清（v776）===== */}
+            {pendingCompleted.length > 0 && (
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-base font-bold flex items-center gap-1.5">
+                    ✅ 已到場・未付清（{pendingCompleted.length} 筆）
+                  </h2>
+                  <span className="text-[11px] text-[var(--muted-foreground)]">教練已標到場但錢未收 → 請老闆補收現／結清</span>
+                </div>
+                <div className="rounded-xl border bg-white divide-y" style={{ borderColor: "var(--border)" }}>
+                  {pendingCompleted.map((b) => renderPendingRow(b, "attended"))}
                 </div>
               </section>
             )}
