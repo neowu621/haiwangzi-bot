@@ -17,6 +17,7 @@
 | 文件 | 用途 | 何時看 |
 | --- | --- | --- |
 | **README.md** | 專案總覽 / 怎麼跑 / 部署 | 第一站 |
+| **[SETUP.md](SETUP.md)** | 重灌電腦後一次裝好環境的完整清單（工具/env/DB/認證） | **換機／新機開工** |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | 技術堆疊、資料流、重要機制 | 想懂「怎麼設計」 |
 | **[docs/PROGRESS.md](docs/PROGRESS.md)** | 開發日誌（時序 + 決策 + 下次先看） | **最快進入狀況** |
 | **[status.md](status.md)** | 現況快照（版本 / 近期重點） | 想知道「現在在哪」 |
