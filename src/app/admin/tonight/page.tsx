@@ -91,6 +91,8 @@ export default function TonightPage() {
   const [pendingOnsite, setPendingOnsite] = React.useState<BookingRow[]>([]);
   // v776：已到場(completed) 但未付清 — 教練只標到場、款進老闆待辦（要老闆補收現）
   const [pendingCompleted, setPendingCompleted] = React.useState<BookingRow[]>([]);
+  // v778：正在「現場收現・結清」的那筆
+  const [settling, setSettling] = React.useState<string | null>(null);
   const [selectedProofs, setSelectedProofs] = React.useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = React.useState<string | null>(null);
   const [imgLoading, setImgLoading] = React.useState<string | null>(null); // v722：正在載入圖片的 proof id
@@ -233,6 +235,45 @@ export default function TonightPage() {
 
   // v776：待處理訂單卡片（待匯款 / 現場付款·逾期 共用）
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+
+  // v778：一鍵「現場收現・結清」＝原子動作，讓付款狀態與訂單狀態一起前進：
+  //   ①收現金(kind=cash → paidAmount=total、paymentStatus=fully_paid、paymentMethod=cash)
+  //   ②活動日 ≤ 今天且尚未到場 → 一併標到場(status=completed、累積潛數、重算VIP)
+  //   兩者做完該筆就離開所有待辦區，不再出現「收了錢卻停在 pending」的不同步。
+  const settleOnsite = async (b: BookingRow) => {
+    const owed = Math.max(0, b.totalAmount - b.paidAmount);
+    const actDate = b.ref?.date ?? b.ref?.dateStart ?? "";
+    const willAttend = b.status !== "completed" && actDate !== "" && actDate <= todayStr;
+    const name = b.user.realName ?? b.user.displayName;
+    const steps: string[] = [];
+    if (owed > 0) steps.push(`現場收現 NT$${owed.toLocaleString()}（現金）`);
+    if (willAttend) steps.push("標記到場（累積潛數）");
+    if (steps.length === 0) { setMsg(`${name} 已結清且已到場，無需處理`); return; }
+    if (!window.confirm(`${name}：\n${steps.map((s) => "• " + s).join("\n")}\n\n確認執行？`)) return;
+    setSettling(b.id);
+    setMsg(null);
+    try {
+      if (owed > 0) {
+        await adminFetch(`/api/admin/bookings/${b.id}/payment-entry`, {
+          method: "POST",
+          body: JSON.stringify({ kind: "cash", amount: owed }),
+        });
+      }
+      if (willAttend) {
+        await adminFetch(`/api/coach/bookings/${b.id}/attendance`, {
+          method: "POST",
+          body: JSON.stringify({ action: "completed" }),
+        });
+      }
+      await reload();
+      setMsg(`✓ ${name} → ${owed > 0 ? "已結清" : "已在帳"}${willAttend ? "＋到場" : ""}`);
+    } catch (e) {
+      setMsg("結清失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSettling(null);
+    }
+  };
+
   const renderPendingRow = (b: BookingRow, variant: "transfer" | "onsite" | "attended") => {
     const refDate = b.ref?.date ?? b.ref?.dateStart;
     const refLabel = b.ref?.title
@@ -284,11 +325,24 @@ export default function TonightPage() {
             </div>
           )}
         </div>
-        <Link href={`/admin/bookings?status=created`}>
-          <Button size="sm" variant="outline" className="h-7 text-[11px]">
-            {variant === "transfer" ? "→ 訂單管理催繳" : "→ 現場收現 / 結清"}
+        {variant === "transfer" ? (
+          <Link href={`/admin/bookings?status=created`}>
+            <Button size="sm" variant="outline" className="h-7 text-[11px]">
+              → 訂單管理催繳
+            </Button>
+          </Link>
+        ) : (
+          // v778：改為原子動作（收現＋到場一起同步），不再只是連到訂單管理
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            disabled={settling === b.id}
+            onClick={() => void settleOnsite(b)}
+          >
+            {settling === b.id ? "處理中…" : "💵 現場收現・結清"}
           </Button>
-        </Link>
+        )}
       </div>
     );
   };

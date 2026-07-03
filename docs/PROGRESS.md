@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-03 — 老闆結帳「現場收現・結清」改原子動作：付款狀態↔訂單狀態同步（v778）
+
+老闆截圖回報：「現場付款/逾期待結案」與「已到場・未付清」**兩個狀態沒有同步**。根因：桌機老闆結帳頁那兩區的「現場收現/結清」按鈕**只是連到訂單管理的 `<Link>`，不是動作**。就算在訂單管理收了現金（payment-entry），`status` 也不會前進（payment-entry 不碰 status）→ 收了錢卻停在 `pending`，付款狀態與訂單狀態各走各的。手機/教練端反而正確（先收現再標到場一起做）。
+
+- **修正**：`src/app/admin/tonight/page.tsx` 新增 `settleOnsite(b)` 原子動作，取代原本的 `<Link>`：
+  1. 有欠款 → `POST payment-entry {kind:cash}`（paidAmount=total、paymentStatus=fully_paid、paymentMethod=cash）。
+  2. 活動日 ≤ 今天且尚未到場 → `POST attendance {completed}`（status=completed、累積潛數、重算 VIP）。
+  3. reload。兩件做完該筆即離開所有待辦區，不再「收了錢停在 pending」。
+- 「待匯款」區維持連到訂單管理催繳（那是等客戶匯款、非現場動作）。
+- `npm run build` 通過（exit 0）。
+- 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
+
 ## 2026-07-03 — 手機 LINE 登入即可現場收現（老闆免帳密）（v777）
 
 老闆要求「手機用 LINE 登入就能處理現場/即時，不用再輸入帳密」。**關鍵發現：認證早就通了**——`authFromRequest`（[auth.ts:39](src/lib/auth.ts:39)）本來就吃 LINE idToken，`requireRole` 依 DB 角色判斷；所以老闆在 LINE 裡開任何 LIFF 頁，就是以 boss 身分登入（`/liff/coach/today` 教練端本來就這樣跑）。缺的只是：LIFF 今日場次頁**沒給老闆「現場收現結清」按鈕**（連老闆都被叫去「通知老闆記帳」）。
