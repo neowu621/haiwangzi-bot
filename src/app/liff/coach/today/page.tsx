@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface ParticipantDetail {
   id?: string;
@@ -179,6 +180,16 @@ export default function CoachTodayPage() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* v779：老闆專用 — 進「老闆結帳・待收款」處理過期/現場付款/已到場未付清（不限今天）*/}
+        {!err && canRecordPayment && (
+          <Link href="/liff/coach/settle" className="mb-3 block">
+            <Card className="flex items-center justify-between p-3 text-sm">
+              <span className="font-semibold">💵 老闆結帳・待收款</span>
+              <span className="text-[var(--color-ocean-deep)]">處理過期/未收款 →</span>
+            </Card>
+          </Link>
         )}
 
         <div className="space-y-3">

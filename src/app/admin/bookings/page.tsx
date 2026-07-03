@@ -747,18 +747,30 @@ export default function AdminBookingsPage() {
     }
     const owed = editing.totalAmount - editing.paidAmount;
     if (owed <= 0) { alert("此訂單已無剩餘款"); return; }
-    if (!confirm(`確認老闆現場收到現金 NT$${owed.toLocaleString()}？\n將寫一筆「現金（實收）」付款紀錄，剩餘款歸零。`)) return;
+    // v779：活動日 ≤ 今天且尚未到場 → 收現後一併標到場，讓付款狀態與訂單狀態同步（不再收了錢停在 pending）
+    const actDate = (editing.ref?.date ?? editing.ref?.dateStart ?? "").slice(0, 10);
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+    const willAttend = editing.status !== "completed" && actDate !== "" && actDate <= todayStr;
+    if (!confirm(`確認老闆現場收到現金 NT$${owed.toLocaleString()}？\n將寫一筆「現金（實收）」付款紀錄，剩餘款歸零。${willAttend ? "\n（活動已到日 → 同時標記到場、累積潛數）" : ""}`)) return;
     setAddingEntry(true);
     try {
       const r = await adminFetch<{ ok: boolean; entry: PaymentEntryRow; booking: { paidAmount: number; paymentStatus: string } }>(
         `/api/admin/bookings/${editing.id}/payment-entry`,
         { method: "POST", body: JSON.stringify({ kind: "cash", amount: owed }) },
       );
+      // v779：一併標到場（活動已到日且未到場）→ status=completed、累積潛數、重算 VIP
+      if (willAttend) {
+        await adminFetch(`/api/coach/bookings/${editing.id}/attendance`, {
+          method: "POST",
+          body: JSON.stringify({ action: "completed" }),
+        });
+      }
+      const syncedStatus = willAttend ? "completed" : editing.status;
       setEntries((arr) => [r.entry, ...arr]);
-      setEditing({ ...editing, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus });
-      setEditingOriginal((o) => (o ? { ...o, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus } : o));
+      setEditing({ ...editing, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus, status: syncedStatus });
+      setEditingOriginal((o) => (o ? { ...o, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus, status: syncedStatus } : o));
       setBookings((arr) => arr.map((x) => (x.id === editing.id
-        ? { ...x, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"] }
+        ? { ...x, paidAmount: r.booking.paidAmount, paymentStatus: r.booking.paymentStatus as AdminBooking["paymentStatus"], status: syncedStatus as AdminBooking["status"] }
         : x)));
     } catch (e) {
       alert("結清失敗：" + (e instanceof Error ? e.message : String(e)));

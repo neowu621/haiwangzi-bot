@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-07-03 — 手機 LIFF 老闆結帳待收款 + 訂單管理結清也同步狀態（v779）
+
+承 v778：老闆要「一筆訂單兩個狀態（`status` 到場軸 ↔ `paymentStatus` 收款軸）要同步」，並要手機版老闆結帳。
+
+- **狀態同步定義**：兩軸刻意獨立（可先到場後收款、或先收款後到場），「同步」不是永遠相等，而是**任何操作按鈕都必須同時推進兩軸到有效終態，不能只動一軸留下孤兒**。終態＝`completed+fully_paid`／`no_show+*`／`cancelled+*`。
+- **補最後一個「半同步」按鈕**：訂單管理 v752「一鍵現場收現結清」原本只收款不標到場 → 加上「活動日 ≤ 今天且未到場 → 一併 attendance completed」（[bookings/page.tsx](src/app/admin/bookings/page.tsx) `settleCashOwed`）。至此所有現場收現入口（老闆結帳 v778 / 手機點名 v755 / 教練LIFF v777 / 訂單管理 v779）都是 settle+attend 原子動作。
+- **手機 LIFF 老闆結帳待收款**（老闆專用、LINE 登入免帳密）：
+  - 新 API `GET /api/admin/settle-pending`（requireRole admin）→ 回 status∈{pending,completed} 且應付>0 的單，附活動日/場次。
+  - 新頁 `/liff/coach/settle`：三桶（現場付款·逾期 / 已到場·未付清 / 待匯款）+ 一鍵「現場收現・結清」（payment-entry cash + 活動已到日則 attendance）。教練今日頁 `/liff/coach/today` 加老闆專用入口卡。
+  - 不限今天（桌機老闆結帳的手機版）；`/liff/coach/today` 仍只處理今日場次點名。
+- `npm run build` 通過（exit 0，新路由 `/api/admin/settle-pending`、`/liff/coach/settle` 已註冊）。
+- **⚠️ LIFF 待真機驗證**：只能在 LINE App 內跑；伺服器權限不變（settle-pending 限老闆、payment-entry 限老闆）。
+- 殘留邊界（非本次衝突、已知）：`confirmed+fully_paid+活動已過但沒點名` = 潛數未計的「忘記點名」單，不在收款待辦；未來可加「逾期未點名」提醒。
+
 ## 2026-07-03 — 老闆結帳「現場收現・結清」改原子動作：付款狀態↔訂單狀態同步（v778）
 
 老闆截圖回報：「現場付款/逾期待結案」與「已到場・未付清」**兩個狀態沒有同步**。根因：桌機老闆結帳頁那兩區的「現場收現/結清」按鈕**只是連到訂單管理的 `<Link>`，不是動作**。就算在訂單管理收了現金（payment-entry），`status` 也不會前進（payment-entry 不碰 status）→ 收了錢卻停在 `pending`，付款狀態與訂單狀態各走各的。手機/教練端反而正確（先收現再標到場一起做）。
