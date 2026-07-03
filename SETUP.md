@@ -7,6 +7,23 @@
 - **Repo**：`https://github.com/neowu621/haiwangzi-bot.git`
 - **技術棧**：Next.js 16 App Router + React 19 + Prisma 6 + PostgreSQL 16 + Tailwind v4，部署在 Zeabur（連 `master` 自動建置）。
 - **正式站**：`https://haiwangzi.xyz`（健康檢查 `https://haiwangzi.xyz/api/healthz`）
+- **適用機器**：桌機與筆電皆 Windows，兩台步驟相同；差異只在「雙機同步」（見 §11）。
+
+---
+
+## 系統／硬體需求（Windows）
+
+| 項目 | 最低 | 建議 | 備註 |
+|---|---|---|---|
+| 作業系統 | Windows 10 22H2 | Windows 11 | 本專案在 Win11 開發 |
+| CPU | 64-bit | — | **需支援虛擬化（VT-x／AMD-V）**——Docker Desktop 依賴 |
+| 記憶體 | 8 GB | 16 GB | Next 開發 + Docker Postgres + 瀏覽器同開 |
+| 硬碟 | 10 GB 可用 | SSD 20 GB+ | `node_modules`(~1GB)、Docker image、`postgres-data`、Next 建置快取 |
+| 虛擬化 | WSL2 + 「虛擬機器平台」 | — | Docker Desktop 安裝時會提示啟用；BIOS 需開虛擬化 |
+| 網路 | — | — | 需連得到 github.com、npm registry、openrouter.ai、Zeabur |
+
+**軟體版本**：Node **20 LTS 以上**、Git 2.4x、Docker Desktop 4.x、Claude Code 最新版、（選）VS Code。
+> 若不想裝 Docker（例如筆電資源吃緊），可改連一個雲端／遠端 PostgreSQL，把 `.env` 的 `DATABASE_URL` 指過去即可——本機開發不是非 Docker 不可，只是最省事。
 
 ---
 
@@ -182,3 +199,24 @@ npx tsc --noEmit   # 型別檢查（push 前必過）
 - [ ] `git config user.email` == `neowu62@gmail.com`、`gh auth status` 已登入
 - [ ] `npm run dev` 能開 `http://localhost:3000`
 - [ ] （已備份）舊機的 `C:\Users\neowu\.claude\` 已還原，Claude 記得這個專案
+
+---
+
+## 11. 雙機（桌機 ↔ 筆電）同步實務
+
+核心原則：**程式碼靠 Git 同步；密鑰（`.env`）與 Claude 記憶（`.claude\`）各機獨立、不會自動跨機。**
+
+**每次的鐵律**
+- **開工前先 `git pull`**，收工前一定 **commit + push**。養成「離開電腦前先 push」——沒 push 換另一台就看不到。
+- 一次只在一台改同一段；兩台都有未 push 的 WIP 時，先在一台 push，另一台 `git pull --rebase` 收斂。
+- 兩台都用 **`npm ci`**（照 `package-lock.json` 裝，版本完全對齊）而非 `npm install`。
+
+**版本號要小心撞號**（本專案 `NN` 全域累計、不歸零）
+- **bump `src/lib/version.ts` 前先 `git pull`**，確認最新版號再 +1。否則兩台可能各自出一個相同 `NN`（曾發生過 v771 由另一線同時 commit）。push 被拒（non-fast-forward）就先 pull --rebase 再推。
+
+**各機獨立、要手動處理的**
+- **`.env`**：被 gitignore、不進 Git。兩台各自從 **Zeabur Variables** 複製，保持一致；日後改了任何金鑰，兩台都要更新。
+- **`.claude\`（記憶／設定）**：不跨機。要讓筆電也有專案記憶，把桌機的 `C:\Users\<你>\.claude\projects\<本專案>\memory\` 複製到筆電同路徑（注意兩台使用者名稱路徑可能不同）；不複製也行，靠 repo 的 `SETUP.md`／`AGENTS.md`／`docs/PROGRESS.md` 重建脈絡。
+- **本機 DB**：兩台的 Docker Postgres 各自獨立（volume 在各自機器），**測試資料不共用**；正式資料只在 Zeabur。不要期待本機資料同步。
+
+**換行**：`.gitattributes` 已統一 CRLF，兩台一致，不會因換行狂 diff。
