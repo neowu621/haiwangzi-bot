@@ -96,7 +96,7 @@ export function attendanceConfirmed(
         },
         {
           type: "text",
-          text: "喜歡今天的旅程，給我們海王子評論鼓勵一下，只要一分鐘就好 🙏",
+          text: "喜歡今天的旅程，給我們海王子評論鼓勵一下，",
           color: COLORS.mute,
           size: "xs",
           align: "center",
@@ -104,17 +104,13 @@ export function attendanceConfirmed(
           wrap: true,
         },
         {
-          // v787：內嵌可點連結 —— 整行點下去 → Google 評論
           type: "text",
-          text: "👉 請點這裡給我們 ⭐⭐⭐⭐⭐",
-          color: "#1a73e8",
-          size: "md",
-          weight: "bold",
+          text: "只要一分鐘就好 🙏 給我們五星評價",
+          color: COLORS.mute,
+          size: "xs",
           align: "center",
-          margin: "md",
-          decoration: "underline",
+          margin: "sm",
           wrap: true,
-          action: { type: "uri", label: "海王子評論", uri: reviewUrl },
         },
         {
           type: "text",
