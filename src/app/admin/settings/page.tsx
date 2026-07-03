@@ -411,7 +411,8 @@ export default function SettingsPage() {
 
   return (
     <AdminShell>
-      <div className="mx-auto max-w-3xl space-y-6">
+      {/* v780：系統設定內容寬度 +50%（max-w-3xl 48rem → max-w-6xl 72rem），減少右側留白 */}
+      <div className="mx-auto max-w-6xl space-y-6">
         {/* Status */}
         {err && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(255,123,90,0.15)", color: "var(--color-coral)", border: "1px solid rgba(255,123,90,0.3)" }}>{err}</div>}
         {ok && <div className="rounded-lg p-3 text-sm" style={{ background: "rgba(99,235,164,0.12)", color: "#047857", border: "1px solid rgba(99,235,164,0.25)" }}>✓ {ok}</div>}
