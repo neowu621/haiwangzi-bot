@@ -67,6 +67,10 @@ async function handle(req: NextRequest) {
   const results = { d3_sent: 0, d7_sent: 0, d10_cancelled: 0, errors: [] as string[] };
   const lineClient = getLineClient();
 
+  // v783：老闆要求「先停用」匯款未繳自動取消 —— 提醒照發（D+2 / D+7），但不再自動取消。
+  //   要恢復自動取消把此旗標改回 true 即可（或日後抽成 siteConfig / env）。
+  const AUTO_CANCEL_UNPAID_ENABLED = false;
+
   for (const b of pendingBookings) {
     const reminderTypes = new Set(b.reminderLogs.map((r) => r.type));
     // v367：付款截止日 = min(下訂+10天, 出發前48h)。逾期即自動取消。
@@ -75,8 +79,8 @@ async function handle(req: NextRequest) {
       ? activityStartFromTaipei(trip.date.toISOString().slice(0, 10), trip.startTime)
       : null;
     const deadline = computePaymentDeadline(b.createdAt, activityStart);
-    // 自動取消（逾付款截止日）
-    if (now >= deadline && !reminderTypes.has("payment_d10_cancel")) {
+    // 自動取消（逾付款截止日）— v783：預設停用，只在旗標開啟時才自動取消
+    if (AUTO_CANCEL_UNPAID_ENABLED && now >= deadline && !reminderTypes.has("payment_d10_cancel")) {
       try {
         await prisma.booking.update({
           where: { id: b.id },
@@ -106,7 +110,7 @@ async function handle(req: NextRequest) {
     // D+7：最後通知
     if (b.createdAt < d7 && !reminderTypes.has("payment_d7")) {
       try {
-        const text = `🚨 付款最後通知\n\n您的訂單 #${b.id.slice(0, 8)} 已超過 7 天未付款。\n若 3 天內仍未完成，系統將自動取消訂單。\n\n應付金額 NT$ ${Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖。\n— 海王子潛水`;
+        const text = `🚨 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已超過 7 天，尚未收到付款。\n\n應付金額 NT$ ${Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}\n請上 App 完成付款並上傳轉帳截圖。\n\n💡 已經直接付款給老闆了嗎？請在付款頁改選「其他」付款方式並註明，即可完成。\n— 海王子潛水`;
         if ((b.user.notifyByLine ?? true) && lineClient) {
           await lineClient.pushMessage({ to: b.userId, messages: [{ type: "text", text }] });
         }
@@ -126,7 +130,7 @@ async function handle(req: NextRequest) {
     // D+2：友善提醒（v349：下訂 2 天未付款）
     if (b.createdAt < d2 && !reminderTypes.has("payment_d3")) {
       try {
-        const text = `📋 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已預約成功 2 天，目前尚未收到付款。\n\n應付金額 NT$ ${Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}\n請上 LIFF App 完成付款並上傳轉帳截圖，\n以保留您的名額。\n\n— 海王子潛水`;
+        const text = `📋 付款提醒\n\n您的訂單 #${b.id.slice(0, 8)} 已預約成功 2 天，目前尚未收到付款。\n\n應付金額 NT$ ${Math.max(0, b.totalAmount - b.paidAmount).toLocaleString()}\n請上 App 完成付款並上傳轉帳截圖，以保留您的名額。\n\n💡 已經直接付款給老闆了嗎？請在付款頁改選「其他」付款方式並註明，即可完成。\n\n— 海王子潛水`;
         if ((b.user.notifyByLine ?? true) && lineClient) {
           await lineClient.pushMessage({ to: b.userId, messages: [{ type: "text", text }] });
         }
@@ -147,6 +151,7 @@ async function handle(req: NextRequest) {
     ok: true,
     pendingBookingsScanned: pendingBookings.length,
     ...results,
-    rule: "（僅日潛）D+2 提醒 / D+7 警告 / 自動取消＝min(下訂+10天, 出發前48h) 逾期",
+    rule: "（僅日潛）D+2 提醒 / D+7 提醒。自動取消：v783 起停用（AUTO_CANCEL_UNPAID_ENABLED=false）",
+    autoCancelEnabled: false,
   });
 }

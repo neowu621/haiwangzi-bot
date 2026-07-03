@@ -259,24 +259,29 @@ export default function PublicPayPage({
       )}
 
       <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="text-sm font-semibold mb-2">選擇付款方式</div>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="text-base font-bold mb-3">選擇付款方式</div>
+        {/* v783：按鈕加大，手機好點 */}
+        <div className="grid grid-cols-3 gap-3">
           {(["bank", "linepay", "other"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setPaymentMethod(m)}
               className={
-                "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-4 transition " +
+                "flex flex-col items-center justify-center gap-2 rounded-2xl px-2 py-6 transition active:scale-95 " +
                 (paymentMethod === m
-                  ? "border-2 border-cyan-600 bg-cyan-50 shadow-sm"
+                  ? "border-2 border-cyan-600 bg-cyan-50 shadow"
                   : "border border-gray-300 bg-white hover:bg-gray-50")
               }
             >
-              <span className="text-2xl leading-none">{m === "bank" ? "🏦" : m === "linepay" ? "💚" : "📝"}</span>
-              <span className="text-[13px] font-bold text-gray-800">{m === "bank" ? "銀行轉帳" : m === "linepay" ? "LINE Pay" : "其他"}</span>
+              <span className="text-4xl leading-none">{m === "bank" ? "🏦" : m === "linepay" ? "💚" : "📝"}</span>
+              <span className="text-[15px] font-bold text-gray-800">{m === "bank" ? "銀行轉帳" : m === "linepay" ? "LINE Pay" : "其他"}</span>
             </button>
           ))}
+        </div>
+        {/* v783：提醒已直接付款給老闆的客戶改走「其他」 */}
+        <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900">
+          💡 已經<b>直接付款給老闆</b>（現金／當面 LINE Pay 等）了嗎？請選 <b>「📝 其他」</b>，在備註寫一下付款方式，送出即可完成，不必再匯款。
         </div>
 
         {paymentMethod === "bank" && data.bank?.account && (

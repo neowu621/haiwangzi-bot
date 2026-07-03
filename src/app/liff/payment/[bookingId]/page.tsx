@@ -469,25 +469,32 @@ export default function PaymentUploadPage({
             <CardTitle className="text-base">{(booking.paymentProofs?.length ?? 0) > 0 ? "補上傳付款證明" : "選擇付款方式"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-1.5">
+            {/* v783：按鈕加大，手機好點 */}
+            <div className="grid grid-cols-3 gap-2.5">
               {([
-                ["bank", "🏦 轉帳"],
-                ["linepay", "💚 LINE Pay"],
-                ["other", "📝 其他"],
-              ] as const).map(([k, label]) => (
+                ["bank", "🏦", "銀行轉帳"],
+                ["linepay", "💚", "LINE Pay"],
+                ["other", "📝", "其他"],
+              ] as const).map(([k, icon, label]) => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setPaymentMethod(k)}
                   className={
-                    paymentMethod === k
-                      ? "rounded-md border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 px-2 py-2 text-sm font-bold"
-                      : "rounded-md border border-[var(--border)] px-2 py-2 text-sm"
+                    "flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-5 transition active:scale-95 " +
+                    (paymentMethod === k
+                      ? "border-2 border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10 font-bold shadow"
+                      : "border border-[var(--border)]")
                   }
                 >
-                  {label}
+                  <span className="text-3xl leading-none">{icon}</span>
+                  <span className="text-[14px] font-bold">{label}</span>
                 </button>
               ))}
+            </div>
+            {/* v783：提醒已直接付款給老闆的客戶改走「其他」 */}
+            <div className="mt-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] leading-relaxed text-amber-900">
+              💡 已經<b>直接付款給老闆</b>（現金／當面 LINE Pay 等）了嗎？請選 <b>「📝 其他」</b>，備註寫一下付款方式送出即可，不必再匯款。
             </div>
             {!paymentMethod && (
               <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
