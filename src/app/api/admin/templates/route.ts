@@ -24,15 +24,42 @@ export async function GET(req: NextRequest) {
   const all = await prisma.messageTemplate.findMany();
   const overrideMap = new Map(all.map((t) => [t.key, t]));
 
-  // v794：所有有按鈕的模板，在「按鈕文字」後自動補一個「按鈕連結」可編輯欄位（留空＝系統預設）。
-  //   已內建 buttonUrl 的模板（如到場確認，預設 Google 評論）維持不動。
+  // v794/v795：所有有按鈕的模板，在「按鈕文字」後自動補一個「按鈕連結」欄位。
+  //   v795：欄位預設值 = 該模板的系統預設連結（顯示出來，讓老闆看得到、可直接改）。
+  //   維持既有行為：值＝預設就存 null → 實際仍走各模板原本的連結邏輯。
+  //   已內建 buttonUrl 的模板（到場確認，預設 Google 評論）維持不動。
   type EF = { key: string; label: string; defaultValue: string };
-  const withButtonUrl = (fields: readonly EF[] | undefined): EF[] | undefined => {
+  const LIFF_WELCOME = "https://liff.line.me/2010219428-E5frY7tm/welcome";
+  const DEFAULT_BTN_URL: Record<string, string> = {
+    welcome: "https://liff.line.me/2010219428-E5frY7tm",
+    booking_confirm: LIFF_WELCOME,
+    deposit_notice: LIFF_WELCOME,
+    deposit_confirm: LIFF_WELCOME,
+    final_reminder: LIFF_WELCOME,
+    trip_guide: LIFF_WELCOME,
+    weather_cancel: LIFF_WELCOME,
+    birthday_credit: LIFF_WELCOME,
+    booking_cancel: LIFF_WELCOME,
+    credit_expiry: LIFF_WELCOME,
+    first_order_reward_grant: "https://liff.line.me/2010219428-E5frY7tm",
+    payment_reject: LIFF_WELCOME,
+    refund_complete: LIFF_WELCOME,
+    refund_request: LIFF_WELCOME,
+    vip_upgrade: LIFF_WELCOME,
+    d1_reminder: LIFF_WELCOME,
+    deposit_pending: "https://haiwangzi.xyz/admin/bookings?status=awaiting_verify",
+    overcap_alert: "https://haiwangzi.xyz/liff/coach/today",
+  };
+  const withButtonUrl = (key: string, fields: readonly EF[] | undefined): EF[] | undefined => {
     if (!fields) return fields as undefined;
     if (fields.some((f) => f.key === "buttonUrl")) return [...fields];
     const idx = fields.findIndex((f) => f.key === "buttonLabel");
     if (idx < 0) return [...fields];
-    const injected: EF = { key: "buttonUrl", label: "按鈕連結（留空＝系統預設）", defaultValue: "" };
+    const injected: EF = {
+      key: "buttonUrl",
+      label: "按鈕連結（系統預設如下，可改；三管道通用）",
+      defaultValue: DEFAULT_BTN_URL[key] ?? LIFF_WELCOME,
+    };
     return [...fields.slice(0, idx + 1), injected, ...fields.slice(idx + 1)];
   };
 
@@ -49,6 +76,7 @@ export async function GET(req: NextRequest) {
       emailEnabled: o?.emailEnabled ?? meta.defaultEmail,
       inAppEnabled: o?.inAppEnabled ?? meta.defaultInApp,
       editableFields: withButtonUrl(
+        key,
         FLEX_EDITABLE_FIELDS[key as keyof typeof FLEX_EDITABLE_FIELDS] as readonly EF[] | undefined,
       ),
       override: o
