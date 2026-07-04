@@ -70,6 +70,33 @@ export const FLEX_TEMPLATES: Record<string, FlexFactory> = {
 
 export type FlexTemplateKey = keyof typeof FLEX_TEMPLATES;
 
+// v794：集中套用「後台可編輯的按鈕連結」——把 flex 裡第一顆 uri 按鈕的連結換成 override.buttonUrl。
+//   留空(null/"")則不動，維持各模板原本的預設連結。適用所有模板，免逐檔改。
+function applyButtonUrlOverride(
+  msg: FlexMessage,
+  override?: TemplateOverride | null,
+): FlexMessage {
+  const url = override?.buttonUrl;
+  if (!url) return msg;
+  const setFirst = (node: unknown): boolean => {
+    if (!node || typeof node !== "object") return false;
+    const n = node as Record<string, unknown>;
+    const action = n.action as Record<string, unknown> | undefined;
+    if (n.type === "button" && action && action.type === "uri") {
+      action.uri = url;
+      return true;
+    }
+    for (const k of Object.keys(n)) {
+      const v = n[k];
+      if (Array.isArray(v)) { for (const item of v) if (setFirst(item)) return true; }
+      else if (v && typeof v === "object") { if (setFirst(v)) return true; }
+    }
+    return false;
+  };
+  setFirst((msg as unknown as Record<string, unknown>).contents);
+  return msg;
+}
+
 /** 同步建構 — 不讀 DB override，舊呼叫位點繼續用 */
 export function buildFlexByKey(
   key: FlexTemplateKey,
@@ -91,7 +118,7 @@ export async function buildFlexByKeyAsync(
   if (!builder) throw new Error(`unknown flex template: ${key}`);
   const override = await prisma.messageTemplate.findUnique({ where: { key } });
   const finalAlt = override?.altText ?? altText;
-  return builder(params, finalAlt, override ?? undefined);
+  return applyButtonUrlOverride(builder(params, finalAlt, override ?? undefined), override);
 }
 
 /** v480：呼叫端已查好 override 時用（notifyCustomer 單次查詢、不重複打 DB） */
@@ -103,7 +130,7 @@ export function buildFlexWithOverride(
 ): FlexMessage {
   const builder = FLEX_TEMPLATES[key];
   if (!builder) throw new Error(`unknown flex template: ${key}`);
-  return builder(params, altText, override ?? undefined);
+  return applyButtonUrlOverride(builder(params, altText, override ?? undefined), override ?? undefined);
 }
 
 export const FLEX_TEMPLATE_LABELS: Record<FlexTemplateKey, string> = {

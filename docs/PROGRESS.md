@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-03 — 按鈕連結可編輯推廣到所有訊息模板（v794）
+
+承 v792（只到場確認可編輯按鈕連結）→ 老闆要**所有**模板都能編輯按鈕文字＋連結。集中式做法（不逐檔改 20 個模板）：
+
+- **UI**：`/api/admin/templates` GET 對每個「有 buttonLabel」的模板，自動在其後注入「按鈕連結（留空＝系統預設）」欄位（已內建 buttonUrl 的到場確認維持自己的預設）。前端 render/save 皆通用。
+- **LINE flex**：`flex/index.ts` 加 `applyButtonUrlOverride()`——遞迴找 flex 內第一顆 uri 按鈕、換成 `override.buttonUrl`（留空不動）。在 `buildFlexByKeyAsync` / `buildFlexWithOverride` 兩個讀 override 的建構點套用 → 所有模板通用。
+- **Email**：`composeEmail` 改 `buttonUrl = msgField(buttonUrl) || EMAIL_BUTTON_URL`（填了用它、留空維持小編 LINE）。
+- **站內**：`notify-template` linkUrl 改 `opts.linkUrl ?? 後台 buttonUrl ?? (到場確認→評論預設 / 其餘→resolveLinkUrl)`。
+- 語意：**留空＝各模板原本的系統預設連結；填了＝三管道(LINE/Email/站內)都用這個連結**。`button_url` 欄 v792 已建。
+- build 通過(exit 0)。
+
 ## 2026-07-03 — 訊息模板版面/按鈕連結可編輯 + 手機 LINE 直通後台（v791–793）
 
 - **v791**：修 Email 版「五星評價」按鈕連錯（原所有 Email 按鈕統一導小編 LINE）→ 到場確認例外連 Google 評論。

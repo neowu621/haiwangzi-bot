@@ -65,15 +65,17 @@ export function notifyCustomer(opts: {
       const label = FLEX_TEMPLATE_LABELS[key] ?? "通知";
       // 通知列文字（altText）＝後台「通知列文字」欄位（含預設）
       const altText = msgField(key, "altText", tpl) || label;
-      // v785/v792：到場確認的站內通知 → 點擊開「按鈕連結」(後台可編輯 buttonUrl，預設 Google 評論)
-      const reviewUrl =
-        (tpl?.buttonUrl && tpl.buttonUrl.length > 0 ? tpl.buttonUrl : null) ??
-        (typeof opts.params?.reviewUrl === "string" && opts.params.reviewUrl
+      // v794：站內通知連結 —— 後台填了「按鈕連結」(buttonUrl,任一模板)就用它；
+      //   否則到場確認退回 Google 評論預設、其餘退回 resolveLinkUrl(params)。
+      const savedBtnUrl = tpl?.buttonUrl && tpl.buttonUrl.length > 0 ? tpl.buttonUrl : null;
+      const attendanceDefault =
+        typeof opts.params?.reviewUrl === "string" && opts.params.reviewUrl
           ? opts.params.reviewUrl
-          : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5");
+          : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5";
       const linkUrl =
         opts.linkUrl ??
-        (key === "attendance_confirmed" ? reviewUrl : resolveLinkUrl(opts.params));
+        savedBtnUrl ??
+        (key === "attendance_confirmed" ? attendanceDefault : resolveLinkUrl(opts.params));
 
       // ── LINE flex ──
       if (!opts.skipLine && lineOn && (user.notifyByLine ?? true)) {

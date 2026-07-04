@@ -24,6 +24,18 @@ export async function GET(req: NextRequest) {
   const all = await prisma.messageTemplate.findMany();
   const overrideMap = new Map(all.map((t) => [t.key, t]));
 
+  // v794：所有有按鈕的模板，在「按鈕文字」後自動補一個「按鈕連結」可編輯欄位（留空＝系統預設）。
+  //   已內建 buttonUrl 的模板（如到場確認，預設 Google 評論）維持不動。
+  type EF = { key: string; label: string; defaultValue: string };
+  const withButtonUrl = (fields: readonly EF[] | undefined): EF[] | undefined => {
+    if (!fields) return fields as undefined;
+    if (fields.some((f) => f.key === "buttonUrl")) return [...fields];
+    const idx = fields.findIndex((f) => f.key === "buttonLabel");
+    if (idx < 0) return [...fields];
+    const injected: EF = { key: "buttonUrl", label: "按鈕連結（留空＝系統預設）", defaultValue: "" };
+    return [...fields.slice(0, idx + 1), injected, ...fields.slice(idx + 1)];
+  };
+
   const templates = Object.keys(FLEX_TEMPLATES).map((key) => {
     const o = overrideMap.get(key);
     const meta = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META];
@@ -36,9 +48,9 @@ export async function GET(req: NextRequest) {
       lineEnabled: o?.lineEnabled ?? meta.defaultLine,
       emailEnabled: o?.emailEnabled ?? meta.defaultEmail,
       inAppEnabled: o?.inAppEnabled ?? meta.defaultInApp,
-      editableFields: FLEX_EDITABLE_FIELDS[
-        key as keyof typeof FLEX_EDITABLE_FIELDS
-      ],
+      editableFields: withButtonUrl(
+        FLEX_EDITABLE_FIELDS[key as keyof typeof FLEX_EDITABLE_FIELDS] as readonly EF[] | undefined,
+      ),
       override: o
         ? {
             title: o.title,
