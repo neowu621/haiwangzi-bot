@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { computeVipLevel, normalizeVipTiers, VIP_TIERS } from "@/lib/vip-tier";
@@ -44,14 +45,20 @@ export async function GET(req: NextRequest) {
       { code: { contains: q, mode: "insensitive" as const } },
     ],
   };
-  const where = hasQ
-    ? (hasRoleFilter ? { deletedAt: null, AND: [searchCond, roleCond] } : { deletedAt: null, ...searchCond })
-    : (hasRoleFilter ? { deletedAt: null, ...roleCond } : undefined);
+  // v797：?activeDays=N → 只回「近 N 天有登入(lastActiveAt)」的會員（手機會員管理預設用）
+  const activeDays = Number(new URL(req.url).searchParams.get("activeDays")) || 0;
+  const andConds: Prisma.UserWhereInput[] = [];
+  if (hasQ) andConds.push(searchCond);
+  if (hasRoleFilter) andConds.push(roleCond);
+  if (activeDays > 0) andConds.push({ lastActiveAt: { gte: new Date(Date.now() - activeDays * 86400000) } });
+  const where: Prisma.UserWhereInput | undefined = andConds.length
+    ? { deletedAt: null, AND: andConds }
+    : undefined;
 
   const users = await prisma.user.findMany({
     where,
     orderBy: { lastActiveAt: "desc" },
-    take: hasQ ? 60 : (hasRoleFilter ? 200 : 500),
+    take: hasQ ? 60 : (activeDays > 0 ? 100 : (hasRoleFilter ? 200 : 500)),
   });
 
   // 批次計算每個 user 的 LTV

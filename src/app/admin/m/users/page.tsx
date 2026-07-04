@@ -69,11 +69,14 @@ export default function MobileUsersPage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!debouncedQ) { setUsers([]); setSearched(false); return; }
     let alive = true;
     setLoading(true);
     setError(null);
-    adminFetch<Resp>(`/api/admin/users?q=${encodeURIComponent(debouncedQ)}`)
+    // v797：沒搜尋時預設顯示「這兩天有登入的會員」；有搜尋則走關鍵字查詢
+    const url = debouncedQ
+      ? `/api/admin/users?q=${encodeURIComponent(debouncedQ)}`
+      : `/api/admin/users?activeDays=2`;
+    adminFetch<Resp>(url)
       .then((d) => { if (alive) { setUsers(d.users ?? []); setSearched(true); } })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "查詢失敗"); })
       .finally(() => { if (alive) setLoading(false); });
@@ -126,11 +129,17 @@ export default function MobileUsersPage() {
 
       {error && <div className="mb-3 rounded-lg px-3 py-2 text-xs" style={{ background: "rgba(255,107,107,0.12)", color: "var(--color-coral)" }}>查詢失敗：{error}</div>}
 
+      {/* v797：沒搜尋時的標題 —— 預設列出這兩天有登入的會員 */}
       {!debouncedQ && !loading && (
+        <div className="mb-2 px-1 text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>
+          🕑 這兩天登入的會員（{users.length}）
+          <span className="ml-1 font-normal opacity-70">・可用上方搜尋找其他人</span>
+        </div>
+      )}
+      {!debouncedQ && !loading && users.length === 0 && (
         <div className="py-12 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
-          <Search className="mx-auto mb-2 h-7 w-7 opacity-40" />
-          輸入關鍵字後開始查詢
-          <div className="mt-1 text-[11px] opacity-70">（姓名 / 電話 / 會員編號）</div>
+          這兩天沒有會員登入
+          <div className="mt-1 text-[11px] opacity-70">用上方搜尋（姓名 / 電話 / 會員編號）找會員</div>
         </div>
       )}
 
@@ -161,7 +170,7 @@ export default function MobileUsersPage() {
       </div>
 
       {loading && <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>查詢中...</div>}
-      {!loading && searched && users.length === 0 && <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>找不到符合「{debouncedQ}」的會員</div>}
+      {!loading && debouncedQ && searched && users.length === 0 && <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>找不到符合「{debouncedQ}」的會員</div>}
       {!loading && users.length >= 60 && <div className="mt-1 py-2 text-center text-[11px]" style={{ color: "var(--muted-foreground)" }}>最多顯示 60 筆，請輸入更完整的關鍵字縮小範圍</div>}
 
       {/* 會員彈窗 */}
