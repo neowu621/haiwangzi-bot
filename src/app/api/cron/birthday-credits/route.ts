@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
       notifyCustomer({
         userId: u.line_user_id,
         templateKey: "birthday_credit",
-        params: { amount, expiryDays, liffUrl },
+        params: { amount, expiryDays, liffUrl: `${liffUrl}/booking` },
       });
     } catch (e) {
       failed.push({

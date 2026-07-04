@@ -285,9 +285,8 @@ async function handle(req: NextRequest) {
         const siteName = sites.map((s) => s.name).join(" · ") || (process.env.APP_DEFAULT_REGION ?? "");
         const dateStr = trip.date.toISOString().slice(0, 10);
         const reasonStr = `今日 ${maxStation} 風速 ${maxWind} m/s，超過下水安全閾值 ${threshold} m/s`;
-        const myUrl = process.env.NEXT_PUBLIC_BASE_URL
-          ? `${process.env.NEXT_PUBLIC_BASE_URL}/liff/my`
-          : "https://line.me/";
+        // v796：天氣取消「聯繫教練改期」→ 小編 LINE OA
+        const myUrl = "https://line.me/R/ti/p/%40894bpmew";
 
         // v480：改走 notifyCustomer — LINE/Email/站內 全由 weather_cancel 模板組稿
         //   （後台填什麼發什麼；各通道結果記入 MessageLog 發送紀錄）

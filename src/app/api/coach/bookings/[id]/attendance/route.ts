@@ -127,7 +127,7 @@ export async function POST(
               notifyCustomer({
                 userId: booking.userId,
                 templateKey: "vip_upgrade",
-                params: { tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl },
+                params: { tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl: `${liffUrl}/profile` },
               });
             }
           }

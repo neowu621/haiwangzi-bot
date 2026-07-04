@@ -74,7 +74,7 @@ async function run(req: NextRequest) {
       notifyCustomer({
         userId: tx.userId,
         templateKey: "credit_expiry",
-        params: { amount: balance, expireDate, liffUrl },
+        params: { amount: balance, expireDate, liffUrl: `${liffUrl}/booking` },
       });
       notified++;
     }

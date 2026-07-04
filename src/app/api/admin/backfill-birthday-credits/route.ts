@@ -102,7 +102,7 @@ async function run(req: NextRequest, dryRun: boolean) {
       notifyCustomer({
         userId: u.line_user_id,
         templateKey: "birthday_credit",
-        params: { amount, expiryDays, liffUrl },
+        params: { amount, expiryDays, liffUrl: `${liffUrl}/booking` },
       });
       granted.push(u.line_user_id);
     } catch (e) {

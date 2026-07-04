@@ -134,7 +134,7 @@ export async function maybeGrantFirstOrderReward(
         balance: newBalance,
         expiresAt: expiryStr,
         bookingTitle,
-        liffUrl: LIFF_BASE,
+        liffUrl: `${LIFF_BASE}/profile`,
       },
     });
 

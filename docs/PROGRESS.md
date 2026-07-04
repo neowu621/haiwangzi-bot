@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-07-03 — 通知按鈕連結對齊各自語意（深連結）+ 對照文件（v795–796）
+
+老闆審核發現多個模板「按鈕文字說要去某頁、實際只開 LIFF 首頁/welcome」。逐一改成對應深連結（連結來源是各 call site 的 `params.liffUrl`/`params.url`，非 flex 預設）：
+
+- **v795**：訊息模板「按鈕連結」編輯欄改為**顯示系統預設網址**（原本留空）。
+- **v796 連結對齊**（改 call site params）：
+  - VIP升等 → `/profile`；首單獎勵「查看抵用金」→ `/profile`（抵用金明細在個人中心）
+  - 生日禮金/抵用金到期「立即使用」→ `/booking`
+  - 訂單取消「查看我的預約」→ `/my`
+  - 付款駁回「重新上傳」→ `/payment/{訂單ID}`（**精準深連結**，帶 `proof.bookingId`）
+  - 天氣取消「聯繫教練改期」→ 小編 LINE OA（`line.me/R/ti/p/%40894bpmew`）；weather-cancel route + weather-check cron 兩處
+  - 退款申請 → `/refund/{id}`（原本就已精準，無需改）
+  - 動檔：attendance route、birthday-credits cron + backfill、credit-expiry cron、first-order-reward.ts、bookings/[id] route、payment-proofs reject route、weather-cancel route、weather-check cron
+  - `templates/route.ts` `DEFAULT_BTN_URL` 顯示預設對齊實際連結。
+- **文件**：新增 `docs/notification-button-links.md`（所有模板 按鈕文字×連結×落點頁 對照表 + 維護說明）。
+- build 通過(exit 0)。動態連結(付款/退款/預約/訂金/尾款/D-1)由發送當下帶 ID；後台編輯欄若填死網址會失去帶 ID 深連結（文件已註明）。
+
 ## 2026-07-03 — 按鈕連結可編輯推廣到所有訊息模板（v794）
 
 承 v792（只到場確認可編輯按鈕連結）→ 老闆要**所有**模板都能編輯按鈕文字＋連結。集中式做法（不逐檔改 20 個模板）：

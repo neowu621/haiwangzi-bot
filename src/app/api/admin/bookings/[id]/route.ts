@@ -227,7 +227,7 @@ export async function DELETE(
         notifyCustomer({
           userId: booking.userId,
           templateKey: "booking_cancel",
-          params: { bookingTitle, reason: "", liffUrl },
+          params: { bookingTitle, reason: "", liffUrl: `${liffUrl}/my` },
         });
       } catch (e) {
         console.error("[booking cancel notify]", e);

@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         time: trip.startTime,
         site: siteName,
         reason: data.reason,
-        url: liffUrl,
+        url: "https://line.me/R/ti/p/%40894bpmew", // v796：聯繫教練改期 → 小編 LINE OA
       },
     });
   }

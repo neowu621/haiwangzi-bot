@@ -29,24 +29,25 @@ export async function GET(req: NextRequest) {
   //   維持既有行為：值＝預設就存 null → 實際仍走各模板原本的連結邏輯。
   //   已內建 buttonUrl 的模板（到場確認，預設 Google 評論）維持不動。
   type EF = { key: string; label: string; defaultValue: string };
-  const LIFF_WELCOME = "https://liff.line.me/2010219428-E5frY7tm/welcome";
+  // v796：對齊各模板實際連結（call site 送出的 liffUrl/url）。動態的(付款/退款帶訂單ID)顯示代表頁。
+  const LIFF_BASE = "https://liff.line.me/2010219428-E5frY7tm";
+  const OA_LINE = "https://line.me/R/ti/p/%40894bpmew"; // 小編 LINE OA
   const DEFAULT_BTN_URL: Record<string, string> = {
-    welcome: "https://liff.line.me/2010219428-E5frY7tm",
-    booking_confirm: LIFF_WELCOME,
-    deposit_notice: LIFF_WELCOME,
-    deposit_confirm: LIFF_WELCOME,
-    final_reminder: LIFF_WELCOME,
-    trip_guide: LIFF_WELCOME,
-    weather_cancel: LIFF_WELCOME,
-    birthday_credit: LIFF_WELCOME,
-    booking_cancel: LIFF_WELCOME,
-    credit_expiry: LIFF_WELCOME,
-    first_order_reward_grant: "https://liff.line.me/2010219428-E5frY7tm",
-    payment_reject: LIFF_WELCOME,
-    refund_complete: LIFF_WELCOME,
-    refund_request: LIFF_WELCOME,
-    vip_upgrade: LIFF_WELCOME,
-    d1_reminder: LIFF_WELCOME,
+    welcome: LIFF_BASE,
+    booking_confirm: `${LIFF_BASE}/my`,
+    deposit_notice: `${LIFF_BASE}/my`,
+    deposit_confirm: `${LIFF_BASE}/my`,
+    final_reminder: `${LIFF_BASE}/my`,
+    trip_guide: `${LIFF_BASE}/my`,
+    d1_reminder: `${LIFF_BASE}/my`,
+    weather_cancel: OA_LINE,
+    birthday_credit: `${LIFF_BASE}/booking`,
+    credit_expiry: `${LIFF_BASE}/booking`,
+    booking_cancel: `${LIFF_BASE}/my`,
+    first_order_reward_grant: `${LIFF_BASE}/profile`,
+    payment_reject: `${LIFF_BASE}/my`, // 實際帶訂單ID → /payment/{id}
+    refund_request: `${LIFF_BASE}/my`, // 實際帶退款ID → /refund/{id}
+    vip_upgrade: `${LIFF_BASE}/profile`,
     deposit_pending: "https://haiwangzi.xyz/admin/bookings?status=awaiting_verify",
     overcap_alert: "https://haiwangzi.xyz/liff/coach/today",
   };
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
     const injected: EF = {
       key: "buttonUrl",
       label: "按鈕連結（系統預設如下，可改；三管道通用）",
-      defaultValue: DEFAULT_BTN_URL[key] ?? LIFF_WELCOME,
+      defaultValue: DEFAULT_BTN_URL[key] ?? `${LIFF_BASE}/my`,
     };
     return [...fields.slice(0, idx + 1), injected, ...fields.slice(idx + 1)];
   };

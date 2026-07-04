@@ -90,7 +90,7 @@ export async function POST(
       notifyCustomer({
         userId: proof.booking.userId,
         templateKey: "payment_reject",
-        params: { bookingTitle, reason: parsed.data.reason, liffUrl },
+        params: { bookingTitle, reason: parsed.data.reason, liffUrl: `${liffUrl}/payment/${proof.bookingId}` },
       });
     }
     return NextResponse.json({ ok: true, rejected: true });
