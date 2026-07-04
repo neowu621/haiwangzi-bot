@@ -8,6 +8,7 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { setAdminToken, setAdminUser, type AdminWebUser } from "@/lib/admin-web-auth";
 import { formatPhoneTW } from "@/lib/phone";
 import { C, Sect } from "@/components/liff/mobileShared";
 
@@ -218,9 +219,25 @@ export default function ProfilePage() {
           <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>教練到場點名</span><ChevronRight size={16} color={C.mute} />
         </Link>
         {isAdminLevel && (
-          <Link href="/admin/m" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
-            <LayoutDashboard size={19} color={C.accFg} /><span style={{ flex: 1, fontSize: 14 }}>後台管理</span><ChevronRight size={16} color={C.mute} />
-          </Link>
+          // v793：用 LINE 身分直接換發後台 session(免帳密) → 手機簡易後台 /admin/m
+          <button
+            onClick={async () => {
+              try {
+                const r = await liff.fetchWithAuth<{ token: string; user: AdminWebUser }>(
+                  "/api/admin-web/liff-session",
+                  { method: "POST" },
+                );
+                setAdminToken(r.token);
+                setAdminUser(r.user);
+                window.location.href = "/admin/m";
+              } catch (e) {
+                alert("進入後台失敗：" + (e instanceof Error ? e.message : String(e)));
+              }
+            }}
+            style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", borderBottom: `0.5px solid ${C.line}`, color: C.ink, cursor: "pointer" }}
+          >
+            <LayoutDashboard size={19} color={C.accFg} /><span style={{ flex: 1, fontSize: 14 }}>後台管理（LINE 直接進入）</span><ChevronRight size={16} color={C.mute} />
+          </button>
         )}
       </>)}
       <Sect t="其他" />

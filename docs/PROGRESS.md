@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-07-03 — 訊息模板版面/按鈕連結可編輯 + 手機 LINE 直通後台（v791–793）
+
+- **v791**：修 Email 版「五星評價」按鈕連錯（原所有 Email 按鈕統一導小編 LINE）→ 到場確認例外連 Google 評論。
+- **v792**（老闆兩點）：① 訊息模板左欄「依流程選擇」300px→**400px**，與右欄「發送預覽」同寬。② **按鈕連結後台可編輯**：`MessageTemplate.button_url`(schema+migrate-safety `ADD COLUMN IF NOT EXISTS button_url`)；到場確認 editableFields 在「按鈕文字」下加「按鈕連結」欄(預設 Google 評論)；LINE flex(`ovr buttonUrl`)/Email(`msgField buttonUrl`)/站內(`tpl.buttonUrl`) 三管道皆讀此欄；templates GET/POST 收發。改連結免改程式。
+- **v793 手機 LINE 直通後台**：老闆反映 LIFF 個人中心「後台管理」連到 `/admin/m` 需再輸帳密。新增橋接 `POST /api/admin-web/liff-session`：驗 LINE idToken + 後台角色白名單(同密碼登入那道門)→ 換發 admin-web JWT。`/liff/profile` 的「後台管理」改為按鈕：`fetchWithAuth` 取 token → `setAdminToken/setAdminUser`(localStorage) → 導向 `/admin/m`(同源，token 續存即登入)。**boss/it/admin 免帳密直接進手機簡易後台**；教練仍走 `/liff/coach/today`。
+- build 皆通過(exit 0)。**⚠️ LIFF 需真機在 LINE 內驗證**。
+
 ## 2026-07-03 — Email 寄不出去排查 + 到場確認「海王子評論」可點連結（v784–785）
 
 - **v784 Email 診斷**：老闆反映「Email 寄不出去」。查證近期無寄信碼變更（最後一次 v615），寄信走 Gmail SMTP（`src/lib/email/send.ts`，`GMAIL_USER`+`GMAIL_APP_PASSWORD`）→ 疑似**金鑰輪換(v773–775)後 Zeabur `GMAIL_APP_PASSWORD` 未同步/被撤銷**。加 `verifyEmailTransport()` + `/api/healthz?email=1`（實際對 Gmail SMTP `verify()`、不寄信、不外洩金鑰），可遠端區分「env 沒設」vs「密碼錯」。**修法在 Zeabur 端**（老闆自行：Google 應用程式密碼重建 → 更新 Zeabur 變數 → 重啟）。診斷端點另有既有 `/api/dev/test-email`（Bearer CRON_SECRET）。
