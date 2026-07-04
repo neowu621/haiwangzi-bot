@@ -12,6 +12,7 @@ export type MsgFieldKey =
   | "subtitle"
   | "bodyText"
   | "buttonLabel"
+  | "buttonUrl"
   | "altText"
   | "footerHint";
 
@@ -21,6 +22,7 @@ export interface MsgOverride {
   subtitle?: string | null;
   bodyText?: string | null;
   buttonLabel?: string | null;
+  buttonUrl?: string | null; // v792
   altText?: string | null;
   footerHint?: string | null;
 }
@@ -99,6 +101,7 @@ export const MSG_EDITABLE_FIELDS: Record<
     { key: "title", label: "標題", defaultValue: "已記錄您的到場" },
     { key: "bodyText", label: "說明文字", defaultValue: "🎉 謝謝你和東北海王子潛水一起下水！今天玩得開心嗎？" },
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "給予我們 ⭐⭐⭐⭐⭐ 評價" },
+    { key: "buttonUrl", label: "按鈕連結（點擊前往的網址）", defaultValue: "https://maps.app.goo.gl/L58ukZuJroo5vbjv5" },
     { key: "altText", label: "通知列文字", defaultValue: "已記錄到場・給我們五星好評 ⭐" },
   ],
   first_order_reward_grant: [
@@ -352,9 +355,9 @@ export function composeEmail(
   const dyn = buildDynamicBody(key, params);
   const footer = EXTRA_FOOTER[key] ?? "";
   // v600b：Email 按鈕一律導小編 LINE OA(避開 awstrack 追蹤破壞 LIFF);忽略 params.url/liffUrl
-  // v791：到場確認例外 —— 按鈕要連到 Google 評論(海王子五星評價)，非小編 LINE
+  // v792：到場確認例外 —— 按鈕連到後台可編輯的「按鈕連結」(預設 Google 評論)，非小編 LINE
   const buttonUrl = key === "attendance_confirmed"
-    ? (typeof params.reviewUrl === "string" && params.reviewUrl ? params.reviewUrl : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5")
+    ? msgField(key, "buttonUrl", override)
     : EMAIL_BUTTON_URL;
   const heroEmoji = HERO_EMOJI[key] ?? "📩";
   const subject = `${opts?.subjectPrefix ?? ""}${title}`;

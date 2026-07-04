@@ -384,7 +384,7 @@ export default function AdminTemplatesPage() {
         )}
 
         {/* 3-column panes */}
-        <div style={{ display: loading && templates.length === 0 ? "none" : "grid", gridTemplateColumns: "300px 1fr 400px", gap: 14, flex: 1, minHeight: 0 }}>
+        <div style={{ display: loading && templates.length === 0 ? "none" : "grid", gridTemplateColumns: "400px 1fr 400px", gap: 14, flex: 1, minHeight: 0 }}>
           {/* === Pane 1: 流程清單 === */}
           <div style={paneStyle}>
             <div style={paneHeadStyle}>

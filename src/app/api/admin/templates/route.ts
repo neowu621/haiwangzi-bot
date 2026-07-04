@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
             subtitle: o.subtitle,
             bodyText: o.bodyText,
             buttonLabel: o.buttonLabel,
+            buttonUrl: o.buttonUrl, // v792
             altText: o.altText,
             footerHint: o.footerHint, // v480
             updatedAt: o.updatedAt,
@@ -63,6 +64,7 @@ const PatchSchema = z.object({
   subtitle: z.string().nullable().optional(),
   bodyText: z.string().nullable().optional(),
   buttonLabel: z.string().nullable().optional(),
+  buttonUrl: z.string().nullable().optional(), // v792：按鈕點擊連結
   altText: z.string().nullable().optional(),
   footerHint: z.string().nullable().optional(), // v480：first_order_reward_grant 底部提示
   lineEnabled: z.boolean().nullable().optional(),
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
     subtitle: string | null;
     bodyText: string | null;
     buttonLabel: string | null;
+    buttonUrl: string | null;
     altText: string | null;
     footerHint: string | null;
     lineEnabled?: boolean | null;
@@ -101,6 +104,7 @@ export async function POST(req: NextRequest) {
     subtitle: data.subtitle ?? null,
     bodyText: data.bodyText ?? null,
     buttonLabel: data.buttonLabel ?? null,
+    buttonUrl: data.buttonUrl ?? null, // v792
     altText: data.altText ?? null,
     footerHint: data.footerHint ?? null, // v480
     updatedBy: auth.user.lineUserId,

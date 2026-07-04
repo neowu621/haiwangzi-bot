@@ -19,6 +19,7 @@ export interface TemplateOverride {
   subtitle?: string | null;
   bodyText?: string | null;
   buttonLabel?: string | null;
+  buttonUrl?: string | null; // v792：按鈕點擊連結（後台可編輯）
   altText?: string | null;
   // v270：first_order_reward_grant 等模板用
   footerHint?: string | null;

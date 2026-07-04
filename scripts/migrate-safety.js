@@ -61,6 +61,8 @@ const PATCHES = [
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS price_breakdown JSONB`,
   // v782: 到場確認/五星好評 訊息已推送時間(防一鍵補推重複發)
   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS review_sent_at TIMESTAMPTZ`,
+  // v792: 訊息模板按鈕連結(後台可編輯,如到場確認 Google 評論網址)
+  `ALTER TABLE message_templates ADD COLUMN IF NOT EXISTS button_url TEXT`,
   // v714: 日潛場次 岸潛/船潛(船潛=每人套裝價)
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS is_boat BOOLEAN NOT NULL DEFAULT false`,
 

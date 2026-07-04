@@ -20,8 +20,8 @@ export function attendanceConfirmed(
   const addLogs = asString(params.addLogs, "");
   const totalLogs = asString(params.totalLogs, "");
   const vipLevel = asString(params.vipLevel, "1");
-  // v782：五星好評連結（Google Maps）。可由 params.reviewUrl 覆寫。
-  const reviewUrl = asString(params.reviewUrl, "https://maps.app.goo.gl/L58ukZuJroo5vbjv5");
+  // v782/v792：五星好評連結（Google Maps）。優先用後台可編輯的「按鈕連結」(buttonUrl)，再退回 params/預設。
+  const reviewUrl = ovr(override, "buttonUrl", asString(params.reviewUrl, "https://maps.app.goo.gl/L58ukZuJroo5vbjv5"));
 
   return flex(altText, {
     type: "bubble",
