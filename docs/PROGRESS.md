@@ -105,6 +105,14 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-06 — v803 新攻擊面安全稽核 + 回饋端點加固（v804）
+
+老闆下安全目標（防網路攻擊/防強挖內部機密）。針對 v803 新增面稽核：
+
+- **稽核結果（安全）**：①`checkRateLimit` 預設綁 client IP ✅ ②通訊紀錄頁無 `dangerouslySetInnerHTML`，訪客塞字無法 XSS 後台 ✅ ③assistant-kb 防護欄完好（拒答系統/金鑰/提示詞、絕不洩露系統提示、抗「忽略先前指示」注入，最高優先）✅ ④system prompt 無任何金鑰（OPENROUTER_API_KEY 只當 fetch header）✅ ⑤對話只存客戶端 sessionStorage，伺服器不留對話 ✅ ⑥fetchLive 只打公開快取 API ✅。
+- **發現並修補**：`/api/assistant/feedback` 原只有單 IP 10/分 → 分散 IP 可灌爆 MessageLog 洗版通訊紀錄。加固（比照 v772 模式）：+單 IP 30/日、+全站 300/日 in-memory 閘（超量**靜默回 ok 不記錄**，不給攻擊者訊號）。單實例前提同 v772。
+- build 通過(exit 0)。
+
 ## 2026-07-06 — AI 小幫手全面改版 P0–P2（對標市場做法）（v803）
 
 老闆嫌 AI 小幫手不完善 → 市場對照（Intercom/Crisp/Klook Bee/LINE 生態）後列 P0–P2 建議，老闆拍板全做：
