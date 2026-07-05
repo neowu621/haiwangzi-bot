@@ -94,40 +94,107 @@
   }
 }
 
-/* v781：潛水員踢水 loading 動畫（純 CSS，無外部資源）—— 上傳/讀取時的「處理中」回饋。
-   由 <DiverLoader> 使用；keyframes 放全域一次，避免每個實例重複注入 <style>。 */
-.hwz-diver-body {
-  animation: hwz-swim 2s ease-in-out infinite;
-  transform-origin: 92px 58px;
+/* v800：潛水員 loading 動畫 V2（老闆提供高質感圖 + 腳蹼 clipped-overlay 踢水）。
+   由 <DiverLoader> 使用；圖檔 /assets/ocean-prince-premium-diver.webp（16KB）。
+   腳蹼動畫＝同一張圖切出腳蹼區域小角度旋轉，本體不變形（幅度 3–6 度）。 */
+.hwzd2-wrap {
+  position: relative;
+  aspect-ratio: 725 / 600;
+  margin: 0 auto;
+  animation: hwzd2-float 3.2s ease-in-out infinite;
+  filter: drop-shadow(0 18px 28px rgba(14, 86, 128, 0.14));
 }
-.hwz-diver-leg {
-  transform-box: fill-box;
-  transform-origin: 100% 50%;
+.hwzd2-img, .hwzd2-fin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
-.hwz-diver-legA { animation: hwz-kickA 0.55s ease-in-out infinite; }
-.hwz-diver-legB { animation: hwz-kickB 0.55s ease-in-out infinite; }
-.hwz-diver-bub { opacity: 0; }
-.hwz-diver-b1 { animation: hwz-bub 1.7s ease-in infinite; }
-.hwz-diver-b2 { animation: hwz-bub 1.7s ease-in 0.55s infinite; }
-.hwz-diver-b3 { animation: hwz-bub 1.7s ease-in 1s infinite; }
-@keyframes hwz-swim {
-  0%, 100% { transform: translateY(0) rotate(-3deg); }
-  50% { transform: translateY(-5px) rotate(3deg); }
+.hwzd2-img { z-index: 1; }
+.hwzd2-fin { z-index: 2; pointer-events: none; opacity: 0.72; will-change: transform; }
+.hwzd2-ft {
+  clip-path: polygon(0% 36%, 26% 35%, 38% 49%, 0% 51%);
+  transform-origin: 31% 47%;
+  animation: hwzd2-kt 1.15s ease-in-out infinite;
 }
-@keyframes hwz-kickA {
-  0%, 100% { transform: rotate(18deg); }
-  50% { transform: rotate(-16deg); }
+.hwzd2-fb {
+  clip-path: polygon(0% 50%, 31% 50%, 42% 66%, 3% 74%);
+  transform-origin: 34% 58%;
+  animation: hwzd2-kb 1.15s ease-in-out infinite;
 }
-@keyframes hwz-kickB {
-  0%, 100% { transform: rotate(-16deg); }
-  50% { transform: rotate(18deg); }
+.hwzd2-rip {
+  position: absolute;
+  z-index: 3;
+  left: 5%;
+  top: 48%;
+  width: 34%;
+  height: 24%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(111, 231, 255, 0.18) 0%, rgba(111, 231, 255, 0.1) 40%, transparent 72%);
+  opacity: 0.55;
+  transform: rotate(-8deg);
+  animation: hwzd2-rk 1.15s ease-in-out infinite;
+  pointer-events: none;
 }
-@keyframes hwz-bub {
-  0% { opacity: 0; transform: translateY(0) scale(0.5); }
-  25% { opacity: 0.9; }
-  100% { opacity: 0; transform: translateY(-30px) scale(1); }
+.hwzd2-bub {
+  position: absolute;
+  z-index: 4;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff, #91ddf3 42%, rgba(83, 183, 219, 0.42) 100%);
+  opacity: 0;
+  animation: hwzd2-br 2.8s ease-in-out infinite;
+}
+.hwzd2-b1 { width: 9px; height: 9px; top: 16%; right: 28%; animation-delay: 0.1s; }
+.hwzd2-b2 { width: 7px; height: 7px; top: 25%; right: 20%; animation-delay: 0.7s; }
+.hwzd2-b3 { width: 5px; height: 5px; top: 36%; right: 15%; animation-delay: 1.25s; }
+.hwzd2-prog {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5ebf1;
+}
+.hwzd2-prog::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1686c9, #67e7ff);
+  animation: hwzd2-up 1.65s ease-in-out infinite;
+}
+@keyframes hwzd2-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes hwzd2-kt {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(-4.5deg) translateY(-1px); }
+}
+@keyframes hwzd2-kb {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(5.5deg) translateY(1px); }
+}
+@keyframes hwzd2-rk {
+  0%, 100% { transform: rotate(-8deg) scale(0.95); opacity: 0.28; }
+  50% { transform: rotate(-8deg) scale(1.12); opacity: 0.58; }
+}
+@keyframes hwzd2-br {
+  0% { transform: translateY(18px) scale(0.75); opacity: 0; }
+  18% { opacity: 0.72; }
+  78% { opacity: 0.48; }
+  100% { transform: translateY(-38px) scale(1.15); opacity: 0; }
+}
+@keyframes hwzd2-up {
+  0% { transform: translateX(-70%); opacity: 0.55; }
+  45% { opacity: 1; }
+  100% { transform: translateX(240%); opacity: 0.55; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hwz-diver-body, .hwz-diver-legA, .hwz-diver-legB, .hwz-diver-bub { animation: none; }
-  .hwz-diver-bub { opacity: 0.5; }
+  .hwzd2-wrap, .hwzd2-fin, .hwzd2-rip, .hwzd2-bub, .hwzd2-prog::before { animation: none; }
+  .hwzd2-prog::before { transform: none; width: 34%; opacity: 1; }
 }

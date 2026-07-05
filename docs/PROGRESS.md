@@ -105,6 +105,16 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-05 — 潛水員 loading 動畫 V2：老闆提供高質感圖 + 腳蹼踢水（v800）
+
+老闆嫌 v781 手繪 SVG 潛水員醜，提供素材包（`ocean_prince_liff_upload_kicking_fins_v2_package.zip`）。整合：
+
+- 圖檔 `public/assets/ocean-prince-premium-diver.webp`（725×600，16KB，合手機鐵則）。
+- `DiverLoader` 內部改 V2：真圖 + **腳蹼 clipped-overlay 踢水**（同一張圖 clip-path 切腳蹼區小角度旋轉 3–6 度，本體不變形）+ 漂浮 + 波紋 + 泡泡 + 漸層進度條。**props 介面不變** → 既有呼叫點（/pay、LIFF 付款、預約/報名送出、LiffLoading bubbles）全部自動升級。
+- overlay 模式＝深海遮罩 + 白色圓角卡（老闆 V2 設計：品牌字 + 大潛水員 + 標題/副標 + 進度條）；inline 模式＝小潛水員 + 文字。
+- CSS 集中 `globals.css`（`.hwzd2-*`，取代 v781 `.hwz-diver-*`）；保留 `prefers-reduced-motion`。
+- build 通過(exit 0)。素材原始包與整合說明在老闆下載資料夾/對話紀錄。
+
 ## 2026-07-05 — 付款證明上傳/讀取全鏈修復（base64 塞爆 → R2 化 + 懶修復）（v798）
 
 老闆回報三症狀：客戶送出付款證明沒回饋且一直點沒反應（但狀態有變待確認匯款）、訂單詳情看不到憑證圖、老闆核對頁當機。全鏈追查（訂單 O20260705-40，公開連結 /pay 上傳）：

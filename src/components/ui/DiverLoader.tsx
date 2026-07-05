@@ -1,62 +1,38 @@
 import * as React from "react";
 
-// v781：潛水員踢水 loading 動畫（純 CSS + inline SVG，無外部資源、~1KB）。
-//   用途：上傳（付款證明/簽名/照片）與大量讀取資料庫的頁面，給明確「處理中」回饋。
-//   keyframes 在 globals.css（.hwz-diver-*），此元件只畫 SVG + 掛 class。
-//   支援 prefers-reduced-motion（globals.css 內關閉動畫）。
+// v800：潛水員 loading 動畫 V2 —— 老闆提供的高質感潛水員圖（webp 16KB）+ 腳蹼踢水。
+//   腳蹼動畫不是重畫：用同一張圖做 clipped overlay 小角度旋轉（3–6 度），本體不變形。
+//   用途不變：上傳（付款證明/簽名/照片）與大量讀取頁面的「處理中」回饋。
+//   樣式在 globals.css（.hwzd2-*）；支援 prefers-reduced-motion（自動停用動畫）。
+
+const DIVER_SRC = "/assets/ocean-prince-premium-diver.webp";
 
 export interface DiverLoaderProps {
   /** 主標，如「上傳中，請稍候…」。省略則只顯示動畫（inline 用）。 */
   label?: string;
   /** 副標，如「依你的網路速度，可能需要幾秒」。 */
   subLabel?: string;
-  /** SVG 寬度 px，預設 120。inline 小尺寸可傳 28~40。 */
+  /** 潛水員顯示寬度基準 px（inline 模式用），預設 120 → 實際寬約 200px。 */
   size?: number;
-  /** true = 蓋整頁半透明遮罩（上傳時擋操作、避免重複送出）。 */
+  /** true = 全螢幕遮罩 + 白色卡片（上傳時擋操作、避免重複送出）。 */
   overlay?: boolean;
   className?: string;
 }
 
-function DiverSvg({ size = 120 }: { size?: number }) {
+function DiverV2({ width }: { width: number }) {
   return (
-    <svg
-      viewBox="0 0 170 110"
-      width={size}
-      height={Math.round((size * 110) / 170)}
-      role="img"
-      aria-label="處理中"
-    >
-      <title>潛水員踢水中</title>
-      {/* 泡泡 */}
-      <circle className="hwz-diver-bub hwz-diver-b1" cx="140" cy="48" r="3.2" fill="#7dd3fc" />
-      <circle className="hwz-diver-bub hwz-diver-b2" cx="147" cy="48" r="2.2" fill="#bae6fd" />
-      <circle className="hwz-diver-bub hwz-diver-b3" cx="134" cy="48" r="2.6" fill="#7dd3fc" />
-      {/* 會游動的整體 */}
-      <g className="hwz-diver-body">
-        {/* 氣瓶 */}
-        <rect x="52" y="40" width="11" height="24" rx="5.5" fill="#0e7490" />
-        <rect x="55" y="36" width="5" height="6" rx="2" fill="#155e75" />
-        {/* 腿 + 蛙鞋（交替踢動）*/}
-        <g className="hwz-diver-leg hwz-diver-legA">
-          <rect x="30" y="55" width="26" height="6" rx="3" fill="#155e75" />
-          <path d="M32 58 L10 50 L10 70 Z" fill="#22d3ee" />
-        </g>
-        <g className="hwz-diver-leg hwz-diver-legB">
-          <rect x="30" y="59" width="26" height="6" rx="3" fill="#0f766e" />
-          <path d="M32 62 L10 56 L10 76 Z" fill="#06b6d4" />
-        </g>
-        {/* 身體 */}
-        <ellipse cx="92" cy="58" rx="42" ry="15" fill="#0e7490" />
-        {/* 手臂前伸 */}
-        <rect x="108" y="50" width="30" height="6" rx="3" fill="#155e75" transform="rotate(-10 108 53)" />
-        {/* 頭 */}
-        <circle cx="132" cy="52" r="14" fill="#0891b2" />
-        {/* 面鏡 */}
-        <rect x="134" y="46" width="13" height="10" rx="3.5" fill="#a5f3fc" />
-        {/* 呼吸器 */}
-        <circle cx="146" cy="60" r="2.6" fill="#155e75" />
-      </g>
-    </svg>
+    <div className="hwzd2-wrap" style={{ width }} role="img" aria-label="處理中">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="hwzd2-img" src={DIVER_SRC} alt="" width={725} height={600} draggable={false} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="hwzd2-fin hwzd2-ft" src={DIVER_SRC} alt="" aria-hidden width={725} height={600} draggable={false} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="hwzd2-fin hwzd2-fb" src={DIVER_SRC} alt="" aria-hidden width={725} height={600} draggable={false} />
+      <span className="hwzd2-rip" aria-hidden />
+      <span className="hwzd2-bub hwzd2-b1" aria-hidden />
+      <span className="hwzd2-bub hwzd2-b2" aria-hidden />
+      <span className="hwzd2-bub hwzd2-b3" aria-hidden />
+    </div>
   );
 }
 
@@ -67,7 +43,46 @@ export function DiverLoader({
   overlay = false,
   className,
 }: DiverLoaderProps) {
-  const inner = (
+  if (overlay) {
+    // 全螢幕：深海遮罩 + 白色卡片（老闆 V2 設計：卡片 + 大潛水員 + 進度條）
+    return (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center p-5"
+        style={{ background: "rgba(4, 26, 43, 0.62)", backdropFilter: "blur(2px)" }}
+      >
+        <div
+          role="status"
+          aria-live="polite"
+          className="text-center"
+          style={{
+            width: "min(90vw, 340px)",
+            padding: "26px 22px 22px",
+            borderRadius: 30,
+            background: "linear-gradient(180deg, rgba(255,255,255,0.99), rgba(247,251,255,0.96))",
+            boxShadow: "0 28px 80px rgba(0,0,0,0.34), 0 12px 32px rgba(32,137,190,0.14)",
+            border: "1px solid rgba(255,255,255,0.72)",
+          }}
+        >
+          <p style={{ margin: "0 0 6px", color: "rgba(117,130,144,0.78)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            Northeast Coast Ocean Prince
+          </p>
+          <DiverV2 width={230} />
+          {label && (
+            <div style={{ marginTop: 4, fontSize: 22, lineHeight: 1.2, letterSpacing: "-0.04em", fontWeight: 800, color: "#17324a" }}>
+              {label}
+            </div>
+          )}
+          {subLabel && (
+            <p style={{ margin: "8px 0 18px", fontSize: 13.5, lineHeight: 1.5, color: "#758290" }}>{subLabel}</p>
+          )}
+          <div className="hwzd2-prog" aria-hidden />
+        </div>
+      </div>
+    );
+  }
+
+  // inline：小潛水員 + 文字（LIFF 內容載入等）
+  return (
     <div
       role="status"
       aria-live="polite"
@@ -76,19 +91,9 @@ export function DiverLoader({
         (className ? " " + className : "")
       }
     >
-      <DiverSvg size={size} />
-      {label && <div className="text-sm font-bold text-[#0e7490]">{label}</div>}
+      <DiverV2 width={Math.min(260, Math.round(size * 1.7))} />
+      {label && <div className="text-sm font-bold" style={{ color: "#17324a" }}>{label}</div>}
       {subLabel && <div className="text-xs text-[var(--muted-foreground)]">{subLabel}</div>}
-    </div>
-  );
-
-  if (!overlay) return inner;
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center"
-      style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(2px)" }}
-    >
-      {inner}
     </div>
   );
 }
