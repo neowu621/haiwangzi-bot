@@ -105,6 +105,24 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-05 — 付款證明上傳/讀取全鏈修復（base64 塞爆 → R2 化 + 懶修復）（v798）
+
+老闆回報三症狀：客戶送出付款證明沒回饋且一直點沒反應（但狀態有變待確認匯款）、訂單詳情看不到憑證圖、老闆核對頁當機。全鏈追查（訂單 O20260705-40，公開連結 /pay 上傳）：
+
+- **根因鏈**：
+  1. `/api/pay/[id]` POST 把**整包 base64 存進 DB `paymentProof.imageKey`**（從未上 R2，也沒 thumbBase64）。iPhone 截圖壓縮 fallback 有洞（canvas 全失敗/比較邏輯怪 → 用原圖數 MB）→ 上傳極慢像沒反應。
+  2. 單筆核對 API `/api/admin/payment-proofs/[id]` 對 base64 圖 **整包塞進 JSON 回傳** → 數 MB 回應 → 老闆核對頁（PaymentVerifyView，桌機/LIFF 共用）WebView 當機。
+  3. **v722 回歸**：清單 API 改只回 `hasImage`，但訂單詳情彈窗（admin/bookings）還在讀舊欄位 `previewUrl/thumb/imageKey` → **v722 起彈窗永遠顯示「無圖片（僅填後5碼）」**，不論有沒有圖。
+- **修法**：
+  - 新 lib `src/lib/payment-proof-image.ts`：`uploadProofImageToR2()`（dataURL→R2 payments/ 私密，DB 只存 key）+ `repairBase64ProofImage()`（舊 base64 資料**懶修復**：被讀到時搬上 R2 並更新 DB）。
+  - `/api/pay/[id]` POST + LIFF `/api/bookings/[id]/payment-proofs` POST：base64 一律先上 R2，R2 失敗才退回存 base64；imageDataUrl 加 9MB 上限(400)。
+  - 單筆核對 API：base64 → 懶修復搬 R2 → 回 presigned URL；搬不動時只回小圖(≤500KB)，大圖回 null（寧可補傳不當機）。**老闆點開那筆壞資料的當下即自動修復**。
+  - `/api/pay/[id]` GET：舊 base64 只回小圖(≤200KB)，不再整包塞回客戶手機。
+  - 訂單詳情彈窗：改 `hasImage` + 「點此載入付款憑證圖」（打單筆 API 取 presigned）→ 修 v722 回歸。
+  - `/pay` 客戶端壓縮改「一律採最小 canvas 結果」（不再可能送原圖）+ 送出前 6MB 防呆。
+- **下次先看**：DB 內可能還有其他歷史 base64 大圖 proof——都會在被核對時懶修復；若要一次清，可寫 backfill 掃 `imageKey LIKE 'data:%'` 批次搬 R2。
+- build 通過(exit 0)。⚠️ 上傳鏈需真機驗證（客戶端壓縮 + LINE WebView）。
+
 ## 2026-07-03 — 手機 LINE 登入即可現場收現（老闆免帳密）（v777）
 
 老闆要求「手機用 LINE 登入就能處理現場/即時，不用再輸入帳密」。**關鍵發現：認證早就通了**——`authFromRequest`（[auth.ts:39](src/lib/auth.ts:39)）本來就吃 LINE idToken，`requireRole` 依 DB 角色判斷；所以老闆在 LINE 裡開任何 LIFF 頁，就是以 boss 身分登入（`/liff/coach/today` 教練端本來就這樣跑）。缺的只是：LIFF 今日場次頁**沒給老闆「現場收現結清」按鈕**（連老闆都被叫去「通知老闆記帳」）。

@@ -103,7 +103,9 @@ export default function PublicPayPage({
         im.onerror = rej;
         im.src = url;
       });
-      let best = f;
+      // v798：一律採用「最小的 canvas 結果」——原本只有 canvas 比原檔小才換，
+      //   iPhone 原圖數 MB 時若 canvas 失敗/比較怪就整包原圖上傳 → 上傳極慢+塞爆 DB。
+      let smallest: File | null = null;
       for (const [max, q] of [[1280, 0.75], [1024, 0.65], [800, 0.6]] as const) {
         let { width, height } = img;
         if (width > max || height > max) {
@@ -116,12 +118,12 @@ export default function PublicPayPage({
         ctx.drawImage(img, 0, 0, width, height);
         const blob = await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", q));
         if (!blob) continue;
-        if (blob.size < best.size) {
-          best = new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
-        }
-        if (best.size <= TARGET) break;
+        const candidate = new File([blob], f.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+        if (!smallest || candidate.size < smallest.size) smallest = candidate;
+        if (smallest.size <= TARGET) break;
       }
-      return best;
+      // canvas 全失敗才退回原檔；否則永遠用壓縮結果（就算比原檔大，也是可控的 jpeg 小圖）
+      return smallest && (smallest.size < f.size || f.size > TARGET) ? smallest : f;
     } catch { return f; } finally { URL.revokeObjectURL(url); }
   }
 
@@ -149,6 +151,11 @@ export default function PublicPayPage({
     }
     if (paymentMethod === "other" && !note.trim()) {
       setSubmitError("請說明使用的付款方式");
+      return;
+    }
+    // v798：最後防線 — base64 超過 ~6MB 不送（伺服器也會擋），請客戶換小一點的截圖
+    if (preview && preview.length > 6_000_000) {
+      setSubmitError("圖片過大，請重新選擇（建議直接截圖轉帳畫面，不要用原始照片）");
       return;
     }
 

@@ -61,11 +61,24 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
   const activity = [activityDate, activitySite].filter(Boolean).join(" ・ ");
 
-  // 圖片：優先 R2 presigned，沒有就回 base64（舊資料）
+  // 圖片：優先 R2 presigned。v798：舊 base64 資料「懶修復」——先搬上 R2 再回 presigned URL，
+  //   不再把數 MB base64 整包塞進 JSON（曾把老闆核對頁的 WebView 弄到當機）。
   let imageUrl: string | null = null;
   if (proof.imageKey) {
     if (proof.imageKey.startsWith("data:")) {
-      imageUrl = proof.imageKey;
+      const { repairBase64ProofImage } = await import("@/lib/payment-proof-image");
+      const newKey = await repairBase64ProofImage({ id: proof.id, bookingId: proof.bookingId, imageKey: proof.imageKey });
+      if (newKey) {
+        try {
+          const { previewUrl } = await import("@/lib/r2");
+          imageUrl = await previewUrl("payments", newKey);
+        } catch (e) {
+          console.error("[payment-proof preview after repair]", e);
+        }
+      } else {
+        // 搬不動（R2 沒設定等）→ 小圖直接回 base64；大圖寧可不回也不弄當頁面
+        imageUrl = proof.imageKey.length <= 500_000 ? proof.imageKey : null;
+      }
     } else {
       try {
         const { previewUrl, r2Configured } = await import("@/lib/r2");

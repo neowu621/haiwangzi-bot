@@ -160,7 +160,9 @@ export async function GET(
     booking.paymentProofs.map(async (p) => {
       let url: string | null = null;
       if (p.imageKey?.startsWith("data:")) {
-        url = p.imageKey;
+        // v798：舊資料的 base64 只在小圖時回傳；大圖不整包塞回手機（會拖垮頁面）。
+        //   （新上傳已走 R2；大 base64 舊資料會在老闆核對時懶修復搬上 R2。）
+        url = p.imageKey.length <= 200_000 ? p.imageKey : null;
       } else if (p.imageKey && r2Configured()) {
         try {
           const prefix = p.imageKey.split("/")[0] as R2Prefix;
@@ -225,7 +227,8 @@ const BodySchema = z
     paymentMethod: z.enum(["bank", "linepay", "other"]),
     amount: z.number().int().min(1),
     r2Key: z.string().min(1).optional(),
-    imageDataUrl: z.string().min(20).optional(),
+    // v798：上限 ~9MB base64（約 6.5MB 原圖）— 再大直接擋，避免整包塞爆 DB/回應
+    imageDataUrl: z.string().min(20).max(9_000_000, "圖片過大，請重新選擇較小的截圖").optional(),
     last5: z.string().regex(/^\d{5}$/).optional(),
     note: z.string().max(500).optional(),
   })
@@ -289,7 +292,13 @@ export async function POST(
     );
   }
 
-  const imageKey = data.r2Key ?? data.imageDataUrl ?? null;
+  // v798：圖片改「伺服器端上 R2、DB 只存 key」。原本整包 base64 存 DB（iPhone 截圖可達數 MB）
+  //   → 老闆核對頁整包回傳 → WebView 當機。R2 沒設定/上傳失敗才退回 base64（至少不掉證明）。
+  let imageKey: string | null = data.r2Key ?? null;
+  if (!imageKey && data.imageDataUrl) {
+    const { uploadProofImageToR2 } = await import("@/lib/payment-proof-image");
+    imageKey = (await uploadProofImageToR2(data.imageDataUrl, id)) ?? data.imageDataUrl;
+  }
   const proofType = booking.paymentStatus === "fully_paid" ? "final" : (booking.type === "tour" && booking.paidAmount < booking.depositAmount ? "deposit" : "final");
 
   // v720：防重複提交 —— 公開付款連結原本沒有去重(只有 5/分鐘 rate limit)，

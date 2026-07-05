@@ -99,7 +99,13 @@ export async function POST(
   //   1. 一次性 booking.update（paymentMethod + paymentNote + status 變化）
   //   2. paymentProof.create
   //   3. log + LINE 通知都改成 fire-and-forget
-  const imageKey = data.r2Key ?? data.imageDataUrl ?? null;
+  // v798：base64 fallback 也改「伺服器端上 R2、DB 只存 key」（原本 presign 失敗時整包 base64
+  //   進 DB，數 MB 大圖會拖垮核對頁）。R2 沒設定/上傳失敗才存 base64。
+  let imageKey: string | null = data.r2Key ?? null;
+  if (!imageKey && data.imageDataUrl) {
+    const { uploadProofImageToR2 } = await import("@/lib/payment-proof-image");
+    imageKey = (await uploadProofImageToR2(data.imageDataUrl, id)) ?? data.imageDataUrl;
+  }
   const shouldTransitionStatus = booking.status === "pending";
   const fromStatus = booking.status;
 

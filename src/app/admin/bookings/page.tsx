@@ -295,14 +295,28 @@ export default function AdminBookingsPage() {
     id: string;
     type: "deposit" | "final" | "refund";
     amount: number;
-    previewUrl: string | null;
-    thumb?: string | null; // v379：縮圖（DB）
-    imageKey?: string | null; // v393：區分「沒上傳圖」與「已清理」
+    // v798：清單 API 自 v722 起只回 hasImage（不再逐張 presign）；點擊才載單張圖
+    hasImage: boolean;
     uploadedAt: string;
     verifiedAt: string | null;
   }
   const [proofs, setProofs] = useState<PaymentProof[]>([]);
   const [proofsLoading, setProofsLoading] = useState(false);
+  // v798：點「載入圖片」才打單筆 API 取 presigned URL（修 v722 起彈窗永遠顯示「無圖片」的回歸）
+  const [proofImgs, setProofImgs] = useState<Record<string, string>>({});
+  const [proofImgLoading, setProofImgLoading] = useState<string | null>(null);
+  async function loadProofImage(proofId: string) {
+    setProofImgLoading(proofId);
+    try {
+      const d = await adminFetch<{ proof: { imageUrl: string | null } }>(`/api/admin/payment-proofs/${proofId}`);
+      if (d.proof?.imageUrl) setProofImgs((m) => ({ ...m, [proofId]: d.proof.imageUrl! }));
+      else alert("此筆沒有可顯示的圖片（可能上傳失敗或已清理）");
+    } catch (e) {
+      alert("載入圖片失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setProofImgLoading(null);
+    }
+  }
 
   async function loadProofs(bookingId: string, signal?: AbortSignal) {
     setProofsLoading(true);
@@ -1898,21 +1912,24 @@ export default function AdminBookingsPage() {
                             {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
                           </span>
                         </div>
-                        {(p.previewUrl ?? p.thumb) ? (
-                          // v379：大圖優先 R2 presigned，沒有就退 DB 縮圖（至少看得到）
-                          <a href={p.previewUrl ?? p.thumb ?? "#"} target="_blank" rel="noopener noreferrer" className="block">
-                            <img src={p.previewUrl ?? p.thumb ?? ""} alt="付款憑證"
+                        {proofImgs[p.id] ? (
+                          // v798：已載入 → 顯示大圖（presigned URL，點開新視窗看原圖）
+                          <a href={proofImgs[p.id]} target="_blank" rel="noopener noreferrer" className="block">
+                            <img src={proofImgs[p.id]} alt="付款憑證"
                               className="w-full h-32 object-cover rounded border" style={{ borderColor: "var(--border)" }} />
                           </a>
-                        ) : !p.imageKey ? (
+                        ) : p.hasImage ? (
+                          // v798：有圖但未載入 → 點擊才取 presigned URL（修 v722 起永遠顯示無圖片的回歸）
+                          <button type="button" onClick={() => void loadProofImage(p.id)} disabled={proofImgLoading === p.id}
+                            className="h-32 w-full flex flex-col items-center justify-center gap-1 text-xs rounded border border-dashed"
+                            style={{ borderColor: "var(--border)", background: "var(--muted)", color: "var(--color-ocean-deep)" }}>
+                            🖼 {proofImgLoading === p.id ? "載入中…" : "點此載入付款憑證圖"}
+                          </button>
+                        ) : (
                           // v393：客戶只填後 5 碼、沒上傳截圖
                           <div className="h-32 flex flex-col items-center justify-center gap-1 text-xs text-[var(--muted-foreground)] bg-[var(--muted)] rounded border border-dashed" style={{ borderColor: "var(--border)" }}>
                             <ImageOff className="h-6 w-6 opacity-50" />
                             無圖片（僅填後 5 碼）
-                          </div>
-                        ) : (
-                          <div className="h-32 flex items-center justify-center text-xs text-[var(--muted-foreground)] bg-[var(--muted)] rounded">
-                            （已清理 / 載入失敗）
                           </div>
                         )}
                         {/* v308：日期顏色由淡灰改深灰，已核可由螢光綠改深綠，提升白底可讀性 */}
