@@ -105,6 +105,21 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-06 — AI 小幫手全面改版 P0–P2（對標市場做法）（v803）
+
+老闆嫌 AI 小幫手不完善 → 市場對照（Intercom/Crisp/Klook Bee/LINE 生態）後列 P0–P2 建議，老闆拍板全做：
+
+- **P0 版面重排**：選單併入聊天流——快速回覆 chips（膠囊、flex-wrap）直接跟在訊息後，單一捲軸；修掉「訊息區/選單區分離、中間大留白、雙捲軸、選單被切」。
+- **P0 手機/全站公開頁**：顯示條件 `/`+`/mobile`+`/schedule`（原只有桌機首頁）；≤640px 面板全螢幕 bottom-sheet（media query `!important` 蓋 inline style）。後台/LIFF/pclogin 不顯示。
+- **P0 找真人常駐**：header 綠色「💬 找教練」LINE 鈕。
+- **P1 對話保存**：sessionStorage（重新整理/切頁保留、關頁籤消失）+ header 🗑 清除。
+- **P1 打字機+思考中**：AI 回覆逐字呈現（`TypeText`，reduced-motion 直接全顯）；等待時「小螃蟹思考中」（重用 DiverLoader）。真 token SSE 串流仍列後續（`/api/assistant` 未動）。
+- **P1 場次卡片**：選單查場次改回卡片（日期/週/時間・潛點・岸船/潛數・剩位・「預約›」CTA→/schedule；已滿無 CTA）。
+- **P2 主動招呼**：進站 10 秒未開啟 → 浮球旁 teaser 泡泡 + 未讀紅點；點×當日不再出現（localStorage 按日 key）。
+- **P2 回饋**：每則 AI 回答（打字完）附 👍👎 → `POST /api/assistant/feedback`（限流 10/分）→ `logMessage` channel=inapp、templateKey=ai_feedback，**通訊紀錄可看**（標題 `[👍/👎] 問題`、answer 放 error 欄）；👎 自動補「找汪汪教練(真人)」訊息。
+- 動檔：`ChatWidget.tsx` 全檔重寫、新 `api/assistant/feedback`。選單資料 `assistant-menu.ts` 未動。build 通過(exit 0)。
+- **下次先看**：真 SSE 串流；老闆想看回饋統計可再做彙整視圖（現走通訊紀錄篩 ai_feedback）。
+
 ## 2026-07-05 — 載入動畫改版：螃蟹 V11 取代潛水員（v802）
 
 老闆再提供新素材包（`ocean_prince_crab_loader_v11_no_white_blobs_package.zip`）指示「應該是換成這一個才對」，並要求確認底色不突兀。

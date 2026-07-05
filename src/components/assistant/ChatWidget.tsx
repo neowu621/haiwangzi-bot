@@ -1,19 +1,36 @@
 "use client";
 // v758+：網站 AI 客服浮動小幫手。右下角按鈕 → 展開聊天視窗。
-//   v771：改「導引式選單」三層漏斗——打開先給可點選單(零 token)，點不到再打字問 AI(/api/assistant)，
-//         最後一層永遠有真人出口(LINE)。固定內容走 assistant-menu；即時資料(場次/潛旅/價目/政策)
-//         直接打既有公開 API(皆有版本號快取，命中零 DB)，不經過 AI。
-//   輕量、無外部依賴、inline 樣式；行動裝置/LINE WebView 友善。
+//   v771：導引式選單三層漏斗（零 token）；即時資料直接打公開 API（版本號快取）。
+//   v803：全面改版（P0-P2）——
+//     P0：選單併入聊天流（chips 快速回覆、單一捲軸）；開放手機/全站公開頁（手機全螢幕）；
+//         「找教練(真人)」常駐 header。
+//     P1：對話保存(sessionStorage)+清除；AI 回覆打字機效果+小螃蟹思考中；場次卡片(含預約 CTA)。
+//     P2：主動招呼 teaser(進站 10 秒、當日關閉不再出現)+未讀紅點；每則 AI 回答 👍👎 回饋
+//         (記入通訊紀錄，👎 自動建議轉 LINE 真人)。
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { ASSISTANT_MENU, LINE_URL, type MenuNode, type MenuLink, type AnswerCard, type LiveKind } from "@/lib/assistant-menu";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 
-interface Msg { role: "user" | "assistant"; content: string; card?: AnswerCard; links?: MenuLink[] }
+interface TripCard { date: string; wd: string; time: string; sites: string; boat: boolean; tanks: string; seat: string; full: boolean }
+interface Msg {
+  role: "user" | "assistant";
+  content: string;
+  card?: AnswerCard;
+  links?: MenuLink[];
+  tripCards?: TripCard[];
+  /** 由 AI 生成（可回饋 👍👎）*/
+  ai?: boolean;
+  feedback?: "up" | "down";
+  /** 打字機效果進行中 */
+  tw?: boolean;
+}
 
 const NAVY = "#0A2342";
 const TEAL = "#0e9f93";
 const LINE_GREEN = "#06C755";
 const GREET = "嗨！我是海王子潛水的 AI 小幫手 🐠 點下面就能找答案，也可以直接打字問我～";
+const STORE_KEY = "hwz_chat_v803";
 
 // ── 即時查詢：時區/日期小工具（比照後端，用 Asia/Taipei）──
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
@@ -30,18 +47,21 @@ const GEAR_LABEL: Record<string, string> = { full_set: "全套裝備", BCD: "BCD
 interface TripLite { date: string; startTime: string; isBoat?: boolean; tankCount?: number; available: number | null; sites?: { name?: string }[] }
 interface TourLite { title: string; dateStart: string; dateEnd: string; basePrice: number; deposit: number; available: number | null; durationLabel?: string | null; beginnerFriendly?: boolean }
 
-function fmtTrips(trips: TripLite[]): string {
-  return trips
-    .map((t) => {
-      const seat = t.available == null ? "可預約" : t.available <= 0 ? "已滿" : `剩 ${t.available} 位`;
-      const names = (t.sites ?? []).map((s) => s.name).filter(Boolean).join("、") || "東北角";
-      return `・${t.date}（${weekdayOf(t.date)}）${t.startTime} ${names}｜${t.isBoat ? "船潛" : "岸潛"}｜${t.tankCount ?? "-"}潛｜${seat}`;
-    })
-    .join("\n");
+function toTripCards(trips: TripLite[]): TripCard[] {
+  return trips.map((t) => ({
+    date: t.date,
+    wd: weekdayOf(t.date),
+    time: t.startTime,
+    sites: (t.sites ?? []).map((s) => s.name).filter(Boolean).join("、") || "東北角",
+    boat: !!t.isBoat,
+    tanks: String(t.tankCount ?? "-"),
+    seat: t.available == null ? "可預約" : t.available <= 0 ? "已滿" : `剩 ${t.available} 位`,
+    full: t.available != null && t.available <= 0,
+  }));
 }
 
 /** 即時節點：直接打既有公開 API（版本號快取，命中零 DB），完全不經過 AI／不耗 token。 */
-async function fetchLive(kind: LiveKind): Promise<{ content: string; links?: MenuLink[] }> {
+async function fetchLive(kind: LiveKind): Promise<{ content: string; links?: MenuLink[]; tripCards?: TripCard[] }> {
   if (kind === "sessions-weekend" || kind === "sessions-2w") {
     const today = tzToday();
     let from = today, to: string;
@@ -61,7 +81,7 @@ async function fetchLive(kind: LiveKind): Promise<{ content: string; links?: Men
     const trips = data.trips ?? [];
     const links: MenuLink[] = [{ label: "打開完整場次表", href: "/schedule" }, { label: "線上預約／會員", href: "/pclogin" }];
     if (trips.length === 0) return { content: `${head}\n這段期間目前沒有開放預約的場次 😅 可以加 LINE 問汪汪教練，或許願開團！`, links };
-    return { content: `${head}\n${fmtTrips(trips)}\n（報名／確認名額請加 LINE @894bpmew）`, links };
+    return { content: head, links, tripCards: toTripCards(trips) };
   }
   if (kind === "tours") {
     const r = await fetch("/api/tours", { headers: { accept: "application/json" } });
@@ -140,182 +160,63 @@ function BotMascot({ compact = false }: { compact?: boolean }) {
 function BotStyles() {
   return (
     <style>{`
-      .hwz-bot {
-        position: relative;
-        display: inline-block;
-        flex: 0 0 auto;
-        animation: hwz-bot-float 2.8s ease-in-out infinite;
-        transform-origin: 50% 70%;
-      }
-      .hwz-bot-compact {
-        animation-duration: 3.1s;
-      }
-      .hwz-bot-shadow {
-        position: absolute;
-        left: 17%;
-        right: 17%;
-        bottom: 1%;
-        height: 10%;
-        border-radius: 999px;
-        background: rgba(4, 18, 34, .22);
-        filter: blur(3px);
-        animation: hwz-bot-shadow 2.8s ease-in-out infinite;
-      }
-      .hwz-bot-head {
-        position: absolute;
-        inset: 16% 9% 12%;
-        border-radius: 38% 38% 44% 44%;
-        background:
-          radial-gradient(circle at 28% 18%, rgba(255,255,255,.95) 0 8%, transparent 9%),
-          linear-gradient(150deg, #e9fbff 0%, #76dce5 44%, #0e9f93 100%);
-        border: 2px solid rgba(255,255,255,.88);
-        box-shadow:
-          inset -8px -10px 18px rgba(5, 78, 93, .24),
-          0 8px 18px rgba(1, 44, 64, .24);
-      }
-      .hwz-bot-glass {
-        position: absolute;
-        left: 17%;
-        right: 17%;
-        top: 25%;
-        height: 29%;
-        border-radius: 999px;
-        background: linear-gradient(180deg, #12365f, #071f3a);
-        border: 1px solid rgba(255,255,255,.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 17%;
-        overflow: hidden;
-      }
-      .hwz-bot-glass::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(110deg, transparent 0 18%, rgba(255,255,255,.26) 31%, transparent 45%);
-        animation: hwz-bot-scan 3.6s ease-in-out infinite;
-      }
-      .hwz-bot-eye {
-        position: relative;
-        z-index: 1;
-        border-radius: 999px;
-        background: #83fff5;
-        box-shadow: 0 0 10px rgba(131,255,245,.9);
-        animation: hwz-bot-blink 4.2s infinite;
-      }
-      .hwz-bot-smile {
-        position: absolute;
-        left: 39%;
-        right: 39%;
-        top: 63%;
-        height: 8%;
-        border-bottom: 2px solid rgba(7,31,58,.55);
-        border-radius: 0 0 999px 999px;
-      }
-      .hwz-bot-antenna {
-        position: absolute;
-        left: 50%;
-        top: 0;
-        width: 2px;
-        height: 20%;
-        transform: translateX(-50%);
-        background: rgba(255,255,255,.75);
-      }
-      .hwz-bot-antenna span {
-        position: absolute;
-        left: 50%;
-        top: -5px;
-        width: 10px;
-        height: 10px;
-        transform: translateX(-50%);
-        border-radius: 999px;
-        background: #ffbf3c;
-        box-shadow: 0 0 0 5px rgba(255,191,60,.18), 0 0 14px rgba(255,191,60,.8);
-        animation: hwz-bot-pulse 1.8s ease-in-out infinite;
-      }
-      .hwz-bot-fin {
-        position: absolute;
-        top: 49%;
-        width: 18%;
-        height: 23%;
-        border-radius: 70% 28% 70% 28%;
-        background: linear-gradient(180deg, #ffcf63, #ff7b5a);
-        box-shadow: 0 5px 12px rgba(255,123,90,.24);
-      }
-      .hwz-bot-fin-left {
-        left: 1%;
-        transform: rotate(-25deg);
-        animation: hwz-bot-fin-left 1.9s ease-in-out infinite;
-      }
-      .hwz-bot-fin-right {
-        right: 1%;
-        transform: scaleX(-1) rotate(-25deg);
-        animation: hwz-bot-fin-right 1.9s ease-in-out infinite;
-      }
-      .hwz-bot-bubble {
-        position: absolute;
-        border: 1px solid rgba(255,255,255,.8);
-        border-radius: 999px;
-        background: rgba(142, 245, 255, .25);
-        opacity: 0;
-      }
-      .hwz-bot-bubble-one {
-        right: 0;
-        top: 38%;
-        width: 8px;
-        height: 8px;
-        animation: hwz-bot-bubble 2.4s ease-in infinite;
-      }
-      .hwz-bot-bubble-two {
-        right: 9%;
-        top: 28%;
-        width: 5px;
-        height: 5px;
-        animation: hwz-bot-bubble 2.4s .7s ease-in infinite;
-      }
-      @keyframes hwz-bot-float {
-        0%, 100% { transform: translateY(0) rotate(-1deg); }
-        50% { transform: translateY(-7px) rotate(2deg); }
-      }
-      @keyframes hwz-bot-shadow {
-        0%, 100% { transform: scaleX(.9); opacity: .52; }
-        50% { transform: scaleX(1.14); opacity: .3; }
-      }
-      @keyframes hwz-bot-pulse {
-        0%, 100% { transform: translateX(-50%) scale(.9); }
-        50% { transform: translateX(-50%) scale(1.15); }
-      }
-      @keyframes hwz-bot-blink {
-        0%, 45%, 52%, 100% { transform: scaleY(1); }
-        48% { transform: scaleY(.18); }
-      }
-      @keyframes hwz-bot-scan {
-        0%, 45% { transform: translateX(-120%); }
-        70%, 100% { transform: translateX(120%); }
-      }
-      @keyframes hwz-bot-fin-left {
-        0%, 100% { transform: rotate(-25deg); }
-        50% { transform: rotate(-38deg) translateY(2px); }
-      }
-      @keyframes hwz-bot-fin-right {
-        0%, 100% { transform: scaleX(-1) rotate(-25deg); }
-        50% { transform: scaleX(-1) rotate(-38deg) translateY(2px); }
-      }
-      @keyframes hwz-bot-bubble {
-        0% { transform: translate(0, 0) scale(.7); opacity: 0; }
-        20% { opacity: .85; }
-        100% { transform: translate(11px, -30px) scale(1.2); opacity: 0; }
+      .hwz-bot { position: relative; display: inline-block; flex: 0 0 auto; animation: hwz-bot-float 2.8s ease-in-out infinite; transform-origin: 50% 70%; }
+      .hwz-bot-compact { animation-duration: 3.1s; }
+      .hwz-bot-shadow { position: absolute; left: 17%; right: 17%; bottom: 1%; height: 10%; border-radius: 999px; background: rgba(4, 18, 34, .22); filter: blur(3px); animation: hwz-bot-shadow 2.8s ease-in-out infinite; }
+      .hwz-bot-head { position: absolute; inset: 16% 9% 12%; border-radius: 38% 38% 44% 44%; background: radial-gradient(circle at 28% 18%, rgba(255,255,255,.95) 0 8%, transparent 9%), linear-gradient(150deg, #e9fbff 0%, #76dce5 44%, #0e9f93 100%); border: 2px solid rgba(255,255,255,.88); box-shadow: inset -8px -10px 18px rgba(5, 78, 93, .24), 0 8px 18px rgba(1, 44, 64, .24); }
+      .hwz-bot-glass { position: absolute; left: 17%; right: 17%; top: 25%; height: 29%; border-radius: 999px; background: linear-gradient(180deg, #12365f, #071f3a); border: 1px solid rgba(255,255,255,.55); display: flex; align-items: center; justify-content: center; gap: 17%; overflow: hidden; }
+      .hwz-bot-glass::before { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 0 18%, rgba(255,255,255,.26) 31%, transparent 45%); animation: hwz-bot-scan 3.6s ease-in-out infinite; }
+      .hwz-bot-eye { position: relative; z-index: 1; border-radius: 999px; background: #83fff5; box-shadow: 0 0 10px rgba(131,255,245,.9); animation: hwz-bot-blink 4.2s infinite; }
+      .hwz-bot-smile { position: absolute; left: 39%; right: 39%; top: 63%; height: 8%; border-bottom: 2px solid rgba(7,31,58,.55); border-radius: 0 0 999px 999px; }
+      .hwz-bot-antenna { position: absolute; left: 50%; top: 0; width: 2px; height: 20%; transform: translateX(-50%); background: rgba(255,255,255,.75); }
+      .hwz-bot-antenna span { position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; transform: translateX(-50%); border-radius: 999px; background: #ffbf3c; box-shadow: 0 0 0 5px rgba(255,191,60,.18), 0 0 14px rgba(255,191,60,.8); animation: hwz-bot-pulse 1.8s ease-in-out infinite; }
+      .hwz-bot-fin { position: absolute; top: 49%; width: 18%; height: 23%; border-radius: 70% 28% 70% 28%; background: linear-gradient(180deg, #ffcf63, #ff7b5a); box-shadow: 0 5px 12px rgba(255,123,90,.24); }
+      .hwz-bot-fin-left { left: 1%; transform: rotate(-25deg); animation: hwz-bot-fin-left 1.9s ease-in-out infinite; }
+      .hwz-bot-fin-right { right: 1%; transform: scaleX(-1) rotate(-25deg); animation: hwz-bot-fin-right 1.9s ease-in-out infinite; }
+      .hwz-bot-bubble { position: absolute; border: 1px solid rgba(255,255,255,.8); border-radius: 999px; background: rgba(142, 245, 255, .25); opacity: 0; }
+      .hwz-bot-bubble-one { right: 0; top: 38%; width: 8px; height: 8px; animation: hwz-bot-bubble 2.4s ease-in infinite; }
+      .hwz-bot-bubble-two { right: 9%; top: 28%; width: 5px; height: 5px; animation: hwz-bot-bubble 2.4s .7s ease-in infinite; }
+      @keyframes hwz-bot-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(2deg); } }
+      @keyframes hwz-bot-shadow { 0%, 100% { transform: scaleX(.9); opacity: .52; } 50% { transform: scaleX(1.14); opacity: .3; } }
+      @keyframes hwz-bot-pulse { 0%, 100% { transform: translateX(-50%) scale(.9); } 50% { transform: translateX(-50%) scale(1.15); } }
+      @keyframes hwz-bot-blink { 0%, 45%, 52%, 100% { transform: scaleY(1); } 48% { transform: scaleY(.18); } }
+      @keyframes hwz-bot-scan { 0%, 45% { transform: translateX(-120%); } 70%, 100% { transform: translateX(120%); } }
+      @keyframes hwz-bot-fin-left { 0%, 100% { transform: rotate(-25deg); } 50% { transform: rotate(-38deg) translateY(2px); } }
+      @keyframes hwz-bot-fin-right { 0%, 100% { transform: scaleX(-1) rotate(-25deg); } 50% { transform: scaleX(-1) rotate(-38deg) translateY(2px); } }
+      @keyframes hwz-bot-bubble { 0% { transform: translate(0, 0) scale(.7); opacity: 0; } 20% { opacity: .85; } 100% { transform: translate(11px, -30px) scale(1.2); opacity: 0; } }
+      /* v803：手機（≤640px）聊天面板改全螢幕 bottom-sheet */
+      @media (max-width: 640px) {
+        .hwz-chat-panel {
+          right: 0 !important; bottom: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100dvh !important;
+          border-radius: 0 !important; max-height: none !important;
+        }
       }
       @media (prefers-reduced-motion: reduce) {
-        .hwz-bot,
-        .hwz-bot *,
-        .hwz-bot::before,
-        .hwz-bot::after {
-          animation: none !important;
-        }
+        .hwz-bot, .hwz-bot *, .hwz-bot::before, .hwz-bot::after { animation: none !important; }
       }
     `}</style>
   );
+}
+
+/** v803：AI 回覆打字機效果（回覆已完整取得，逐字呈現；結束後 onDone 顯示回饋鈕） */
+function TypeText({ text, onTick, onDone }: { text: string; onTick: () => void; onDone: () => void }) {
+  const [n, setN] = useState(0);
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setN(text.length);
+      if (!doneRef.current) { doneRef.current = true; onDone(); }
+      return;
+    }
+    if (n >= text.length) {
+      if (!doneRef.current) { doneRef.current = true; onDone(); }
+      return;
+    }
+    const t = setTimeout(() => { setN((v) => Math.min(text.length, v + 3)); onTick(); }, 24);
+    return () => clearTimeout(t);
+  }, [n, text, onTick, onDone]);
+  return <span style={{ whiteSpace: "pre-wrap" }}>{text.slice(0, n)}</span>;
 }
 
 export default function ChatWidget() {
@@ -325,30 +226,63 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [botEnabled, setBotEnabled] = useState(true); // v764：後台可停用
   const [path, setPath] = useState<MenuNode[]>([]); // v771：選單下鑽路徑（空=主選單）
+  const [teaser, setTeaser] = useState(false); // v803：主動招呼泡泡
+  const [restored, setRestored] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  // 只放在桌機首頁 `/`（手機走 proxy `/mobile`）；後台停用時也隱藏。
-  const onHome = pathname === "/";
-  const hidden = !onHome || !botEnabled;
+  // v803：公開行銷頁都顯示（桌機首頁 / 手機首頁 / 場次表）；後台/LIFF/pclogin/付款頁不顯示。
+  const onPublic = pathname === "/" || pathname === "/mobile" || pathname === "/schedule";
+  const hidden = !onPublic || !botEnabled;
 
+  const scrollBottom = useCallback(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, []);
+
+  useEffect(() => { if (open) scrollBottom(); }, [msgs, open, loading, scrollBottom]);
+
+  // v803：對話保存（sessionStorage）— 關頁籤才消失，重新整理/切頁保留
   useEffect(() => {
-    if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [msgs, open, loading]);
+    try {
+      const raw = sessionStorage.getItem(STORE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { msgs?: Msg[] };
+        if (saved.msgs?.length) setMsgs(saved.msgs.map((m) => ({ ...m, tw: false })));
+      }
+    } catch { /* ignore */ }
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    try { sessionStorage.setItem(STORE_KEY, JSON.stringify({ msgs: msgs.map((m) => ({ ...m, tw: false })) })); } catch { /* ignore */ }
+  }, [msgs, restored]);
 
   // v764：抓後台設定（是否啟用 + 自訂招呼語）
   useEffect(() => {
-    if (!onHome) return;
+    if (!onPublic) return;
     let alive = true;
     fetch("/api/assistant")
       .then((r) => r.json())
       .then((d: { enabled?: boolean; greeting?: string }) => {
         if (!alive) return;
         if (d.enabled === false) setBotEnabled(false);
-        if (d.greeting) setMsgs((m) => (m.length === 1 ? [{ role: "assistant", content: d.greeting as string }] : m));
+        if (d.greeting) setMsgs((m) => (m.length === 1 && !m[0].ai ? [{ role: "assistant", content: d.greeting as string }] : m));
       })
       .catch(() => {});
     return () => { alive = false; };
-  }, [onHome]);
+  }, [onPublic]);
+
+  // v803：主動招呼 teaser — 進站 10 秒未開啟 → 冒泡；關閉後當日不再出現
+  useEffect(() => {
+    if (hidden || open) return;
+    const key = `hwz_teaser_${tzToday()}`;
+    try { if (localStorage.getItem(key)) return; } catch { /* ignore */ }
+    const t = setTimeout(() => setTeaser(true), 10_000);
+    return () => clearTimeout(t);
+  }, [hidden, open]);
+  const dismissTeaser = useCallback((remember: boolean) => {
+    setTeaser(false);
+    if (remember) { try { localStorage.setItem(`hwz_teaser_${tzToday()}`, "1"); } catch { /* ignore */ } }
+  }, []);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -364,7 +298,8 @@ export default function ChatWidget() {
         body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })) }),
       });
       const data = (await r.json()) as { reply?: string; error?: string };
-      setMsgs((m) => [...m, { role: "assistant", content: data.reply || data.error || "暫時無法回覆，請加 LINE @894bpmew 詢問 🙂" }]);
+      const reply = data.reply || data.error || "暫時無法回覆，請加 LINE @894bpmew 詢問 🙂";
+      setMsgs((m) => [...m, { role: "assistant", content: reply, ai: Boolean(data.reply), tw: Boolean(data.reply) }]);
     } catch {
       setMsgs((m) => [...m, { role: "assistant", content: "連線出了點問題，請稍後再試或加 LINE @894bpmew 🙂" }]);
     } finally {
@@ -386,8 +321,8 @@ export default function ChatWidget() {
     if (node.live) {
       setLoading(true);
       try {
-        const { content, links } = await fetchLive(node.live);
-        setMsgs((m) => [...m, { role: "assistant", content, links }]);
+        const { content, links, tripCards } = await fetchLive(node.live);
+        setMsgs((m) => [...m, { role: "assistant", content, links, tripCards }]);
       } catch {
         setMsgs((m) => [...m, { role: "assistant", content: "查詢時出了點問題，請稍後再試或加 LINE @894bpmew 問汪汪教練 🙂" }]);
       } finally {
@@ -401,17 +336,70 @@ export default function ChatWidget() {
   const goBack = useCallback(() => setPath((p) => p.slice(0, -1)), []);
   const goHome = useCallback(() => setPath([]), []);
 
+  // v803：清除對話
+  const clearChat = useCallback(() => {
+    if (!window.confirm("清除這次的對話紀錄？")) return;
+    setMsgs([{ role: "assistant", content: GREET }]);
+    setPath([]);
+    try { sessionStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
+  }, []);
+
+  // v803：👍👎 回饋 — 記入通訊紀錄；👎 自動建議轉真人
+  const giveFeedback = useCallback((idx: number, verdict: "up" | "down") => {
+    setMsgs((m) => {
+      const target = m[idx];
+      if (!target || target.feedback) return m;
+      const question = [...m].slice(0, idx).reverse().find((x) => x.role === "user")?.content ?? "(未知問題)";
+      void fetch("/api/assistant/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: question.slice(0, 500), answer: target.content.slice(0, 2000), verdict }),
+      }).catch(() => {});
+      const next = m.map((x, i) => (i === idx ? { ...x, feedback: verdict } : x));
+      if (verdict === "down") {
+        next.push({
+          role: "assistant",
+          content: "抱歉沒幫上忙 🙏 這題直接找汪汪教練最快！",
+          links: [{ label: "💬 加 LINE 找教練（真人）", href: LINE_URL }],
+        });
+      }
+      return next;
+    });
+  }, []);
+
+  const markTyped = useCallback((idx: number) => {
+    setMsgs((m) => m.map((x, i) => (i === idx ? { ...x, tw: false } : x)));
+  }, []);
+
   if (hidden) return null;
+
+  const chipStyle: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 5,
+    background: "#fff", border: "1px solid #cfe6e2", color: NAVY,
+    borderRadius: 999, padding: "7px 12px", fontSize: 12.5, fontWeight: 600,
+    cursor: "pointer", textAlign: "left", lineHeight: 1.3,
+  };
 
   return (
     <>
       <BotStyles />
-      {/* 浮動按鈕 */}
+      {/* v803：主動招呼 teaser 泡泡 */}
+      {!open && teaser && (
+        <div style={{ position: "fixed", right: 100, bottom: 34, zIndex: 9998, maxWidth: 230, background: "#fff", border: "1px solid #d7e5ef", borderRadius: "14px 14px 2px 14px", boxShadow: "0 8px 24px rgba(0,40,66,.18)", padding: "10px 12px", fontSize: 13, color: NAVY, lineHeight: 1.5 }}>
+          <button type="button" aria-label="關閉提示" onClick={() => dismissTeaser(true)}
+            style={{ position: "absolute", top: 2, right: 6, background: "transparent", border: "none", color: "#9fb2c2", fontSize: 14, cursor: "pointer" }}>×</button>
+          <button type="button" onClick={() => { dismissTeaser(false); setOpen(true); }}
+            style={{ background: "transparent", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", cursor: "pointer", textAlign: "left" }}>
+            嗨～想查<b>週末場次</b>或<b>課程費用</b>嗎？點我馬上告訴你 🐠
+          </button>
+        </div>
+      )}
+      {/* 浮動鈕 */}
       {!open && (
         <button
           type="button"
           aria-label="開啟 AI 客服"
-          onClick={() => setOpen(true)}
+          onClick={() => { setOpen(true); dismissTeaser(false); }}
           style={{
             position: "fixed", right: 16, bottom: 16, zIndex: 9998,
             width: 74, height: 74, borderRadius: "50%", border: "1px solid rgba(255,255,255,.68)", cursor: "pointer",
@@ -421,6 +409,8 @@ export default function ChatWidget() {
           }}
         >
           <BotMascot />
+          {/* v803：未讀紅點（teaser 出現時） */}
+          {teaser && <span aria-hidden style={{ position: "absolute", top: 4, right: 6, width: 13, height: 13, borderRadius: "50%", background: "#ff5a4e", border: "2px solid #fff" }} />}
         </button>
       )}
 
@@ -429,33 +419,38 @@ export default function ChatWidget() {
         <div
           role="dialog"
           aria-label="AI 客服對話"
+          className="hwz-chat-panel"
           style={{
             position: "fixed", right: 12, bottom: 12, zIndex: 9999,
-            width: "min(370px, calc(100vw - 24px))", height: "min(560px, calc(100vh - 24px))",
+            width: "min(390px, calc(100vw - 24px))", height: "min(640px, calc(100vh - 24px))",
             display: "flex", flexDirection: "column", background: "#fff", borderRadius: 16,
             overflow: "hidden", boxShadow: "0 10px 36px rgba(0,0,0,.28)",
             fontFamily: "-apple-system,'Segoe UI',Roboto,'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif",
           }}
         >
-          {/* header */}
-          <div style={{ background: NAVY, color: "#fff", padding: "11px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <BotMascot compact />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>海王子 AI 小幫手</div>
-                <div style={{ fontSize: 11, opacity: .76 }}>潛水課程・潛點・預約諮詢</div>
-              </div>
+          {/* header：標題 + 找教練(真人) + 清除 + 關閉 */}
+          <div style={{ background: NAVY, color: "#fff", padding: "10px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <BotMascot compact />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>海王子 AI 小幫手</div>
+              <div style={{ fontSize: 11, opacity: .76 }}>潛水課程・潛點・預約諮詢</div>
             </div>
+            <a href={LINE_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, background: LINE_GREEN, color: "#fff", borderRadius: 999, padding: "6px 10px", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
+              💬 找教練
+            </a>
+            <button type="button" aria-label="清除對話" title="清除對話" onClick={clearChat}
+              style={{ background: "transparent", border: "none", color: "#9fb6cd", fontSize: 15, cursor: "pointer", lineHeight: 1, padding: 4 }}>🗑</button>
             <button type="button" aria-label="關閉" onClick={() => setOpen(false)}
-              style={{ background: "transparent", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", lineHeight: 1 }}>×</button>
+              style={{ background: "transparent", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 2 }}>×</button>
           </div>
 
-          {/* 訊息區 */}
+          {/* v803：單一捲軸——訊息 + 思考中 + 快速回覆 chips 全部在同一條流 */}
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 12, background: "#f4f7fa" }}>
             {msgs.map((m, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 8 }}>
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 8 }}>
                 <div style={{
-                  maxWidth: m.role === "user" ? "82%" : "92%", padding: "8px 11px", borderRadius: 12, fontSize: 13.5, lineHeight: 1.6, wordBreak: "break-word",
+                  maxWidth: m.role === "user" ? "82%" : "94%", padding: "8px 11px", borderRadius: 12, fontSize: 13.5, lineHeight: 1.6, wordBreak: "break-word",
                   background: m.role === "user" ? TEAL : "#fff",
                   color: m.role === "user" ? "#fff" : NAVY,
                   border: m.role === "user" ? "none" : "1px solid #e3e9f0",
@@ -475,46 +470,95 @@ export default function ChatWidget() {
                       {m.card.note && <div style={{ marginTop: 6, fontSize: 12, color: "#6b7b8c" }}>{m.card.note}</div>}
                     </div>
                   )}
-                  {m.content && <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>}
-                  {/* 可點連結（站內） */}
-                  {m.links && m.links.length > 0 && (
+                  {m.content && (
+                    m.tw
+                      ? <TypeText text={m.content} onTick={scrollBottom} onDone={() => markTyped(i)} />
+                      : <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                  )}
+                  {/* v803：場次卡片（日期・潛點・剩位・預約 CTA） */}
+                  {m.tripCards && m.tripCards.length > 0 && (
+                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                      {m.tripCards.map((t, j) => (
+                        <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, background: "#f7fbfa", border: "1px solid #dcebe8", borderRadius: 10, padding: "7px 9px" }}>
+                          <div style={{ textAlign: "center", flex: "none", minWidth: 52 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 800, color: NAVY }}>{t.date.slice(5).replace("-", "/")}</div>
+                            <div style={{ fontSize: 10.5, color: "#6b7b8c" }}>週{t.wd}・{t.time}</div>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: NAVY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.sites}</div>
+                            <div style={{ fontSize: 11, color: "#6b7b8c" }}>{t.boat ? "🚤 船潛" : "🏖 岸潛"}・{t.tanks} 潛</div>
+                          </div>
+                          <div style={{ flex: "none", textAlign: "right" }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: t.full ? "#c05555" : TEAL, marginBottom: 3 }}>{t.seat}</div>
+                            {!t.full && (
+                              <a href="/schedule" style={{ display: "inline-block", background: TEAL, color: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>預約 ›</a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* 可點連結 */}
+                  {m.links && m.links.length > 0 && !m.tw && (
                     <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {m.links.map((l, j) => (
-                        <a key={j} href={l.href} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#eef7f5", color: "#075f67", border: "1px solid #cfe6e2", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{l.label} ›</a>
+                        <a key={j} href={l.href}
+                          {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#eef7f5", color: "#075f67", border: "1px solid #cfe6e2", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{l.label} ›</a>
                       ))}
                     </div>
                   )}
                 </div>
+                {/* v803：AI 回答的 👍👎 回饋（打字完才顯示） */}
+                {m.role === "assistant" && m.ai && !m.tw && (
+                  <div style={{ marginTop: 3, display: "flex", gap: 6, alignItems: "center" }}>
+                    {m.feedback ? (
+                      <span style={{ fontSize: 11, color: "#8ba0b3" }}>{m.feedback === "up" ? "感謝回饋 🙌" : "已收到，幫你找真人 🙏"}</span>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 11, color: "#9fb2c2" }}>有幫到你嗎？</span>
+                        <button type="button" aria-label="有幫助" onClick={() => giveFeedback(i, "up")}
+                          style={{ background: "#fff", border: "1px solid #e3e9f0", borderRadius: 999, padding: "2px 8px", fontSize: 12, cursor: "pointer" }}>👍</button>
+                        <button type="button" aria-label="沒幫助" onClick={() => giveFeedback(i, "down")}
+                          style={{ background: "#fff", border: "1px solid #e3e9f0", borderRadius: 999, padding: "2px 8px", fontSize: 12, cursor: "pointer" }}>👎</button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
+
+            {/* v803：思考中 = 小螃蟹 */}
             {loading && (
               <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 8 }}>
-                <div style={{ padding: "8px 11px", borderRadius: 12, fontSize: 13.5, background: "#fff", color: "#8595a6", border: "1px solid #e3e9f0" }}>輸入中…</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 12, background: "#fff", border: "1px solid #e3e9f0" }}>
+                  <DiverLoader size={40} />
+                  <span style={{ fontSize: 12.5, color: "#8595a6" }}>小幫手思考中…</span>
+                </div>
               </div>
             )}
-          </div>
 
-          {/* v771：導引式選單快捷區（永遠可點；即時節點直接查 API、不耗 token） */}
-          <div style={{ padding: "8px 10px", borderTop: "1px solid #eef2f6", background: "#fff", maxHeight: 208, overflowY: "auto" }}>
-            {path.length > 0 && (
-              <div style={{ display: "flex", gap: 8, marginBottom: 7 }}>
-                <button type="button" onClick={goBack}
-                  style={{ background: "transparent", border: "none", color: "#5f7385", fontSize: 12, cursor: "pointer", padding: "2px 2px" }}>‹ 回上一層</button>
-                <button type="button" onClick={goHome}
-                  style={{ background: "transparent", border: "none", color: "#5f7385", fontSize: 12, cursor: "pointer", padding: "2px 2px" }}>回主選單</button>
+            {/* v803：快速回覆 chips（併入聊天流，單一捲軸；點分支下鑽、點葉子出答案） */}
+            {!loading && (
+              <div style={{ marginTop: 4 }}>
+                {path.length > 0 && (
+                  <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
+                    <button type="button" onClick={goBack}
+                      style={{ background: "transparent", border: "none", color: "#5f7385", fontSize: 12, cursor: "pointer", padding: 0 }}>‹ 回上一層</button>
+                    <button type="button" onClick={goHome}
+                      style={{ background: "transparent", border: "none", color: "#5f7385", fontSize: 12, cursor: "pointer", padding: 0 }}>⌂ 主選單</button>
+                  </div>
+                )}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {currentChildren.map((node) => (
+                    <button key={node.id} type="button" onClick={() => void pickNode(node)} style={chipStyle}>
+                      {node.label}
+                      <span style={{ color: "#9fb2c2" }}>{node.children ? "›" : ""}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {currentChildren.map((node) => (
-                <button key={node.id} type="button" onClick={() => void pickNode(node)} disabled={loading}
-                  style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #cfe6e2", color: NAVY, borderRadius: 10, padding: "9px 11px", fontSize: 12.5, cursor: loading ? "default" : "pointer", textAlign: "left", opacity: loading ? 0.6 : 1 }}>
-                  <span style={{ flex: 1 }}>{node.label}</span>
-                  <span style={{ color: "#9fb2c2", fontSize: 13 }}>{node.children ? "›" : node.live ? "↻" : "＋"}</span>
-                </button>
-              ))}
-              <a href={LINE_URL} target="_blank" rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: LINE_GREEN, color: "#fff", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>💬 加 LINE 問汪汪教練</a>
-            </div>
           </div>
 
           {/* 輸入區 */}
@@ -525,7 +569,7 @@ export default function ChatWidget() {
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void send(); } }}
               placeholder="輸入問題…例：體驗潛水多少錢？"
               disabled={loading}
-              style={{ flex: 1, border: "1px solid #d6dee7", borderRadius: 10, padding: "9px 11px", fontSize: 13.5, outline: "none" }}
+              style={{ flex: 1, minWidth: 0, border: "1px solid #d6dee7", borderRadius: 10, padding: "9px 11px", fontSize: 13.5, outline: "none" }}
             />
             <button type="button" onClick={() => void send()} disabled={loading || !input.trim()}
               style={{ background: TEAL, color: "#fff", border: "none", borderRadius: 10, padding: "0 14px", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: loading || !input.trim() ? .5 : 1 }}>送出</button>
