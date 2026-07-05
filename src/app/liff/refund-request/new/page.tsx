@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { Button } from "@/components/ui/button";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -92,7 +93,7 @@ function NewRefundRequestContent() {
     <LiffShell title="申請退款" backHref="/liff/my">
       <div className="px-4 pt-4 pb-8 max-w-md mx-auto">
         {loading ? (
-          <p className="text-center text-sm text-[var(--muted-foreground)]">載入中...</p>
+          <LiffLoading label="載入中…" />
         ) : loadError ? (
           <div className="rounded-xl border border-dashed p-6 text-center" style={{ borderColor: "var(--color-coral)" }}>
             <p className="text-sm text-[var(--color-coral)]">{loadError}</p>
@@ -215,7 +216,7 @@ function NewRefundRequestContent() {
 
 export default function NewRefundRequestPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-dvh items-center justify-center">載入中…</div>}>
+    <Suspense fallback={<div className="flex min-h-dvh items-center justify-center"><LiffLoading label="載入中…" /></div>}>
       <NewRefundRequestContent />
     </Suspense>
   );

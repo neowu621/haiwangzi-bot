@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { OrderDetail } from "@/components/admin-web/OrderDetail";
 import { X } from "lucide-react";
@@ -200,7 +201,7 @@ export default function MobileTonightPage() {
         <Link href="/admin/m/dive-wishes" className="flex-1 rounded-lg border py-2 text-center text-xs font-medium" style={{ borderColor: "rgba(0,0,0,0.12)", color: "var(--color-ocean-deep)" }}>📝 看全部願望</Link>
       </div>
 
-      {loading && <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>載入中...</div>}
+      {loading && <div className="flex justify-center py-4"><DiverLoader label="載入中…" size={90} /></div>}
 
       {/* 底部彈窗：訂單詳細 */}
       {openId && (

@@ -9,6 +9,7 @@ import { useAdminAuth } from "@/lib/admin-web-auth";
 import { APP_VERSION } from "@/lib/version";
 import { LogOut, ChevronLeft } from "lucide-react";
 import { BrandMark } from "@/components/brand/MantaTrident";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 
 // v576：子頁可帶 title + back —— 顯示「← 標題」頂部列(取代 logo)，
 //   讓教練/老闆在任何子頁都能一鍵回 /admin/m 首頁。首頁本身不帶 back(顯示 logo)。
@@ -25,11 +26,10 @@ export function MobileAdminShell({
   const router = useRouter();
 
   if (!ready) {
+    // v801：手機後台進場載入統一潛水員動畫（老闆 V2 圖樣）
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
-        </div>
+        <DiverLoader label="載入中…" size={96} />
       </div>
     );
   }

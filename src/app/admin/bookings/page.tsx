@@ -2,6 +2,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
 import { Badge } from "@/components/ui/badge";
@@ -916,7 +917,7 @@ export default function AdminBookingsPage() {
       )}
 
       {loading && (
-        <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div>
+        <div className="flex justify-center py-12"><DiverLoader label="載入中…" size={100} /></div>
       )}
 
 

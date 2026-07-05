@@ -6,6 +6,7 @@
 //   編輯走桌機：卡內 / 頁首皆有「完整管理 →」深連結回 /admin/tours。
 import { useEffect, useMemo, useState } from "react";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getCached, cachedFetch } from "@/lib/admin-cache";
 import { ChevronDown, ChevronRight, Users, Calendar } from "lucide-react";
@@ -190,9 +191,7 @@ export default function MobileToursPage() {
       )}
 
       {loading && !tours && (
-        <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
-        </div>
+        <div className="flex justify-center py-10"><DiverLoader label="載入中…" size={90} /></div>
       )}
 
       {tours && visible.length === 0 && (

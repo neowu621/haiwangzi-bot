@@ -5,6 +5,7 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { C } from "@/components/liff/mobileShared";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 
 interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean }
 interface Convo { who: "me" | "cs"; body: string; createdAt: string }
@@ -52,7 +53,7 @@ export default function LiffMessagesPage() {
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px 6px" }}>
           <div style={{ flex: "none", fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 6 }}>站內訊息</div>
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-            {notifs === null && <div style={{ color: C.mute, fontSize: 13, padding: "10px 0" }}>載入中…</div>}
+            {notifs === null && <LiffLoading variant="ring" label="載入中…" className="py-4" />}
             {notifs?.length === 0 && <div style={{ color: C.mute, fontSize: 13, padding: "24px 0", textAlign: "center" }}>目前沒有通知</div>}
             {notifs?.map((n) => (
               <div key={n.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, background: n.isRead ? C.card : "#f0fbfa" }}>

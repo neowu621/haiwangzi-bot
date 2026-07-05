@@ -4,6 +4,7 @@
 //   核對 API 走 /api/admin/payment-proofs/[id]/*（authFromRequest 統一驗證，admin/boss）。
 import { useCallback, useEffect, useState } from "react";
 import { PriceBreakdown, type PriceBreakdownData } from "@/components/admin/PriceBreakdown";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 
 type Fetcher = <T = unknown>(url: string, init?: RequestInit) => Promise<T>;
 
@@ -92,7 +93,7 @@ export function PaymentVerifyView({
     }
   }
 
-  if (loading) return <div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">載入核對資料中…</div>;
+  if (loading) return <div className="flex justify-center px-4 py-12"><DiverLoader label="載入核對資料中…" size={96} /></div>;
   if (err) {
     if (/role|forbidden|403/i.test(err)) {
       return (

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { getCached, setCached, cachedFetch } from "@/lib/admin-cache";
 
@@ -635,9 +636,7 @@ export default function AdminUsersPage() {
 
         {/* Table */}
         {loading ? (
-          <div className="py-12 text-center text-sm text-[var(--muted-foreground)]">
-            載入中...
-          </div>
+          <div className="flex justify-center py-12"><DiverLoader label="載入中…" size={100} /></div>
         ) : (
           <div
             className="overflow-hidden rounded-xl border"

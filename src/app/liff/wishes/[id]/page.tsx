@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,7 +103,7 @@ export default function WishDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   if (loading) {
-    return <LiffShell title="預約潛水" bottomNav={<BottomNav />}><div className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</div></LiffShell>;
+    return <LiffShell title="預約潛水" bottomNav={<BottomNav />}><LiffLoading label="載入中…" /></LiffShell>;
   }
   if (!wish) {
     return <LiffShell title="預約潛水" bottomNav={<BottomNav />}><div className="px-4 py-12 text-center text-sm text-[var(--color-coral)]">{error ?? "找不到此願望單"}</div></LiffShell>;

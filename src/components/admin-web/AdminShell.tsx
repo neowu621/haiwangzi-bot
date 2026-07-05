@@ -8,6 +8,7 @@ import { APP_VERSION } from "@/lib/version";
 import { ConnDiag } from "@/components/admin-web/ConnDiag";
 import { roleLabel } from "@/lib/labels";
 import { BrandMark } from "@/components/brand/MantaTrident";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import {
   Menu,
   LogOut,
@@ -243,11 +244,10 @@ export function AdminShell({
     .filter((x) => visibleHrefs.has(x.href)); // 最愛也依角色過濾，避免漏顯示無權限頁
 
   if (!ready) {
+    // v801：後台進場載入統一潛水員動畫（老闆 V2 圖樣）
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
-        </div>
+        <DiverLoader label="載入中…" size={110} />
       </div>
     );
   }

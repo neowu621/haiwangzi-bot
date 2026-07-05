@@ -105,6 +105,18 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-05 — 全站資料載入等待畫面統一潛水員 V2（v801）
+
+老闆指示：所有「頁面載入需要時間」的等待畫面全部換成 V2 潛水員圖樣。全站盤點 + 套用：
+
+- **共用元件（一次覆蓋多頁）**：
+  - `LiffLoading` 三種變體（bubbles/ring/skeleton）**全部**改渲染 DiverLoader（介面保留）→ 潛旅/場次/社群/媒體/通知/我的訂單/個人中心/付款頁 等 11+ LIFF 頁。
+  - `AdminShell` + `MobileAdminShell` 進場「載入中...」→ 潛水員 → **所有後台頁**（桌機+手機）進場載入。
+- **逐頁**：`/pay`(訂單載入)、LIFF coach today/settle、messages、refund/[id]、refund-request/new(含 Suspense fallback)、wishes/[id]、`PaymentVerifyView`(核對頁)；手機後台 m/attendance・bookings・dive-wishes・email・tonight・tours・trips・users(詳情)；桌機後台 tonight・bookings・attendance・users・templates(原旋轉圈)。
+- 未動：按鈕上的「載入中...」文字（如重新整理按鈕）、彈窗內小型逐筆載入字樣（非整頁等待）。
+- 技巧註記：批次改檔時 repo 為 CRLF——多行字串比對需先把 `\n` 轉 `\r\n`（scratchpad apply-diver*.js）。
+- build 通過(exit 0)。
+
 ## 2026-07-05 — 潛水員 loading 動畫 V2：老闆提供高質感圖 + 腳蹼踢水（v800）
 
 老闆嫌 v781 手繪 SVG 潛水員醜，提供素材包（`ocean_prince_liff_upload_kicking_fins_v2_package.zip`）。整合：

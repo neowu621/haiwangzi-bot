@@ -7,6 +7,7 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 
 interface SettleItem {
   id: string;
@@ -149,7 +150,7 @@ export default function LiffSettlePage() {
         {err && (
           <Card className="mb-3 bg-[var(--color-coral)]/15 p-4 text-sm">{err}</Card>
         )}
-        {loading && <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">載入中…</div>}
+        {loading && <div className="flex justify-center py-8"><DiverLoader label="載入中…" size={96} /></div>}
         {!loading && !err && items.length === 0 && (
           <Card className="p-8 text-center text-sm text-[var(--muted-foreground)]">沒有待收款的訂單 🎉</Card>
         )}

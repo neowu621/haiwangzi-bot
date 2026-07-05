@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch } from "@/lib/admin-web-auth";
 import {
   MSG_SAMPLE_PARAMS,
@@ -374,12 +375,10 @@ export default function AdminTemplatesPage() {
           </div>
         )}
 
-        {/* v364：載入中動畫（冷啟動/慢網路時不再是一片空白）*/}
+        {/* v364/v801：載入中動畫 — 統一潛水員（老闆 V2 圖樣） */}
         {loading && templates.length === 0 && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#516268" }}>
-            <div style={{ width: 34, height: 34, border: "3px solid #d6e6e4", borderTopColor: "#0e4c5a", borderRadius: "50%", animation: "tplspin .8s linear infinite" }} />
-            <div style={{ fontSize: 13, fontWeight: 600 }}>載入訊息模板中…</div>
-            <style>{`@keyframes tplspin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <DiverLoader label="載入訊息模板中…" size={100} />
           </div>
         )}
 

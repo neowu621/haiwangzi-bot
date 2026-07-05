@@ -4,6 +4,7 @@
 //   + 進行中訂單(未結束/未取消，含已下訂未匯款)。訂單再點 → 訂單詳細彈窗(<OrderDetail>)。
 import { useEffect, useState, useCallback } from "react";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getVipTier } from "@/lib/vip-tier";
 import { toTaipeiDateString } from "@/lib/utils";
@@ -182,7 +183,7 @@ export default function MobileUsersPage() {
               <button type="button" onClick={() => setOpenUser(null)} aria-label="關閉" style={{ color: "var(--muted-foreground)" }}><X className="h-5 w-5" /></button>
             </div>
 
-            {detailLoading && !detail && <div className="py-6 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>載入中...</div>}
+            {detailLoading && !detail && <div className="flex justify-center py-6"><DiverLoader label="載入中…" size={80} /></div>}
 
             {detail && (
               <div className="space-y-3">

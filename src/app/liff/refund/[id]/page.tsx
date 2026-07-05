@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { Button } from "@/components/ui/button";
+import { LiffLoading } from "@/components/shell/LiffLoading";
 import { Check, AlertTriangle } from "lucide-react";
 
 interface RefundRequestData {
@@ -88,7 +89,7 @@ export default function RefundConfirmPage() {
     <LiffShell title="退款確認" backHref="/liff/welcome">
       <div className="px-4 pt-4 pb-8 max-w-md mx-auto">
         {loading ? (
-          <p className="text-center text-sm text-[var(--muted-foreground)]">載入中...</p>
+          <LiffLoading label="載入中…" />
         ) : !rr ? (
           <div className="rounded-xl border border-dashed p-6 text-center" style={{ borderColor: "var(--border)" }}>
             <p className="text-sm">找不到退款申請或您沒有權限查看。</p>

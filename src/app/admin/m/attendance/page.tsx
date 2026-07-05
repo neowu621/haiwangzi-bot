@@ -3,6 +3,7 @@
 //   走同一支 GET /api/admin/attendance/today；點名沿用 POST /api/coach/bookings/[id]/attendance。
 import { useCallback, useEffect, useState } from "react";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { Check, X, RefreshCw } from "lucide-react";
 
@@ -146,7 +147,7 @@ export default function MobileAttendancePage() {
       )}
 
       {loading && sessions === null ? (
-        <p className="py-6 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>載入中...</p>
+        <div className="flex justify-center py-6"><DiverLoader label="載入中…" size={90} /></div>
       ) : (sessions && sessions.length === 0) ? (
         <div className="py-12 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
           今天沒有要點名的場次 🎉

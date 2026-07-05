@@ -3,6 +3,7 @@
 //   GET /api/admin/attendance/today（依場次分組）；點名走既有 POST /api/coach/bookings/[id]/attendance。
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun } from "lucide-react";
@@ -149,7 +150,7 @@ export default function AttendancePage() {
         )}
 
         {loading && sessions === null ? (
-          <p className="text-sm text-[var(--muted-foreground)]">載入中...</p>
+          <div className="flex justify-center py-10"><DiverLoader label="載入中…" size={100} /></div>
         ) : (sessions && sessions.length === 0) ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] p-12 text-center">
             <Sun className="mx-auto h-10 w-10 text-[var(--muted-foreground)] mb-3" />

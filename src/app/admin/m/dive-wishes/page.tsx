@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { MessageSquareReply, Send, X } from "lucide-react";
 
@@ -300,9 +301,7 @@ export default function MobileDiveWishesPage() {
 
       {/* 載入 / 空狀態 */}
       {loading && (
-        <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
-        </div>
+        <div className="flex justify-center py-4"><DiverLoader label="載入中…" size={90} /></div>
       )}
       {!loading && wishes.length === 0 && (
         <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>

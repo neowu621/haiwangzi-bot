@@ -2,6 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-web/AdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun, Moon, ImageIcon, ImageOff } from "lucide-react";
@@ -419,7 +420,7 @@ export default function TonightPage() {
         )}
 
         {loading ? (
-          <p className="text-sm text-[var(--muted-foreground)]">載入中...</p>
+          <div className="flex justify-center py-10"><DiverLoader label="載入中…" size={100} /></div>
         ) : allEmpty ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] p-12 text-center">
             <Sun className="mx-auto h-10 w-10 text-[var(--muted-foreground)] mb-3" />

@@ -201,7 +201,7 @@ export default function PublicPayPage({
   }
 
   if (loading) {
-    return <Shell><div className="py-20 text-center text-sm text-gray-500">載入中⋯</div></Shell>;
+    return <Shell><div className="flex justify-center py-16"><DiverLoader label="載入中…" subLabel="正在讀取您的訂單資料" size={110} /></div></Shell>;
   }
 
   // 失效 / 過期 / 已確認等錯誤

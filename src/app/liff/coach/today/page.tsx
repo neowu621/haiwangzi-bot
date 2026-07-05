@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { useLiff } from "@/lib/liff/LiffProvider";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -194,8 +195,8 @@ export default function CoachTodayPage() {
 
         <div className="space-y-3">
           {loading && (
-            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
-              載入中...
+            <div className="flex justify-center py-8">
+              <DiverLoader label="載入中…" size={96} />
             </div>
           )}
           {!loading && trips.length === 0 && !err && (

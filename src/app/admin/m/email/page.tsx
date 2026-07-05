@@ -8,6 +8,7 @@
 //   訊息只渲染純文字 bodyText（不跑 iframe / 不渲染未消毒 HTML），最省、最安全。
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { ChevronLeft, Send } from "lucide-react";
 
@@ -470,9 +471,7 @@ export default function MobileEmailPage() {
 
       {/* 載入 / 空狀態 */}
       {loadingList && (
-        <div className="py-4 text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
-          載入中...
-        </div>
+        <div className="flex justify-center py-4"><DiverLoader label="載入中…" size={90} /></div>
       )}
       {!loadingList && threads.length === 0 && !listError && (
         <div className="py-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>
