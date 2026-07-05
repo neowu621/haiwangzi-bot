@@ -124,7 +124,8 @@ export async function GET(req: NextRequest) {
             // 若 imageKey 是 base64 data URL (legacy) 直接回；R2 key 則 sign
             let url: string | null = null;
             if (p.imageKey?.startsWith("data:")) {
-              url = p.imageKey;
+              // v799：舊 base64 只回小圖，大圖不整包塞回手機（會拖垮我的預約/付款頁）
+              url = p.imageKey.length <= 200_000 ? p.imageKey : null;
             } else if (p.imageKey && r2Configured()) {
               try {
                 const prefix = p.imageKey.split("/")[0] as R2Prefix;

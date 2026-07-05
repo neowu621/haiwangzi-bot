@@ -302,15 +302,21 @@ export default function AdminBookingsPage() {
   }
   const [proofs, setProofs] = useState<PaymentProof[]>([]);
   const [proofsLoading, setProofsLoading] = useState(false);
-  // v798：點「載入圖片」才打單筆 API 取 presigned URL（修 v722 起彈窗永遠顯示「無圖片」的回歸）
+  // v798/v799：點「查看憑證圖」才打單筆 API 取 presigned URL，取回後「跳出視窗（lightbox）」顯示
+  //   （修 v722 起彈窗永遠顯示「無圖片」的回歸；依老闆規範：清單只放 icon，點擊才載圖、彈窗看大圖）
   const [proofImgs, setProofImgs] = useState<Record<string, string>>({});
   const [proofImgLoading, setProofImgLoading] = useState<string | null>(null);
-  async function loadProofImage(proofId: string) {
+  const [proofLightbox, setProofLightbox] = useState<string | null>(null);
+  async function openProofImage(proofId: string) {
+    const cached = proofImgs[proofId];
+    if (cached) { setProofLightbox(cached); return; }
     setProofImgLoading(proofId);
     try {
       const d = await adminFetch<{ proof: { imageUrl: string | null } }>(`/api/admin/payment-proofs/${proofId}`);
-      if (d.proof?.imageUrl) setProofImgs((m) => ({ ...m, [proofId]: d.proof.imageUrl! }));
-      else alert("此筆沒有可顯示的圖片（可能上傳失敗或已清理）");
+      if (d.proof?.imageUrl) {
+        setProofImgs((m) => ({ ...m, [proofId]: d.proof.imageUrl! }));
+        setProofLightbox(d.proof.imageUrl);
+      } else alert("此筆沒有可顯示的圖片（可能上傳失敗或已清理）");
     } catch (e) {
       alert("載入圖片失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -1912,18 +1918,12 @@ export default function AdminBookingsPage() {
                             {p.type === "deposit" ? "訂金" : p.type === "final" ? "尾款" : "退款"}
                           </span>
                         </div>
-                        {proofImgs[p.id] ? (
-                          // v798：已載入 → 顯示大圖（presigned URL，點開新視窗看原圖）
-                          <a href={proofImgs[p.id]} target="_blank" rel="noopener noreferrer" className="block">
-                            <img src={proofImgs[p.id]} alt="付款憑證"
-                              className="w-full h-32 object-cover rounded border" style={{ borderColor: "var(--border)" }} />
-                          </a>
-                        ) : p.hasImage ? (
-                          // v798：有圖但未載入 → 點擊才取 presigned URL（修 v722 起永遠顯示無圖片的回歸）
-                          <button type="button" onClick={() => void loadProofImage(p.id)} disabled={proofImgLoading === p.id}
-                            className="h-32 w-full flex flex-col items-center justify-center gap-1 text-xs rounded border border-dashed"
+                        {p.hasImage ? (
+                          // v799：清單只放 icon 按鈕，點擊才載圖 → 跳出視窗（lightbox）顯示大圖
+                          <button type="button" onClick={() => void openProofImage(p.id)} disabled={proofImgLoading === p.id}
+                            className="h-16 w-full flex items-center justify-center gap-1.5 text-xs rounded border border-dashed"
                             style={{ borderColor: "var(--border)", background: "var(--muted)", color: "var(--color-ocean-deep)" }}>
-                            🖼 {proofImgLoading === p.id ? "載入中…" : "點此載入付款憑證圖"}
+                            🖼 {proofImgLoading === p.id ? "載入中…" : "查看付款憑證圖"}
                           </button>
                         ) : (
                           // v393：客戶只填後 5 碼、沒上傳截圖
@@ -1957,6 +1957,19 @@ export default function AdminBookingsPage() {
                       </div>
                     ))}
                   </div>
+                  {/* v799：付款憑證 lightbox — 點卡片按鈕後跳出視窗顯示大圖 */}
+                  {proofLightbox && (
+                    <div
+                      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+                      style={{ background: "rgba(10,35,66,0.7)" }}
+                      onClick={() => setProofLightbox(null)}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={proofLightbox} alt="付款憑證大圖" className="max-h-[90vh] max-w-full rounded object-contain" />
+                      <button type="button" onClick={() => setProofLightbox(null)}
+                        className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold">✕ 關閉</button>
+                    </div>
+                  )}
                 </div>
               )}
               </div>{/* /客戶簽名＋付款憑證 並排 grid */}

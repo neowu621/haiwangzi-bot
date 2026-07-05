@@ -176,12 +176,25 @@ export default function PublicPayPage({
       });
       const j = await r.json();
       if (!r.ok) {
-        setSubmitError(j.error === "rate_limited" ? "送出過於頻繁，請稍後再試" : j.message ?? j.error ?? "送出失敗");
+        const msg = j.error === "rate_limited" ? "送出過於頻繁，請稍後再試" : j.message ?? j.error ?? "送出失敗";
+        setSubmitError(msg);
+        // v799：失敗也明確告知（老闆要求「告知是否上傳成功與否」）
+        window.alert(`❌ 送出失敗：${msg}`);
       } else {
         setSubmitted(true);
+        // v799：明確成功告知 + 重新載入，讓「已上傳的付款證明」列表立刻出現這筆
+        window.alert("✅ 付款證明已送出成功！\n老闆會盡快核對入帳，核對後會再通知您。");
+        try {
+          const r2 = await fetch(`/api/pay/${id}?t=${encodeURIComponent(token)}`);
+          const j2 = await r2.json();
+          if (r2.ok) setData(j2);
+        } catch { /* 重新整理失敗不影響已送出 */ }
+        // 清掉已送出的表單內容，避免誤按再送一次
+        setFile(null); setPreview(null); setNote(""); setLast5("");
       }
     } catch {
       setSubmitError("網路錯誤");
+      window.alert("❌ 網路錯誤，請確認網路後再試一次。若持續失敗，請直接 LINE 聯繫我們。");
     } finally {
       setSubmitting(false);
     }
@@ -258,12 +271,17 @@ export default function PublicPayPage({
         <ProofListSection proofs={proofs} onDelete={deleteProof} />
       )}
 
-      {/* 剛送出成功提示 */}
-      {(submitted || hasPending) && (
+      {/* v799：剛送出 → 明確綠色成功；回訪且尚有待審 → 黃色提示 */}
+      {submitted ? (
+        <section className="mt-4 rounded-lg border-2 border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <div className="text-base font-bold">✅ 付款證明已送出成功！</div>
+          <div className="mt-1">老闆會盡快核對入帳，核對後會再通知您。上方列表可看到剛上傳的證明。</div>
+        </section>
+      ) : hasPending ? (
         <section className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           ⏳ 您有未審核的證明，老闆會盡快處理。如有錯誤可在上方刪除或補上傳。
         </section>
-      )}
+      ) : null}
 
       <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
         <div className="text-base font-bold mb-3">選擇付款方式</div>
