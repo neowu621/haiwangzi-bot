@@ -105,6 +105,19 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-07 — LINE 環境變數前綴分組（MSGAPI/LOGIN/LIFF）+ 相容層（v811）
+
+老闆要求：LINE 變數命名不清楚（`LINE_CHANNEL_SECRET` 看不出是 Messaging API，易與 `LINE_LOGIN_CHANNEL_SECRET`、`LINE_LIFF_CHANNEL_ID` 搞混），要加前綴。
+
+- **新增 `src/instrumentation.ts`**（Next 16.2 stable register hook，開機跑一次）：LINE 變數「改名相容層」——把新名 `LINE_MSGAPI_*` 在開機時補到舊名 `LINE_CHANNEL_*`（新名優先、舊名相容、兩者都設舊名不覆蓋）。單一 Node 容器（Zeabur）register 於主程序啟動跑一次，全域生效。只在 `NEXT_RUNTIME=nodejs` 執行。
+- **重新定義（前綴分組）**：
+  - `LINE_MSGAPI_CHANNEL_ACCESS_TOKEN` / `LINE_MSGAPI_CHANNEL_SECRET`（新，Messaging API 推播/webhook）← 取代命名不清的 `LINE_CHANNEL_*`（仍相容）。
+  - `LINE_LOGIN_*`（登入）、`LINE_LIFF_*`/`NEXT_PUBLIC_LIFF_*`（LIFF）本就有前綴，不動。
+- `line.ts` 的 token/secret 讀取改「新名 ?? 舊名」雙讀 + 錯誤訊息標新名；其餘 25 處直讀舊名處由 instrumentation 補齊涵蓋（零改動）。
+- `.env.example` 重寫 LINE 區塊為 MSGAPI/LIFF/LOGIN 三段，標明「三種不同 channel、secret 不可互貼」。
+- build 通過(exit 0)。**Zeabur 遷移**：可只設新名並刪舊名，或維持舊名——皆可運作。
+- ⚠️ 桌機 LINE 登入 root cause（channel 2010369635 失效）仍待老闆改 Zeabur `LINE_LOGIN_CHANNEL_ID=2010219428`+secret，與本次改名無關。
+
 ## 2026-07-07 — 高氧（Nitrox）一律採用 + 萊萊/石城改 650（v809–810）
 
 - **v809**：老闆再更正 萊萊鶯歌石與石城 750→**650**（各潛點 600 不變）。

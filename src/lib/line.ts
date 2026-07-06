@@ -30,8 +30,9 @@ async function appendFooterToMessages(req: any): Promise<any> {
 
 export function getLineClient() {
   if (_client) return _client;
-  const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!accessToken) throw new Error("LINE_CHANNEL_ACCESS_TOKEN not set");
+  // v811：優先讀新名 LINE_MSGAPI_*，相容舊名 LINE_CHANNEL_*（instrumentation 亦會補齊）
+  const accessToken = process.env.LINE_MSGAPI_CHANNEL_ACCESS_TOKEN ?? process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!accessToken) throw new Error("LINE_MSGAPI_CHANNEL_ACCESS_TOKEN (或舊名 LINE_CHANNEL_ACCESS_TOKEN) not set");
   const real = new messagingApi.MessagingApiClient({
     channelAccessToken: accessToken,
   });
@@ -56,7 +57,8 @@ export function getLineClient() {
 
 export function verifyLineSignature(rawBody: string, signature: string | null): boolean {
   if (!signature) return false;
-  const secret = process.env.LINE_CHANNEL_SECRET;
+  // v811：優先讀新名 LINE_MSGAPI_*，相容舊名 LINE_CHANNEL_*
+  const secret = process.env.LINE_MSGAPI_CHANNEL_SECRET ?? process.env.LINE_CHANNEL_SECRET;
   if (!secret) return false;
   return validateSignature(rawBody, secret, signature);
 }
