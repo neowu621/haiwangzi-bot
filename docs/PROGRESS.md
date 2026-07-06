@@ -105,6 +105,16 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-06 — 日潛價目更正（v808）
+
+老闆回報 `/pricing` 頁日潛 Fun Dive 金額錯誤，更正 3 處（全站掃過，錯誤只在此頁 hardcode）：
+- 東北角各潛點 650 → **600**
+- 「宜蘭 萊萊鶯歌石」→ **「宜蘭 萊萊鶯歌石與石城」**（同 750，石城併入此列）
+- 文案「一天通常 2 支氣瓶」→ **「3 支」**
+- 順帶：後台新增場次「氣瓶費/瓶」預設 `extraTank` 650 → 600（`admin/trips` BLANK_PRICING_DEFAULT），避免手建場次填錯；已存在的場次不受影響（各自存 DB）。
+- **未動且確認無誤**：AI 知識庫/選單的 Fun Dive 只寫「依氣瓶支數計費，確切價格加 LINE」無錯誤數字；ChatWidget 價目即時讀 `/api/site-config`（老闆 DB 實際值）；其他 `萊萊鶯歌石` 是潛點名/SEO（真實地名，不動）。
+- build 通過(exit 0)。⚠️ 後台 settings 的 `defaultTripPricing` fallback（baseTrip 1200/extraTank 500）是載入前的暫時預設，實際以老闆 DB 設定為準，未動。
+
 ## 2026-07-06 — 抵用金整合進底部付款總結（v806–807）
 
 - **v806（緊急熱修 v805）**：/login-help 轉址原用 `url.origin`——容器內是內部 service host:8080，客戶點登入會連到不存在位址。改用 `NEXT_PUBLIC_BASE_URL`。教訓：**容器內 redirect 一律用對外 base，不可用 req origin**。

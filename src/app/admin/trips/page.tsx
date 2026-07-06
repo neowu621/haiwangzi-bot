@@ -182,7 +182,7 @@ function weekdayLabel(dateStr: string): string {
 
 const BLANK_PRICING_DEFAULT: Pricing = {
   baseTrip: 0,
-  extraTank: 650, // v557：氣瓶費(每瓶)預設 650
+  extraTank: 600, // v808：氣瓶費(每瓶)預設 600（東北角各潛點；萊萊/石城 750 建場次時自行改）
   nightDive: 300,
   scooterRental: 500,
   otherFee: 0,

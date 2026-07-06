@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 
 // 日潛 Fun Dive 每支氣瓶（含空氣）依潛點（老闆提供）
 const DIVE_FEES: { site: string; price: number }[] = [
-  { site: "東北角各潛點", price: 650 },
-  { site: "宜蘭 萊萊鶯歌石", price: 750 },
+  { site: "東北角各潛點", price: 600 },
+  { site: "宜蘭 萊萊鶯歌石與石城", price: 750 },
 ];
 
 // 裝備租借：後台未設定時的 fallback（與後台 SiteConfig 同步）
@@ -63,7 +63,7 @@ export default async function PricingPage() {
         {/* 日潛 Fun Dive */}
         <Card>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0A2342", margin: "0 0 4px" }}>🔱 日潛 Fun Dive（持證）</h2>
-          <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含空氣）」計，依潛點不同；一天通常 2 支氣瓶。裝備租借另計（見下表）。</p>
+          <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含空氣）」計，依潛點不同；一天通常 3 支氣瓶。裝備租借另計（見下表）。</p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含空氣）</th></tr></thead>
             <tbody>
