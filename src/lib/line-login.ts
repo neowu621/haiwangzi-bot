@@ -21,11 +21,13 @@ export function lineLoginChannelSecret(): string {
   return process.env.LINE_LOGIN_CHANNEL_SECRET ?? "";
 }
 
-/** Callback URL — 必須與 LINE Console 白名單「完全一致」。優先用 env，否則由 request origin 推導 */
+/** Callback URL — 必須與 LINE Console 白名單「完全一致」。優先用 env，否則由 request origin 推導。
+ *  v812：預設路徑改為 `/api/auth/callback/line`（＝LINE Console channel 2010219428 白名單登記值）。
+ *  兩個 route 都指向同一 handler，故舊路徑 `/api/auth/line/callback` 也仍可運作。 */
 export function callbackUrl(origin: string): string {
   if (process.env.LINE_LOGIN_CALLBACK_URL) return process.env.LINE_LOGIN_CALLBACK_URL;
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? origin;
-  return `${base.replace(/\/$/, "")}/api/auth/line/callback`;
+  return `${base.replace(/\/$/, "")}/api/auth/callback/line`;
 }
 
 const AUTHORIZE_URL = "https://access.line.me/oauth2/v2.1/authorize";

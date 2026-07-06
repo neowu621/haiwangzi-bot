@@ -4,8 +4,9 @@ import { handleLineLoginCallback } from "@/lib/line-login-callback";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// v481→v812：舊 callback 路徑，保留相容（LINE Console 若登記此路徑仍可運作）。
-//   實際邏輯見 @/lib/line-login-callback。目前 callbackUrl() 預設送 /api/auth/callback/line。
+// v812：LINE Login callback 主路徑。LINE Developers Console channel 2010219428
+//   白名單登記的即此路徑（https://haiwangzi.xyz/api/auth/callback/line）；
+//   callbackUrl() 預設送這個。實際邏輯見 @/lib/line-login-callback。
 export async function GET(req: NextRequest) {
   return handleLineLoginCallback(req);
 }

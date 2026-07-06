@@ -105,6 +105,17 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-07 — 桌機 LINE 登入真正修好：callback 路徑對齊（v812）
+
+老闆授權我用 computer use + Zeabur/LINE Console 直接處理。實地查出**真正 root cause**（跟先前推測的 channel 失效無關）：
+
+- **Zeabur 早已正確**：`LINE_LOGIN_CHANNEL_ID=2010219428`（活的 channel）、secret `0cfe…`、LIFF 同 channel。之前看到的 2010369635 是舊狀態，已有人改過。
+- **真正的錯**：LINE Console channel 2010219428 白名單登記的 Callback URL 是 `https://haiwangzi.xyz/api/auth/**callback/line**`，但程式送的是 `/api/auth/**line/callback**`（兩段順序顛倒）→ LINE 一路回 `Invalid redirect_uri` → 健檢失敗 → 導 /login-help。
+- curl 實測確認：redirect=`/api/auth/callback/line` → LINE **接受**；`/api/auth/line/callback` → Invalid。
+- **修法（純程式，因 LINE console 頁面 renderer 一直凍結、UI 自動化不穩）**：callback 邏輯抽出 `src/lib/line-login-callback.ts`；**兩個 route 都指向它**——`/api/auth/callback/line`（新，主）＋ `/api/auth/line/callback`（舊，相容）；`callbackUrl()` 預設改送 `/api/auth/callback/line`（對齊 LINE 白名單）。**日後 LINE console 若改回另一路徑也不會壞**（雙路徑都收）。
+- build 通過(exit 0)，兩 route 都註冊。
+- **待部署後驗證**：健檢應放行、登入導向真正 LINE 頁；secret 是否對需真人登入才能確認 token 交換（health 只驗 redirect_uri）。
+
 ## 2026-07-07 — LINE 環境變數前綴分組（MSGAPI/LOGIN/LIFF）+ 相容層（v811）
 
 老闆要求：LINE 變數命名不清楚（`LINE_CHANNEL_SECRET` 看不出是 Messaging API，易與 `LINE_LOGIN_CHANNEL_SECRET`、`LINE_LIFF_CHANNEL_ID` 搞混），要加前綴。
