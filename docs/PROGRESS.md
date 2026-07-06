@@ -114,7 +114,9 @@
 - curl 實測確認：redirect=`/api/auth/callback/line` → LINE **接受**；`/api/auth/line/callback` → Invalid。
 - **修法（純程式，因 LINE console 頁面 renderer 一直凍結、UI 自動化不穩）**：callback 邏輯抽出 `src/lib/line-login-callback.ts`；**兩個 route 都指向它**——`/api/auth/callback/line`（新，主）＋ `/api/auth/line/callback`（舊，相容）；`callbackUrl()` 預設改送 `/api/auth/callback/line`（對齊 LINE 白名單）。**日後 LINE console 若改回另一路徑也不會壞**（雙路徑都收）。
 - build 通過(exit 0)，兩 route 都註冊。
-- **待部署後驗證**：健檢應放行、登入導向真正 LINE 頁；secret 是否對需真人登入才能確認 token 交換（health 只驗 redirect_uri）。
+- **✅ 已驗證（2026-07-07）**：v812 上線後 curl 確認登入導向真正 LINE 授權頁（client_id=2010219428、redirect_uri=/api/auth/callback/line 被 LINE 接受）；瀏覽器讀 LINE Console 比對 Channel secret=`0cfe63466a76c82910b25d5eb9b595fc` 與 Zeabur 一致；**用戶實測桌機 LINE 登入成功**。桌機登入問題完結。
+- 教訓：debug LINE 登入先查「LINE Console callback 白名單」vs「程式 callbackUrl() 送的值」是否逐字一致——本次就是 `/api/auth/callback/line` vs `/api/auth/line/callback` 順序顛倒。callbackUrl() 現在雙路徑相容，不易再犯。
+- 工具限制：claude-in-chrome 走到 LINE OAuth 頁後整個 session 會被鎖（"This site is blocked"），無法自動化完成 OAuth 同意；Zeabur/LINE Console 一般頁面則可操作。
 
 ## 2026-07-07 — LINE 環境變數前綴分組（MSGAPI/LOGIN/LIFF）+ 相容層（v811）
 
