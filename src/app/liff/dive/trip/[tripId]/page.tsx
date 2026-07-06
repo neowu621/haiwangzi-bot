@@ -881,7 +881,7 @@ export default function TripBookingPage({
         {/* v289：付款方式不再於下單頁選，改到「我的預約 → 付款方式選擇」 */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">付款與抵用金</CardTitle>
+            <CardTitle className="text-base">付款與優惠</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded-md border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 text-xs text-[var(--color-ocean-deep)]">
@@ -906,51 +906,7 @@ export default function TripBookingPage({
             </div>
             )}
 
-            {/* 抵用金折抵 — 有餘額才顯示 */}
-            {creditBalance > 0 && (
-              <div className="rounded-md border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs">
-                    🎁 使用抵用金折抵
-                    <span className="ml-1 font-normal text-[var(--muted-foreground)]">
-                      （餘額 NT$ {creditBalance.toLocaleString()}）
-                    </span>
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => setCreditUsed(Math.min(creditBalance, finalTotal))}
-                    className="rounded-full bg-[var(--color-coral)] px-2 py-0.5 text-[10px] font-semibold text-white"
-                  >
-                    全部用
-                  </button>
-                </div>
-                <Input
-                  type="number"
-                  min={0}
-                  max={Math.min(creditBalance, finalTotal)}
-                  value={creditUsed || ""}
-                  onChange={(e) => {
-                    const v = Math.max(0, Number(e.target.value) || 0);
-                    setCreditUsed(Math.min(v, creditBalance, finalTotal));
-                  }}
-                  placeholder="NT$ 0"
-                  className="text-center text-base font-bold"
-                />
-                {creditUsed > 0 && (
-                  <div className="mt-1 text-[10px] tabular text-[var(--color-coral)]">
-                    折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
-                    {Math.max(0, finalTotal - creditUsed).toLocaleString()}
-                  </div>
-                )}
-              </div>
-            )}
-            {/* v604：餘額 0 時也說明有此功能，避免使用者以為沒有抵用金機制 */}
-            {creditBalance <= 0 && (
-              <div className="text-[11px] text-[var(--muted-foreground)]">
-                🎁 目前無抵用金可折抵（生日禮金、VIP 升等、早鳥回饋等會自動入帳，下次下單即可折抵）
-              </div>
-            )}
-            <div className="text-right text-sm font-bold text-[var(--color-ocean-deep)]">應付 NT$ {Math.max(0, finalTotal - Math.min(creditUsed, creditBalance, finalTotal)).toLocaleString()}</div>
+            {/* v807：抵用金操作與「應付」整合到最下方付款總結區（金額只在一處出現） */}
           </CardContent>
         </Card>
 
@@ -1226,17 +1182,51 @@ export default function TripBookingPage({
               )}
               {creditUsedEff > 0 && (
                 <div className="flex justify-between text-[var(--color-phosphor)]">
-                  <span>🎁 抵用金折抵</span>
+                  <span>🎁 已折抵</span>
                   <span>− NT$ {creditUsedEff.toLocaleString()}</span>
                 </div>
               )}
             </div>
+            {/* v807：抵用金操作整合到付款總結（原「付款與抵用金」卡片搬下來） */}
+            {creditBalance > 0 ? (
+              <div className="mt-2 flex items-center justify-between gap-2 border-t border-dashed border-[var(--border)] pt-2">
+                <Label className="text-xs shrink-0">
+                  🎁 抵用金
+                  <span className="ml-1 font-normal text-[var(--muted-foreground)]">（餘額 NT$ {creditBalance.toLocaleString()}）</span>
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={Math.min(creditBalance, finalTotal)}
+                    value={creditUsed || ""}
+                    onChange={(e) => {
+                      const v = Math.max(0, Number(e.target.value) || 0);
+                      setCreditUsed(Math.min(v, creditBalance, finalTotal));
+                    }}
+                    placeholder="0"
+                    className="h-8 w-20 text-right text-sm font-bold tabular"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCreditUsed(creditUsed >= Math.min(creditBalance, finalTotal) ? 0 : Math.min(creditBalance, finalTotal))}
+                    className="shrink-0 rounded-full bg-[var(--color-coral)] px-2.5 py-1 text-[10px] font-semibold text-white"
+                  >
+                    {creditUsed >= Math.min(creditBalance, finalTotal) && creditUsed > 0 ? "清除" : "全額折抵"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* v604/v807：餘額 0 → 一行淡字說明，不再獨立卡片、不另示應付 */
+              <div className="mt-2 flex items-center justify-between border-t border-dashed border-[var(--border)] pt-2 text-[11px] text-[var(--muted-foreground)]">
+                <span>🎁 抵用金：目前無可折抵</span>
+                <span>禮金入帳後下次下單可折</span>
+              </div>
+            )}
             <Separator className="my-2" />
             <div className="flex items-end justify-between">
               <div>
-                <div className="text-[10px] text-[var(--muted-foreground)]">
-                  {creditUsedEff > 0 ? "應付金額" : "總金額"}
-                </div>
+                <div className="text-[10px] text-[var(--muted-foreground)]">應付總額</div>
                 <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
                   NT$ {payable.toLocaleString()}
                 </div>

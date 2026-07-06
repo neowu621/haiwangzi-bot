@@ -105,6 +105,15 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-06 — 抵用金整合進底部付款總結（v806–807）
+
+- **v806（緊急熱修 v805）**：/login-help 轉址原用 `url.origin`——容器內是內部 service host:8080，客戶點登入會連到不存在位址。改用 `NEXT_PUBLIC_BASE_URL`。教訓：**容器內 redirect 一律用對外 base，不可用 req origin**。
+- **v807 抵用金整合**（老闆核准預覽後實作）：日潛 `/liff/dive/trip` + 潛旅 `/liff/tour` 兩頁一致——
+  - 移除中段獨立抵用金卡片與其「應付 NT$」行（日潛卡改題「付款與優惠」，保留付款說明+優惠代碼）。
+  - 底部付款總結＝唯一金額區：明細 → 🎁 抵用金行（無餘額=一行淡字「目前無可折抵・禮金入帳後下次可折」；有餘額=輸入框+「全額折抵/清除」切換鈕）→ 「應付總額」大字（=扣抵後）→ 確認預約。
+  - 潛旅頁底部原顯示未扣抵的「總金額」→ 改為扣抵後「應付總額」（訂金/已折抵小字保留）。
+- build 通過(exit 0)。
+
 ## 2026-07-06 — 桌機 LINE 登入壞掉的防護：健檢閘 + 友善引導頁（v805）
 
 背景：金鑰輪換後 LINE Login channel（`2010369635`）失效 → 桌機登入全數被丟到 LINE 原生「400 Invalid client_id」頁（新舊會員都會，老會員因既有 session 沒感覺）。**root cause 要老闆修**：LIFF 母 channel `2010219428` 仍有效（實測回 Invalid redirect_uri＝channel 活著）→ 老闆只需 ①LINE Console 該 channel 加 Callback URL `https://haiwangzi.xyz/api/auth/line/callback` ②Zeabur 改 `LINE_LOGIN_CHANNEL_ID=2010219428` + 對應 SECRET → Redeploy。

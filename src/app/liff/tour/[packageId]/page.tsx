@@ -653,62 +653,54 @@ export default function TourDetailPage({
           </DialogContent>
         </Dialog>
 
-        {/* 抵用金折抵 — 有餘額才顯示 */}
-        {creditBalance > 0 && (
-          <Card className="border-2 border-[var(--color-coral)]/40 bg-[var(--color-coral)]/5">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm font-semibold">
-                  🎁 使用抵用金折抵
-                  <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                    （餘額 NT$ {creditBalance.toLocaleString()}）
-                  </span>
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setCreditUsed(Math.min(creditBalance, total))}
-                  className="rounded-full bg-[var(--color-coral)] px-3 py-0.5 text-[11px] font-semibold text-white"
-                >
-                  全部用
-                </button>
-              </div>
-              <Input
-                type="number"
-                min={0}
-                max={Math.min(creditBalance, total)}
-                value={creditUsed || ""}
-                onChange={(e) => {
-                  const v = Math.max(0, Number(e.target.value) || 0);
-                  setCreditUsed(Math.min(v, creditBalance, total));
-                }}
-                placeholder="NT$ 0"
-                className="text-center text-lg font-bold"
-              />
-              {creditUsed > 0 && (
-                <div className="mt-2 text-xs tabular text-[var(--color-coral)] font-semibold">
-                  折抵 NT$ {creditUsed.toLocaleString()} → 應付 NT${" "}
-                  {(total - creditUsed).toLocaleString()}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
+        {/* v807：抵用金操作整合進底部付款總結（原獨立卡片移除，金額只在一處出現） */}
         <Card className="sticky bottom-4 z-10">
           <CardContent className="p-4">
+            {creditBalance > 0 ? (
+              <div className="mb-2 flex items-center justify-between gap-2 border-b border-dashed border-[var(--border)] pb-2">
+                <Label className="text-xs shrink-0">
+                  🎁 抵用金
+                  <span className="ml-1 font-normal text-[var(--muted-foreground)]">（餘額 NT$ {creditBalance.toLocaleString()}）</span>
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={Math.min(creditBalance, total)}
+                    value={creditUsed || ""}
+                    onChange={(e) => {
+                      const v = Math.max(0, Number(e.target.value) || 0);
+                      setCreditUsed(Math.min(v, creditBalance, total));
+                    }}
+                    placeholder="0"
+                    className="h-8 w-20 text-right text-sm font-bold tabular"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCreditUsed(creditUsed >= Math.min(creditBalance, total) ? 0 : Math.min(creditBalance, total))}
+                    className="shrink-0 rounded-full bg-[var(--color-coral)] px-2.5 py-1 text-[10px] font-semibold text-white"
+                  >
+                    {creditUsed >= Math.min(creditBalance, total) && creditUsed > 0 ? "清除" : "全額折抵"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-2 flex items-center justify-between border-b border-dashed border-[var(--border)] pb-2 text-[11px] text-[var(--muted-foreground)]">
+                <span>🎁 抵用金：目前無可折抵</span>
+                <span>禮金入帳後下次下單可折</span>
+              </div>
+            )}
             <div className="flex items-baseline justify-between">
               <div>
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  總金額
-                </div>
+                <div className="text-xs text-[var(--muted-foreground)]">應付總額</div>
                 <div className="text-2xl font-bold tabular text-[var(--color-coral)]">
-                  NT$ {total.toLocaleString()}
+                  NT$ {Math.max(0, total - Math.min(creditUsed, creditBalance, total)).toLocaleString()}
                 </div>
                 <div className="mt-0.5 text-xs text-[var(--muted-foreground)] tabular">
                   訂金 NT$ {depositTotal.toLocaleString()}
                   {creditUsed > 0 && (
                     <span className="ml-2 text-[var(--color-coral)]">
-                      · 已折抵 NT$ {creditUsed.toLocaleString()}
+                      · 已折抵 NT$ {Math.min(creditUsed, creditBalance, total).toLocaleString()}
                     </span>
                   )}
                 </div>
