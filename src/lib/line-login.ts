@@ -31,6 +31,29 @@ export function callbackUrl(origin: string): string {
 const AUTHORIZE_URL = "https://access.line.me/oauth2/v2.1/authorize";
 const TOKEN_URL = "https://api.line.me/oauth2/v2.1/token";
 
+// v805：LINE Login 行前健檢 —— 導客戶去 LINE 之前，先由伺服器端試打授權頁。
+//   channel 失效(Invalid client_id)/callback 未註冊時 LINE 回 400 → 我們改導站內友善頁，
+//   客戶永遠不會看到 LINE 原生的「400 Bad Request」。結果快取 5 分鐘（好/壞都快取）。
+let healthCache: { ts: number; ok: boolean } | null = null;
+const HEALTH_TTL = 5 * 60 * 1000;
+
+export async function lineLoginHealthy(origin: string): Promise<boolean> {
+  if (!lineLoginConfigured()) return false;
+  const now = Date.now();
+  if (healthCache && now - healthCache.ts < HEALTH_TTL) return healthCache.ok;
+  try {
+    const probe = buildAuthorizeUrl({ origin, state: "healthcheck", nonce: "healthcheck" });
+    const res = await fetch(probe, { redirect: "manual", signal: AbortSignal.timeout(5000) });
+    // 有效 channel：LINE 回登入頁(200)或轉址(3xx)；無效 channel / callback 未註冊：400
+    const ok = res.status < 400;
+    healthCache = { ts: now, ok };
+    return ok;
+  } catch {
+    // LINE 連不上（我們或 LINE 的網路問題）→ 放行讓客戶自己試，不因健檢誤擋
+    return true;
+  }
+}
+
 /** 組授權頁 URL（導使用者去 LINE 同意） */
 export function buildAuthorizeUrl(opts: {
   origin: string;

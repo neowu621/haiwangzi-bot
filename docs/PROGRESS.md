@@ -105,6 +105,18 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-06 — 桌機 LINE 登入壞掉的防護：健檢閘 + 友善引導頁（v805）
+
+背景：金鑰輪換後 LINE Login channel（`2010369635`）失效 → 桌機登入全數被丟到 LINE 原生「400 Invalid client_id」頁（新舊會員都會，老會員因既有 session 沒感覺）。**root cause 要老闆修**：LIFF 母 channel `2010219428` 仍有效（實測回 Invalid redirect_uri＝channel 活著）→ 老闆只需 ①LINE Console 該 channel 加 Callback URL `https://haiwangzi.xyz/api/auth/line/callback` ②Zeabur 改 `LINE_LOGIN_CHANNEL_ID=2010219428` + 對應 SECRET → Redeploy。
+
+**系統面防護（本版，讓客戶永遠看不到 LINE 400）**：
+- 盤點：所有桌機 LINE 登入（/pclogin 註冊鈕/直接登入/頁頂登入、/admin/login LINE 鈕）都走單一閘口 `/api/auth/line/login` → 在閘口做行前健檢即全覆蓋。
+- `line-login.ts` 新增 `lineLoginHealthy()`：伺服器端試打 LINE authorize（5s timeout），status≥400＝未就緒；結果快取 5 分。LINE 連不上（網路問題）→ 放行不誤擋。
+- 登入 route：未設定或健檢失敗 → 302 到新頁 **`/login-help`**（原本未設定時回 JSON 503 也一併改）。
+- 新頁 `/login-help`（給會員的建議訊息）：📱 手機 LINE 開會員中心(LIFF)（推薦）／💬 加 LINE @894bpmew 小編協助／🔄 稍後再試（恢復後自動回到正常 LINE 登入）。
+- callback 失敗原本就導回 `/pclogin?login_error=`，不動。
+- build 通過(exit 0)。⚠️ 老闆修好 channel 前，桌機登入=導 /login-help（體驗劣化但不再嚇人）；修好後健檢自動放行、零改動。
+
 ## 2026-07-06 — v803 新攻擊面安全稽核 + 回饋端點加固（v804）
 
 老闆下安全目標（防網路攻擊/防強挖內部機密）。針對 v803 新增面稽核：

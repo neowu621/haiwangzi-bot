@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { buildAuthorizeUrl, lineLoginConfigured } from "@/lib/line-login";
+import { buildAuthorizeUrl, lineLoginConfigured, lineLoginHealthy } from "@/lib/line-login";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // v481：GET /api/auth/line/login?next=/pclogin
 //   產生 state + nonce（放短效 httpOnly cookie 防 CSRF / replay），導向 LINE 授權頁。
-export function GET(req: NextRequest) {
-  if (!lineLoginConfigured()) {
-    return NextResponse.json(
-      { error: "LINE Login 尚未設定（缺 LINE_LOGIN_CHANNEL_ID / SECRET）" },
-      { status: 503 },
-    );
-  }
+// v805：導去 LINE 之前先健檢 channel（結果快取 5 分）——channel 失效/未設定時
+//   改導站內 /login-help 友善頁，客戶永遠不會看到 LINE 原生「400 Bad Request」。
+export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const origin = url.origin;
+  if (!lineLoginConfigured() || !(await lineLoginHealthy(origin))) {
+    return NextResponse.redirect(`${origin}/login-help`);
+  }
   const next = url.searchParams.get("next") || "/pclogin";
   // 只允許站內相對路徑，避免 open redirect
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/pclogin";
