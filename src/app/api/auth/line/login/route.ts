@@ -12,8 +12,10 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const origin = url.origin;
+  // v806 修 v805：轉址必須用對外網址（容器內 url.origin 是內部 service host，客戶連不上）
+  const publicBase = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz").replace(/\/$/, "");
   if (!lineLoginConfigured() || !(await lineLoginHealthy(origin))) {
-    return NextResponse.redirect(`${origin}/login-help`);
+    return NextResponse.redirect(`${publicBase}/login-help`);
   }
   const next = url.searchParams.get("next") || "/pclogin";
   // 只允許站內相對路徑，避免 open redirect
