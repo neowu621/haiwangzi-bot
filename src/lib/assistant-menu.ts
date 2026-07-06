@@ -96,7 +96,7 @@ export const ASSISTANT_MENU: MenuNode[] = [
         id: "course-fun",
         label: "持證 Fun Dive（一日潛水）",
         answer:
-          "持證朋友的一日潛水依「氣瓶支數」計費，可加租裝備 🤿 確切金額看地點與支數，加 LINE 跟汪汪教練說一下需求就給你報價～也可以先看看最近的場次！",
+          "持證朋友的一日潛水依「氣瓶支數」計費（一天通常 3 支），可加租裝備 🤿 我們氣瓶一律採用高氧（Nitrox），下水更輕鬆、停留更久！東北角各潛點每支 NT$600、宜蘭萊萊鶯歌石與石城每支 NT$650，夜潛/船潛另計。加 LINE 說一下需求就給你報價～也可以先看看最近的場次！",
         links: [
           { label: "看場次表", href: "/schedule" },
           { label: "線上預約／會員", href: "/pclogin" },

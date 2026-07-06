@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pricing" },
 };
 
-// 日潛 Fun Dive 每支氣瓶（含空氣）依潛點（老闆提供）
+// 日潛 Fun Dive 每支氣瓶（含高氧 Nitrox，本店一律高氧）依潛點（老闆提供）
 const DIVE_FEES: { site: string; price: number }[] = [
   { site: "東北角各潛點", price: 600 },
   { site: "宜蘭 萊萊鶯歌石與石城", price: 650 },
@@ -63,9 +63,10 @@ export default async function PricingPage() {
         {/* 日潛 Fun Dive */}
         <Card>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0A2342", margin: "0 0 4px" }}>🔱 日潛 Fun Dive（持證）</h2>
-          <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含空氣）」計，依潛點不同；一天通常 3 支氣瓶。裝備租借另計（見下表）。</p>
+          <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含高氧）」計，依潛點不同；一天通常 3 支氣瓶。裝備租借另計（見下表）。</p>
+          <p style={{ fontSize: 12.5, fontWeight: 700, color: "#0e9f93", margin: "-8px 0 12px" }}>💨 本店氣瓶一律採用高氧（Nitrox），下水更輕鬆、水下停留時間更長。</p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含空氣）</th></tr></thead>
+            <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含高氧）</th></tr></thead>
             <tbody>
               {DIVE_FEES.map((d) => (
                 <tr key={d.site}><td style={td}>{d.site}</td><td style={tdP}>{nt(d.price)}</td></tr>

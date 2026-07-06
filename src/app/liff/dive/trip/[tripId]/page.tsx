@@ -638,7 +638,7 @@ export default function TripBookingPage({
                 <div className="text-[10px] text-[var(--muted-foreground)]">
                   {trip.isBoat
                     ? `船潛套裝固定 ${trip.tankCount} 潛 · 每人 NT$ ${trip.pricing.extraTank.toLocaleString()}（含潛次配置，不可調整）`
-                    : `最多 ${trip.tankCount} 潛 · 每支 NT$ ${trip.pricing.extraTank.toLocaleString()}（含空氣瓶）`}
+                    : `最多 ${trip.tankCount} 潛 · 每支 NT$ ${trip.pricing.extraTank.toLocaleString()}（含高氧氣瓶）`}
                 </div>
               </div>
               {trip.isBoat ? (
