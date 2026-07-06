@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 // 日潛 Fun Dive 每支氣瓶（含空氣）依潛點（老闆提供）
 const DIVE_FEES: { site: string; price: number }[] = [
   { site: "東北角各潛點", price: 600 },
-  { site: "宜蘭 萊萊鶯歌石與石城", price: 750 },
+  { site: "宜蘭 萊萊鶯歌石與石城", price: 650 },
 ];
 
 // 裝備租借：後台未設定時的 fallback（與後台 SiteConfig 同步）
