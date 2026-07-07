@@ -126,12 +126,26 @@ const GEAR: { type: string; label: string; defPrice: number }[] = [
 
 // ─── fetch helper（帶 cookie）──────────────────────────────────────
 async function api<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...opts,
-    credentials: "include",
-    cache: "no-store",
-    headers: { "Content-Type": "application/json", ...(opts?.headers ?? {}) },
-  });
+  // v815：加逾時保護 —— 舊版 bundle / 網路異常時不再無限 hang（20 秒後拋錯，讓 UI 顯示重試）
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...opts,
+      credentials: "include",
+      cache: "no-store",
+      signal: ctrl.signal,
+      headers: { "Content-Type": "application/json", ...(opts?.headers ?? {}) },
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("請求逾時，請檢查網路或重新整理頁面（Ctrl+Shift+R）");
+    }
+    throw e;
+  }
+  clearTimeout(timer);
   const text = await res.text();
   const json = text ? JSON.parse(text) : {};
   if (!res.ok) {
@@ -349,6 +363,21 @@ function Loading() {
   );
 }
 
+// v815：載入失敗 → 顯示原因 + 重試（取代無限轉圈 / 誤導的「沒有資料」）
+function LoadFail({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "56px 20px", textAlign: "center", color: C.mute }}>
+      <div style={{ fontSize: 30 }}>😵‍💫</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>載入資料失敗</div>
+      <div style={{ fontSize: 12.5, maxWidth: 340, lineHeight: 1.6 }}>{error}</div>
+      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+        <button onClick={onRetry} style={{ background: C.deep, color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>重試</button>
+        <button onClick={() => window.location.reload()} style={{ background: "#eef3f6", color: C.ink, border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>重新整理</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── 登入頁（全螢幕海洋漸層 + Email 使用說明 + 同意條款）──────────────
 function LoginScreen({ error }: { error: string | null }) {
   const [agreed, setAgreed] = useState(false);
@@ -522,13 +551,18 @@ function Browse({ member, onBookDaily, onBookTour }: {
   const [tab, setTab] = useState<"daily" | "tour" | "contact">("daily");
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [tours, setTours] = useState<Tour[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setErr(null);
+    setTrips(null);
+    setTours(null);
     const from = new Date().toISOString().slice(0, 10);
     const to = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
-    api<{ trips: Trip[] }>(`/api/trips?from=${from}&to=${to}`).then((d) => setTrips(d.trips)).catch(() => setTrips([]));
-    api<{ tours: Tour[] }>("/api/tours").then((d) => setTours(d.tours)).catch(() => setTours([]));
+    api<{ trips: Trip[] }>(`/api/trips?from=${from}&to=${to}`).then((d) => setTrips(d.trips)).catch((e) => setErr(e instanceof Error ? e.message : "無法載入場次"));
+    api<{ tours: Tour[] }>("/api/tours").then((d) => setTours(d.tours)).catch((e) => setErr(e instanceof Error ? e.message : "無法載入行程"));
   }, []);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div>
@@ -542,19 +576,21 @@ function Browse({ member, onBookDaily, onBookTour }: {
       {tab === "contact" && <ContactPanel member={member} />}
       {tab === "daily" && (
         <>
-          {trips === null && <Loading />}
-          {trips?.length === 0 && <Empty>目前沒有開放的日潛場次</Empty>}
+          {err && <LoadFail error={err} onRetry={load} />}
+          {!err && trips === null && <Loading />}
+          {!err && trips?.length === 0 && <Empty>目前沒有開放的日潛場次</Empty>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))", gap: 16 }}>
-            {trips?.map((t) => <TripCard key={t.id} trip={t} onBook={() => onBookDaily(t)} />)}
+            {!err && trips?.map((t) => <TripCard key={t.id} trip={t} onBook={() => onBookDaily(t)} />)}
           </div>
         </>
       )}
       {tab === "tour" && (
         <>
-          {tours === null && <Loading />}
-          {tours?.length === 0 && <Empty>目前沒有開放的潛旅行程</Empty>}
+          {err && <LoadFail error={err} onRetry={load} />}
+          {!err && tours === null && <Loading />}
+          {!err && tours?.length === 0 && <Empty>目前沒有開放的潛旅行程</Empty>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))", gap: 16 }}>
-            {tours?.map((t) => <TourCard key={t.id} tour={t} onBook={() => onBookTour(t.id)} />)}
+            {!err && tours?.map((t) => <TourCard key={t.id} tour={t} onBook={() => onBookTour(t.id)} />)}
           </div>
         </>
       )}
@@ -1485,9 +1521,16 @@ function NotificationsPanel() {
 
 function MyOrders() {
   const [bookings, setBookings] = useState<MyBooking[] | null>(null);
-  useEffect(() => {
-    api<{ bookings: MyBooking[] }>("/api/bookings/my").then((d) => setBookings(d.bookings)).catch(() => setBookings([]));
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(() => {
+    setErr(null);
+    setBookings(null);
+    api<{ bookings: MyBooking[] }>("/api/bookings/my")
+      .then((d) => setBookings(d.bookings))
+      .catch((e) => setErr(e instanceof Error ? e.message : "無法載入訂單"));
   }, []);
+  useEffect(() => { load(); }, [load]);
+  if (err) return <LoadFail error={err} onRetry={load} />;
   if (bookings === null) return <Loading />;
   if (bookings.length === 0) return <Empty>還沒有任何訂單，去「預約」開始第一筆吧 🔱</Empty>;
   const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
