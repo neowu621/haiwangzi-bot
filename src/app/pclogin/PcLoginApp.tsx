@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SignaturePad } from "@/components/ui/SignaturePad";
+import { DiverLoader } from "@/components/ui/DiverLoader";
 import { APP_VERSION } from "@/lib/version";
 import { BrandMark, MantaTridentMark } from "@/components/brand/MantaTrident";
 import { PromoPopup, type ActivePromo } from "@/components/PromoPopup"; // v592
@@ -340,11 +341,10 @@ function TopBar({ member, authState, view, setView }: {
 }
 
 function Loading() {
+  // v814：桌機載入動畫改用小螃蟹（與手機/LIFF 一致）
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "80px 0", color: C.mute }}>
-      <div style={{ width: 36, height: 36, border: `3px solid ${C.line}`, borderTopColor: C.deep, borderRadius: "50%", animation: "dspin .8s linear infinite" }} />
-      <div style={{ fontSize: 14, fontWeight: 600 }}>載入中…</div>
-      <style>{`@keyframes dspin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{ display: "flex", justifyContent: "center", padding: "56px 0" }}>
+      <DiverLoader size={104} label="載入中…" />
     </div>
   );
 }
