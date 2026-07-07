@@ -216,7 +216,70 @@ function TypeText({ text, onTick, onDone }: { text: string; onTick: () => void; 
     const t = setTimeout(() => { setN((v) => Math.min(text.length, v + 3)); onTick(); }, 24);
     return () => clearTimeout(t);
   }, [n, text, onTick, onDone]);
-  return <span style={{ whiteSpace: "pre-wrap" }}>{text.slice(0, n)}</span>;
+  // v818：打字階段先去掉粗體符號 **，避免顯示原始 markdown；打完由 RichText 正式渲染
+  return <span style={{ whiteSpace: "pre-wrap" }}>{text.slice(0, n).replace(/\*\*/g, "")}</span>;
+}
+
+// v818：把 AI 回覆的 Markdown 連結 [文字](網址) 抽出成可點膠囊；站內絕對網址轉相對(app 內開)。
+//   內文移除連結後，清掉只剩表情/符號的空行，回傳乾淨內文 + links。
+function toRelative(href: string): string {
+  const rel = href.replace(/^https?:\/\/(www\.)?haiwangzi\.xyz/i, "");
+  return rel === "" ? "/" : rel;
+}
+function extractRichLinks(raw: string): { body: string; links: MenuLink[] } {
+  const links: MenuLink[] = [];
+  const seen = new Set<string>();
+  const push = (label: string, href: string) => {
+    const key = `${label}|${href}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    links.push({ label: label.trim(), href: toRelative(href) });
+  };
+  // 1) Markdown 連結
+  let body = raw.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, (_m, label: string, url: string) => {
+    push(label, url);
+    return "";
+  });
+  // 2) 殘留的裸網址（站內或 line.me）
+  body = body.replace(/https?:\/\/[^\s)）]+/g, (url: string) => {
+    const clean = url.replace(/[。，、）)]+$/, "");
+    const label = /line\.me/i.test(clean) ? "加 LINE 找教練" : "打開連結";
+    push(label, clean);
+    return "";
+  });
+  // 3) 清掉抽走連結後只剩表情/符號/破折的空行
+  body = body
+    .split(/\n/)
+    .filter((ln) => ln.trim() === "" || /[\p{L}\p{N}]/u.test(ln))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return { body, links };
+}
+
+/** v818：輕量 Markdown 渲染（粗體 + 項目符號 + 換行）；連結已抽成膠囊，這裡只處理文字。 */
+function RichText({ text }: { text: string }) {
+  const lines = text.split(/\n/);
+  return (
+    <div>
+      {lines.map((ln, i) => {
+        if (ln.trim() === "") return <div key={i} style={{ height: 5 }} />;
+        const isBullet = /^\s*[*\-・]\s+/.test(ln);
+        const content = ln.replace(/^\s*[*\-・]\s+/, "");
+        const parts = content.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+        const rendered = parts.map((p, j) => {
+          const b = p.match(/^\*\*([^*]+)\*\*$/);
+          return b ? <strong key={j}>{b[1]}</strong> : <span key={j}>{p}</span>;
+        });
+        return (
+          <div key={i} style={{ display: "flex", gap: isBullet ? 5 : 0, alignItems: "flex-start", marginBottom: 2 }}>
+            {isBullet && <span style={{ color: TEAL, flex: "none", lineHeight: 1.6 }}>・</span>}
+            <span style={{ lineHeight: 1.6 }}>{rendered}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function ChatWidget() {
@@ -299,7 +362,9 @@ export default function ChatWidget() {
       });
       const data = (await r.json()) as { reply?: string; error?: string };
       const reply = data.reply || data.error || "暫時無法回覆，請加 LINE @894bpmew 詢問 🙂";
-      setMsgs((m) => [...m, { role: "assistant", content: reply, ai: Boolean(data.reply), tw: Boolean(data.reply) }]);
+      // v818：把 AI 回覆的 Markdown 連結抽成可點膠囊，內文只留乾淨文字（粗體/項目由 RichText 渲染）
+      const { body, links } = extractRichLinks(reply);
+      setMsgs((m) => [...m, { role: "assistant", content: body, links: links.length ? links : undefined, ai: Boolean(data.reply), tw: Boolean(data.reply) }]);
     } catch {
       setMsgs((m) => [...m, { role: "assistant", content: "連線出了點問題，請稍後再試或加 LINE @894bpmew 🙂" }]);
     } finally {
@@ -473,7 +538,9 @@ export default function ChatWidget() {
                   {m.content && (
                     m.tw
                       ? <TypeText text={m.content} onTick={scrollBottom} onDone={() => markTyped(i)} />
-                      : <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                      : m.ai
+                        ? <RichText text={m.content} />
+                        : <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
                   )}
                   {/* v803：場次卡片（日期・潛點・剩位・預約 CTA） */}
                   {m.tripCards && m.tripCards.length > 0 && (

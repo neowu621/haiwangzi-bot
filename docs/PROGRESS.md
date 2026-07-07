@@ -105,6 +105,18 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-07 — AI 小幫手 Markdown 渲染（連結可點/粗體/項目）（v818）
+
+老闆：小幫手回覆把 `[場次表](url)` 當純文字顯示、無法點，連結應整合成可點元素。查因：assistant route（v769）**刻意叫 LLM 用 Markdown 連結**附場次表等，但 ChatWidget 用 `whiteSpace:pre-wrap` 純文字渲染 → `**粗體**`、`*` 項目、`[文字](網址)` 全變 raw 文字。
+
+- **ChatWidget（`src/components/assistant/ChatWidget.tsx`）修正**：
+  - `extractRichLinks(raw)`：抽出 Markdown 連結 + 殘留裸網址 → 可點膠囊(`m.links`)，站內絕對網址轉相對(app 內開)，line.me 保留新分頁；抽走後清掉只剩表情/符號的空行。
+  - `RichText`：輕量渲染 `**粗體**` + `*`/`-`/`・` 項目符號 + 換行（連結已抽走）。
+  - `send()` 用 extractRichLinks 存乾淨內文 + links；AI 訊息(非打字中)改用 `<RichText>`；`TypeText` 打字階段先去 `**`。
+  - node 實測截圖原句：`[場次表](https://haiwangzi.xyz/schedule)`→膠囊 `場次表`→`/schedule`，孤兒 `📋` 行自動移除，粗體/項目保留。
+- 全面確認：選單 answer 無 markdown（用結構化 links）；fetchLive content 無裸 URL；只有 LLM 自由回覆有此問題，已一併解決。
+- build 通過(exit 0)。
+
 ## 2026-07-07 — 船潛費用「顯示估價」全站對齊（v813）
 
 老闆：桌機船潛費用與手機不一樣（萬安艦船潛桌機顯示每人 14,400，實際應 ~4,800）。
