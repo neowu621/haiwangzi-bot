@@ -1004,6 +1004,7 @@ function EditBookingDialog({
     tankCount: number;
     isNightDive: boolean;
     isScooter: boolean;
+    isBoat: boolean; // v813：船潛=每人套裝價(固定潛次,不乘支數)
   } | null>(null);
 
   useEffect(() => {
@@ -1058,6 +1059,7 @@ function EditBookingDialog({
           tankCount: number;
           isNightDive: boolean;
           isScooter: boolean;
+          isBoat?: boolean;
         }>(`/api/trips/${booking.refId}`)
         .then((r) => {
           setTripPricing({
@@ -1065,6 +1067,7 @@ function EditBookingDialog({
             tankCount: r.tankCount,
             isNightDive: r.isNightDive,
             isScooter: r.isScooter,
+            isBoat: !!r.isBoat,
           });
           // 先用 tripPricing.tankCount 預設；之後可能要從 booking 反推
           setTankCount(r.tankCount);
@@ -1187,7 +1190,9 @@ function EditBookingDialog({
               title="潛水內容"
               summary={
                 tripPricing
-                  ? `${tankCount} 支 × ${participants} 人 · NT$ ${(tripPricing.extraTank * tankCount * participants).toLocaleString()}`
+                  ? tripPricing.isBoat
+                    ? `船潛套裝 × ${participants} 人 · NT$ ${(tripPricing.extraTank * participants).toLocaleString()}`
+                    : `${tankCount} 支 × ${participants} 人 · NT$ ${(tripPricing.extraTank * tankCount * participants).toLocaleString()}`
                   : `${participants} 人`
               }
             >
@@ -1255,7 +1260,9 @@ function EditBookingDialog({
                   <div className="rounded-md bg-[var(--muted)]/40 p-2 text-[11px] tabular text-[var(--muted-foreground)]">
                     <div className="flex justify-between">
                       <span>
-                        每支潛水 NT$ {tripPricing.extraTank.toLocaleString()}
+                        {tripPricing.isBoat
+                          ? `船潛套裝 每人 NT$ ${tripPricing.extraTank.toLocaleString()}`
+                          : `每支潛水 NT$ ${tripPricing.extraTank.toLocaleString()}`}
                       </span>
                     </div>
                     <div className="flex justify-between font-bold text-[var(--foreground)]">
@@ -1263,9 +1270,9 @@ function EditBookingDialog({
                       <span>
                         NT${" "}
                         {(
-                          tripPricing.extraTank *
-                          tankCount *
-                          participants
+                          tripPricing.isBoat
+                            ? tripPricing.extraTank * participants
+                            : tripPricing.extraTank * tankCount * participants
                         ).toLocaleString()}
                       </span>
                     </div>
@@ -1533,14 +1540,16 @@ function EditBookingDialog({
               )}
               <div className="flex justify-between text-[var(--muted-foreground)]">
                 <span>
-                  潛水 {tripPricing.extraTank} × {tankCount} 支 × {participants} 人
+                  {tripPricing.isBoat
+                    ? `船潛套裝 ${tripPricing.extraTank} × ${participants} 人`
+                    : `潛水 ${tripPricing.extraTank} × ${tankCount} 支 × ${participants} 人`}
                 </span>
                 <span>
                   NT${" "}
                   {(
-                    tripPricing.extraTank *
-                    tankCount *
-                    participants
+                    tripPricing.isBoat
+                      ? tripPricing.extraTank * participants
+                      : tripPricing.extraTank * tankCount * participants
                   ).toLocaleString()}
                 </span>
               </div>
@@ -1562,7 +1571,9 @@ function EditBookingDialog({
                   NT${" "}
                   {(
                     tripPricing.baseTrip +
-                    tripPricing.extraTank * tankCount * participants +
+                    (tripPricing.isBoat
+                      ? tripPricing.extraTank * participants
+                      : tripPricing.extraTank * tankCount * participants) +
                     selectedGear.reduce((s, g) => s + g.price * g.qty, 0)
                   ).toLocaleString()}
                 </span>

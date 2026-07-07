@@ -105,6 +105,19 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-07 — 船潛費用「顯示估價」全站對齊（v813）
+
+老闆：桌機船潛費用與手機不一樣（萬安艦船潛桌機顯示每人 14,400，實際應 ~4,800）。
+
+- **根因**：船潛 `extraTank` 是「每人整包價」(固定潛次)，岸潛才是「每支×支數」。**伺服器端計算(api/bookings/daily:242)與下單頁本就正確判了 `isBoat`——所以實際沒收錯錢**，錯的全是「前端顯示估價」漏判 isBoat，把套裝價又乘了潛數(4800×3=14400)。編輯訂單存檔送的是參數(participants/tankCount)非金額、由伺服器重算，故也沒存錯。
+- **全站盤點並修正 6 處顯示 + 1 後台**（統一 `isBoat ? extraTank : extraTank × tankCount`）：
+  1. 桌機卡片估價 `pclogin/PcLoginApp.tsx:728`（用戶看到的那個）
+  2. 手機日潛列表估價 `liff/dive/date/[date]:68`（+型別補 isBoat）
+  3-6. 手機「我的訂單」`liff/my`：潛水內容摘要、每支潛水小計、編輯明細、編輯總計（tripPricing 補 isBoat，來源 `/api/trips/[id]` 用 `...trip` 已含）
+  7. 後台預估收費 fallback `admin/trips:214`（僅無實際 revenue 時用，低影響）
+- 資料源都已回 isBoat（`/api/trips` list 與 `/api/trips/[id]` 皆 `...trip`/明列），不必改 API。
+- build 通過(exit 0)。LIFF/pclogin 需真 LINE 登入，無法用 dev server 預覽；伺服器計算未動、金額正確性不受影響。
+
 ## 2026-07-07 — 桌機 LINE 登入真正修好：callback 路徑對齊（v812）
 
 老闆授權我用 computer use + Zeabur/LINE Console 直接處理。實地查出**真正 root cause**（跟先前推測的 channel 失效無關）：

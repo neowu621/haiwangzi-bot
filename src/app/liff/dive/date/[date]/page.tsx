@@ -14,6 +14,7 @@ interface Trip {
   startTime: string;
   isNightDive: boolean;
   isScooter: boolean;
+  isBoat?: boolean;            // v813：船潛=每人套裝價(固定潛次)
   tankCount: number;
   capacity: number | null;     // null = 無上限
   booked: number;
@@ -62,11 +63,10 @@ export default function DiveDateListPage({
         )}
         {visibleTrips.map((t) => {
           // v48：每人預估費（1 人 × 滿支數），baseTrip 是整單共享所以這只是 lower-bound
-          // 公式：baseTrip + extraTank × tanks (此處 1 人) + 夜潛/水推
-          // v155：夜潛加價已移除（夜潛與白天統一價）；水上摩托車欄位前已停用
+          // v813：船潛 extraTank 是每人整包價(固定潛次,不乘支數)；岸潛才是每支×支數。
           const base =
             t.pricing.baseTrip +
-            t.pricing.extraTank * t.tankCount;
+            (t.isBoat ? t.pricing.extraTank : t.pricing.extraTank * t.tankCount);
           // v341：開始前 2 小時截止
           const closed = isBookingClosed(t.date, t.startTime);
           const card = (

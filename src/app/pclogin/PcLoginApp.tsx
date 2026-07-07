@@ -725,7 +725,8 @@ function primaryBtn(): React.CSSProperties {
 function TripCard({ trip, onBook }: { trip: Trip; onBook: () => void }) {
   const weekday = ["日", "一", "二", "三", "四", "五", "六"][new Date(trip.date + "T00:00:00+08:00").getDay()];
   const full = trip.available !== null && trip.available <= 0;
-  const est = trip.pricing.extraTank * trip.tankCount + trip.pricing.baseTrip;
+  // v813：船潛 extraTank 是「每人整包價」(固定潛次,不乘支數)；岸潛才是每支×支數。與下單/伺服器計算一致。
+  const est = (trip.isBoat ? trip.pricing.extraTank : trip.pricing.extraTank * trip.tankCount) + trip.pricing.baseTrip;
   return (
     <div style={card()}>
       <div style={{ background: C.deep, color: "#fff", padding: "14px 16px" }}>

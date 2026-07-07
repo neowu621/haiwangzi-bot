@@ -221,9 +221,10 @@ function estimatedRevenue(trip: Trip): number {
   const baseTrip = p.baseTrip ?? 0;
   const extraTank = p.extraTank ?? 0;
   const booked = trip.booked ?? 0;
-  const baseWithTanks = baseTrip + (tanksPerPerson - 1) * extraTank;
   const extras = (p.otherFee ?? 0);
-  return booked * (baseWithTanks + extras);
+  // v813：船潛 extraTank 是每人整包價(不乘支數)；岸潛維持原估法(baseTrip+額外支數)。
+  const perPerson = trip.isBoat ? extraTank : baseTrip + (tanksPerPerson - 1) * extraTank;
+  return booked * (perPerson + extras);
 }
 
 export default function AdminTripsPage() {
