@@ -333,6 +333,8 @@ function TopBar({ member, authState, view, setView }: {
           </nav>
         )}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
+          {/* v817：版本號移到右上角，方便閱讀 */}
+          <span style={{ fontSize: 11, color: "#6f8aa3", fontFamily: "ui-monospace,monospace", letterSpacing: 0.3 }} title="系統版本">v{APP_VERSION}</span>
           {authState === "in" && member ? (
             <>
               <span style={{ fontSize: 13, color: "#cdd9e3" }}>
@@ -1806,7 +1808,7 @@ function Footer() {
   return (
     <footer style={{ background: C.deep, color: "#9fb3c4", textAlign: "center", padding: "26px 20px", fontSize: 12 }}>
       東北角海王子潛水 ‧ 安全．專業，陪你看見海<br />
-      <span style={{ fontSize: 11, opacity: 0.7 }}>桌面版會員預約（測試中） ‧ v{APP_VERSION}</span>
+      <span style={{ fontSize: 11, opacity: 0.7 }}>桌面版會員預約（測試中）</span>
     </footer>
   );
 }
