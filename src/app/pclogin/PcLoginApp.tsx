@@ -772,6 +772,8 @@ function TripCard({ trip, onBook }: { trip: Trip; onBook: () => void }) {
       <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>📍 {trip.sites.map((s) => s.name).join("、") || "東北角"}</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {/* v816：標示岸潛／船潛（比照手機/下單頁） */}
+          <Tag>{trip.isBoat ? "🚤 船潛" : "🏖 岸潛"}</Tag>
           {trip.isNightDive && <Tag>🌙 夜潛</Tag>}
           {trip.isScooter && <Tag>🛵 水中摩托</Tag>}
           {trip.available !== null ? <Tag>剩 {trip.available} 位</Tag> : <Tag>可預約</Tag>}
