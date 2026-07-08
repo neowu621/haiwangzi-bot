@@ -105,6 +105,16 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-08 — /rewards VIP 等級改「連動後台」（版本號快取，零 DB）（v820）
+
+老闆：VIP reward 應連動系統，且問「這種偶爾變的資料是不是該每天更新一次以省 DB」。回答：本專案有更好的**版本號失效快取**（分層鐵則第 2 層）——平時零 DB、後台按儲存自動失效、下一次讀即生效（比每日 cron 更即時）。
+
+- `src/app/rewards/page.tsx` 改 **async server component**：`getSiteConfigRow()`（`site-config-cache.ts`，版本號快取、命中零 DB）讀 siteConfig，`normalizeVipTiers(cfg?.vipTiers)` 取生效 VIP 陣列（空/DB掛→fallback 內建 `VIP_TIERS`，try/catch 不讓整頁 500）。
+- VIP 卡改 `tiers.map()`：emoji/name/enName/minLogs→潛次門檻/upgradeCredit→升等禮金/benefits[]→福利清單（`highlight()` 自動加粗 NT$金額與「N 折」）。配色依等級序（最高金色）。「VIP 升等禮金」抵用金卡金額範圍由各級 upgradeCredit 動態推算。
+- `export const dynamic = "force-dynamic"`：每請求跑 RSC（快取命中仍零 DB）、build 不需 DB。
+- 機制：後台 `/api/admin/vip-tiers` 存 `siteConfig.vipTiers` → Prisma `$extends` bump `config` 版本 → `/rewards` 下次讀自動拿新值。
+- 驗證：dev server 預覽 `/rewards` 200、5 級由資料渲染、無 console error、升等禮金卡自動推算。build 通過(exit 0)。⚠️ 抵用金/課程區其他金額仍為靜態文案（可另接 siteConfig）。正式環境會顯示老闆後台實際值(LV2=11/LV5=2500 等)。
+
 ## 2026-07-07 — 新增對外「會員優惠」頁 /rewards（v819）
 
 老闆要一份對外優惠說明頁（原本全站沒有，資料只散在後台+登入後會員中心）。先做成 Artifact 預覽、老闆逐項修改（刪掉所有裝備租借折扣/電子報/生日折扣/高氧升級/健檢/VIP客服/海外保證名額等；LV5 升等禮金 3000→2500、滿級每50潛 1000→1500；註冊改「且 Email 認證」），確認後接進官網。

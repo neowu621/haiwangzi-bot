@@ -2,15 +2,31 @@
 //   全域純靜態行銷內容 → 直接寫常數、零 DB（符合資料分層鐵則第 1 層）。
 //   手機優先閱讀優化；CSS 全部 scope 在 .rwd 下，避免與全站樣式衝突。
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { getSiteConfigRow } from "@/lib/site-config-cache";
+import { normalizeVipTiers } from "@/lib/vip-tier";
+
+// v820：VIP 等級改「連動後台設定」——走版本號失效快取（getSiteConfigRow），
+//   會員讀取命中快取＝零 DB；後台按「儲存 VIP 設定」自動失效、下一次讀即生效。
+//   force-dynamic：每次請求跑 RSC（但快取命中仍零 DB），確保反映後台最新值、且 build 不需 DB。
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "會員獎勵制度 ‧ 東北角海王子潛水",
   description:
-    "東北角海王子潛水會員回饋：註冊＋Email 認證送 NT$50 抵用金、VIP 五潛級升等禮金（最高 NT$2,500）、生日禮金、首單獎勵、課程加贈 Fun Dive。越潛越深，福利越多。",
+    "東北角海王子潛水會員回饋：註冊＋Email 認證送 NT$50 抵用金、VIP 潛級升等禮金、生日禮金、首單獎勵、課程加贈 Fun Dive。越潛越深，福利越多。",
 };
 
 const tint = (c: string) => ({ ["--tint"]: c } as CSSProperties);
+// 潛級由淺入深的視覺配色（依等級序，最高一律金色）
+const TINTS = ["#7fb2c9", "#0e9f93", "#12a3ad", "#2f6fb0", "#f5b942"];
+const tintFor = (i: number, total: number) => (i === total - 1 ? "#f5b942" : TINTS[Math.min(i, TINTS.length - 1)]);
+// 福利文字裡的 NT$金額 / 折數 自動加粗
+function highlight(text: string): ReactNode[] {
+  return text.split(/(NT\$[\d,]+|\d+\s*折)/g).filter(Boolean).map((p, i) =>
+    /^NT\$[\d,]+$/.test(p) || /^\d+\s*折$/.test(p) ? <b key={i}>{p}</b> : <span key={i}>{p}</span>,
+  );
+}
 
 const CSS = `
 .rwd{
@@ -143,7 +159,17 @@ const CSS = `
 }
 `;
 
-export default function RewardsPage() {
+export default async function RewardsPage() {
+  // 命中記憶體快取＝零 DB；後台存 VIP 設定自動失效。DB 掛掉則 fallback 內建預設，頁面照常渲染。
+  let cfg: Awaited<ReturnType<typeof getSiteConfigRow>> = null;
+  try { cfg = await getSiteConfigRow(); } catch { cfg = null; }
+  const tiers = [...normalizeVipTiers(cfg?.vipTiers)].sort((a, b) => a.level - b.level);
+  const total = tiers.length;
+  // 「VIP 升等禮金」卡片金額範圍：由各級 upgradeCredit 動態推出（同樣連動後台）
+  const ucs = tiers.map((t) => t.upgradeCredit).filter((c) => c > 0);
+  const ucMin = ucs.length ? Math.min(...ucs) : 0;
+  const ucMax = ucs.length ? Math.max(...ucs) : 0;
+
   return (
     <main className="rwd">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -178,63 +204,29 @@ export default function RewardsPage() {
             <p>升級只看你在海王子的<b>累積潛次</b>（一場 3 潛＝3 次），與消費金額無關。每升一級都自動送升等禮金，潛得越深、回饋越高。</p>
           </div>
           <div className="ladder">
-            <article className="tier" style={tint("#7fb2c9")}>
-              <div className="tier-badge"><span className="em">🦐</span><span className="lv">LV1</span></div>
-              <div className="tier-main">
-                <h3>小蝦 <span className="en">Shrimp</span></h3>
-                <span className="req">🐚 新會員 · 0 潛起</span>
-                <ul className="perks">
-                  <li>註冊且 Email 認證即送 <b>NT$50</b> 抵用金</li>
-                </ul>
-              </div>
-            </article>
-
-            <article className="tier" style={tint("#0e9f93")}>
-              <div className="tier-badge"><span className="em">🦞</span><span className="lv">LV2</span></div>
-              <div className="tier-main">
-                <h3>龍蝦 <span className="en">Lobster</span></h3>
-                <span className="req">🤿 累積 21 潛</span>
-                <ul className="perks">
-                  <li>升等禮金 <b>NT$200</b></li>
-                </ul>
-              </div>
-            </article>
-
-            <article className="tier" style={tint("#12a3ad")}>
-              <div className="tier-badge"><span className="em">🐢</span><span className="lv">LV3</span></div>
-              <div className="tier-main">
-                <h3>海龜 <span className="en">Sea Turtle</span></h3>
-                <span className="req">🤿 累積 51 潛</span>
-                <ul className="perks">
-                  <li>升等禮金 <b>NT$500</b></li>
-                </ul>
-              </div>
-            </article>
-
-            <article className="tier" style={tint("#2f6fb0")}>
-              <div className="tier-badge"><span className="em">🪼</span><span className="lv">LV4</span></div>
-              <div className="tier-main">
-                <h3>鬼蝠魟 <span className="en">Manta Ray</span></h3>
-                <span className="req">🤿 累積 101 潛</span>
-                <ul className="perks">
-                  <li>升等禮金 <b>NT$1,000</b></li>
-                  <li>進階潛水課程專屬優惠</li>
-                </ul>
-              </div>
-            </article>
-
-            <article className="tier" style={tint("#f5b942")}>
-              <div className="tier-badge"><span className="em">🦈</span><span className="lv">LV5</span></div>
-              <div className="tier-main">
-                <h3>鯨鯊 <span className="en">Whale Shark</span></h3>
-                <span className="req">🤿 累積 201 潛 · 最高等級</span>
-                <ul className="perks">
-                  <li>升等禮金 <b>NT$2,500</b></li>
-                  <li>滿級後每 50 潛再送 <b>NT$1,500</b></li>
-                  <li>年底 VIP 感恩晚宴</li>
-                </ul>
-              </div>
-            </article>
+            {tiers.map((t, i) => {
+              const isLast = i === total - 1;
+              const req = t.minLogs <= 0
+                ? "🐚 新會員 · 0 潛起"
+                : `🤿 累積 ${t.minLogs} 潛${isLast ? " · 最高等級" : ""}`;
+              return (
+                <article className="tier" style={tint(tintFor(i, total))} key={t.key || t.level}>
+                  <div className="tier-badge"><span className="em">{t.emoji}</span><span className="lv">LV{t.level}</span></div>
+                  <div className="tier-main">
+                    <h3>{t.name} {t.enName && <span className="en">{t.enName}</span>}</h3>
+                    <span className="req">{req}</span>
+                    <ul className="perks">
+                      {t.upgradeCredit > 0 && (
+                        <li>升等禮金 <b>NT${t.upgradeCredit.toLocaleString()}</b></li>
+                      )}
+                      {t.benefits.map((b, j) => (
+                        <li key={j}>{highlight(b)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -265,7 +257,7 @@ export default function RewardsPage() {
             </div>
             <div className="card">
               <span className="ic">⭐</span><h4>VIP 升等禮金</h4>
-              <div className="amt">NT$200<small> ~ 2,500</small></div>
+              <div className="amt">NT${ucMin.toLocaleString()}<small> ~ {ucMax.toLocaleString()}</small></div>
               <div className="desc">每升一個潛級自動發放，逐級補發不漏接。</div>
               <div className="meta">⏳ 360 天內使用</div>
             </div>
