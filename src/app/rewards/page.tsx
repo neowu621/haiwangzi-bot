@@ -19,8 +19,9 @@ export const metadata: Metadata = {
 
 const tint = (c: string) => ({ ["--tint"]: c } as CSSProperties);
 // 潛級由淺入深的視覺配色（依等級序，最高一律金色）
-const TINTS = ["#7fb2c9", "#0e9f93", "#12a3ad", "#2f6fb0", "#f5b942"];
-const tintFor = (i: number, total: number) => (i === total - 1 ? "#f5b942" : TINTS[Math.min(i, TINTS.length - 1)]);
+// v824：深色底用的亮色（青→金漸進）
+const TINTS = ["#7fc7e6", "#3fd8c8", "#49cfe0", "#5aa6ec", "#ffd36b"];
+const tintFor = (i: number, total: number) => (i === total - 1 ? "#ffd36b" : TINTS[Math.min(i, TINTS.length - 1)]);
 // 福利文字裡的 NT$金額 / 折數 自動加粗
 function highlight(text: string): ReactNode[] {
   return text.split(/(NT\$[\d,]+|\d+\s*折)/g).filter(Boolean).map((p, i) =>
@@ -29,21 +30,27 @@ function highlight(text: string): ReactNode[] {
 }
 
 const CSS = `
+/* v824：此頁為深色 → body 底色也改深海藍，避免捲動回彈露出淺色邊（style 只在 /rewards 掛載時存在）*/
+body{background:#02152a;}
 .rwd{
-  --navy:#0A2342; --navy2:#0d2f57;
-  --teal:#0e9f93; --teal-d:#0a7a70; --mint:#5fe0d0;
-  --coral:#ff6b4a; --gold:#f5b942;
-  --bg:#eaf1f6; --surface:#ffffff; --surface-2:#f2f7fb;
-  --ink:#0A2342; --muted:#5b7288; --line:#d8e4ee;
-  --shadow:0 6px 26px rgba(9,32,58,.10); --maxw:1000px;
-  background:var(--bg); color:var(--ink);
+  /* v824：深海藍深色系（對齊首頁 home.css：abyss/foam/glow/gold）*/
+  --navy:#02152a; --navy2:#063a66;
+  --teal:#66d8f6; --teal-d:#8fe4fa; --mint:#a5e8fb;
+  --coral:#ff8a6a; --gold:#ffd36b;
+  --bg:#02152a; --surface:#0a2842; --surface-2:#0e3454;
+  --ink:#eaf6ff; --muted:#9fc4e2; --line:rgba(122,200,240,.16);
+  --shadow:0 14px 38px rgba(0,0,0,.5); --maxw:1000px;
+  background:
+    radial-gradient(1100px 520px at 82% -8%, rgba(102,216,246,.12), transparent 62%),
+    linear-gradient(180deg, #05233d 0%, #02152a 42%);
+  color:var(--ink);
   font-family:-apple-system,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
   line-height:1.7; -webkit-font-smoothing:antialiased;
 }
 .rwd *{box-sizing:border-box;}
 .rwd .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px;}
 
-.rwd .hero{position:relative; overflow:hidden; color:#fff; background:linear-gradient(170deg,#0e9f93 0%,#0c5f78 42%,#0A2342 100%); padding:60px 20px 84px;}
+.rwd .hero{position:relative; overflow:hidden; color:#fff; background:linear-gradient(165deg,#0a3e72 0%,#063258 48%,#02152a 100%); padding:60px 20px 84px; border-bottom:1px solid rgba(102,216,246,.12);}
 .rwd .hero-inner{max-width:var(--maxw); margin:0 auto; position:relative; z-index:2;}
 .rwd .eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--mint); margin-bottom:16px;}
 .rwd .eyebrow::before{content:""; width:26px; height:2px; background:var(--mint); display:inline-block;}
@@ -102,7 +109,7 @@ const CSS = `
 .rwd .panel li b{color:var(--teal-d);}
 .rwd .panel.limited{background:linear-gradient(160deg,color-mix(in srgb,var(--coral) 12%,var(--surface)),var(--surface));}
 
-.rwd .cta{margin:44px 0 12px; text-align:center; background:linear-gradient(160deg,var(--navy2),var(--navy)); color:#fff; border-radius:22px; padding:44px 24px;}
+.rwd .cta{margin:44px 0 12px; text-align:center; background:linear-gradient(160deg,#0a3e72,#04203a); color:#fff; border-radius:22px; padding:44px 24px; border:1px solid rgba(102,216,246,.20); box-shadow:0 0 40px rgba(102,216,246,.08) inset;}
 .rwd .cta h2{font-size:clamp(21px,4vw,28px); font-weight:900; margin:0 0 8px;}
 .rwd .cta p{color:#bcd6e0; margin:0 auto 22px; max-width:44ch; font-size:14.5px;}
 .rwd .btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap;}
