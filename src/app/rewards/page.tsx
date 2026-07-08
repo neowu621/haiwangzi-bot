@@ -219,9 +219,12 @@ export default async function RewardsPage() {
                       {t.upgradeCredit > 0 && (
                         <li>升等禮金 <b>NT${t.upgradeCredit.toLocaleString()}</b></li>
                       )}
-                      {t.benefits.map((b, j) => (
-                        <li key={j}>{highlight(b)}</li>
-                      ))}
+                      {/* 去重：升等禮金已由欄位單獨顯示，福利文字若重述「升等/升級獎勵」就略過 */}
+                      {t.benefits
+                        .filter((b) => !/升[等級]獎勵/.test(b))
+                        .map((b, j) => (
+                          <li key={j}>{highlight(b)}</li>
+                        ))}
                     </ul>
                   </div>
                 </article>
