@@ -105,6 +105,21 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-08 — VIP 升等禮金新增「使用期限」欄位（每級可設，預設 30 天）（v821–823）
+
+老闆澄清：VIP 表格「會員福利」只是文字說明，真正資料是「升級獎勵」金額欄（故 v821 去重過濾福利文字裡的「升等/升級獎勵」行是對的）。並要求在「升級獎勵」旁加「使用期限」欄，預設 30 天。
+
+- **v821**：/rewards 福利去重（過濾含「升[等級]獎勵」的 benefits 行，升等禮金由欄位單獨顯示）。
+- **v822**：/rewards 6 張抵用金卡有效期限連動 siteConfig（signup/birthday/firstOrder/vipUpgrade/refund ExpiryDays）。
+- **v823 新欄位 `upgradeCreditExpiryDays`（每級升等禮金使用期限，預設 30，0=永久）**：
+  - `vip-tier.ts`：`VipTier` 加欄位；5 個 `VIP_TIERS` 預設各補 `30`；`normalizeVipTiers` 缺省 30。
+  - `api/admin/vip-tiers` `TierSchema` 加 `upgradeCreditExpiryDays`(default 30)。
+  - `VipTiersEditor.tsx`：表格「升級獎勵」右側加「使用期限」欄；編輯 Dialog 在升級獎勵旁加「使用期限（天，0=永久）」輸入。
+  - **發放邏輯 `vip-upgrade-rewards.ts`**：`computeExpiry("vip_upgrade", tier.upgradeCreditExpiryDays)`（已支援 overrideDays）→ 實際發放的升等抵用金按各級天數到期。
+  - `/rewards`：升等禮金卡到期天數改用各級 `upgradeCreditExpiryDays`（預設 30）。
+  - 驗證：dev 預覽 /rewards「VIP 升等禮金」顯示 30 天；build 通過(exit 0)。
+- ⚠️ 首單獎勵到期天數仍在「金額」分頁的 `firstOrderRewardExpiryDays`（老闆要 30 需在那設定；/rewards 已連動顯示）。
+
 ## 2026-07-08 — /rewards VIP 等級改「連動後台」（版本號快取，零 DB）（v820）
 
 老闆：VIP reward 應連動系統，且問「這種偶爾變的資料是不是該每天更新一次以省 DB」。回答：本專案有更好的**版本號失效快取**（分層鐵則第 2 層）——平時零 DB、後台按儲存自動失效、下一次讀即生效（比每日 cron 更即時）。

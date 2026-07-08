@@ -21,6 +21,8 @@ export interface VipTier {
   benefits: string[];
   /** 升級獎勵抵用金 (NT$)。會員首次達到此 LV 時自動發放，每個 LV 僅一次 */
   upgradeCredit: number;
+  /** v823：升等禮金抵用金的使用期限（天）；0=永不過期。預設 30 */
+  upgradeCreditExpiryDays?: number;
   /** v388：裝備租借折扣 %（此級會員下單裝備時自動套用）。100=原價、90=9折、0/未設=不折 */
   gearDiscountPct?: number;
   /** UI 配色 */
@@ -41,6 +43,7 @@ export const VIP_TIERS: VipTier[] = [
       "基礎會員電子報",
     ],
     upgradeCredit: 50, // 註冊抵用金（新會員首次加入時自動發放）
+    upgradeCreditExpiryDays: 30,
     color: "#FFB1B1", // pinkish
   },
   {
@@ -57,6 +60,7 @@ export const VIP_TIERS: VipTier[] = [
       "生日當月一般潛水行程 9 折",
     ],
     upgradeCredit: 200,
+    upgradeCreditExpiryDays: 30,
     color: "#FF7B5A", // coral (品牌色)
   },
   {
@@ -73,6 +77,7 @@ export const VIP_TIERS: VipTier[] = [
       "每年免費基礎裝備健檢服務",
     ],
     upgradeCredit: 500,
+    upgradeCreditExpiryDays: 30,
     color: "#00D9CB", // phosphor (品牌色)
   },
   {
@@ -89,6 +94,7 @@ export const VIP_TIERS: VipTier[] = [
       "熱門海外行程早鳥優先卡位權",
     ],
     upgradeCredit: 1000,
+    upgradeCreditExpiryDays: 30,
     color: "#1B3A5C", // ocean (品牌色)
   },
   {
@@ -106,6 +112,7 @@ export const VIP_TIERS: VipTier[] = [
       "年底高級 VIP 專屬感恩晚宴",
     ],
     upgradeCredit: 3000,
+    upgradeCreditExpiryDays: 30,
     color: "#FFB800", // gold (品牌色)
   },
 ];
@@ -155,6 +162,8 @@ export function normalizeVipTiers(raw: unknown): VipTier[] {
       minSpend: Math.max(0, Number(t.minSpend)),
       benefits: Array.isArray(t.benefits) ? t.benefits : [],
       upgradeCredit: Math.max(0, Number(t.upgradeCredit ?? 0)),
+      // v823：升等禮金使用期限（天，缺省 30；0=不過期）
+      upgradeCreditExpiryDays: Math.max(0, Number(t.upgradeCreditExpiryDays ?? 30)),
       // v388：裝備折扣 %（缺省 100 = 不折）；夾在 0~100
       gearDiscountPct: Math.min(100, Math.max(0, Number(t.gearDiscountPct ?? 100))),
       color: t.color,

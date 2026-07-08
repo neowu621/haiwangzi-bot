@@ -45,7 +45,8 @@ export async function grantVipUpgradeRewards(
     if (exists) continue; // 已發過
 
     try {
-      const expiresAt = await computeExpiry("vip_upgrade");
+      // v823：優先用該等級自訂的使用期限（天）；未設則 fallback 全站 vipUpgradeCreditExpiryDays
+      const expiresAt = await computeExpiry("vip_upgrade", tier.upgradeCreditExpiryDays);
       await grantCredit({ skipNotify: true,
         userId,
         amount: tier.upgradeCredit,

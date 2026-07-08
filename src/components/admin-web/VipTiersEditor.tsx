@@ -23,6 +23,7 @@ interface VipTier {
   minSpend: number;
   benefits: string[];
   upgradeCredit: number;
+  upgradeCreditExpiryDays?: number; // v823：升等禮金使用期限(天),0=不過期,預設30
   gearDiscountPct?: number; // v388：裝備折扣%（100/未設=不折，90=9折）
 }
 
@@ -132,6 +133,7 @@ export function VipTiersEditor() {
                 <th className="px-4 py-3 font-medium">等級</th>
                 <th className="px-4 py-3 font-medium text-right">最低潛水次數</th>
                 <th className="px-4 py-3 font-medium text-right">升級獎勵</th>
+                <th className="px-4 py-3 font-medium text-right">使用期限</th>
                 <th className="px-4 py-3 font-medium">會員福利</th>
                 <th className="px-4 py-3 font-medium w-16" />
               </tr>
@@ -158,6 +160,15 @@ export function VipTiersEditor() {
                       <span className="font-semibold" style={{ color: "#047857" }}>NT$ {tier.upgradeCredit.toLocaleString()}</span>
                     ) : (
                       <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {tier.upgradeCredit > 0 ? (
+                      (tier.upgradeCreditExpiryDays ?? 30) > 0
+                        ? <span>{tier.upgradeCreditExpiryDays ?? 30} 天</span>
+                        : <span className="text-[var(--muted-foreground)]">永久</span>
+                    ) : (
+                      <span className="text-[var(--muted-foreground)]">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -232,15 +243,15 @@ export function VipTiersEditor() {
                   </div>
                 </div>
               </div>
+              <div>
+                <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數（升等唯一條件）</Label>
+                <Input type="text" inputMode="numeric" value={String(editDraft.minLogs)}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
+                    updateDraft({ minLogs: clean === "" ? 0 : parseInt(clean, 10) });
+                  }} />
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">最低潛水次數（升等唯一條件）</Label>
-                  <Input type="text" inputMode="numeric" value={String(editDraft.minLogs)}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
-                      updateDraft({ minLogs: clean === "" ? 0 : parseInt(clean, 10) });
-                    }} />
-                </div>
                 <div>
                   <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">升級獎勵抵用金 (NT$)</Label>
                   <Input type="text" inputMode="numeric" value={String(editDraft.upgradeCredit)}
@@ -249,9 +260,17 @@ export function VipTiersEditor() {
                       updateDraft({ upgradeCredit: clean === "" ? 0 : parseInt(clean, 10) });
                     }} />
                 </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">使用期限（天，0=永久）</Label>
+                  <Input type="text" inputMode="numeric" value={String(editDraft.upgradeCreditExpiryDays ?? 30)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
+                      updateDraft({ upgradeCreditExpiryDays: clean === "" ? 0 : parseInt(clean, 10) });
+                    }} />
+                </div>
               </div>
               <p className="text-[10px] text-[var(--muted-foreground)]">
-                ※ 升等僅依「海王子累積潛水次數」。會員首次達到此 LV 時自動發放抵用金，每個 LV 僅一次。
+                ※ 升等僅依「海王子累積潛水次數」。會員首次達到此 LV 時自動發放抵用金，每個 LV 僅一次；「使用期限」是這筆升等禮金的到期天數（預設 30 天，0=永不過期）。
               </p>
               {/* v388：裝備租借折扣（下單裝備區自動套用）*/}
               <div>

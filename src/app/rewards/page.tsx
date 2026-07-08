@@ -175,7 +175,8 @@ export default async function RewardsPage() {
     signup: cfg?.signupRewardExpiryDays ?? 0,
     birthday: cfg?.birthdayCreditExpiryDays ?? 360,
     firstOrder: cfg?.firstOrderRewardExpiryDays ?? 360,
-    upgrade: cfg?.vipUpgradeCreditExpiryDays ?? 360,
+    // v823：升等禮金到期天數改用「VIP 設定」裡各級的 upgradeCreditExpiryDays（預設 30）
+    upgrade: tiers.find((t) => t.upgradeCredit > 0)?.upgradeCreditExpiryDays ?? cfg?.vipUpgradeCreditExpiryDays ?? 30,
     refund: cfg?.refundCreditExpiryDays ?? 0,
   };
   const expLabel = (days: number, unlimited: string) => (days > 0 ? `⏳ ${days} 天內使用` : unlimited);
