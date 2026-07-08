@@ -105,6 +105,16 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-07 — 新增對外「會員優惠」頁 /rewards（v819）
+
+老闆要一份對外優惠說明頁（原本全站沒有，資料只散在後台+登入後會員中心）。先做成 Artifact 預覽、老闆逐項修改（刪掉所有裝備租借折扣/電子報/生日折扣/高氧升級/健檢/VIP客服/海外保證名額等；LV5 升等禮金 3000→2500、滿級每50潛 1000→1500；註冊改「且 Email 認證」），確認後接進官網。
+
+- 新頁 `src/app/rewards/page.tsx`：**全域純靜態行銷內容→直接寫常數、零 DB**（分層鐵則第1層）。手機優先：VIP 卡在手機改「徽章置頂→福利分隔清單」、抵用金單欄、區塊堆疊、內文放大。CSS 全部 scope 在 `.rwd` 下（`<style dangerouslySetInnerHTML>`）避免撞全站樣式；light-only（配合全站）。
+- 內容：VIP 五潛級(升等禮金 50→2500)、6 種抵用金、課程加贈、限時優惠、使用規則、加 LINE CTA。
+- 入口：桌機首頁頁尾 `DesktopHome.tsx` + 手機首頁頁尾 `MobileHome.tsx` 連結區各加「會員優惠」。
+- 驗證：dev server 預覽（port autoPort）確認 `/rewards` 200、scoped CSS 生效、手機 375px 無溢出、VIP 卡 block 佈局、資料正確。build 通過(exit 0)。
+- ⚠️ 此頁是**靜態行銷文案**，與後台實際數值(vip-tier.ts LV5=3000/overflow=1000)**不會連動**；若老闆要，另需把後台 upgradeCredit LV5 改 2500、overflow 改 1500 對齊。LIFF FAQ 的 LV2 潛次(11)與實際(21)不一致也待修。
+
 ## 2026-07-07 — AI 小幫手 Markdown 渲染（連結可點/粗體/項目）（v818）
 
 老闆：小幫手回覆把 `[場次表](url)` 當純文字顯示、無法點，連結應整合成可點元素。查因：assistant route（v769）**刻意叫 LLM 用 Markdown 連結**附場次表等，但 ChatWidget 用 `whiteSpace:pre-wrap` 純文字渲染 → `**粗體**`、`*` 項目、`[文字](網址)` 全變 raw 文字。

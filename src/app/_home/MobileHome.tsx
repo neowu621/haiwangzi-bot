@@ -188,7 +188,7 @@ export default function MobileHome() {
           <a href={FB_URL} target="_blank" rel="noopener" aria-label="Facebook"><FbIcon s={30} /></a>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", fontSize: 12 }}>
-          {[["/schedule", "本月場次"], ["/course", "課程"], ["/pricing", "費用"], ["/northsea-diving", "潛點"], ["/comment", "評價"], ["/faq", "FAQ"], ["/safety", "安全"], ["/haiwangzi", "關於汪汪"]].map(([h, t]) => (
+          {[["/schedule", "本月場次"], ["/course", "課程"], ["/pricing", "費用"], ["/rewards", "會員優惠"], ["/northsea-diving", "潛點"], ["/comment", "評價"], ["/faq", "FAQ"], ["/safety", "安全"], ["/haiwangzi", "關於汪汪"]].map(([h, t]) => (
             <a key={h} href={h} style={{ color: "#9bb6cc", textDecoration: "none" }}>{t}</a>
           ))}
         </div>

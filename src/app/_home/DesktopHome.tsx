@@ -274,6 +274,7 @@ export default function DesktopHome() {
               { href: "/schedule", label: "本月場次" },
               { href: "/course", label: "潛水課程" },
               { href: "/pricing", label: "費用價目" },
+              { href: "/rewards", label: "會員優惠" },
               { href: "/northsea-diving", label: "東北角潛點" },
               { href: "/comment", label: "學員評價" },
               { href: "/haiwangzi", label: "關於汪汪教練" },
