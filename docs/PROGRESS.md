@@ -105,6 +105,14 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-08 — /rewards 深色化 + 首頁式 top nav/footer（v824–825）
+
+老闆：/rewards（桌機）配色改深色系比照首頁；top+footer 也要跟首頁一樣。
+
+- **v824 深色系**：`.rwd` 配色 token 改深海藍（對齊 `home.css`：bg #02152a、surface #0a2842、foam #eaf6ff 文字、glow #66d8f6 青光、gold #ffd36b、coral #ff8a6a）；hero 深海藍漸層、CTA 青光邊；各級 TINTS 亮化（青→金）。body 底色也設 #02152a（style 只在 /rewards 掛載時，不影響他頁）。dev 驗證 body/card/文字/金額色皆正確。
+- **v825 首頁式 nav/footer**：/rewards 加 sticky 深色 top nav（`MantaTridentMark variant="white"` logo + route 導覽連結 + 會員登入青光鈕）＋首頁式 footer（守護海洋標語 + 9 route 連結膠囊 + 版權）。**視覺對齊首頁但用 route 連結（非首頁 hash/scroll-spy）**——SiteNav 是首頁專屬(綁 .hw/錨點/scroll-spy)不可即插即用，故 /rewards 自帶 .rwd-scoped 版。dev 驗證 logo 白版、nav sticky、連結/footer 皆正確。build 通過(exit 0)。
+- **全桌機頁 top/footer 審視結果**：目前**只有首頁**有那套 nav+footer；其餘 8 頁用 SeoShell(淺色)/LegalShell(淺色) 各自的簡化殼（/pricing /course /northsea-diving /comment /haiwangzi /schedule 走 SeoShell；/faq /safety 走 LegalShell）。要全站統一需把 nav/footer 抽共用元件再套 8 頁（較大且那些頁是淺色設計）——**待老闆確認是否全面統一**。
+
 ## 2026-07-08 — VIP 升等禮金新增「使用期限」欄位（每級可設，預設 30 天）（v821–823）
 
 老闆澄清：VIP 表格「會員福利」只是文字說明，真正資料是「升級獎勵」金額欄（故 v821 去重過濾福利文字裡的「升等/升級獎勵」行是對的）。並要求在「升級獎勵」旁加「使用期限」欄，預設 30 天。
