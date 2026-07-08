@@ -170,6 +170,16 @@ export default async function RewardsPage() {
   const ucMin = ucs.length ? Math.min(...ucs) : 0;
   const ucMax = ucs.length ? Math.max(...ucs) : 0;
 
+  // v822：抵用金「有效期限」也連動後台（系統設定→金額 分頁）；0=永久/不限
+  const exp = {
+    signup: cfg?.signupRewardExpiryDays ?? 0,
+    birthday: cfg?.birthdayCreditExpiryDays ?? 360,
+    firstOrder: cfg?.firstOrderRewardExpiryDays ?? 360,
+    upgrade: cfg?.vipUpgradeCreditExpiryDays ?? 360,
+    refund: cfg?.refundCreditExpiryDays ?? 0,
+  };
+  const expLabel = (days: number, unlimited: string) => (days > 0 ? `⏳ ${days} 天內使用` : unlimited);
+
   return (
     <main className="rwd">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -244,37 +254,37 @@ export default async function RewardsPage() {
               <span className="ic">🎁</span><h4>註冊禮金</h4>
               <div className="amt">NT$50</div>
               <div className="desc">完成 Email 認證後自動入帳，一生一次。</div>
-              <div className="meta">♾ 永久有效</div>
+              <div className="meta">{expLabel(exp.signup, "♾ 永久有效")}</div>
             </div>
             <div className="card">
               <span className="ic">🎂</span><h4>生日禮金</h4>
               <div className="amt">NT$100</div>
               <div className="desc">每年生日當月自動送，一年一次（需先填生日）。</div>
-              <div className="meta">⏳ 360 天內使用</div>
+              <div className="meta">{expLabel(exp.birthday, "♾ 永久有效")}</div>
             </div>
             <div className="card">
               <span className="ic">🎉</span><h4>首單獎勵</h4>
               <div className="amt">NT$100</div>
               <div className="desc">完成第一次潛水到場後自動入帳，新朋友專屬。</div>
-              <div className="meta">⏳ 360 天內使用</div>
+              <div className="meta">{expLabel(exp.firstOrder, "♾ 永久有效")}</div>
             </div>
             <div className="card">
               <span className="ic">⭐</span><h4>VIP 升等禮金</h4>
               <div className="amt">NT${ucMin.toLocaleString()}<small> ~ {ucMax.toLocaleString()}</small></div>
               <div className="desc">每升一個潛級自動發放，逐級補發不漏接。</div>
-              <div className="meta">⏳ 360 天內使用</div>
+              <div className="meta">{expLabel(exp.upgrade, "♾ 永久有效")}</div>
             </div>
             <div className="card">
               <span className="ic">🏆</span><h4>滿級回饋</h4>
               <div className="amt">NT$1,500<small> / 50 潛</small></div>
               <div className="desc">升上 LV5 鯨鯊後，每再累積 50 潛就再送一次。</div>
-              <div className="meta">⏳ 360 天內使用</div>
+              <div className="meta">{expLabel(exp.upgrade, "♾ 永久有效")}</div>
             </div>
             <div className="card">
               <span className="ic">🔄</span><h4>退款轉抵用金</h4>
               <div className="amt">個案</div>
               <div className="desc">符合條件的退款可轉為抵用金，下次下單更方便。</div>
-              <div className="meta">♾ 不限使用期限</div>
+              <div className="meta">{expLabel(exp.refund, "♾ 不限使用期限")}</div>
             </div>
           </div>
         </section>
