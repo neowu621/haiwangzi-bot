@@ -105,6 +105,19 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-08 — 系統設定「金額」與「VIP」tab 合併 + 去重（v827）
+
+老闆：系統設定的 VIP 與金額合併成同一 tab、去除重複、重排順序更有邏輯。
+
+- **合併成單一 tab**「💰 金額 · VIP」（TabsList 移除 vip trigger，11→10 欄；`?tab=vip` 自動導到 money，VipTiersEditor 舊 redirect 仍可用）。
+- **順序（會員成長時間軸）**：置頂 ⭐VIP等級設定(VipTiersEditor) → 🎁LV1新客禮(首潛) → 🦈VIP5滿級回饋 → 💰金額設定(裝備費率+抵用金表) → 📣Dump → 🔥氣瓶折扣 → 👷教練氣瓶價。
+- **去重/刪死欄位**：
+  - 抵用金統一表格刪掉 3 個「→VIP分頁」佔位列（首單/VIP升等/VIP滿級）——改由上方 VIP 區塊統一管。
+  - 刪掉表格裡重複的全站 `vipUpgradeCreditExpiryDays` 輸入（升等天數已由 VIP 各級 `upgradeCreditExpiryDays` 生效，v823）。
+  - 金額設定 save patch 移除 `vipUpgradeCreditExpiryDays` 與 legacy `vipUpgradeCredits`（連同 vipCredits 常數刪除）。
+- 各區塊仍各自 partial save（site-config）；VipTiersEditor 維持獨立 API 不變。
+- ⚠️ **後台需登入、dev 無法視覺預覽**，僅 build 驗證（清 .next 快取後 exit 0；先前 validator.ts「Cannot find name 'er'」是產生檔快取汙染非程式）。搬移的是完整既有區塊，風險低但**待老闆實測後台設定頁**。
+
 ## 2026-07-08 — 全站桌機公開頁統一深色 top nav + footer（共用元件）（v826）
 
 老闆選「只統一深色 nav+footer，內容維持淺色」。抽共用元件套全站：

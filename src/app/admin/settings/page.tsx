@@ -223,8 +223,9 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("home");
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const t = new URLSearchParams(window.location.search).get("tab");
-    const valid = ["home", "links", "payment", "money", "vip", "upload", "policy", "autosend", "aibot", "danger", "tools"];
+    let t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "vip") t = "money"; // v826：VIP 已併入「金額 · VIP」tab，舊 ?tab=vip 連結導到這
+    const valid = ["home", "links", "payment", "money", "upload", "policy", "autosend", "aibot", "danger", "tools"];
     if (t && valid.includes(t)) setActiveTab(t);
   }, []);
   const [loading, setLoading] = useState(true);
@@ -404,10 +405,7 @@ export default function SettingsPage() {
 
   const gear = { ...DEFAULT_GEAR, ...(cfg.gearRentalPrices as Partial<GearPrices>) };
   const trip = { ...DEFAULT_TRIP, ...(cfg.defaultTripPricing as Partial<TripPricing>) };
-  const vipCredits: Record<string, number> = {
-    "2": 200, "3": 500, "4": 1000, "5": 2000,
-    ...(cfg.vipUpgradeCredits as Record<string, number> ?? {}),
-  };
+  // v826：legacy vipUpgradeCredits 已停用（升等金額改由 VIP 各級 upgradeCredit）
 
   return (
     <AdminShell>
@@ -419,12 +417,11 @@ export default function SettingsPage() {
 
         {/* v255/v345：9 大分類 Tab 切換（含 ⭐ VIP）；支援 ?tab= 直接開特定分頁 */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-6 lg:grid-cols-11">
+          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:grid-cols-10">
             <TabsTrigger value="home">🏠 首頁</TabsTrigger>
             <TabsTrigger value="links">🔗 連結</TabsTrigger>
             <TabsTrigger value="payment">💳 付款</TabsTrigger>
-            <TabsTrigger value="money">💰 金額</TabsTrigger>
-            <TabsTrigger value="vip">⭐ VIP</TabsTrigger>
+            <TabsTrigger value="money">💰 金額 · VIP</TabsTrigger>
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
             <TabsTrigger value="autosend">📨 自動發送</TabsTrigger>
@@ -722,6 +719,60 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="money" className="mt-4">
+        {/* v826：VIP 與金額合併同一 tab —— VIP 等級 / 首潛入會禮 / 滿級回饋 置頂（會員成長時間軸） */}
+        <div className="mb-4">
+          <SectionCard title="⭐ VIP 等級設定（升等禮金 + 使用期限 + 裝備折扣 — 唯一生效來源）">
+            <VipTiersEditor />
+          </SectionCard>
+        </div>
+        <div className="mb-4">
+          <SectionCard title="🎁 LV1 新客禮（首潛獎勵 — 完成首次潛水到場才發）">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              新客戶第一筆訂單付款完成 + Email 已驗證 → 自動發抵用金（一人僅一次）。視為踏入 VIP LV1 的入會禮。
+            </p>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+              <CompactNum label="金額（NT$，0=停用）" labelW="w-32" value={cfg.firstOrderRewardAmount ?? 100}
+                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardAmount: n } : c)} />
+              <CompactNum label="有效天數（0=永不過期）" labelW="w-32" max={3650} value={cfg.firstOrderRewardExpiryDays ?? 360}
+                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardExpiryDays: n } : c)} />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("LV1 新客禮", {
+                  firstOrderRewardAmount: cfg.firstOrderRewardAmount ?? 100,
+                  firstOrderRewardExpiryDays: cfg.firstOrderRewardExpiryDays ?? 360,
+                })}
+                disabled={saving === "LV1 新客禮"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "LV1 新客禮" ? "儲存中..." : "儲存新客禮"}
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
+        <div className="mb-4">
+          <SectionCard title="🦈 VIP5 滿級回饋">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              會員升到最高級（LV5）後，每再累積 N 次潛水自動回饋抵用金（里程碑各發一次）。金額 0 = 停用。
+            </p>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+              <CompactNum label="每 N 潛回饋" labelW="w-28" value={cfg.vipOverflowDives ?? 50}
+                onChange={(n) => setCfg(c => c ? { ...c, vipOverflowDives: n } : c)} />
+              <CompactNum label="回饋金額（NT$，0=停用）" labelW="w-36" value={cfg.vipOverflowCredit ?? 1000}
+                onChange={(n) => setCfg(c => c ? { ...c, vipOverflowCredit: n } : c)} />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("VIP5 滿級回饋", {
+                  vipOverflowDives: cfg.vipOverflowDives ?? 50,
+                  vipOverflowCredit: cfg.vipOverflowCredit ?? 1000,
+                })}
+                disabled={saving === "VIP5 滿級回饋"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "VIP5 滿級回饋" ? "儲存中..." : "儲存滿級回饋"}
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
         {/* ── B. 金額設定 ──────────────────── */}
         <SectionCard title="💰 金額設定">
 
@@ -799,31 +850,7 @@ export default function SettingsPage() {
                       <Button size="sm" variant="outline" className="ml-1 h-6 px-2 text-[10px]" onClick={() => void runBackfill("birthday")}>🎂 一鍵補發（列名單）</Button>
                     </td>
                   </tr>
-                  {/* 首單獎勵 */}
-                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                    <td className="px-2 py-2 font-bold whitespace-nowrap">🎉 首單獎勵</td>
-                    <td className="px-2 py-2 text-[11px] font-semibold text-violet-700 whitespace-nowrap">→ VIP 分頁</td>
-                    <td className="px-2 py-2 text-[var(--muted-foreground)]">同 VIP</td>
-                    <td className="px-2 py-2 whitespace-nowrap">首次出席後<br /><CreditBadge text="自動" cls="bg-emerald-100 text-emerald-800" /></td>
-                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">金額在「⭐ VIP / LV1 新客禮」設定；第一次潛水完成發。</td>
-                  </tr>
-                  {/* VIP 升等獎勵 */}
-                  <tr className="border-b bg-[#fafbfc]" style={{ borderColor: "var(--border)" }}>
-                    <td className="px-2 py-2 font-bold whitespace-nowrap">⭐ VIP 升等獎勵</td>
-                    <td className="px-2 py-2 text-[11px] font-semibold text-violet-700 whitespace-nowrap">→ VIP 分頁</td>
-                    <td className="px-2 py-2"><div className="w-20"><NumberInput min={0} max={3650} value={cfg.vipUpgradeCreditExpiryDays ?? 360}
-                      onChange={(n) => setCfg(c => c ? { ...c, vipUpgradeCreditExpiryDays: n } : c)} /></div></td>
-                    <td className="px-2 py-2 whitespace-nowrap">升到新等級時<br /><CreditBadge text="升等" cls="bg-violet-100 text-violet-700" /></td>
-                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">LV2~LV5 各級金額在「⭐ VIP」分頁設定。</td>
-                  </tr>
-                  {/* VIP 滿級回饋 */}
-                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                    <td className="px-2 py-2 font-bold whitespace-nowrap">🏆 VIP 滿級回饋</td>
-                    <td className="px-2 py-2 text-[11px] font-semibold text-violet-700 whitespace-nowrap">→ VIP 分頁</td>
-                    <td className="px-2 py-2 text-[var(--muted-foreground)]">同 VIP</td>
-                    <td className="px-2 py-2 whitespace-nowrap">LV5 後每滿 N 潛<br /><CreditBadge text="滿級" cls="bg-violet-100 text-violet-700" /></td>
-                    <td className="px-2 py-2 text-[var(--muted-foreground)] leading-relaxed">「每 N 潛 / 回饋 M 元」在「⭐ VIP」分頁設定。</td>
-                  </tr>
+                  {/* v826：首單/VIP升等/滿級回饋 已移到本 tab 上方 VIP 區塊統一管理（原「→VIP分頁」佔位列刪除） */}
                   {/* Admin 手動發放 */}
                   <tr className="border-b bg-[#fafbfc]" style={{ borderColor: "var(--border)" }}>
                     <td className="px-2 py-2 font-bold whitespace-nowrap">🛠 Admin 手動發放</td>
@@ -846,7 +873,7 @@ export default function SettingsPage() {
               </table>
             </div>
             <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
-              天數欄：0 = 永不過期；發放 N 天內未使用自動過期。<span className="text-violet-700 font-semibold">→ VIP 分頁</span> 的項目在「⭐ VIP」分頁設定金額。
+              天數欄：0 = 永不過期；發放 N 天內未使用自動過期。首單獎勵、VIP 升等禮金、VIP5 滿級回饋請見本頁上方 VIP 區塊。
               ※ 教練預設費用、天氣取消風速門檻已移出本頁（風速門檻歸到「🌤 天氣」分頁，未來處理）。
             </p>
           </div>
@@ -863,11 +890,10 @@ export default function SettingsPage() {
                 birthdayCreditExpiryDays: cfg.birthdayCreditExpiryDays ?? 360,
                 signupRewardAmount: cfg.signupRewardAmount ?? 50,
                 signupRewardExpiryDays: cfg.signupRewardExpiryDays ?? 0,
-                vipUpgradeCreditExpiryDays: cfg.vipUpgradeCreditExpiryDays ?? 360,
                 adminGrantCreditExpiryDays: cfg.adminGrantCreditExpiryDays ?? 360,
                 refundCreditExpiryDays: cfg.refundCreditExpiryDays ?? 0,
                 weatherWindThreshold: cfg.weatherWindThreshold,
-                vipUpgradeCredits: vipCredits,
+                // v826：vipUpgradeCreditExpiryDays（改由每級 VIP 使用期限）與 legacy vipUpgradeCredits 不再由此存
               })}
               disabled={saving === "金額設定"}>
               <Save className="mr-1.5 h-4 w-4" />
@@ -1000,65 +1026,6 @@ export default function SettingsPage() {
           </SectionCard>
         </div>
 
-        </TabsContent>
-
-        {/* v345：⭐ VIP — VIP 等級設定（含每等級的升級獎勵 = VIP 升等金額） */}
-        <TabsContent value="vip" className="mt-4">
-          {/* v346：首單付款獎勵 = LV1 新客禮，整合進 VIP tab */}
-          <SectionCard title="🎁 LV1 新客禮（首潛獎勵 — 完成首次潛水到場才發）">
-            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              新客戶第一筆訂單付款完成 + Email 已驗證 → 自動發抵用金（一人僅一次）。視為踏入 VIP LV1 的入會禮。
-            </p>
-            <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-              <CompactNum label="金額（NT$，0=停用）" labelW="w-32" value={cfg.firstOrderRewardAmount ?? 100}
-                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardAmount: n } : c)} />
-              <CompactNum label="有效天數（0=永不過期）" labelW="w-32" max={3650} value={cfg.firstOrderRewardExpiryDays ?? 360}
-                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardExpiryDays: n } : c)} />
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
-                onClick={() => save("LV1 新客禮", {
-                  firstOrderRewardAmount: cfg.firstOrderRewardAmount ?? 100,
-                  firstOrderRewardExpiryDays: cfg.firstOrderRewardExpiryDays ?? 360,
-                })}
-                disabled={saving === "LV1 新客禮"}>
-                <Save className="mr-1.5 h-4 w-4" />
-                {saving === "LV1 新客禮" ? "儲存中..." : "儲存新客禮"}
-              </Button>
-            </div>
-          </SectionCard>
-
-          {/* v388：VIP5 滿級回饋 */}
-          <div className="mt-4">
-            <SectionCard title="🦈 VIP5 滿級回饋">
-              <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-                會員升到最高級（LV5）後，每再累積 N 次潛水自動回饋抵用金（里程碑各發一次）。金額 0 = 停用。
-              </p>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-                <CompactNum label="每 N 潛回饋" labelW="w-28" value={cfg.vipOverflowDives ?? 50}
-                  onChange={(n) => setCfg(c => c ? { ...c, vipOverflowDives: n } : c)} />
-                <CompactNum label="回饋金額（NT$，0=停用）" labelW="w-36" value={cfg.vipOverflowCredit ?? 1000}
-                  onChange={(n) => setCfg(c => c ? { ...c, vipOverflowCredit: n } : c)} />
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
-                  onClick={() => save("VIP5 滿級回饋", {
-                    vipOverflowDives: cfg.vipOverflowDives ?? 50,
-                    vipOverflowCredit: cfg.vipOverflowCredit ?? 1000,
-                  })}
-                  disabled={saving === "VIP5 滿級回饋"}>
-                  <Save className="mr-1.5 h-4 w-4" />
-                  {saving === "VIP5 滿級回饋" ? "儲存中..." : "儲存滿級回饋"}
-                </Button>
-              </div>
-            </SectionCard>
-          </div>
-
-          <div className="mt-4">
-            <SectionCard title="⭐ VIP 等級設定">
-              <VipTiersEditor />
-            </SectionCard>
-          </div>
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
