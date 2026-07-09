@@ -594,7 +594,7 @@ export default function TourDetailPage({
                 <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">（作為法律有效電子簽署）</span>
               </Label>
               <SignaturePad
-                height={200}
+                height={400}
                 onChange={(dataUrl, hasInk) => {
                   setSignatureDataUrl(hasInk ? dataUrl : null);
                   setSignedHasInk(hasInk);

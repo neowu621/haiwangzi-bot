@@ -1028,7 +1028,7 @@ export default function TripBookingPage({
                 </span>
               </Label>
               <SignaturePad
-                height={200}
+                height={400}
                 onChange={(dataUrl, hasInk) => {
                   setSignatureDataUrl(hasInk ? dataUrl : null);
                   setSignedHasInk(hasInk);
