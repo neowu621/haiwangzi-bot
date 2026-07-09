@@ -105,6 +105,17 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-08 — 全站桌機公開頁統一深色 top nav + footer（共用元件）（v826）
+
+老闆選「只統一深色 nav+footer，內容維持淺色」。抽共用元件套全站：
+
+- **新共用元件**（`src/components/site/`）：`SiteHeader.tsx`（sticky 深色、route 導覽連結、白 logo `variant="white"`、會員登入青光鈕，接 `current` 高亮）、`SiteFooter.tsx`（守護海洋標語 + 9 route 連結膠囊 + 版權，接 `note`）、`SiteChrome.module.css`（CSS module 自帶樣式、class 作用域化不撞全站，深海藍配色對齊 home.css）。
+- **一次套 8 頁**：`SeoShell`（/pricing /course /northsea-diving /comment /haiwangzi /schedule）頂部品牌列換 `<SiteHeader current>`、「更多介紹」內部互連換 `<SiteFooter>`；`LegalShell`（/faq /safety + privacy/terms）同樣換；兩殼**內容維持淺色**。
+- **/rewards** 改用共用元件（移除 v825 內嵌 .rwd-nav/.rwd-foot markup+CSS+常數）。
+- 首頁 `DesktopHome` 未動（其 SiteNav 有 scroll-spy/hash/dotnav 特殊行為，是深色範本；footer 較豐富）——視覺已與共用版一致，避免動主頁風險。
+- 驗證：dev fetch /pricing(SeoShell)、/faq(LegalShell)、/rewards 三頁皆有共用 nav(白logo)+footer(守護海洋)、內容完整、/rewards 舊 nav 已移除。build 通過(exit 0)。
+- **結果**：全部桌機公開頁（首頁 + 8 頁 + rewards）頂部/頁尾視覺一致（深色）。
+
 ## 2026-07-08 — /rewards 深色化 + 首頁式 top nav/footer（v824–825）
 
 老闆：/rewards（桌機）配色改深色系比照首頁；top+footer 也要跟首頁一樣。

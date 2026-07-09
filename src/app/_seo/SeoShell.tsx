@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LINE_BOOK_URL, LineIcon } from "../_home/data";
-import { MantaTridentMark } from "@/components/brand/MantaTrident";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { SiteFooter } from "@/components/site/SiteFooter";
 
 // v496：SEO 行銷頁共用版型（海洋品牌風、輕量、含 LINE CTA 與內部互連）
 // 用於 /course /northsea-diving /comment /haiwangzi —— 讓 Google 收錄、彼此互連提升爬取。
@@ -30,21 +31,10 @@ export function SeoShell({
   current: string;
   children: React.ReactNode;
 }) {
-  const others = SEO_PAGES.filter((p) => p.href !== current);
   return (
     <div style={{ minHeight: "100vh", background: "#eef3f6", color: "#1A2330", fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" }}>
-      {/* 頂部品牌列 */}
-      <header style={{ background: "#0A2342", color: "#fff" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <Link href="/" style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: 9 }}>
-            <MantaTridentMark size={26} />
-            <span style={{ fontWeight: 800, fontSize: 15 }}>東北角海王子潛水</span>
-          </Link>
-          <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ background: "#06c755", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 13, padding: "8px 14px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <LineIcon s={15} />LINE 預約
-          </a>
-        </div>
-      </header>
+      {/* v826：全站共用深色頂部導覽（對齊首頁） */}
+      <SiteHeader current={current} />
 
       {/* Hero */}
       <div style={{ background: "linear-gradient(160deg,#0A2342 0%,#0e3a6b 55%,#0a8f86 130%)", color: "#fff", padding: "40px 20px 46px" }}>
@@ -73,21 +63,9 @@ export function SeoShell({
           </div>
         </div>
 
-        {/* 內部互連（SEO） */}
-        <nav aria-label="更多介紹" style={{ marginTop: 30 }}>
-          <div style={{ fontSize: 13, color: "#7c9296", textAlign: "center", marginBottom: 12 }}>更多介紹</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
-            {others.map((p) => (
-              <Link key={p.href} href={p.href} style={{ background: "#fff", border: "1px solid #d6e0e8", borderRadius: 999, padding: "9px 16px", color: "#0A2342", textDecoration: "none", fontWeight: 700, fontSize: 13.5 }}>
-                <span style={{ marginRight: 6 }}>{p.icon}</span>{p.label}
-              </Link>
-            ))}
-          </div>
-          <div style={{ textAlign: "center", marginTop: 18 }}>
-            <Link href="/" style={{ color: "#0a8f86", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>← 回首頁</Link>
-          </div>
-        </nav>
       </main>
+      {/* v826：全站共用深色頁尾（route 連結，取代原「更多介紹」內部互連，SEO 互連保留） */}
+      <SiteFooter />
     </div>
   );
 }

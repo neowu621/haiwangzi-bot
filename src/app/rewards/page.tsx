@@ -5,23 +5,8 @@ import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
 import { getSiteConfigRow } from "@/lib/site-config-cache";
 import { normalizeVipTiers } from "@/lib/vip-tier";
-import { MantaTridentMark } from "@/components/brand/MantaTrident";
-
-// v825：頂部導覽（route 連結）＋頁尾連結，視覺對齊首頁
-const NAV_LINKS: { href: string; label: string; cur?: boolean }[] = [
-  { href: "/", label: "首頁" },
-  { href: "/course", label: "潛水課程" },
-  { href: "/pricing", label: "費用價目" },
-  { href: "/northsea-diving", label: "東北角潛點" },
-  { href: "/schedule", label: "本月場次" },
-  { href: "/rewards", label: "會員優惠", cur: true },
-  { href: "/faq", label: "常見問題" },
-];
-const FOOT_LINKS: [string, string][] = [
-  ["/schedule", "本月場次"], ["/course", "潛水課程"], ["/pricing", "費用價目"], ["/rewards", "會員優惠"],
-  ["/northsea-diving", "東北角潛點"], ["/comment", "學員評價"], ["/haiwangzi", "關於汪汪教練"],
-  ["/faq", "常見問題"], ["/safety", "潛水安全"],
-];
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { SiteFooter } from "@/components/site/SiteFooter";
 
 // v820：VIP 等級改「連動後台設定」——走版本號失效快取（getSiteConfigRow），
 //   會員讀取命中快取＝零 DB；後台按「儲存 VIP 設定」自動失效、下一次讀即生效。
@@ -134,38 +119,6 @@ body{background:#02152a;}
 .rwd .btn.line{background:#06C755; color:#fff;}
 .rwd .btn.ghost{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.28);}
 
-.rwd .rfoot{color:var(--muted); font-size:12px; text-align:center; padding:26px 20px 50px; line-height:1.7;}
-.rwd .rfoot a{color:var(--teal-d); font-weight:700; text-decoration:none;}
-
-/* v825：頂部導覽列（對齊首頁深海藍 nav）*/
-.rwd .rwd-nav{position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:16px; padding:12px 22px; background:rgba(2,21,42,.86); backdrop-filter:blur(14px); border-bottom:1px solid rgba(102,216,246,.14);}
-.rwd .rwd-brand{display:flex; align-items:center; gap:11px; text-decoration:none; color:#fff; flex:none;}
-.rwd .rwd-brand img, .rwd .rwd-brand svg{height:36px; width:auto; border-radius:8px;}
-.rwd .rwd-brand b{font-size:1.02rem; letter-spacing:.12em; font-weight:900; line-height:1.1; display:block;}
-.rwd .rwd-brand em{font-style:normal; font-size:.5rem; letter-spacing:.38em; color:var(--teal); text-transform:uppercase; display:block; margin-top:2px;}
-.rwd .rwd-navlinks{display:none; gap:24px; align-items:center; margin-left:14px; font-size:.92rem;}
-.rwd .rwd-navlinks a{position:relative; color:var(--muted); text-decoration:none; white-space:nowrap; transition:color .2s;}
-.rwd .rwd-navlinks a:hover{color:var(--ink);}
-.rwd .rwd-navlinks a.cur{color:var(--gold);}
-.rwd .rwd-navlinks a::after{content:""; position:absolute; left:0; bottom:-6px; width:0; height:2px; background:var(--teal); transition:width .25s;}
-.rwd .rwd-navlinks a:hover::after{width:100%;}
-.rwd .rwd-member{margin-left:auto; padding:8px 16px; border-radius:999px; font-size:14px; font-weight:700; color:var(--teal); border:1.5px solid rgba(102,216,246,.45); text-decoration:none; white-space:nowrap; transition:background .2s,color .2s; flex:none;}
-.rwd .rwd-member:hover{background:var(--teal); color:#06262e;}
-@media(min-width:920px){.rwd .rwd-navlinks{display:flex;}}
-@media(max-width:919px){.rwd .rwd-brand em{display:none;}}
-
-/* v825：頁尾（對齊首頁 footer）*/
-.rwd .rwd-foot{background:#02152a; border-top:1px solid rgba(102,216,246,.15); padding:48px 20px 42px; margin-top:44px;}
-.rwd .rwd-foot .fwrap{max-width:var(--maxw); margin:0 auto;}
-.rwd .foot-tag{text-align:center; margin-bottom:28px;}
-.rwd .foot-tag .zh{font-size:1.02rem; letter-spacing:.28em; color:#a5e8fb; font-weight:800;}
-.rwd .foot-tag .en{letter-spacing:.42em; font-size:.68rem; color:var(--muted); margin-top:8px; text-transform:uppercase;}
-.rwd .foot-pills{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:26px;}
-.rwd .foot-pills a{border:1px solid rgba(122,200,240,.22); border-radius:999px; padding:7px 15px; font-size:.86rem; color:var(--muted); text-decoration:none; transition:.2s;}
-.rwd .foot-pills a:hover{color:var(--ink); border-color:var(--teal);}
-.rwd .foot-bottom{text-align:center; color:rgba(159,196,226,.62); font-size:.8rem; padding-top:22px; border-top:1px solid rgba(102,216,246,.12); line-height:1.7;}
-.rwd .foot-bottom a{color:var(--teal-d); font-weight:700; text-decoration:none;}
-
 @media (max-width:600px){
   .rwd .wrap{padding:0 16px;}
   .rwd .hero{padding:44px 18px 60px;}
@@ -238,19 +191,8 @@ export default async function RewardsPage() {
     <main className="rwd">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      {/* v825：頂部導覽（route 連結，視覺對齊首頁）*/}
-      <nav className="rwd-nav" aria-label="主導覽">
-        <a href="/" className="rwd-brand">
-          <MantaTridentMark size={36} variant="white" title="東北角海王子" />
-          <span><b>東北角海王子</b><em>Northeast Coast Ocean Prince</em></span>
-        </a>
-        <div className="rwd-navlinks">
-          {NAV_LINKS.map((n) => (
-            <a key={n.href} href={n.href} className={n.cur ? "cur" : undefined}>{n.label}</a>
-          ))}
-        </div>
-        <a href="/pclogin" className="rwd-member">會員登入</a>
-      </nav>
+      {/* v826：全站共用深色頂部導覽 */}
+      <SiteHeader current="/rewards" />
 
       <header className="hero">
         <div className="bubbles" aria-hidden="true">
@@ -435,24 +377,8 @@ export default async function RewardsPage() {
         </section>
       </div>
 
-      <footer className="rwd-foot">
-        <div className="fwrap">
-          <div className="foot-tag">
-            <div className="zh">守護海洋 · 敬畏自然 · 探索深藍</div>
-            <div className="en">Protect · Respect · Explore</div>
-          </div>
-          <div className="foot-pills">
-            {FOOT_LINKS.map(([href, label]) => (
-              <a key={href} href={href}>{label}</a>
-            ))}
-          </div>
-          <div className="foot-bottom">
-            東北角海王子潛水 · 安全．專業，陪你看見海<br />
-            本頁為會員獎勵制度總覽；實際發放金額、限時檔期與折扣以系統設定與官方公告為準。<br />
-            <a href="/">← 回官網首頁</a>
-          </div>
-        </div>
-      </footer>
+      {/* v826：全站共用深色頁尾 */}
+      <SiteFooter note="東北角海王子潛水 · 本頁為會員獎勵制度總覽；實際發放金額、限時檔期與折扣以系統設定與官方公告為準。" />
     </main>
   );
 }
