@@ -19,6 +19,7 @@ export interface PriceBreakdownData {
   baseTrip?: number; divesAmount?: number; tankDiscountPerTank?: number; autoDiscount?: number;
   gearItems?: GearItem[]; gearAmountRaw?: number; gearAmount?: number; gearDiscountPct?: number;
   promoCode?: string | null; promoDiscount?: number; finalDiscount?: number;
+  carpoolFee?: number; // v828：共乘車資（客戶自填，需與教練確認）
   // tour
   basePrice?: number; addons?: Array<{ label: string; priceDelta: number }>; addonAmount?: number; deposit?: number;
   // 共用
@@ -99,6 +100,9 @@ export function PriceBreakdown({ pb, fallback }: {
         )}
         {promoWon && (
           <Row label={`優惠代碼 ${pb.promoCode ?? ""}`} value={`− ${ntd(promo)}`} tone="ok" />
+        )}
+        {(pb.carpoolFee ?? 0) > 0 && (
+          <Row label={<span style={{ color: "#B5631A" }}>🚗 共乘車資（自填·需與教練確認）</span>} value={`+ ${ntd(pb.carpoolFee ?? 0)}`} />
         )}
         <AdjRows adj={pb.bossAdjustments} />
         {hr}

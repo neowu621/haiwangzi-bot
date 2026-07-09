@@ -45,6 +45,8 @@ const BodySchema = z.object({
   creditUsed: z.number().int().min(0).optional().default(0),
   // v592：節慶優惠代碼（可空）
   promoCode: z.string().max(16).optional(),
+  // v828：共乘車資（客戶自填，需與教練確認；加進總額，不參與折扣）
+  carpoolFee: z.number().int().min(0).max(50000).optional().default(0),
   agreedToTerms: z.literal(true),
   // v260：手寫簽名 PNG data URL（後端解 base64 上傳 R2 後存 key 到 Booking）
   signatureDataUrl: z.string().optional(),
@@ -272,7 +274,9 @@ export async function POST(req: NextRequest) {
   }
 
   const finalDiscount = Math.max(autoDiscount, promoDiscount);
-  const totalAmount = Math.max(0, baseNoDiscount - finalDiscount);
+  // v828：共乘車資（自填，不參與折扣，加在折扣後）
+  const carpoolFee = Math.max(0, data.carpoolFee ?? 0);
+  const totalAmount = Math.max(0, baseNoDiscount - finalDiscount) + carpoolFee;
 
   // v592：日潛早鳥回饋(預計;訂單結案後才實際發放,30 天到期)
   // v638：套用教練氣瓶優惠價時，不發早鳥（獨佔）
@@ -371,6 +375,7 @@ export async function POST(req: NextRequest) {
     promoCode: promoCodeApplied,
     promoDiscount,
     finalDiscount,
+    carpoolFee, // v828：共乘車資（自填）
     totalAmount,
     creditUsed,
     payable: Math.max(0, totalAmount - creditUsed),

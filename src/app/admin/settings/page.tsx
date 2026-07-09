@@ -804,9 +804,6 @@ export default function SettingsPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
-              💡 VIP 會員租裝備時，依其等級的「裝備折扣%」自動打折（折扣% 在「⭐ VIP」分頁各級設定）。
-            </p>
           </div>
 
           {/* B2 抵用金 / 優惠項目 — v391：統一表格（項目 / 抵用金 / 有效天數 / 觸發條件 / 說明） */}

@@ -169,6 +169,9 @@ export default function TripBookingPage({
   // v638：教練/助教 氣瓶優惠價（固定每支價），由 /api/me 回傳；active 時氣瓶單價改用此價且獨佔
   const [staffTank, setStaffTank] = useState<{ active: boolean; price: number }>({ active: false, price: 0 });
   const [creditUsed, setCreditUsed] = useState(0);
+  // v828：共乘車資（自填，需與教練確認）
+  const [carpool, setCarpool] = useState(false);
+  const [carpoolFee, setCarpoolFee] = useState(0);
   // v592：節慶優惠代碼
   const [promoInput, setPromoInput] = useState("");
   const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
@@ -394,7 +397,9 @@ export default function TripBookingPage({
   const totalTanksAll = tankCount * participants;
   // v638：套用教練氣瓶優惠價時，優惠代碼不生效（獨佔）
   const codeDiscountEff = !staffTankApplied && promoApplied && promoApplied.discount > tankSaved ? promoApplied.discount : 0;
-  const finalTotal = Math.max(0, preDiscountTotal - Math.max(tankSaved, codeDiscountEff));
+  // v828：共乘車資（自填，折扣後加上）
+  const carpoolFeeEff = carpool ? Math.max(0, Math.round(carpoolFee)) : 0;
+  const finalTotal = Math.max(0, preDiscountTotal - Math.max(tankSaved, codeDiscountEff)) + carpoolFeeEff;
   // v701：底部「應付金額」需扣掉抵用金折抵（後端本就有扣，這裡讓顯示對齊）
   const creditUsedEff = Math.min(creditUsed, creditBalance, finalTotal);
   const payable = Math.max(0, finalTotal - creditUsedEff);
@@ -501,6 +506,8 @@ export default function TripBookingPage({
         creditUsed: Math.min(creditUsed, creditBalance, finalTotal),
         // v592：節慶優惠代碼(後端二次驗證 + 取其優)
         promoCode: promoApplied?.code,
+        // v828：共乘車資（自填，後端加進總額）
+        carpoolFee: carpoolFeeEff,
         agreedToTerms: true as const,
         // v260：手寫簽名 PNG data URL（後端解 base64 → 上 R2）
         signatureDataUrl: signatureDataUrl ?? undefined,
@@ -1180,10 +1187,37 @@ export default function TripBookingPage({
                   <span>− NT$ {gearSaved.toLocaleString()}</span>
                 </div>
               )}
+              {carpoolFeeEff > 0 && (
+                <div className="flex justify-between">
+                  <span>🚗 共乘車資（自填）</span>
+                  <span>+ NT$ {carpoolFeeEff.toLocaleString()}</span>
+                </div>
+              )}
               {creditUsedEff > 0 && (
                 <div className="flex justify-between text-[var(--color-phosphor)]">
                   <span>🎁 已折抵</span>
                   <span>− NT$ {creditUsedEff.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+            {/* v828：共乘選項（結帳金額前）—— 勾選自填車資，需先跟教練預約、確認車資地點 */}
+            <div className="mt-2 border-t border-dashed border-[var(--border)] pt-2">
+              <label className="flex cursor-pointer items-center gap-2 text-xs">
+                <input type="checkbox" checked={carpool} className="h-4 w-4"
+                  onChange={(e) => { setCarpool(e.target.checked); if (!e.target.checked) setCarpoolFee(0); }} />
+                <span className="font-semibold">🚗 我要共乘（需與汪汪教練預約）</span>
+              </label>
+              {carpool && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-xs text-[var(--muted-foreground)]">車資（自填 NT$）</span>
+                    <Input type="number" min={0} value={carpoolFee || ""} placeholder="0"
+                      onChange={(e) => setCarpoolFee(Math.max(0, Number(e.target.value) || 0))}
+                      className="h-8 w-24 text-right text-sm font-bold tabular" />
+                  </div>
+                  <div className="mt-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-800">
+                    ⚠️ 每日共乘名額有限，請務必<b>提前向汪汪教練預約</b>；實際<b>車資與上車地點</b>也請先跟汪汪教練確認清楚，此處金額為預估、以教練確認為準。
+                  </div>
                 </div>
               )}
             </div>

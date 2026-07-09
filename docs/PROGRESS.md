@@ -105,6 +105,14 @@
 - `npm run build` 通過（exit 0）。
 - 註：訂單管理頁 v753「一鍵現場收現結清」目前仍只收款不標到場（同源問題）；本版先修老闆結帳頁（老闆點截圖處）。若要全站一致，下輪把該按鈕也併入 settle+attend。
 
+## 2026-07-09 — 日潛下單加「共乘車資」選項 + 移除裝備折扣提示（v828）
+
+- **移除**：系統設定「金額設定」裡「💡 VIP 會員租裝備時…裝備折扣%…」那段提示 `<p>`（`admin/settings/page.tsx`）。
+- **日潛下單「是否共乘」**（`liff/dive/trip/[tripId]/page.tsx`）：結帳金額前加勾選框「🚗 我要共乘」；勾選 → 自填車資 NT$ 輸入 + 黃色提醒（每日名額有限需提前向教練預約、車資與上車地點須跟教練確認、此金額為預估以教練確認為準）。共乘費折扣後加進 finalTotal（可被抵用金折抵）、明細顯示「🚗 共乘車資（自填）」。
+- **伺服器**（`api/bookings/daily/route.ts`）：BodySchema 加 `carpoolFee`(0~50000)；`totalAmount = baseNoDiscount − finalDiscount + carpoolFee`；存入 `priceBreakdown.carpoolFee`（**用現成 Json 欄位、免資料庫遷移**）。
+- **後台明細**（`components/admin/PriceBreakdown.tsx`）：daily 加「🚗 共乘車資」列（教練協調需看到）。
+- build 通過(exit 0)。⚠️ 會員端「我的訂單」明細若重算可能未逐項列共乘，但 totalAmount 已含（總額正確）；LIFF 需真機測。
+
 ## 2026-07-08 — 系統設定「金額」與「VIP」tab 合併 + 去重（v827）
 
 老闆：系統設定的 VIP 與金額合併成同一 tab、去除重複、重排順序更有邏輯。
