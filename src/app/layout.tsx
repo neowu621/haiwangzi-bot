@@ -30,7 +30,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "東北角海王子潛水",
-    images: ["/home/src-hero-diver.webp"],
+    // v831：改用 JPG 品牌大圖（1200×630）。原 webp 部分平台(LINE 等)不支援 → 會 fallback 抓 favicon
+    //   並被墊白底(白邊)。改 JPG 後 LINE/FB/Twitter 直接顯示這張乾淨大圖。
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, type: "image/jpeg" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "東北角海王子潛水",
+    description: "汪汪教練帶你安心探索水下世界 · 體驗潛水/OW/AOW/Fun Dive/潛旅",
+    images: ["/og-image.jpg"],
   },
 };
 
