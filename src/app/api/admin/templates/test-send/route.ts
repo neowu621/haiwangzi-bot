@@ -11,6 +11,7 @@ import {
   composeFullBody,
   composeEmail,
   msgField,
+  resolveLinkUrl,
 } from "@/lib/message-content"; // v480：與正式發送同一份組稿（單一來源）
 
 export const runtime = "nodejs";
@@ -74,11 +75,18 @@ export async function POST(req: NextRequest) {
     const body =
       composeFullBody(key, params, override) ||
       "正式寄送時動態欄位（客戶名、日期、金額等）會自動帶入。";
-    // 試送不掛連結（測試到自己、無需導頁）→ 詳情視窗底部顯示「關閉通知」
+    // v835：試送＝正式 — 掛上與正式發送相同的連結（後台按鈕連結 > 到場確認 Google 預設 > resolveLinkUrl），
+    //   讓詳情視窗底部顯示「前往查看 →」，能忠實預覽站內通知的導頁。
+    const savedBtnUrl = override?.buttonUrl && override.buttonUrl.length > 0 ? override.buttonUrl : null;
+    const linkUrl =
+      savedBtnUrl ??
+      (key === "attendance_confirmed"
+        ? (typeof params.reviewUrl === "string" && params.reviewUrl ? params.reviewUrl : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5")
+        : resolveLinkUrl(params));
     const icon = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META]?.icon ?? null;
     try {
       await prisma.notification.create({
-        data: { userId: auth.user.lineUserId, templateKey: key, title: `（測試）${title}`, body, linkUrl: null, icon },
+        data: { userId: auth.user.lineUserId, templateKey: key, title: `（測試）${title}`, body, linkUrl, icon },
       });
       logMessage({ channel: "inapp", templateKey: key, recipientId: auth.user.lineUserId, recipient: "（試送到我）", title: `（測試）${title}`, status: "sent", source: "test" });
       return NextResponse.json({ ok: true, channel: "inApp", sentTo: auth.user.lineUserId });
