@@ -145,26 +145,42 @@ export default function AdminTemplatesPage() {
   const [leadDays, setLeadDays] = useState<Record<string, number>>({});
   const [leadSaving, setLeadSaving] = useState(false);
   const [backfilling, setBackfilling] = useState(false); // v782：一鍵補推到場確認/五星好評
+  // v835：補推預覽名單（先看哪些人/場次，確認才送）
+  type BackfillRow = { id: string; name: string; session: string; date: string | null };
+  const [backfillPreview, setBackfillPreview] = useState<{ eligible: number; list: BackfillRow[]; listTruncated: boolean } | null>(null);
+  const [backfillSending, setBackfillSending] = useState(false);
 
-  // v782：補推「到場確認／五星好評」給之前已到場但沒收到的客戶
+  // v782/v835：補推「到場確認／五星好評」— 先撈名單開預覽，確認後才送
   async function backfillReview() {
     setBackfilling(true);
     setErr(null);
     try {
-      const c = await adminFetch<{ eligible: number; days: number }>(
+      const c = await adminFetch<{ eligible: number; days: number; list: BackfillRow[]; listTruncated: boolean }>(
         "/api/admin/backfill-attendance-review?days=45",
       );
       if (c.eligible === 0) { setToast("近 45 天沒有漏發的到場客戶 🎉"); return; }
-      if (!window.confirm(`近 45 天有 ${c.eligible} 位已到場、但沒收到「到場確認／五星好評」。\n\n要一鍵補推給他們嗎？（每位只發一次，不會重複打擾）`)) return;
+      setBackfillPreview({ eligible: c.eligible, list: c.list ?? [], listTruncated: c.listTruncated ?? false });
+    } catch (e) {
+      setToast("讀取名單失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBackfilling(false);
+    }
+  }
+
+  // v835：預覽確認後，真的送出補推
+  async function doBackfillSend() {
+    setBackfillSending(true);
+    try {
       const r = await adminFetch<{ sent: number; remaining: number }>(
         "/api/admin/backfill-attendance-review",
         { method: "POST", body: JSON.stringify({ days: 45 }) },
       );
+      setBackfillPreview(null);
       setToast(`✓ 已補推 ${r.sent} 位${r.remaining > 0 ? `，還剩 ${r.remaining} 位（可再按一次）` : ""}`);
     } catch (e) {
       setToast("補推失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
-      setBackfilling(false);
+      setBackfillSending(false);
     }
   }
 
@@ -508,6 +524,36 @@ export default function AdminTemplatesPage() {
                       >
                         {backfilling ? "處理中…" : "🔔 一鍵補推近 45 天漏發的"}
                       </button>
+                    </div>
+                  )}
+
+                  {/* v835：補推預覽名單 — 先看哪些人/場次，確認才送 */}
+                  {backfillPreview && (
+                    <div
+                      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+                      onClick={() => { if (!backfillSending) setBackfillPreview(null); }}
+                    >
+                      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, maxWidth: 460, width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,.3)" }}>
+                        <div style={{ padding: "14px 16px", borderBottom: "1px solid #eee" }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#0e4c5a" }}>🔔 補推預覽 · 共 {backfillPreview.eligible} 位</div>
+                          <div style={{ fontSize: 11.5, color: "#7a8a90", marginTop: 3, lineHeight: 1.5 }}>以下客戶「已到場、但還沒收到到場確認／五星好評」。確認後每位只發一次，不會重複打擾。</div>
+                        </div>
+                        <div style={{ overflowY: "auto", padding: "4px 0", flex: 1 }}>
+                          {backfillPreview.list.map((r, i) => (
+                            <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 16px", borderBottom: "1px solid #f4f4f4", fontSize: 12.5 }}>
+                              <span style={{ fontWeight: 700, color: "#223" }}>{i + 1}. {r.name}</span>
+                              <span style={{ color: "#667", textAlign: "right" }}>{r.session}{r.date ? ` · ${r.date}` : ""}</span>
+                            </div>
+                          ))}
+                          {backfillPreview.listTruncated && (
+                            <div style={{ padding: "8px 16px", fontSize: 11.5, color: "#999" }}>… 僅列出前 {backfillPreview.list.length} 位，全部 {backfillPreview.eligible} 位都會補推</div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid #eee" }}>
+                          <button type="button" onClick={() => setBackfillPreview(null)} disabled={backfillSending} style={{ flex: 1, padding: "9px", borderRadius: 9, border: "1px solid #ddd", background: "#fff", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>取消</button>
+                          <button type="button" onClick={doBackfillSend} disabled={backfillSending} style={{ flex: 2, padding: "9px", borderRadius: 9, border: "none", background: "#0e7490", color: "#fff", fontSize: 13, fontWeight: 800, cursor: backfillSending ? "default" : "pointer", opacity: backfillSending ? 0.6 : 1 }}>{backfillSending ? "補推中…" : `確認補推 ${backfillPreview.eligible} 位`}</button>
+                        </div>
+                      </div>
                     </div>
                   )}
 

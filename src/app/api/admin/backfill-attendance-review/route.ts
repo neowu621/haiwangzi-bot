@@ -28,6 +28,33 @@ async function findEligible(days: number, take: number) {
   });
 }
 
+// 把 eligible bookings 補上「姓名 / 場次 / 日期」給前端預覽名單
+async function enrichList(bookings: Awaited<ReturnType<typeof findEligible>>) {
+  const dailyIds = bookings.filter((b) => b.type === "daily").map((b) => b.refId);
+  const tourIds = bookings.filter((b) => b.type === "tour").map((b) => b.refId);
+  const [trips, tours, users] = await Promise.all([
+    dailyIds.length ? prisma.divingTrip.findMany({ where: { id: { in: dailyIds } }, select: { id: true, date: true, startTime: true } }) : Promise.resolve([]),
+    tourIds.length ? prisma.tourPackage.findMany({ where: { id: { in: tourIds } }, select: { id: true, title: true } }) : Promise.resolve([]),
+    prisma.user.findMany({ where: { lineUserId: { in: Array.from(new Set(bookings.map((b) => b.userId))) } }, select: { lineUserId: true, realName: true, displayName: true } }),
+  ]);
+  const tripMap = new Map(trips.map((t) => [t.id, t]));
+  const tourMap = new Map(tours.map((t) => [t.id, t]));
+  const userMap = new Map(users.map((u) => [u.lineUserId, u]));
+  return bookings.map((b) => {
+    const u = userMap.get(b.userId);
+    let session = "潛水行程";
+    let date: string | null = null;
+    if (b.type === "daily") {
+      const t = tripMap.get(b.refId);
+      if (t) { session = `日潛 ${t.startTime}`; date = t.date.toISOString().slice(0, 10); }
+    } else {
+      const t = tourMap.get(b.refId);
+      if (t) session = t.title;
+    }
+    return { id: b.id, name: u?.realName || u?.displayName || "（未命名）", session, date };
+  });
+}
+
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
@@ -39,7 +66,10 @@ export async function GET(req: NextRequest) {
   const eligible = await prisma.booking.count({
     where: { status: "completed", reviewSentAt: null, updatedAt: { gte: since } },
   });
-  return NextResponse.json({ eligible, days });
+  // v835：回傳名單（最多前 100 筆）給前端預覽，讓老闆先看「哪些人/場次」再送
+  const bookings = await findEligible(days, Math.min(eligible, 100));
+  const list = await enrichList(bookings);
+  return NextResponse.json({ eligible, days, list, listTruncated: eligible > list.length });
 }
 
 export async function POST(req: NextRequest) {
