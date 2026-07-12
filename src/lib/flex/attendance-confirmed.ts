@@ -126,6 +126,7 @@ export function attendanceConfirmed(
     footer: {
       type: "box",
       layout: "vertical",
+      spacing: "sm",
       paddingAll: "12px",
       contents: [
         {
@@ -137,6 +138,19 @@ export function attendanceConfirmed(
             type: "uri",
             label: ovr(override, "buttonLabel", "給予我們 ⭐⭐⭐⭐⭐ 評價"),
             uri: reviewUrl,
+          },
+        },
+        {
+          // v833：第二顆「私訊反映」分流 —— message action 直接把訊息貼回對話，
+          //   讓不滿意/有建議的客人私下告訴小編與教練（合規：兩個選項都給、不擋評）。
+          type: "button",
+          style: "secondary",
+          height: "sm",
+          action: {
+            type: "message",
+            // v834：按鈕文字後台可編輯（/admin/templates → 到場確認）；貼回對話的訊息固定
+            label: ovr(override, "button2Label", "💬 有需要改善?告訴我們"),
+            text: "我想回饋這次潛水的體驗與建議 🙏",
           },
         },
       ],

@@ -51,6 +51,7 @@ interface AdminBooking {
   participants: number;
   tankCount?: number | null; // v707：客戶實際選的潛次（每人）；舊單 null → fallback ref.tankCount
   overCapacity?: boolean;
+  reviewSentAt?: string | null; // v833：五星評價邀請已發送時間（到場自動 or 老闆手動補發）
   createdAt: string;
   notes?: string | null;
   siteNotes?: string | null;
@@ -217,6 +218,7 @@ export default function AdminBookingsPage() {
   const [contactResult, setContactResult] = useState<string | null>(null);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   const [filterNeedRefund, setFilterNeedRefund] = useState(false); // v757：只看「待退款」
+  const [filterNeedReview, setFilterNeedReview] = useState(false); // v833：只看「已完成 × 未邀請評價」
   // v294/v329：依 URL ?status= 讀預設值，支援多選（逗號分隔）
   //   filterStatusSet 為 empty Set = "全部"；有東西在 set 內 = 只顯示這些
   // v609/v662：預設顯示「正常流程進行中、需關注付款」的訂單（建立訂單/等待付款/待確認匯款/已確認付款訂金/已完成付款）
@@ -290,6 +292,8 @@ export default function AdminBookingsPage() {
 
   // 完成 quick action
   const [completing, setCompleting] = useState<string | null>(null);
+  // v833：發送五星評價邀請 quick action
+  const [sendingReview, setSendingReview] = useState<string | null>(null);
 
   // 付款憑證
   interface PaymentProof {
@@ -445,6 +449,29 @@ export default function AdminBookingsPage() {
     }
   }
 
+  // v833：發送/補發「五星評價邀請」給單筆已完成潛水的客戶
+  async function sendReview(b: AdminBooking, force = false) {
+    if (b.status !== "completed") { alert("僅能對「已完成」的潛水發送評價邀請"); return; }
+    if (sendingReview) return;
+    if (b.reviewSentAt && !force) {
+      if (!confirm(`此訂單已於 ${String(b.reviewSentAt).slice(0, 10)} 發送過評價邀請，要再發一次嗎？`)) return;
+      force = true;
+    }
+    setSendingReview(b.id);
+    try {
+      await adminFetch(`/api/admin/bookings/${b.id}/send-review`, {
+        method: "POST",
+        body: JSON.stringify({ force }),
+      });
+      const now = new Date().toISOString();
+      setBookings((arr) => arr.map((x) => (x.id === b.id ? { ...x, reviewSentAt: now } : x)));
+    } catch (e) {
+      alert("發送評價邀請失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSendingReview(null);
+    }
+  }
+
   async function doNoShow() {
     if (!noShowTarget) return;
     setNoShowBusy(true);
@@ -532,9 +559,14 @@ export default function AdminBookingsPage() {
   }
 
   const refundPendingCount = bookings.filter(bookingNeedsRefund).length; // v757
+  // v833：已完成但尚未發過評價邀請
+  const needsReviewInvite = (b: AdminBooking) => b.status === "completed" && !b.reviewSentAt;
+  const reviewPendingCount = bookings.filter(needsReviewInvite).length;
   const filteredBookings = bookings.filter((b) => {
     // v757：「待退款」模式 → 只看需退款的單，略過狀態/付款/場次/期間篩選
     if (filterNeedRefund) return bookingNeedsRefund(b);
+    // v833：「未邀請評價」模式 → 只看已完成且未發過邀請的單
+    if (filterNeedReview) return needsReviewInvite(b);
     const payOk = filterPayStatus === "all" || b.paymentStatus === filterPayStatus;
     if (!payOk) return false;
     // v294：booking.status filter — 給「待確認付款」快捷連結 (?status=awaiting_verify)
@@ -1010,6 +1042,22 @@ export default function AdminBookingsPage() {
                 >
                   ⏳ 待退款{refundPendingCount > 0 ? ` ${refundPendingCount}` : ""}
                 </button>
+                {/* v833：未邀請評價 — 已完成但還沒發過五星評價邀請 */}
+                <button
+                  type="button"
+                  onClick={() => setFilterNeedReview((v) => !v)}
+                  title="已完成的潛水但還沒發過 Google 五星評價邀請，可手動補發"
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1",
+                    filterNeedReview
+                      ? "bg-[var(--color-gold)] text-white"
+                      : reviewPendingCount > 0
+                        ? "bg-[var(--color-gold)]/15 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/25"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                  )}
+                >
+                  ⭐ 未邀請評價{reviewPendingCount > 0 ? ` ${reviewPendingCount}` : ""}
+                </button>
                 {filterStatusSet.size > 0 && (
                   <div className="flex items-center gap-2 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs">
                     <span>🔍 只顯示 {filterStatusSet.size} 項</span>
@@ -1299,6 +1347,25 @@ export default function AdminBookingsPage() {
                                   ✗
                                 </Button>
                               </>
+                            )}
+                            {/* v833：已完成 → 發送/補發 Google 五星評價邀請（已發過變灰、可再發） */}
+                            {b.status === "completed" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => sendReview(b)}
+                                disabled={sendingReview === b.id}
+                                title={b.reviewSentAt
+                                  ? `已於 ${String(b.reviewSentAt).slice(0, 10)} 發送評價邀請（點可再發一次）`
+                                  : "發送 Google 五星評價邀請給客戶"}
+                                className={cn(
+                                  b.reviewSentAt
+                                    ? "border-[var(--border)] text-[var(--muted-foreground)]"
+                                    : "border-[var(--color-gold)] text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10",
+                                )}
+                              >
+                                {sendingReview === b.id ? "…" : b.reviewSentAt ? "⭐✓" : "⭐"}
+                              </Button>
                             )}
                             <Button
                               size="sm"

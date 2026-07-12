@@ -863,6 +863,7 @@ model MessageTemplate {
   bodyText     String?  @map("body_text")
   buttonLabel  String?  @map("button_label")
   buttonUrl    String?  @map("button_url") // v792：按鈕點擊連結（後台可編輯，如到場確認的 Google 評論網址）
+  button2Label String?  @map("button2_label") // v834：第二顆按鈕文字（到場確認的「私訊反映」）
   altText      String?  @map("alt_text")
   footerHint   String?  @map("footer_hint") // v480
   // v196：管道開關（null = 用 template 預設）

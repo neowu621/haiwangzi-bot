@@ -61,8 +61,18 @@ export async function GET(req: NextRequest) {
   const tripMap = new Map(trips.map((t) => [t.id, t]));
   const tourMap = new Map(tours.map((t) => [t.id, t]));
 
+  // v834：五星評價連結（後台 /admin/templates → 到場確認 可編輯，退回預設）— 給「我的預約」評價卡用
+  const reviewTpl = await prisma.messageTemplate.findUnique({
+    where: { key: "attendance_confirmed" },
+    select: { buttonUrl: true },
+  });
+  const reviewUrl = reviewTpl?.buttonUrl && reviewTpl.buttonUrl.length > 0
+    ? reviewTpl.buttonUrl
+    : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5";
+
   const t4 = Date.now();
   const result = {
+    reviewUrl, // v834
     bookings: await Promise.all(bookings.map(async (b) => {
       const ref = b.type === "daily" ? tripMap.get(b.refId) : tourMap.get(b.refId);
       // v153 起：diveSiteIds 可能直接存中文名稱，DiveSite 表內找不到時 fallback 用 id 本身
@@ -96,6 +106,7 @@ export async function GET(req: NextRequest) {
         notes: b.notes,
         siteNotes: b.siteNotes, // v663：給客戶的提醒（客戶可見）
         createdAt: b.createdAt,
+        reviewSentAt: b.reviewSentAt, // v834：老闆已發過評價邀請 → 我的預約顯示長駐評價卡
         // v289：同意聲明資料
         signatureUrl,
         signedAt: b.signedAt,

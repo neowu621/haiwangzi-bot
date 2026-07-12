@@ -13,6 +13,7 @@ export type MsgFieldKey =
   | "bodyText"
   | "buttonLabel"
   | "buttonUrl"
+  | "button2Label" // v834：第二顆按鈕文字（到場確認的「私訊反映」）
   | "altText"
   | "footerHint";
 
@@ -23,6 +24,7 @@ export interface MsgOverride {
   bodyText?: string | null;
   buttonLabel?: string | null;
   buttonUrl?: string | null; // v792
+  button2Label?: string | null; // v834
   altText?: string | null;
   footerHint?: string | null;
 }
@@ -102,6 +104,7 @@ export const MSG_EDITABLE_FIELDS: Record<
     { key: "bodyText", label: "說明文字", defaultValue: "🎉 謝謝你和東北海王子潛水一起下水！今天玩得開心嗎？" },
     { key: "buttonLabel", label: "按鈕文字", defaultValue: "給予我們 ⭐⭐⭐⭐⭐ 評價" },
     { key: "buttonUrl", label: "按鈕連結（點擊前往的網址）", defaultValue: "https://maps.app.goo.gl/L58ukZuJroo5vbjv5" },
+    { key: "button2Label", label: "第二顆按鈕文字（不滿意→私訊反映）", defaultValue: "💬 有需要改善?告訴我們" },
     { key: "altText", label: "通知列文字", defaultValue: "已記錄到場・給我們五星好評 ⭐" },
   ],
   first_order_reward_grant: [

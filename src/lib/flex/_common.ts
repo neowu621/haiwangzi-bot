@@ -20,6 +20,7 @@ export interface TemplateOverride {
   bodyText?: string | null;
   buttonLabel?: string | null;
   buttonUrl?: string | null; // v792：按鈕點擊連結（後台可編輯）
+  button2Label?: string | null; // v834：第二顆按鈕文字（到場確認的「私訊反映」）
   altText?: string | null;
   // v270：first_order_reward_grant 等模板用
   footerHint?: string | null;

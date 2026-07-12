@@ -94,6 +94,7 @@ interface MyBooking {
   signatureUrl?: string | null;
   signedAt?: string | null;
   agreedToTermsAt?: string | null;
+  reviewSentAt?: string | null; // v834：老闆已發過評價邀請 → 顯示長駐評價卡
   // 後端：daily booking 額外加 refId 給 photo gallery 用（daily only）
   refId?: string;
   // 多人預約：本人以外的潛伴明細
@@ -217,6 +218,8 @@ export default function MyBookingsPage() {
   const [gearOptions, setGearOptions] = useState<GearOption[]>(GEAR_OPTIONS_DEFAULT);
   // v289：政策內容（給同意聲明彈窗用）
   const [policies, setPolicies] = useState<{ cancellation: string; safety: string }>({ cancellation: "", safety: "" });
+  // v834：Google 五星評價連結（後台可編輯，退回預設）— 我的預約完成卡用
+  const [reviewUrl, setReviewUrl] = useState("https://maps.app.goo.gl/L58ukZuJroo5vbjv5");
 
   useEffect(() => {
     fetchGearOptions().then(setGearOptions);
@@ -237,9 +240,11 @@ export default function MyBookingsPage() {
       .then((d) => setWishes(d.wishes ?? []))
       .catch(() => {});
     liff
-      .fetchWithAuth<{ bookings: MyBooking[] }>("/api/bookings/my")
+      .fetchWithAuth<{ bookings: MyBooking[]; reviewUrl?: string }>("/api/bookings/my")
       .then((d) => {
         setBookings(d.bookings);
+        if (d.reviewUrl) setReviewUrl(d.reviewUrl); // v834
+
         try {
           // v293：剝掉 R2 presigned URL（10 分鐘 TTL），下次讀 cache 時不會看到 broken image
           const cacheable = d.bookings.map((b) => ({
@@ -364,7 +369,7 @@ export default function MyBookingsPage() {
             {hydrated && loading && bookings.length === 0 && <LiffLoading variant="skeleton" count={3} label="正在載入您的訂單..." />}
             {hydrated && !loading && grouped.up.length === 0 && <EmptyState />}
             {grouped.up.map((b) => (
-              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} reviewUrl={reviewUrl} />
             ))}
           </TabsContent>
           <TabsContent value="wishes" className="space-y-3">
@@ -417,7 +422,7 @@ export default function MyBookingsPage() {
           <TabsContent value="done" className="space-y-3">
             {hydrated && grouped.done.length === 0 && <EmptyState text="還沒有完成紀錄" />}
             {grouped.done.map((b) => (
-              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} reviewUrl={reviewUrl} />
             ))}
           </TabsContent>
           <TabsContent value="cancelled" className="space-y-3">
@@ -425,7 +430,7 @@ export default function MyBookingsPage() {
               <EmptyState text="沒有已取消的訂單" />
             )}
             {grouped.cancelled.map((b) => (
-              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} />
+              <BookingCard key={b.id} b={b} onCancel={() => cancelBooking(b)} onOpenAgreement={() => setAgreementBooking(b)} reviewUrl={reviewUrl} />
             ))}
           </TabsContent>
         </Tabs>
@@ -539,10 +544,12 @@ function BookingCard({
   b,
   onCancel,
   onOpenAgreement,
+  reviewUrl,
 }: {
   b: MyBooking;
   onCancel: () => void;
   onOpenAgreement: () => void;
+  reviewUrl: string; // v834
 }) {
   const isDaily = b.type === "daily";
   const ref = b.ref;
@@ -894,6 +901,36 @@ function BookingCard({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* v834：潛後長駐評價卡（已完成 且 老闆已發過邀請才顯示）— 滿意→Google 五星、需改善→私訊 */}
+        {b.status === "completed" && b.reviewSentAt && (
+          <div className="mt-3 border-t border-[var(--border)] pt-3">
+            <div className="rounded-xl border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/10 p-3">
+              <div className="text-xs font-semibold">⭐ 喜歡這次潛水嗎？</div>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+                花 10 秒給我們一個 Google 五星鼓勵，是汪汪教練與小編最大的動力 🙏
+              </p>
+              <div className="mt-2 flex flex-col gap-2">
+                <a
+                  href={reviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg bg-[var(--color-gold)] px-3 py-2 text-center text-xs font-bold text-white"
+                >
+                  ⭐ 給我們 5 星鼓勵
+                </a>
+                <a
+                  href="https://line.me/R/ti/p/%40894bpmew"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg border border-[var(--border)] px-3 py-2 text-center text-xs font-semibold text-[var(--muted-foreground)]"
+                >
+                  💬 有需要改善？私訊我們
+                </a>
+              </div>
+            </div>
           </div>
         )}
 
