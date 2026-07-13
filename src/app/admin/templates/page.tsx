@@ -184,6 +184,41 @@ export default function AdminTemplatesPage() {
     }
   }
 
+  // v840：一鍵提醒「Email 沒填/沒驗證」的會員去驗證拿註冊禮金
+  type VerifyRow = { id: string; name: string; reason: string };
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifySending, setVerifySending] = useState(false);
+  const [verifyPreview, setVerifyPreview] = useState<{ eligible: number; amount: number; list: VerifyRow[]; listTruncated: boolean } | null>(null);
+  async function openVerifyPreview() {
+    setVerifyLoading(true);
+    try {
+      const c = await adminFetch<{ eligible: number; amount: number; list: VerifyRow[]; listTruncated: boolean }>(
+        "/api/admin/verify-email-reminder",
+      );
+      if (c.eligible === 0) { setToast("目前沒有「未填/未驗證 Email」且還沒提醒過的會員 🎉"); return; }
+      setVerifyPreview({ eligible: c.eligible, amount: c.amount, list: c.list ?? [], listTruncated: c.listTruncated ?? false });
+    } catch (e) {
+      setToast("讀取名單失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setVerifyLoading(false);
+    }
+  }
+  async function doVerifySend() {
+    setVerifySending(true);
+    try {
+      const r = await adminFetch<{ sent: number; remaining: number }>(
+        "/api/admin/verify-email-reminder",
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      setVerifyPreview(null);
+      setToast(`✓ 已提醒 ${r.sent} 位${r.remaining > 0 ? `，還剩 ${r.remaining} 位` : ""}`);
+    } catch (e) {
+      setToast("提醒失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setVerifySending(false);
+    }
+  }
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
@@ -384,6 +419,51 @@ export default function AdminTemplatesPage() {
           {providerSaving && <span style={{ fontSize: 11, color: "#0a8f86" }}>儲存中…</span>}
           <span style={{ fontSize: 11, color: "#7c9296" }}>所有 Email（試送＋正式）都走此路徑</span>
         </div>
+
+        {/* v840：一鍵提醒「Email 沒填/沒驗證」的會員去驗證拿註冊禮金 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fdf6e9", border: "1px solid #f0e0bf", borderRadius: 10, padding: "9px 13px", marginBottom: 12 }}>
+          <span style={{ fontSize: 12.5, color: "#7a5b20", flex: 1, minWidth: 180, lineHeight: 1.55 }}>
+            🎁 <b>一鍵提醒驗證 Email</b>：對「Email 沒填 / 沒驗證」的會員推 LINE＋站內，鼓勵驗證領註冊禮金。每人只提醒一次。
+          </span>
+          <button
+            type="button"
+            onClick={openVerifyPreview}
+            disabled={verifyLoading}
+            style={{ fontSize: 12.5, fontWeight: 700, padding: "7px 14px", borderRadius: 9, border: "none", background: "#d99a1e", color: "#fff", cursor: verifyLoading ? "default" : "pointer", opacity: verifyLoading ? 0.6 : 1 }}
+          >
+            {verifyLoading ? "讀取中…" : "🎁 一鍵提醒未驗證的會員"}
+          </button>
+        </div>
+
+        {/* v840：提醒預覽名單 */}
+        {verifyPreview && (
+          <div
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+            onClick={() => { if (!verifySending) setVerifyPreview(null); }}
+          >
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, maxWidth: 460, width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,.3)" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "1px solid #eee" }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#8a5a12" }}>🎁 提醒預覽 · 共 {verifyPreview.eligible} 位</div>
+                <div style={{ fontSize: 11.5, color: "#7a8a90", marginTop: 3, lineHeight: 1.5 }}>以下會員「Email 沒填或沒驗證」。推播鼓勵他們驗證領 {verifyPreview.amount} 元。每人只提醒一次。</div>
+              </div>
+              <div style={{ overflowY: "auto", padding: "4px 0", flex: 1 }}>
+                {verifyPreview.list.map((r, i) => (
+                  <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 16px", borderBottom: "1px solid #f4f4f4", fontSize: 12.5 }}>
+                    <span style={{ fontWeight: 700, color: "#223" }}>{i + 1}. {r.name}</span>
+                    <span style={{ color: "#b3760a" }}>{r.reason}</span>
+                  </div>
+                ))}
+                {verifyPreview.listTruncated && (
+                  <div style={{ padding: "8px 16px", fontSize: 11.5, color: "#999" }}>… 僅列出前 {verifyPreview.list.length} 位，全部 {verifyPreview.eligible} 位都會提醒</div>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid #eee" }}>
+                <button type="button" onClick={() => setVerifyPreview(null)} disabled={verifySending} style={{ flex: 1, padding: "9px", borderRadius: 9, border: "1px solid #ddd", background: "#fff", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>取消</button>
+                <button type="button" onClick={doVerifySend} disabled={verifySending} style={{ flex: 2, padding: "9px", borderRadius: 9, border: "none", background: "#d99a1e", color: "#fff", fontSize: 13, fontWeight: 800, cursor: verifySending ? "default" : "pointer", opacity: verifySending ? 0.6 : 1 }}>{verifySending ? "提醒中…" : `確認提醒 ${verifyPreview.eligible} 位`}</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {err && (
           <div style={{ background: "#fff4f2", border: "1px solid #ffd9d3", color: "#c0473b", borderRadius: 10, padding: "10px 13px", fontSize: 12, fontWeight: 600, marginBottom: 12 }}>

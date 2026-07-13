@@ -27,6 +27,8 @@ const PATCHES = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_sent_at TIMESTAMPTZ`,
   // v257: 首單獎勵發放追蹤
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS first_order_reward_granted_at TIMESTAMPTZ`,
+  // v840: 「驗證 Email 拿 50 元」提醒已發送時間(一鍵提醒去重)
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_reward_reminded_at TIMESTAMPTZ`,
   // v256: Email 驗證 token 表
   `CREATE TABLE IF NOT EXISTS email_verify_tokens (
      token VARCHAR(64) PRIMARY KEY,
