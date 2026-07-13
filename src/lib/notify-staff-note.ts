@@ -17,8 +17,7 @@ export function notifyStaffCustomerNote(bookingId: string): void {
       const note = (booking?.notes ?? "").trim();
       if (!booking || !note) return; // 沒備註就不擾民
 
-      const client = getLineClient();
-      if (!client) return;
+      const client = getLineClient(); // 可能為 null（沒設 LINE token）→ 仍發站內通知
 
       // 場次標題 + 該場次教練（daily 有 coachIds；tour 只通知 admin）
       let session = "潛水行程";
@@ -40,36 +39,51 @@ export function notifyStaffCustomerNote(bookingId: string): void {
         if (t) session = t.title;
       }
 
-      // 收件人：老闆/admin + 該場次教練（去重）
+      // 收件人：老闆/admin + 該場次教練（去重）。canLine = 是否推 LINE（站內通知一律發）
       const admins = await prisma.user.findMany({
         where: {
           OR: [{ role: "admin" }, { role: "boss" }, { roles: { has: "admin" } }, { roles: { has: "boss" } }],
-          notifyByLine: true,
         },
-        select: { lineUserId: true },
+        select: { lineUserId: true, notifyByLine: true },
       });
-      const targets = new Set(admins.map((a) => a.lineUserId));
+      const recip = new Map<string, boolean>(); // lineUserId -> canLine
+      for (const a of admins) recip.set(a.lineUserId, a.notifyByLine ?? true);
       if (coachIds.length) {
         const coaches = await prisma.coach.findMany({ where: { id: { in: coachIds }, lineUserId: { not: null } }, select: { lineUserId: true } });
-        for (const c of coaches) if (c.lineUserId) targets.add(c.lineUserId);
+        for (const c of coaches) if (c.lineUserId) recip.set(c.lineUserId, true);
       }
-      if (targets.size === 0) return;
+      if (recip.size === 0) return;
 
       const who = booking.user.realName ?? booking.user.displayName ?? "客戶";
       const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz";
+      const adminUrl = `${base}/admin/bookings`;
       const text =
         `📝 新訂單有客戶備註（需留意）\n` +
         `━━━━━━━━━━━━\n` +
         `👤 ${who}${booking.code ? ` · ${booking.code}` : ""}\n` +
         `📍 ${session}\n\n` +
         `📝 ${note}\n\n` +
-        `👉 ${base}/admin/bookings`;
+        `👉 ${adminUrl}`;
+      // 站內通知（通知中心）內容
+      const inAppTitle = "📝 新訂單有客戶備註";
+      const inAppBody = `👤 ${who}${booking.code ? ` · ${booking.code}` : ""}\n📍 ${session}\n\n📝 ${note}`;
 
-      for (const to of targets) {
+      for (const [to, canLine] of recip) {
+        // 1) LINE 推播（會員關掉 LINE 通知、或未設 LINE token 則跳過）
+        if (canLine && client) {
+          try {
+            await client.pushMessage({ to, messages: [{ type: "text", text }] });
+          } catch (e) {
+            console.error("[notifyStaffCustomerNote push]", to, e);
+          }
+        }
+        // 2) 站內通知（一律寫入內部通知中心；FK 失敗只 log 不中斷）
         try {
-          await client.pushMessage({ to, messages: [{ type: "text", text }] });
+          await prisma.notification.create({
+            data: { userId: to, templateKey: "staff_customer_note", title: inAppTitle, body: inAppBody, linkUrl: adminUrl, icon: "📝" },
+          });
         } catch (e) {
-          console.error("[notifyStaffCustomerNote push]", to, e);
+          console.error("[notifyStaffCustomerNote inApp]", to, e);
         }
       }
     } catch (e) {
