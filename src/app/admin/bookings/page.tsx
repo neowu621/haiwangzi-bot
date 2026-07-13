@@ -1115,7 +1115,7 @@ export default function AdminBookingsPage() {
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
                     <th className="px-4 py-3 font-medium">地點 / 行程</th>
-                    <th className="px-3 py-3 font-medium" title="會=會員備註(長期·內部) 客=客戶下單填的備註。活動提醒請在『日潛場次/潛旅』編輯，客戶可見。">備註 ⓘ</th>
+                    <th className="px-3 py-3 font-medium" title="個=客戶個人備註(長期·跟著人) 客=客戶下單填的備註(本筆)。活動提醒請在『日潛場次/潛旅』編輯，客戶可見。">備註 ⓘ</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">總金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right">抵扣金額</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">實際付款</SortBtn></th>
@@ -1243,7 +1243,7 @@ export default function AdminBookingsPage() {
                         <td className="px-3 py-2.5 text-[11px] max-w-[170px]">
                           {(() => {
                             const parts: Array<{ l: string; t: string; c: string }> = [];
-                            if (b.user?.notes) parts.push({ l: "會", t: b.user.notes, c: "text-pink-700" });
+                            if (b.user?.notes) parts.push({ l: "個", t: b.user.notes, c: "text-pink-700" });
                             if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-slate-600" });
                             if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
                             return (

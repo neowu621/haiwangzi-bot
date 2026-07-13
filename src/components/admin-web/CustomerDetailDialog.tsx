@@ -231,7 +231,7 @@ export function CustomerDetailDialog({
                 📝 管理備註（僅內部）
               </div>
               <div className="mb-2">
-                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">會員備註（長期・跟著人走）</div>
+                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">客戶個人備註（長期・跟著人走）</div>
                 {data.user.notes
                   ? <div className="whitespace-pre-wrap rounded-md bg-violet-50 px-2.5 py-2 text-xs text-violet-900">{data.user.notes}</div>
                   : <div className="text-xs text-[var(--muted-foreground)]">（無，可在「會員管理 → 編輯」填寫）</div>}

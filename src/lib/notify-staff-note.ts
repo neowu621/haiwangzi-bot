@@ -11,7 +11,7 @@ export function notifyStaffCustomerNote(bookingId: string): void {
         where: { id: bookingId },
         select: {
           id: true, type: true, refId: true, notes: true, code: true,
-          user: { select: { realName: true, displayName: true } },
+          user: { select: { realName: true, displayName: true, notes: true } }, // v839：客戶個人備註
         },
       });
       const note = (booking?.notes ?? "").trim();
@@ -57,16 +57,21 @@ export function notifyStaffCustomerNote(bookingId: string): void {
       const who = booking.user.realName ?? booking.user.displayName ?? "客戶";
       const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz";
       const adminUrl = `${base}/admin/bookings`;
+      // v839：訂單備註（本筆）+ 客戶個人備註（長期・跟著人）兩種都帶
+      const personalNote = (booking.user.notes ?? "").trim();
+      const noteBlock =
+        `📝 訂單備註：${note}` +
+        (personalNote ? `\n🙋 個人備註：${personalNote}` : "");
+      const head = `👤 ${who}${booking.code ? ` · ${booking.code}` : ""}\n📍 ${session}`;
       const text =
         `📝 新訂單有客戶備註（需留意）\n` +
         `━━━━━━━━━━━━\n` +
-        `👤 ${who}${booking.code ? ` · ${booking.code}` : ""}\n` +
-        `📍 ${session}\n\n` +
-        `📝 ${note}\n\n` +
+        `${head}\n\n` +
+        `${noteBlock}\n\n` +
         `👉 ${adminUrl}`;
       // 站內通知（通知中心）內容
       const inAppTitle = "📝 新訂單有客戶備註";
-      const inAppBody = `👤 ${who}${booking.code ? ` · ${booking.code}` : ""}\n📍 ${session}\n\n📝 ${note}`;
+      const inAppBody = `${head}\n\n${noteBlock}`;
 
       for (const [to, canLine] of recip) {
         // 1) LINE 推播（會員關掉 LINE 通知、或未設 LINE token 則跳過）

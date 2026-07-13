@@ -1335,7 +1335,7 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="grid grid-cols-[7rem_1fr] items-start gap-2">
-                <Label className="text-xs pt-1">會員備註（長期・跟著人走）</Label>
+                <Label className="text-xs pt-1">客戶個人備註（長期・跟著人走）</Label>
                 <textarea
                   className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                   rows={2}
