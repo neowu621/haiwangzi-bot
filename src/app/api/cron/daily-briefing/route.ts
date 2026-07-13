@@ -160,6 +160,11 @@ export async function POST(req: NextRequest) {
           const names = g.bookings.map((b) => `${b.user.realName ?? b.user.displayName}×${b.participants}`).join("、");
           lines.push(`    👥 ${names}`);
           lines.push(`    💰 已收 NT$ ${g.paidAmt.toLocaleString()} / 應收 NT$ ${g.totalAmt.toLocaleString()}${g.due > 0 ? ` (待繳 ${g.due.toLocaleString()})` : ""}`);
+          // v837：客戶下單備註（蛙鞋尺寸等需事前準備）
+          for (const b of g.bookings) {
+            const n = (b.notes ?? "").trim();
+            if (n) lines.push(`    📝 ${b.user.realName ?? b.user.displayName}：${n}`);
+          }
         }
       }
     }
@@ -201,6 +206,8 @@ export async function POST(req: NextRequest) {
         for (const b of g.bookings) {
           const name = b.user.realName ?? b.user.displayName;
           lines.push(`  • ${name} ×${b.participants}${b.user.phone ? ` (${b.user.phone})` : ""}`);
+          const n = (b.notes ?? "").trim(); // v837：客戶備註
+          if (n) lines.push(`      📝 ${n}`);
         }
       }
       lines.push("");

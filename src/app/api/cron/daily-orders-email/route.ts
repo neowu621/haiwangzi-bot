@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
         { header: "已付", key: "paid", width: 10 },
         { header: "付款狀態", key: "payStatus", width: 12 },
         { header: "訂單狀態", key: "status", width: 12 },
+        { header: "客戶備註", key: "notes", width: 28 }, // v837
       ],
       rows: newBookings.map((b) => ({
         code: b.code ?? b.id.slice(0, 8),
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
         paid: b.paidAmount,
         payStatus: b.paymentStatus,
         status: b.status,
+        notes: b.notes ?? "", // v837：客戶下單備註
       })),
     },
     {
@@ -233,6 +235,7 @@ interface OrderRow {
   paymentStatus: string;
   status: string;
   participants: number;
+  notes?: string | null; // v837：客戶下單備註
   user: { realName: string | null; displayName: string; phone?: string | null };
 }
 
@@ -265,7 +268,7 @@ function buildHtmlSummary(params: {
       </div>
 
       ${section("🆕 今日新增訂單", buildTable(
-        ["編號", "客戶", "類型", "人數", "總額", "狀態"],
+        ["編號", "客戶", "類型", "人數", "總額", "狀態", "客戶備註"],
         params.newBookings.slice(0, 20).map((b) => [
           b.code ?? b.id.slice(0,8),
           b.user.realName ?? b.user.displayName,
@@ -273,6 +276,7 @@ function buildHtmlSummary(params: {
           String(b.participants),
           `NT$${b.totalAmount.toLocaleString()}`,
           b.status,
+          (b.notes ?? "").trim() ? `📝 ${(b.notes ?? "").replace(/</g, "&lt;")}` : "—", // v837
         ]),
         params.newBookings.length === 0 ? "今日無新訂單" : params.newBookings.length > 20 ? `（僅顯示前 20 筆，共 ${params.newBookings.length} 筆，完整資料請見 Excel）` : "",
       ))}

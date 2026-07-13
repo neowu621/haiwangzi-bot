@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
+import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
@@ -251,6 +252,9 @@ export async function POST(req: NextRequest) {
       totalAmount,
     },
   });
+
+  // v837：客戶有填備註 → 即時提醒老闆/admin（潛旅）
+  notifyStaffCustomerNote(booking.id);
 
   return NextResponse.json({ ok: true, booking });
 }

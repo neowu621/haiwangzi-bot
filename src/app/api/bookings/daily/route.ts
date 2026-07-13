@@ -5,6 +5,7 @@ import { authFromRequest, getUserRoles } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { buildFlexByKeyAsync } from "@/lib/flex";
 import { notifyCustomer } from "@/lib/notify-template";
+import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
@@ -495,6 +496,9 @@ export async function POST(req: NextRequest) {
     bookingId: booking.id,
     userId: auth.user.lineUserId,
   }).catch((e) => console.error("[booking confirm notify]", e));
+
+  // v837：客戶有填備註 → 即時提醒老闆/admin + 該場次教練（蛙鞋尺寸等需事前準備）
+  notifyStaffCustomerNote(booking.id);
 
   // v270：首單獎勵改在 attendance=completed 時觸發，不在這裡
 

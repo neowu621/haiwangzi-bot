@@ -1175,13 +1175,25 @@ export default function AdminBookingsPage() {
                         </td>
                         {/* v320：客戶名可點 → 開全站統一客戶詳情 modal */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setOpenCustomerId(b.user.lineUserId); }}
-                            className="text-left text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
-                          >
-                            {b.user.realName ?? b.user.displayName}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setOpenCustomerId(b.user.lineUserId); }}
+                              className="text-left text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                            >
+                              {b.user.realName ?? b.user.displayName}
+                            </button>
+                            {/* v837：客戶下單備註標記 — 一眼看出有特別需求（hover 看內容） */}
+                            {b.notes && b.notes.trim() && (
+                              <span
+                                title={`客戶備註：${b.notes}`}
+                                className="inline-flex items-center rounded-md px-1 py-0.5 text-[10px] font-semibold"
+                                style={{ background: "rgba(234,164,23,0.16)", color: "#B3760A" }}
+                              >
+                                📝 備註
+                              </span>
+                            )}
+                          </div>
                         </td>
                         {/* v321：付款欄移除（狀態欄已涵蓋） */}
                         {/* 場次 — 一行 */}
