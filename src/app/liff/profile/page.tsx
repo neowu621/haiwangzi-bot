@@ -3,7 +3,7 @@
 //   抵用金明細才另外即時讀 /api/me/credits)→ 減少讀取次數。移除「預約紀錄/潛水紀錄」。
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, MessageCircle, LayoutDashboard } from "lucide-react";
+import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, MessageCircle } from "lucide-react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
@@ -183,6 +183,30 @@ export default function ProfilePage() {
   const primaryRole = ["it", "boss", "admin", "coach", "assistant"].find((r) => myRoles.includes(r));
   const roleLabel = primaryRole ? ROLE_LABEL[primaryRole] : null;
   const isAdminLevel = myRoles.some((r) => ["it", "boss", "admin"].includes(r));
+  // v842：LINE 身分換發後台 session 後，直接導向指定後台頁（免再進「後台首頁」下一層）
+  const goAdmin = async (path: string) => {
+    try {
+      const r = await liff.fetchWithAuth<{ token: string; user: AdminWebUser }>(
+        "/api/admin-web/liff-session",
+        { method: "POST" },
+      );
+      setAdminToken(r.token);
+      setAdminUser(r.user);
+      window.location.href = path;
+    } catch (e) {
+      alert("進入後台失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+  // v842：老闆後台工具 — 每項一行直接進入（只有 admin 級看得到）
+  const ADMIN_TOOLS: Array<{ emoji: string; label: string; path: string }> = [
+    { emoji: "🧾", label: "老闆結帳", path: "/admin/m/tonight" },
+    { emoji: "📧", label: "客服信箱", path: "/admin/m/email" },
+    { emoji: "🌊", label: "日潛場次", path: "/admin/m/trips" },
+    { emoji: "👥", label: "會員管理", path: "/admin/m/users" },
+    { emoji: "⛴️", label: "潛水旅行", path: "/admin/m/tours" },
+    { emoji: "⭐", label: "抵用金管理", path: "/admin/m/credits" },
+    { emoji: "🛠️", label: "完整後台", path: "/admin/m" },
+  ];
   const stats: Array<[string, string]> = [
     [String(me.haiwangziLogCount ?? 0), "海王子潛次"], [String(me.creditBalance ?? 0), "抵用金"],
     [String(me.stats?.totalBookings ?? 0), "進行中"], [me.vipLevel ? `LV${me.vipLevel}` : "會員", "等級"],
@@ -218,27 +242,18 @@ export default function ProfilePage() {
         <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
           <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>教練到場點名</span><ChevronRight size={16} color={C.mute} />
         </Link>
-        {isAdminLevel && (
-          // v793：用 LINE 身分直接換發後台 session(免帳密) → 手機簡易後台 /admin/m
+        {isAdminLevel && ADMIN_TOOLS.map((it) => (
+          // v842：老闆後台各工具一行直接進入（LINE 身分免帳密換 session）
           <button
-            onClick={async () => {
-              try {
-                const r = await liff.fetchWithAuth<{ token: string; user: AdminWebUser }>(
-                  "/api/admin-web/liff-session",
-                  { method: "POST" },
-                );
-                setAdminToken(r.token);
-                setAdminUser(r.user);
-                window.location.href = "/admin/m";
-              } catch (e) {
-                alert("進入後台失敗：" + (e instanceof Error ? e.message : String(e)));
-              }
-            }}
+            key={it.path}
+            onClick={() => goAdmin(it.path)}
             style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", borderBottom: `0.5px solid ${C.line}`, color: C.ink, cursor: "pointer" }}
           >
-            <LayoutDashboard size={19} color={C.accFg} /><span style={{ flex: 1, fontSize: 14 }}>後台管理（LINE 直接進入）</span><ChevronRight size={16} color={C.mute} />
+            <span style={{ width: 19, textAlign: "center", fontSize: 17, flex: "none" }}>{it.emoji}</span>
+            <span style={{ flex: 1, fontSize: 14 }}>{it.label}</span>
+            <ChevronRight size={16} color={C.mute} />
           </button>
-        )}
+        ))}
       </>)}
       <Sect t="其他" />
       <button onClick={() => liff.logout()} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", color: C.dangFg }}>

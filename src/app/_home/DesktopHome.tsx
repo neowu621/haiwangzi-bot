@@ -177,7 +177,6 @@ export default function DesktopHome() {
                     <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
                   ))}
                 </ul>
-                <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line course-cta"><LineIcon />LINE 報名・諮詢</a>
               </div>
             ))}
           </div>

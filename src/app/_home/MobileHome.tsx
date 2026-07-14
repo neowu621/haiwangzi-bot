@@ -103,8 +103,7 @@ export default function MobileHome() {
               <span style={{ alignSelf: "flex-start", background: C.navy, color: "#7fe3d3", fontSize: 10.5, fontWeight: 800, letterSpacing: .5, padding: "3px 9px", borderRadius: 999, marginBottom: 9 }}>{c.badge}</span>
               <div style={{ fontWeight: 900, fontSize: 16, color: C.navy, lineHeight: 1.3, marginBottom: 6 }}>{c.title}</div>
               <div style={{ fontSize: 19, fontWeight: 900, color: c.price.startsWith("NT$") ? C.navy : C.teal, marginBottom: 2 }}>{c.price}</div>
-              <div style={{ fontSize: 11.5, color: C.mist, marginBottom: 10 }}>{c.includes}</div>
-              <a href={LINE_BOOK_URL} target="_blank" rel="noopener" style={{ marginTop: "auto", background: "#06c755", color: "#fff", textAlign: "center", padding: "9px", borderRadius: 9, fontWeight: 800, fontSize: 13, textDecoration: "none" }}>LINE 報名</a>
+              <div style={{ fontSize: 11.5, color: C.mist }}>{c.includes}</div>
             </div>
           ))}
         </Scroller>
