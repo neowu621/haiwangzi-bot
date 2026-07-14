@@ -24,16 +24,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: role.message }, { status: role.status });
   }
 
-  let body: { dryRun?: boolean; overrideRecipients?: string[] } = {};
+  let body: { dryRun?: boolean; selfChannels?: string[] } = {};
   try {
     body = await req.json();
   } catch {
     // 空 body 也 ok
   }
 
+  // v853：測試發送一律只寄給「目前登入的管理者」本人（前端只選管道，不能指定他人）。
+  //   selfChannels 例：["inapp","line","email"] → 各自組成收件人 tag（email 需本人有填）。
+  let overrideRecipients: string[] | undefined;
+  if (Array.isArray(body.selfChannels) && body.selfChannels.length > 0) {
+    const uid = auth.user.lineUserId;
+    const out: string[] = [];
+    for (const c of body.selfChannels) {
+      if (c === "inapp") out.push(`inapp:${uid}`);
+      else if (c === "line") out.push(`line:${uid}`);
+      else if (c === "email" && auth.user.email) out.push(`email:${auth.user.email}`);
+    }
+    overrideRecipients = out;
+  }
+
   const result = await runDailyWeatherReport({
     dryRun: body.dryRun ?? false,
-    overrideRecipients: body.overrideRecipients,
+    overrideRecipients,
   });
   return NextResponse.json(result);
 }

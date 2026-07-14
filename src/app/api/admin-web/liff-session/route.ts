@@ -9,7 +9,8 @@ import { logAudit } from "@/lib/audit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BACKEND_LOGIN_ROLES = ["admin", "boss", "it", "coach", "assistant"];
+// v853：後台僅限老闆(boss) + IT，其餘角色不得進後台（與密碼登入同一道門）。
+const BACKEND_LOGIN_ROLES = ["boss", "it"];
 
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);

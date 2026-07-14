@@ -9,8 +9,8 @@ import { safeEqual } from "@/lib/safe-compare";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// v677：後台密碼登入開放角色 —— 管理者/老闆/IT（完整後台）+ 教練/助教（僅到場點名）。
-const BACKEND_LOGIN_ROLES = ["admin", "boss", "it", "coach", "assistant"] as const;
+// v853：後台密碼登入僅限「老闆(boss) + IT」，其餘角色一律不得登入後台。
+const BACKEND_LOGIN_ROLES = ["boss", "it"] as const;
 
 function effectiveRoles(user: { role: string; roles: string[] }): string[] {
   return user.roles && user.roles.length > 0 ? user.roles : [user.role];
@@ -20,14 +20,14 @@ function isAdminOrBoss(user: { role: string; roles: string[] }): boolean {
   return roles.some((r) => (BACKEND_LOGIN_ROLES as readonly string[]).includes(r));
 }
 
-// 列出所有可登入後台的帳號（含教練/助教；標示是否已設密碼，不傳 hash）
+// 列出所有可登入後台的帳號（v853：僅老闆/IT；標示是否已設密碼，不傳 hash）
 async function listAdminUsers() {
   const users = await prisma.user.findMany({
     where: {
       deletedAt: null,
       OR: [
-        { role: { in: ["admin", "boss", "it", "coach", "assistant"] } },
-        { roles: { hasSome: ["admin", "boss", "it", "coach", "assistant"] } },
+        { role: { in: ["boss", "it"] } },
+        { roles: { hasSome: ["boss", "it"] } },
       ],
     },
     select: {

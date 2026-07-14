@@ -27,11 +27,11 @@ export async function GET(req: NextRequest) {
   if (!ex.ok) { console.error("[google callback]", ex.message); return fail("Google 驗證失敗"); }
   if (!ex.emailVerified) return fail("此 Google email 尚未驗證");
 
-  // 找 email 對應、且具 admin/老闆角色的後台帳號
+  // v853：後台僅限老闆(boss) + IT — 找 email 對應且具 boss/it 角色的帳號
   const u = await prisma.user.findFirst({
     where: {
       email: { equals: ex.email, mode: "insensitive" },
-      OR: [{ role: { in: ["admin", "boss", "it"] } }, { roles: { hasSome: ["admin", "boss", "it"] } }],
+      OR: [{ role: { in: ["boss", "it"] } }, { roles: { hasSome: ["boss", "it"] } }],
     },
     select: { lineUserId: true, displayName: true, realName: true, role: true, roles: true },
   });

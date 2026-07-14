@@ -63,14 +63,15 @@ export async function handleLineLoginCallback(req: NextRequest): Promise<NextRes
     return r;
   };
 
-  // v571：後台登入流程 —— 驗角色(admin/boss)→ 簽後台 token,經 URL fragment 交回 /admin/login
+  // v571：後台登入流程 —— 驗角色→ 簽後台 token,經 URL fragment 交回 /admin/login
+  // v853：後台僅限老闆(boss) + IT。
   if (req.cookies.get("hwz_oauth_admin")?.value === "1") {
     const u = await prisma.user.findUnique({
       where: { lineUserId: verified.lineUserId },
       select: { lineUserId: true, displayName: true, realName: true, role: true, roles: true },
     });
     const roles = u ? (u.roles && u.roles.length > 0 ? u.roles : [u.role]) : [];
-    if (!u || !(roles.includes("admin") || roles.includes("boss") || roles.includes("it"))) {
+    if (!u || !(roles.includes("boss") || roles.includes("it"))) {
       return clearOauthCookies(NextResponse.redirect(`${base}/admin/login#err=${encodeURIComponent("此 LINE 帳號沒有後台權限")}`));
     }
     const adminJwt = await createAdminWebJwt(verified.lineUserId);

@@ -59,12 +59,12 @@ export default function ProfilePage() {
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(0);
   const [verifyMsg, setVerifyMsg] = useState("");
-  // v844：老闆待處理數量（現場報到 / 老闆結帳 / 客服信箱）— admin 級才抓
+  // v844：老闆待處理數量（現場報到 / 老闆結帳 / 客服信箱）— v853：僅老闆/IT 才抓
   const [adminTodo, setAdminTodo] = useState<{ attendance: number; settle: number; inbox: number } | null>(null);
   useEffect(() => {
     if (!me) return;
     const roles = me.roles ?? [me.role ?? ""];
-    if (!roles.some((r) => ["it", "boss", "admin"].includes(r))) return;
+    if (!roles.some((r) => ["it", "boss"].includes(r))) return;
     liff
       .fetchWithAuth<{ tonight?: { proofs?: number; attendance?: number; pendingOrders?: number }; pendingEmails?: number; pendingWishes?: number }>("/api/admin/stats/lite")
       .then((d) => setAdminTodo({
@@ -198,7 +198,7 @@ export default function ProfilePage() {
   const ROLE_LABEL: Record<string, string> = { it: "IT", boss: "老闆", admin: "管理", coach: "教練", assistant: "助教" };
   const primaryRole = ["it", "boss", "admin", "coach", "assistant"].find((r) => myRoles.includes(r));
   const roleLabel = primaryRole ? ROLE_LABEL[primaryRole] : null;
-  const isAdminLevel = myRoles.some((r) => ["it", "boss", "admin"].includes(r));
+  const isAdminLevel = myRoles.some((r) => ["it", "boss"].includes(r)); // v853：後台工具僅老闆/IT
   // v842：LINE 身分換發後台 session 後，直接導向指定後台頁（免再進「後台首頁」下一層）
   const goAdmin = async (path: string) => {
     try {
