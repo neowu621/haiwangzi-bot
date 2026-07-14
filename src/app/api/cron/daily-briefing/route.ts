@@ -279,6 +279,47 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // v844：老闆待處理事項 → 寫「站內通知」給每位 admin（老闆沒處理，每天提醒一次）。
+  //   涵蓋：待確認匯款 / 待付款訂單 / 待回覆願望 / 客服信箱待回 / 待確認到場。
+  try {
+    const yesterdayDate = new Date(new Date(todayStr + "T00:00:00+08:00").getTime() - 86400000);
+    const todayDate0 = new Date(todayStr + "T00:00:00+08:00");
+    const tomorrowDate0 = new Date(tomorrowStr + "T00:00:00+08:00");
+    const [proofRows, pendingOrders, wishesPending, emailsWaiting, attTrips, attTours] = await Promise.all([
+      prisma.$queryRaw<Array<{ count: bigint }>>`SELECT COUNT(DISTINCT pp.booking_id)::bigint AS count FROM payment_proofs pp INNER JOIN bookings b ON pp.booking_id = b.id WHERE pp.verified_at IS NULL`,
+      prisma.booking.count({ where: { status: "pending" } }),
+      prisma.diveWish.count({ where: { status: "pending" } }),
+      prisma.emailThread.count({ where: { status: "WAITING" } }),
+      prisma.divingTrip.findMany({ where: { date: { gte: yesterdayDate, lt: tomorrowDate0 }, status: { not: "cancelled" } }, select: { id: true } }),
+      prisma.tourPackage.findMany({ where: { dateStart: { gte: yesterdayDate, lt: tomorrowDate0 }, status: { not: "cancelled" } }, select: { id: true } }),
+    ]);
+    void todayDate0;
+    const proofs = Number(proofRows[0]?.count ?? BigInt(0));
+    const attIds = { trips: attTrips.map((t) => t.id), tours: attTours.map((t) => t.id) };
+    const attendance = attIds.trips.length + attIds.tours.length === 0 ? 0 : await prisma.booking.count({
+      where: { status: "confirmed", OR: [{ type: "daily", refId: { in: attIds.trips } }, { type: "tour", refId: { in: attIds.tours } }] },
+    });
+    const settle = proofs + pendingOrders + wishesPending;
+    const todoTotal = settle + emailsWaiting + attendance;
+    if (todoTotal > 0) {
+      const tl: string[] = [];
+      if (attendance) tl.push(`🛟 待確認到場 ${attendance}`);
+      if (proofs) tl.push(`💰 待確認匯款 ${proofs}`);
+      if (pendingOrders) tl.push(`🧾 待付款訂單 ${pendingOrders}`);
+      if (wishesPending) tl.push(`📝 待回覆願望 ${wishesPending}`);
+      if (emailsWaiting) tl.push(`📧 客服信箱待回 ${emailsWaiting}`);
+      const body = tl.join("\n");
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
+      for (const a of admins) {
+        await prisma.notification.create({
+          data: { userId: a.lineUserId, templateKey: "admin_todo_reminder", title: `🔔 有 ${todoTotal} 件待處理`, body, linkUrl: `${appUrl}/admin/m/tonight`, icon: "🔔" },
+        }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.error("[daily-briefing admin-todo inApp]", e);
+  }
+
   // 記錄發送時間
   await prisma.siteConfig.update({
     where: { id: "default" },

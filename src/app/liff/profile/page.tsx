@@ -59,6 +59,22 @@ export default function ProfilePage() {
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(0);
   const [verifyMsg, setVerifyMsg] = useState("");
+  // v844：老闆待處理數量（現場報到 / 老闆結帳 / 客服信箱）— admin 級才抓
+  const [adminTodo, setAdminTodo] = useState<{ attendance: number; settle: number; inbox: number } | null>(null);
+  useEffect(() => {
+    if (!me) return;
+    const roles = me.roles ?? [me.role ?? ""];
+    if (!roles.some((r) => ["it", "boss", "admin"].includes(r))) return;
+    liff
+      .fetchWithAuth<{ tonight?: { proofs?: number; attendance?: number; pendingOrders?: number }; pendingEmails?: number; pendingWishes?: number }>("/api/admin/stats/lite")
+      .then((d) => setAdminTodo({
+        attendance: d.tonight?.attendance ?? 0,
+        settle: (d.tonight?.proofs ?? 0) + (d.tonight?.pendingOrders ?? 0) + (d.pendingWishes ?? 0),
+        inbox: d.pendingEmails ?? 0,
+      }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
 
   function fill(u: Me) {
     setMe(u);
@@ -198,9 +214,9 @@ export default function ProfilePage() {
     }
   };
   // v842：老闆後台工具 — 每項一行直接進入（只有 admin 級看得到）
-  const ADMIN_TOOLS: Array<{ emoji: string; label: string; path: string }> = [
-    { emoji: "🧾", label: "老闆結帳", path: "/admin/m/tonight" },
-    { emoji: "📧", label: "客服信箱", path: "/admin/m/email" },
+  const ADMIN_TOOLS: Array<{ emoji: string; label: string; path: string; badge?: number }> = [
+    { emoji: "🧾", label: "老闆結帳", path: "/admin/m/tonight", badge: adminTodo?.settle },
+    { emoji: "📧", label: "客服信箱", path: "/admin/m/email", badge: adminTodo?.inbox },
     { emoji: "🌊", label: "日潛場次", path: "/admin/m/trips" },
     { emoji: "👥", label: "會員管理", path: "/admin/m/users" },
     { emoji: "⛴️", label: "潛水旅行", path: "/admin/m/tours" },
@@ -240,7 +256,11 @@ export default function ProfilePage() {
       {isStaff && (<>
         <Sect t="管理" />
         <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
-          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>教練到場點名</span><ChevronRight size={16} color={C.mute} />
+          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>現場報到 · 教練到場點名</span>
+          {adminTodo && adminTodo.attendance > 0 ? (
+            <span style={{ background: "#e5484d", color: "#fff", fontSize: 11, fontWeight: 800, minWidth: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{adminTodo.attendance}</span>
+          ) : null}
+          <ChevronRight size={16} color={C.mute} />
         </Link>
         {isAdminLevel && ADMIN_TOOLS.map((it) => (
           // v842：老闆後台各工具一行直接進入（LINE 身分免帳密換 session）
@@ -251,6 +271,9 @@ export default function ProfilePage() {
           >
             <span style={{ width: 19, textAlign: "center", fontSize: 17, flex: "none" }}>{it.emoji}</span>
             <span style={{ flex: 1, fontSize: 14 }}>{it.label}</span>
+            {it.badge && it.badge > 0 ? (
+              <span style={{ background: "#e5484d", color: "#fff", fontSize: 11, fontWeight: 800, minWidth: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{it.badge}</span>
+            ) : null}
             <ChevronRight size={16} color={C.mute} />
           </button>
         ))}
