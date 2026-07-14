@@ -260,12 +260,13 @@ function buildHtmlSummary(params: {
       <div style="font-size:20px;font-weight:bold;margin-top:4px;">📊 ${params.todayStr} 訂單日報</div>
     </div>
     <div style="padding:24px 28px;">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px;">
+      <!-- v854：改 table 橫排（Outlook 不支援 grid，避免逐張直排把版面拉高）；每張卡壓成「標題一行＋數字一行」 -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;table-layout:fixed;"><tr>
         ${statCard("新訂單", params.newBookings.length, `NT$${newTotal.toLocaleString()}`)}
         ${statCard("付款核可", params.verifiedProofs.length, `NT$${verifiedTotal.toLocaleString()}`)}
         ${statCard("退款", params.refunds.length, `NT$${refundTotal.toLocaleString()}`)}
         ${statCard("待結算", params.pendingBookings.length, "請處理")}
-      </div>
+      </tr></table>
 
       ${section("🆕 今日新增訂單", buildTable(
         ["編號", "客戶", "類型", "人數", "總額", "狀態", "客戶備註"],
@@ -307,11 +308,13 @@ function buildHtmlSummary(params: {
 }
 
 function statCard(label: string, count: number, sub: string): string {
-  return `<div style="background:#f9fafb;padding:12px;border-radius:6px;text-align:center;">
-    <div style="font-size:10px;color:#6b7280;">${label}</div>
-    <div style="font-size:20px;font-weight:bold;color:#0A2342;margin:2px 0;">${count}</div>
-    <div style="font-size:10px;color:#9ca3af;">${sub}</div>
-  </div>`;
+  // v854：email 相容橫排卡 —— 一律回 <td>，內部只兩行：標題一行、數字(含金額)一行
+  return `<td width="25%" valign="top" style="padding:0 3px;">
+    <div style="background:#f9fafb;padding:8px 6px;border-radius:6px;text-align:center;">
+      <div style="font-size:10px;color:#6b7280;line-height:1.2;">${label}</div>
+      <div style="line-height:1.15;margin-top:2px;"><span style="font-size:18px;font-weight:bold;color:#0A2342;">${count}</span><span style="font-size:10px;color:#9ca3af;font-weight:normal;">　${sub}</span></div>
+    </div>
+  </td>`;
 }
 
 function section(title: string, body: string): string {
