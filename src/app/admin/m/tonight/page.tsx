@@ -24,6 +24,7 @@ interface ProofRow {
     participants?: number;
     activityDate?: string;
     activitySite?: string;
+    notes?: string | null; // v843：客戶訂單備註
     user: { displayName: string; realName: string | null };
   };
 }
@@ -38,6 +39,7 @@ interface BookingRow {
   creditUsed?: number;
   paymentStatus?: string;
   status: string;
+  notes?: string | null; // v843：客戶訂單備註（老闆結帳列表一起顯示）
   ref?: { date?: string; dateStart?: string; startTime?: string; sites?: string[]; title?: string };
   user?: { displayName: string; realName: string | null };
 }
@@ -138,6 +140,9 @@ export default function MobileTonightPage() {
                 {TYPE_LABEL[p.type]}{p.booking.code ? `・${p.booking.code}` : ""}{p.last5 ? `・後5碼 ${p.last5}` : ""}
                 {p.booking.activityDate ? `・${p.booking.activityDate}` : ""}
               </div>
+              {p.booking.notes && p.booking.notes.trim() && (
+                <div className="mt-1 rounded-md px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{p.booking.notes}</div>
+              )}
             </Card>
           ))
         )}
@@ -157,6 +162,9 @@ export default function MobileTonightPage() {
                 {(b.creditUsed ?? 0) > 0 ? `・已折 NT$ ${(b.creditUsed ?? 0).toLocaleString()}` : ""}
                 <span className="ml-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">待匯款</span>
               </div>
+              {b.notes && b.notes.trim() && (
+                <div className="mt-1 rounded-md px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{b.notes}</div>
+              )}
             </Card>
           ))}
         </Section>
@@ -175,6 +183,9 @@ export default function MobileTonightPage() {
                 {b.ref?.title ? "✈️" : "🔱"} {refLabel(b) || "—"}・{b.participants ?? 1} 位
                 <span className="ml-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold" style={{ background: "#E1F5EE", color: "#0F6E56" }}>{b.paymentStatus === "deposit_paid" ? "已收訂金" : "已付清"}</span>
               </div>
+              {b.notes && b.notes.trim() && (
+                <div className="mt-1 rounded-md px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{b.notes}</div>
+              )}
             </Card>
           ))}
         </Section>
