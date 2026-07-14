@@ -1241,6 +1241,9 @@ function AutoSendSection({
   const [usersLoading, setUsersLoading] = React.useState(true);
   const [testBusy, setTestBusy] = React.useState<"dry" | "real" | null>(null);
   const [testResult, setTestResult] = React.useState<string | null>(null);
+  // v852：測試發送可自選管道 + 對象（預設站內，最安全不打擾外部）
+  const [testCh, setTestCh] = React.useState<{ line: boolean; inapp: boolean; email: boolean }>({ line: false, inapp: true, email: false });
+  const [testTargets, setTestTargets] = React.useState<Set<string>>(new Set());
   const [recipSaving, setRecipSaving] = React.useState(false); // v398：收件人即時存中
   const [recipSaved, setRecipSaved] = React.useState(false);
   const [newEmail, setNewEmail] = React.useState(""); // v454：手動加 Email 收件人
@@ -1427,7 +1430,25 @@ function AutoSendSection({
     return { emoji: "🌅", tag: "出發前 / 當日", desc: "看「今日」即時天氣 + 今日場次" };
   }
 
-  async function runTest(dryRun: boolean) {
+  // v852：由勾選的管道 × 對象組出 overrideRecipients（line:/inapp:/email: 前綴）
+  function buildTestOverride(): string[] {
+    const chans: string[] = [];
+    if (testCh.line) chans.push("line");
+    if (testCh.inapp) chans.push("inapp");
+    if (testCh.email) chans.push("email");
+    const out: string[] = [];
+    for (const uid of testTargets) {
+      const u = users.find((x) => x.lineUserId === uid);
+      if (!u) continue;
+      for (const c of chans) {
+        if (c === "email") { if (u.email) out.push(`email:${u.email}`); }
+        else out.push(`${c}:${u.lineUserId}`);
+      }
+    }
+    return out;
+  }
+
+  async function runTest(dryRun: boolean, override?: string[]) {
     setTestBusy(dryRun ? "dry" : "real");
     setTestResult(null);
     try {
@@ -1441,7 +1462,7 @@ function AutoSendSection({
         tookMs?: number;
       }>("/api/admin/test-weather-report", {
         method: "POST",
-        body: JSON.stringify({ dryRun }),
+        body: JSON.stringify(override && override.length > 0 ? { dryRun, overrideRecipients: override } : { dryRun }),
       });
       if (r.skipped) {
         setTestResult(`⚠️ Skipped：${r.reason}`);
@@ -1810,6 +1831,54 @@ function AutoSendSection({
             : "（尚未發送）"}
         </div>
 
+        {/* v852：測試發送 —— 自選管道 + 對象（與正式排程收件人分開，只影響「立即測試發送」）*/}
+        <div className="mt-3 ml-7 rounded-lg border p-3" style={{ borderColor: "var(--border)", background: "#fafcff" }}>
+          <p className="text-[12px] font-semibold text-[var(--foreground)] mb-2">🧪 測試發送對象與管道<span className="ml-1.5 text-[10px] font-normal text-[var(--muted-foreground)]">（只影響下方「立即測試發送」，不影響正式排程收件人）</span></p>
+          {/* 管道 */}
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            <span className="text-[11px] text-[var(--muted-foreground)]">管道：</span>
+            {([["inapp", "站內"], ["line", "LINE"], ["email", "Email"]] as const).map(([k, label]) => (
+              <label key={k} className="flex items-center gap-1.5 text-[12px]">
+                <input type="checkbox" checked={testCh[k]} onChange={() => setTestCh((c) => ({ ...c, [k]: !c[k] }))} />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          {/* 對象 */}
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] text-[var(--muted-foreground)]">給誰（可複選）：</span>
+            <button
+              type="button"
+              className="text-[11px] underline text-[var(--color-ocean-deep)]"
+              onClick={() => setTestTargets((prev) => (prev.size === users.length ? new Set() : new Set(users.map((u) => u.lineUserId))))}
+            >
+              {testTargets.size === users.length && users.length > 0 ? "取消全選" : "全選"}
+            </button>
+          </div>
+          {usersLoading ? (
+            <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-44 overflow-y-auto rounded border p-1.5" style={{ borderColor: "var(--border)" }}>
+              {users.map((u) => {
+                const checked = testTargets.has(u.lineUserId);
+                return (
+                  <label key={u.lineUserId} className="flex items-center gap-2 rounded px-2 py-1 text-[12px] hover:bg-[var(--muted)]/40 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setTestTargets((prev) => { const n = new Set(prev); if (n.has(u.lineUserId)) n.delete(u.lineUserId); else n.add(u.lineUserId); return n; })}
+                    />
+                    <span className="truncate"><b>{u.realName ?? u.displayName}</b>
+                      <span className="ml-1 rounded bg-[var(--muted)] px-1 py-0.5 text-[9px] text-[var(--muted-foreground)]">{u.roles && u.roles.length ? u.roles.join("/") : u.role}</span>
+                      {!u.email && <span className="ml-1 text-[9px] text-amber-600" title="沒填 Email，Email 管道會略過此人">無Email</span>}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* v268：測試按鈕 */}
         <div className="mt-3 ml-7 flex flex-wrap items-center gap-2">
           <Button
@@ -1825,15 +1894,17 @@ function AutoSendSection({
           <Button
             size="sm"
             onClick={() => {
-              const warn = orphanTags.length > 0
-                ? `\n\n⚠️ 注意：目前還有 ${orphanTags.length} 個無效收件人未清除/未儲存，若直接發送仍會寄到它們。建議先清除並儲存。`
-                : "";
-              if (!confirm(`真的要立即發送給 ${sendableCount} 個收件人嗎？${warn}`)) return;
-              void runTest(false);
+              const chanLabels = [testCh.inapp && "站內", testCh.line && "LINE", testCh.email && "Email"].filter(Boolean);
+              if (chanLabels.length === 0) { alert("請至少勾選一個管道（站內 / LINE / Email）"); return; }
+              if (testTargets.size === 0) { alert("請至少勾選一個測試對象（給誰）"); return; }
+              const override = buildTestOverride();
+              if (override.length === 0) { alert("勾選的對象在勾選的管道下沒有可投遞目標（例如只勾 Email 但對象沒填 Email）"); return; }
+              if (!confirm(`測試發送\n\n管道：${chanLabels.join(" / ")}\n對象：${testTargets.size} 人\n投遞目標：${override.length} 筆\n\n確定立即發送？`)) return;
+              void runTest(false, override);
             }}
-            disabled={testBusy !== null || recipients.length === 0}
+            disabled={testBusy !== null}
             style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
-            title="立即發送（會真的推 LINE / Email）"
+            title="依上方勾選的管道與對象立即測試發送一次"
           >
             <Send className="mr-1.5 h-3.5 w-3.5" />
             {testBusy === "real" ? "發送中..." : "🧪 立即測試發送"}
