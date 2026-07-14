@@ -1274,6 +1274,7 @@ function AutoSendSection({
   const validTags = new Set<string>();
   for (const u of users) {
     validTags.add(`line:${u.lineUserId}`);
+    validTags.add(`inapp:${u.lineUserId}`); // v850：站內通知
     if (u.email) validTags.add(`email:${u.email}`);
   }
   const isValidRecipient = (r: string) =>
@@ -1338,6 +1339,12 @@ function AutoSendSection({
   }
   function toggleEmail(email: string) {
     const tag = `email:${email}`;
+    void persistRecipients(
+      recipientSet.has(tag) ? recipients.filter((r) => r !== tag) : [...recipients, tag],
+    );
+  }
+  function toggleInApp(userId: string) {
+    const tag = `inapp:${userId}`; // v850：站內通知（寫入通知中心，不需 LINE/Email）
     void persistRecipients(
       recipientSet.has(tag) ? recipients.filter((r) => r !== tag) : [...recipients, tag],
     );
@@ -1578,6 +1585,7 @@ function AutoSendSection({
             {users.map((u) => {
               const lineChecked = recipientSet.has(`line:${u.lineUserId}`);
               const emailChecked = u.email ? recipientSet.has(`email:${u.email}`) : false;
+              const inappChecked = recipientSet.has(`inapp:${u.lineUserId}`); // v850：站內
               const roleLabel =
                 u.roles && u.roles.length > 0
                   ? u.roles.join("/")
@@ -1594,6 +1602,10 @@ function AutoSendSection({
                   <label className="flex items-center gap-1.5 text-[11px]">
                     <input type="checkbox" checked={lineChecked} onChange={() => toggleLine(u.lineUserId)} />
                     <span>LINE</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[11px]" title="站內通知（寫入後台通知中心，不需 LINE / Email）">
+                    <input type="checkbox" checked={inappChecked} onChange={() => toggleInApp(u.lineUserId)} />
+                    <span>站內</span>
                   </label>
                   <label className={cn("flex items-center gap-1.5 text-[11px]", !u.email && "opacity-40")}>
                     <input

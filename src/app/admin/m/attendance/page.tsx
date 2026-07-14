@@ -17,6 +17,7 @@ interface AttBooking {
   signed: boolean;
   totalAmount: number; // v755
   paidAmount: number;  // v755：剩餘 = totalAmount - paidAmount
+  notes?: string | null; // v850：訂單備註
 }
 interface Session {
   key: string;
@@ -180,6 +181,9 @@ export default function MobileAttendancePage() {
                           {b.signed && <span className="flex-shrink-0 text-[11px]" title="有簽名">✍️</span>}
                         </div>
                         {b.phone && <div className="mt-0.5 text-[11px] tabular-nums" style={{ color: "var(--muted-foreground)" }}>📞 {b.phone}</div>}
+                        {b.notes && b.notes.trim() && (
+                          <div className="mt-1 inline-block rounded-md px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{b.notes}</div>
+                        )}
                       </div>
                       {done ? (
                         <span className="flex-shrink-0 rounded-full bg-green-100 px-2.5 py-1.5 text-xs font-bold text-green-700">✅ 到場</span>

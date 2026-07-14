@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     },
     select: {
       id: true, refId: true, type: true, participants: true, status: true,
-      paymentStatus: true, signatureImageKey: true,
+      paymentStatus: true, signatureImageKey: true, notes: true, // v850：訂單備註
       totalAmount: true, paidAmount: true, // v755：點名確認框要顯示剩餘款／判斷有無付款
       user: { select: { displayName: true, realName: true, phone: true } },
     },
@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
     signed: !!b.signatureImageKey,
     totalAmount: b.totalAmount, // v755
     paidAmount: b.paidAmount,   // v755：剩餘 = totalAmount - paidAmount
+    notes: b.notes,             // v850：訂單備註
   });
 
   const sessions = [

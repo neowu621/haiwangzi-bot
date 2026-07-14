@@ -299,8 +299,22 @@ export async function runDailyWeatherReport(opts?: {
         const html = `<pre style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;">${textReport.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`;
         const er = await sendEmail({ to, subject, text: textReport, html });
         results.push({ to: r, ok: er.ok, error: er.error });
+      } else if (r.startsWith("inapp:")) {
+        // v850：站內通知 —— 寫入後台通知中心（不需 LINE / Email）。userId = lineUserId。
+        const userId = r.slice(6);
+        await prisma.notification.create({
+          data: {
+            userId,
+            templateKey: "daily_ops_report",
+            title: `🌊 每日營運報告 ${dateStr}`,
+            body: textReport,
+            linkUrl: "/admin/tonight",
+            icon: "🌊",
+          },
+        });
+        results.push({ to: r, ok: true });
       } else {
-        results.push({ to: r, ok: false, error: "unrecognized recipient prefix (use line: or email:)" });
+        results.push({ to: r, ok: false, error: "unrecognized recipient prefix (use line:, inapp: or email:)" });
       }
     } catch (e) {
       results.push({

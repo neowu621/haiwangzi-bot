@@ -591,9 +591,9 @@ export default function TonightPage() {
                               <PriceBreakdown pb={(p.booking.priceBreakdown as PriceBreakdownData | null) ?? null} fallback={{ type: p.booking.type as "daily" | "tour" | undefined, totalAmount: p.booking.totalAmount, creditUsed: p.booking.creditUsed, rentalGear: p.booking.rentalGear, tankCount: p.booking.tankCount, participants: p.booking.participants, extraTank: p.booking.tripExtraTank, baseTrip: p.booking.tripBaseTrip, isBoat: p.booking.tripIsBoat }} />
                             </div>
                           )}
-                          {/* v620：客戶備註 / 管理備註 提醒 */}
-                          {p.booking.notes && (
-                            <div className="mt-0.5 text-[11px] text-amber-700">📝 客戶：{p.booking.notes}</div>
+                          {/* v620：客戶備註 / 管理備註 提醒；v850：訂單備註統一紅色標示 */}
+                          {p.booking.notes && p.booking.notes.trim() && (
+                            <div className="mt-1 rounded-md px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{p.booking.notes}</div>
                           )}
                           {p.booking.adminNotes && (
                             <div className="mt-0.5 text-[11px] text-slate-500">🔒 管理：{p.booking.adminNotes}</div>
