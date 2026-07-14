@@ -237,13 +237,13 @@ export function CustomerDetailDialog({
                   : <div className="text-xs text-[var(--muted-foreground)]">（無，可在「會員管理 → 編輯」填寫）</div>}
               </div>
               <div>
-                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">客戶備註（客人各筆訂單自己填的）</div>
+                <div className="text-[10px] text-[var(--muted-foreground)] mb-1">訂單備註（客人各筆訂單自己填的）</div>
                 {data.activityNotes && data.activityNotes.length > 0 ? (
                   <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
                     {data.activityNotes.map((a) => (
-                      <div key={a.bookingId} className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs">
-                        <div className="font-semibold text-[var(--foreground)]">{a.label}</div>
-                        <div className="whitespace-pre-wrap text-[var(--muted-foreground)] mt-0.5">{a.note}</div>
+                      <div key={a.bookingId} className="rounded-md px-2.5 py-1.5 text-xs" style={{ background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.3)" }}>
+                        <div className="font-semibold" style={{ color: "#DC2626" }}>📝 {a.label}</div>
+                        <div className="whitespace-pre-wrap mt-0.5 font-medium" style={{ color: "#b91c1c" }}>{a.note}</div>
                       </div>
                     ))}
                   </div>

@@ -206,7 +206,7 @@ export function OrderDetail({ id, onActed }: { id: string; onActed?: () => void 
       )}
 
       {b.notes && (
-        <div className="rounded-lg px-3 py-2 text-[11px]" style={{ background: "rgba(255,184,0,0.1)", color: "#9a7a00" }}>📝 客戶備註：{b.notes}</div>
+        <div className="rounded-lg px-3 py-2 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{b.notes}</div>
       )}
       {b.adminNotes && (
         <div className="rounded-lg px-3 py-2 text-[11px]" style={{ background: "rgba(0,0,0,0.04)", color: "var(--muted-foreground)" }}>🔒 管理備註：{b.adminNotes}</div>

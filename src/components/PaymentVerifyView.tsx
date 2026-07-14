@@ -171,7 +171,7 @@ export function PaymentVerifyView({
         {(booking.notes || booking.adminNotes) && (
           <div className="mx-4 mb-1 space-y-1.5 rounded-lg bg-amber-50 px-3 py-2 text-[12px]">
             {booking.notes && (
-              <div className="flex gap-1.5 text-amber-900"><span className="shrink-0 font-semibold">📝 客戶備註</span><span>{booking.notes}</span></div>
+              <div className="flex gap-1.5 text-red-600 font-semibold"><span className="shrink-0">📝 訂單備註</span><span>{booking.notes}</span></div>
             )}
             {booking.adminNotes && (
               <div className="flex gap-1.5 text-slate-700"><span className="shrink-0 font-semibold">🔒 管理備註</span><span>{booking.adminNotes}</span></div>

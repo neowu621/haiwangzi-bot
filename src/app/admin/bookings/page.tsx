@@ -1186,11 +1186,11 @@ export default function AdminBookingsPage() {
                             {/* v837：客戶下單備註標記 — 一眼看出有特別需求（hover 看內容） */}
                             {b.notes && b.notes.trim() && (
                               <span
-                                title={`客戶備註：${b.notes}`}
-                                className="inline-flex items-center rounded-md px-1 py-0.5 text-[10px] font-semibold"
-                                style={{ background: "rgba(234,164,23,0.16)", color: "#B3760A" }}
+                                title={`訂單備註：${b.notes}`}
+                                className="inline-flex items-center rounded-md px-1 py-0.5 text-[10px] font-bold"
+                                style={{ background: "rgba(220,38,38,0.12)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}
                               >
-                                📝 備註
+                                📝 訂單備註
                               </span>
                             )}
                           </div>
@@ -1244,7 +1244,7 @@ export default function AdminBookingsPage() {
                           {(() => {
                             const parts: Array<{ l: string; t: string; c: string }> = [];
                             if (b.user?.notes) parts.push({ l: "個", t: b.user.notes, c: "text-pink-700" });
-                            if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-slate-600" });
+                            if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-red-600 font-semibold" });
                             if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
                             return (
                               <div className="space-y-0.5">
