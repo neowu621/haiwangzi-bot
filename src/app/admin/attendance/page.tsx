@@ -188,7 +188,7 @@ export default function AttendancePage() {
                           </div>
                           {b.phone && <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)] tabular-nums">📞 {b.phone}</div>}
                           {b.notes && b.notes.trim() && (
-                            <div className="mt-1 inline-block rounded-md px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{b.notes}</div>
+                            <div className="mt-1 inline-block rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>📝 訂單備註：{b.notes}</div>
                           )}
                         </div>
                         {done ? (
