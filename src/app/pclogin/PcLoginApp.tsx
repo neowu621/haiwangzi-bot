@@ -114,6 +114,11 @@ const C = {
   mute: "#5A6B7D",
   line: "#dfe7ee",
 };
+// v847：暫停桌機（PC）下單 —— 一律引導客戶改用手機／LINE 預約。
+//   true = 恢復桌機登入＋下單；false = 顯示「請用手機預約」引導頁（目前狀態）。
+//   要恢復只需改回 true 重新部署，其餘程式碼保留不動。
+const PC_ORDERING_ENABLED = false;
+
 const GEAR: { type: string; label: string; defPrice: number }[] = [
   { type: "BCD", label: "浮力背心 BCD", defPrice: 200 },
   { type: "regulator", label: "調節器", defPrice: 200 },
@@ -241,6 +246,11 @@ export function PcLoginApp() {
     try { sessionStorage.setItem(PC_UNREAD_POPUP_KEY, "1"); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authState, member]);
+
+  // v847：暫停桌機下單 → 一律顯示「請用手機／LINE 預約」引導頁（要恢復把 PC_ORDERING_ENABLED 改回 true 重部署）
+  if (!PC_ORDERING_ENABLED) {
+    return <PcDisabledScreen />;
+  }
 
   // 未登入 → 獨立全螢幕登入頁（海洋漸層 + Email 使用說明 + 同意條款）
   if (authState === "out") {
@@ -482,6 +492,96 @@ function LoginScreen({ error }: { error: string | null }) {
           已經是會員了？<a href={LOGIN_URL} style={{ color: C.deep, fontWeight: 800 }}>直接登入</a>
         </div>
         <div style={{ textAlign: "center", marginTop: 16, paddingTop: 14, borderTop: "1px solid #e6edf0", fontSize: 12, color: "#6b7b85", letterSpacing: 0.3 }}>
+          東北角海王子潛水 ‧ v{APP_VERSION}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── v847：桌機下單暫停 → 引導改用手機／LINE ─────────────────────────
+function PcDisabledScreen() {
+  const LINE_OA = "https://line.me/R/ti/p/%40894bpmew"; // 加海王子 LINE 官方帳號
+  const [qrUrl, setQrUrl] = useState<string>(""); // 後台設定的 LINE OA QR（與 /liff/add-friend 同源）
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setQrUrl(c?.externalLinks?.lineOaQrUrl ?? ""))
+      .catch(() => {});
+  }, []);
+  const steps = [
+    qrUrl ? "手機開啟相機或 LINE，掃描左方 QR Code" : "手機開啟 LINE，搜尋官方帳號 @894bpmew",
+    "或直接用手機點下方「加 LINE 預約」按鈕",
+    "在 LINE 裡完成登入，即可預約潛水、查詢訂單",
+  ];
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "32px 18px",
+      background: `radial-gradient(120% 90% at 28% 18%, #1d5a6b 0%, #103a4d 42%, #0a2733 100%)`,
+      fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif",
+    }}>
+      <div style={{ width: "100%", maxWidth: 560, background: "#fff", borderRadius: 26, padding: "clamp(28px,5vw,46px)", boxShadow: "0 30px 80px rgba(0,0,0,.35)", textAlign: "center" }}>
+        {/* 品牌 */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 22 }}>
+          <BrandMark size={54} badge radius={15} style={{ boxShadow: "0 6px 16px rgba(10,35,66,.18)" }} />
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.deep, lineHeight: 1.2 }}>東北角海王子潛水</div>
+            <div style={{ fontSize: 11, letterSpacing: 3, color: "#0a8f86", fontWeight: 700, marginTop: 2 }}>SEA PRINCE DIVING</div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 44, marginBottom: 6 }}>📱</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: C.deep, margin: "0 0 10px" }}>請用手機預約潛水</h1>
+        <p style={{ fontSize: 14.5, color: C.mute, lineHeight: 1.75, margin: "0 auto 24px", maxWidth: 420 }}>
+          為了給您更順暢的預約與付款體驗，會員登入與線上下單目前僅開放<b style={{ color: C.deep }}>手機版</b>。
+          請用手機加入海王子 LINE，即可預約潛水、查詢訂單與付款。
+        </p>
+
+        {/* QR + 步驟 */}
+        <div style={{ display: "flex", gap: 22, alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginBottom: 26 }}>
+          {qrUrl && (
+            <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: 12, flex: "none" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrUrl}
+                alt="海王子 LINE QR Code"
+                width={148}
+                height={148}
+                style={{ display: "block", width: 148, height: 148, borderRadius: 8 }}
+              />
+              <div style={{ fontSize: 11.5, color: C.mute, marginTop: 8, fontWeight: 700 }}>掃描加入 LINE</div>
+            </div>
+          )}
+          <ol style={{ textAlign: "left", margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12, maxWidth: 280 }}>
+            {steps.map((s, i) => (
+              <li key={i} style={{ display: "flex", gap: 11, alignItems: "flex-start", fontSize: 13.5, color: C.ink, lineHeight: 1.6 }}>
+                <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.deep, color: "#fff", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 900, flex: "none" }}>{i + 1}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* 手機直接點：加 LINE */}
+        <a
+          href={LINE_OA}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 11,
+            background: "linear-gradient(180deg,#07d160,#06b54e)",
+            color: "#fff", fontWeight: 800, fontSize: 16.5, padding: "15px", borderRadius: 14,
+            textDecoration: "none", boxShadow: "0 10px 24px rgba(6,199,85,.32)", maxWidth: 360, margin: "0 auto",
+          }}
+        >
+          <LineGlyph /> 加 LINE 預約（手機點按）
+        </a>
+
+        <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap", marginTop: 20 }}>
+          <a href="/" style={{ color: C.deep, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}>← 回首頁</a>
+          <a href="/courses" style={{ color: C.deep, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}>查看課程</a>
+        </div>
+
+        <div style={{ marginTop: 22, paddingTop: 14, borderTop: "1px solid #e6edf0", fontSize: 12, color: "#6b7b85", letterSpacing: 0.3 }}>
           東北角海王子潛水 ‧ v{APP_VERSION}
         </div>
       </div>
