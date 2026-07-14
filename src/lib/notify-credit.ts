@@ -64,9 +64,11 @@ export function notifyCreditChange(args: {
       const line1 = isAdd
         ? `您獲得抵用金 ${sign}NT$${abs}${rLabel ? `（${rLabel}）` : ""}`
         : `您的抵用金異動 ${sign}NT$${abs}${rLabel ? `（${rLabel}）` : ""}`;
-      const line2 = `目前餘額：NT$${args.balanceAfter.toLocaleString()}`;
+      const line2 = `目前抵用金餘額：NT$${args.balanceAfter.toLocaleString()}`;
       const line3 = isAdd && args.expiresAt ? `有效期限：${fmtDate(args.expiresAt)}` : isAdd ? "有效期限：永久" : "";
-      const bodyText = [line1, line2, line3].filter(Boolean).join("\n");
+      // v846：入帳時建議下次潛水使用（只在有餘額可用時提示）
+      const suggest = isAdd && args.balanceAfter > 0 ? "💡 下次潛水預約時可直接折抵，記得使用喔！" : "";
+      const bodyText = [line1, line2, line3, suggest].filter(Boolean).join("\n");
 
       // ── LINE ──
       if (wantLine && (user.notifyByLine ?? true)) {
@@ -91,8 +93,9 @@ export function notifyCreditChange(args: {
   <div style="background:#fff8ec;border:1px solid #f3d8a0;border-radius:10px;padding:16px 18px;margin-bottom:16px">
     <div style="font-size:22px;font-weight:800;color:${isAdd ? "#0a8f86" : "#c0392b"}">${sign}NT$${abs}</div>
     ${rLabel ? `<div style="font-size:13px;color:#9a6a18;margin-top:2px">${rLabel}</div>` : ""}
-    <div style="font-size:14px;color:#0A2342;margin-top:10px">目前餘額：<b>NT$${args.balanceAfter.toLocaleString()}</b></div>
+    <div style="font-size:14px;color:#0A2342;margin-top:10px">目前抵用金餘額：<b>NT$${args.balanceAfter.toLocaleString()}</b></div>
     ${line3 ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${line3}</div>` : ""}
+    ${suggest ? `<div style="font-size:12.5px;color:#0a8f86;font-weight:700;margin-top:10px">${suggest}</div>` : ""}
   </div>
   <a href="${LINE_OA}" style="display:inline-block;background:#06c755;color:#fff;text-decoration:none;font-weight:700;padding:10px 20px;border-radius:8px;font-size:14px">有問題？聯絡小編 →</a>
 </div>`;
@@ -111,7 +114,8 @@ export function notifyCreditChange(args: {
               templateKey: "credit_change",
               title,
               body: bodyText,
-              linkUrl: "/liff/my",
+              // v846：入帳且有餘額 → 導「預約潛水」直接使用；其餘導「我的抵用金」
+              linkUrl: isAdd && args.balanceAfter > 0 ? "/liff/booking" : "/liff/my",
               icon: isAdd ? "🎁" : "💳",
             },
           });
