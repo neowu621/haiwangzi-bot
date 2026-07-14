@@ -24,7 +24,7 @@ export function SiteHeader({ current }: { current?: string }) {
           <a key={n.href} href={n.href} className={current === n.href ? s.cur : undefined}>{n.label}</a>
         ))}
       </div>
-      <a href="/pclogin" className={s.member}>會員登入</a>
+      {/* v847：暫停桌機下單 → 移除「會員登入」入口，一律引導手機/LINE */}
     </nav>
   );
 }

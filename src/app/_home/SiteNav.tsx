@@ -62,15 +62,14 @@ export default function SiteNav() {
         <span className="dev-badge" title={`目前裝置：${DEVICE_LABEL[device]}`} aria-label={`目前裝置：${DEVICE_LABEL[device]}`}>
           <DeviceIcon device={device} />
         </span>
-        {/* v481：瀏覽器會員登入 / 線上下單入口（測試期間導向 /pclogin） */}
-        <a href="/pclogin" className="nav-member" title="會員登入 / 線上預約">會員登入</a>
+        {/* v847：暫停桌機下單 → 移除桌機「會員登入」入口，一律引導手機/LINE */}
         {/* v550：右上角 LINE 預約鈕移除（hero 已有 LINE + 線上詢問，避免重複） */}
         <button className={`nav-toggle${menuOpen ? " open" : ""}`} aria-label="開啟選單" onClick={() => setMenuOpen((o) => !o)}><span /><span /><span /></button>
       </header>
       <div className={`nav-backdrop${menuOpen ? " open" : ""}`} onClick={closeMenu} />
       <nav className={`nav-menu${menuOpen ? " open" : ""}`} aria-label="行動選單">
         {NAV.map((n) => <a key={n.href} href={n.href} onClick={closeMenu}>{n.label}</a>)}
-        <a href="/pclogin" onClick={closeMenu}>會員登入 / 線上預約</a>
+        {/* v847：暫停桌機下單 → 移除「會員登入 / 線上預約」入口 */}
         <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line" onClick={closeMenu}><LineIcon />LINE 預約</a>
       </nav>
 

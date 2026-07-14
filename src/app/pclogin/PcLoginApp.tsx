@@ -578,7 +578,6 @@ function PcDisabledScreen() {
 
         <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap", marginTop: 20 }}>
           <a href="/" style={{ color: C.deep, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}>← 回首頁</a>
-          <a href="/courses" style={{ color: C.deep, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}>查看課程</a>
         </div>
 
         <div style={{ marginTop: 22, paddingTop: 14, borderTop: "1px solid #e6edf0", fontSize: 12, color: "#6b7b85", letterSpacing: 0.3 }}>
