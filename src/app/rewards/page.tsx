@@ -21,9 +21,9 @@ export const metadata: Metadata = {
 
 const tint = (c: string) => ({ ["--tint"]: c } as CSSProperties);
 // 潛級由淺入深的視覺配色（依等級序，最高一律金色）
-// v824：深色底用的亮色（青→金漸進）
-const TINTS = ["#7fc7e6", "#3fd8c8", "#49cfe0", "#5aa6ec", "#ffd36b"];
-const tintFor = (i: number, total: number) => (i === total - 1 ? "#ffd36b" : TINTS[Math.min(i, TINTS.length - 1)]);
+// v849：白底用的深色調（青→金漸進，確保在白卡上對比足夠）
+const TINTS = ["#2b86ad", "#0a9d8f", "#1893a6", "#3a6fb0", "#c08a1e"];
+const tintFor = (i: number, total: number) => (i === total - 1 ? "#c08a1e" : TINTS[Math.min(i, TINTS.length - 1)]);
 // 福利文字裡的 NT$金額 / 折數 自動加粗
 function highlight(text: string): ReactNode[] {
   return text.split(/(NT\$[\d,]+|\d+\s*折)/g).filter(Boolean).map((p, i) =>
@@ -32,19 +32,19 @@ function highlight(text: string): ReactNode[] {
 }
 
 const CSS = `
-/* v824：此頁為深色 → body 底色也改深海藍，避免捲動回彈露出淺色邊（style 只在 /rewards 掛載時存在）*/
-body{background:#02152a;}
+/* v849：改為白底淺色系（對齊 FAQ / LegalShell）；style 只在 /rewards 掛載時存在 */
+body{background:#eef3f6;}
 .rwd{
-  /* v824：深海藍深色系（對齊首頁 home.css：abyss/foam/glow/gold）*/
-  --navy:#02152a; --navy2:#063a66;
-  --teal:#66d8f6; --teal-d:#8fe4fa; --mint:#a5e8fb;
-  --coral:#ff8a6a; --gold:#ffd36b;
-  --bg:#02152a; --surface:#0a2842; --surface-2:#0e3454;
-  --ink:#eaf6ff; --muted:#9fc4e2; --line:rgba(122,200,240,.16);
-  --shadow:0 14px 38px rgba(0,0,0,.5); --maxw:1000px;
+  /* v849：白底淺色系（對齊 LegalShell：底 #eef3f6、白卡、深藍標題、青綠點綴）*/
+  --navy:#0A2342; --navy2:#063a66;
+  --teal:#0a8f86; --teal-d:#0c7d75; --mint:#0a8f86;
+  --coral:#e0562f; --gold:#c08a1e;
+  --bg:#eef3f6; --surface:#ffffff; --surface-2:#f2f6f9;
+  --ink:#1A2330; --muted:#5a6b7d; --line:#e2e8ee;
+  --shadow:0 4px 18px rgba(10,35,66,.07); --maxw:1000px;
   background:
-    radial-gradient(1100px 520px at 82% -8%, rgba(102,216,246,.12), transparent 62%),
-    linear-gradient(180deg, #05233d 0%, #02152a 42%);
+    radial-gradient(1100px 520px at 82% -8%, rgba(10,143,134,.06), transparent 62%),
+    linear-gradient(180deg, #f4f8fb 0%, #eef3f6 42%);
   color:var(--ink);
   font-family:-apple-system,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
   line-height:1.7; -webkit-font-smoothing:antialiased;
@@ -52,18 +52,18 @@ body{background:#02152a;}
 .rwd *{box-sizing:border-box;}
 .rwd .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px;}
 
-.rwd .hero{position:relative; overflow:hidden; color:#fff; background:linear-gradient(165deg,#0a3e72 0%,#063258 48%,#02152a 100%); padding:60px 20px 84px; border-bottom:1px solid rgba(102,216,246,.12);}
+.rwd .hero{position:relative; overflow:hidden; color:#0A2342; background:linear-gradient(165deg,#e6f2f6 0%,#eef6f8 48%,#f4f8fb 100%); padding:60px 20px 84px; border-bottom:1px solid #dfe7ee;}
 .rwd .hero-inner{max-width:var(--maxw); margin:0 auto; position:relative; z-index:2;}
 .rwd .eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--mint); margin-bottom:16px;}
 .rwd .eyebrow::before{content:""; width:26px; height:2px; background:var(--mint); display:inline-block;}
-.rwd .hero h1{font-size:clamp(30px,6vw,52px); font-weight:900; line-height:1.12; margin:0 0 14px; letter-spacing:-.01em; text-wrap:balance;}
-.rwd .hero h1 .hl{color:var(--mint);}
-.rwd .hero p{font-size:clamp(15px,2.4vw,18px); max-width:52ch; color:#cfe6ef; margin:0 0 26px;}
+.rwd .hero h1{font-size:clamp(30px,6vw,52px); font-weight:900; line-height:1.12; margin:0 0 14px; letter-spacing:-.01em; text-wrap:balance; color:#0A2342;}
+.rwd .hero h1 .hl{color:var(--teal);}
+.rwd .hero p{font-size:clamp(15px,2.4vw,18px); max-width:52ch; color:#41545e; margin:0 0 26px;}
 .rwd .hero-stats{display:flex; flex-wrap:wrap; gap:26px 40px; margin-top:8px;}
-.rwd .hstat b{display:block; font-size:clamp(22px,4vw,30px); font-weight:900; color:#fff;}
-.rwd .hstat span{font-size:12.5px; color:#a9cdd8; letter-spacing:.04em;}
+.rwd .hstat b{display:block; font-size:clamp(22px,4vw,30px); font-weight:900; color:#0A2342;}
+.rwd .hstat span{font-size:12.5px; color:#5a6b7d; letter-spacing:.04em;}
 .rwd .bubbles{position:absolute; inset:0; z-index:1; pointer-events:none;}
-.rwd .bubbles i{position:absolute; bottom:-30px; border-radius:50%; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.14); animation:rwd-rise linear infinite;}
+.rwd .bubbles i{position:absolute; bottom:-30px; border-radius:50%; background:rgba(10,143,134,.06); border:1px solid rgba(10,143,134,.10); animation:rwd-rise linear infinite;}
 @keyframes rwd-rise{to{transform:translateY(-120vh) translateX(14px); opacity:0;}}
 
 .rwd section{padding:52px 0 8px;}
@@ -111,13 +111,13 @@ body{background:#02152a;}
 .rwd .panel li b{color:var(--teal-d);}
 .rwd .panel.limited{background:linear-gradient(160deg,color-mix(in srgb,var(--coral) 12%,var(--surface)),var(--surface));}
 
-.rwd .cta{margin:44px 0 12px; text-align:center; background:linear-gradient(160deg,#0a3e72,#04203a); color:#fff; border-radius:22px; padding:44px 24px; border:1px solid rgba(102,216,246,.20); box-shadow:0 0 40px rgba(102,216,246,.08) inset;}
-.rwd .cta h2{font-size:clamp(21px,4vw,28px); font-weight:900; margin:0 0 8px;}
-.rwd .cta p{color:#bcd6e0; margin:0 auto 22px; max-width:44ch; font-size:14.5px;}
+.rwd .cta{margin:44px 0 12px; text-align:center; background:linear-gradient(160deg,#e8f5f3,#f2f8fb); color:#0A2342; border-radius:22px; padding:44px 24px; border:1px solid #cfe6e2; box-shadow:0 6px 24px rgba(10,143,134,.08);}
+.rwd .cta h2{font-size:clamp(21px,4vw,28px); font-weight:900; margin:0 0 8px; color:#0A2342;}
+.rwd .cta p{color:#41545e; margin:0 auto 22px; max-width:44ch; font-size:14.5px;}
 .rwd .btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap;}
 .rwd .btn{display:inline-flex; align-items:center; gap:8px; font-size:14.5px; font-weight:800; border-radius:12px; padding:13px 22px; text-decoration:none; cursor:pointer;}
 .rwd .btn.line{background:#06C755; color:#fff;}
-.rwd .btn.ghost{background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.28);}
+.rwd .btn.ghost{background:#fff; color:#0A2342; border:1px solid #cbd6df;}
 
 @media (max-width:600px){
   .rwd .wrap{padding:0 16px;}
