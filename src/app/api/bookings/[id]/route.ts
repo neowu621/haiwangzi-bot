@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 import { refundBookingCredit } from "@/lib/refund-booking-credit"; // v603
+import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v845
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,6 +81,12 @@ export async function PATCH(
   }
 
   const data = PatchSchema.parse(await req.json());
+
+  // v845：客戶改/加了訂單備註（且非清空、與原本不同）→ 稍後提醒老闆
+  const noteChanged =
+    data.notes !== undefined &&
+    (data.notes ?? "").trim().length > 0 &&
+    (data.notes ?? "").trim() !== (booking.notes ?? "").trim();
 
   // 重算總額需要 trip / tour 詳情
   if (booking.type === "daily") {
@@ -165,6 +172,7 @@ export async function PATCH(
       targetLabel: updated.code ?? undefined,
       metadata: { type: "daily", participants: updated.participants, totalAmount },
     });
+    if (noteChanged) notifyStaffCustomerNote(id, { updated: true }); // v845
     return NextResponse.json({ ok: true, booking: updated });
   }
 
@@ -227,6 +235,7 @@ export async function PATCH(
       targetLabel: updated.code ?? undefined,
       metadata: { type: "tour", participants: updated.participants, totalAmount },
     });
+    if (noteChanged) notifyStaffCustomerNote(id, { updated: true }); // v845
     return NextResponse.json({ ok: true, booking: updated });
   }
 

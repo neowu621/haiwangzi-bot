@@ -4,7 +4,7 @@
 import { prisma } from "./prisma";
 import { getLineClient } from "./line";
 
-export function notifyStaffCustomerNote(bookingId: string): void {
+export function notifyStaffCustomerNote(bookingId: string, opts?: { updated?: boolean }): void {
   void (async () => {
     try {
       const booking = await prisma.booking.findUnique({
@@ -63,14 +63,15 @@ export function notifyStaffCustomerNote(bookingId: string): void {
         `📝 訂單備註：${note}` +
         (personalNote ? `\n🙋 個人備註：${personalNote}` : "");
       const head = `👤 ${who}${booking.code ? ` · ${booking.code}` : ""}\n📍 ${session}`;
+      const headline = opts?.updated ? "📝 客戶更新了訂單備註（需留意）" : "📝 新訂單有客戶備註（需留意）";
       const text =
-        `📝 新訂單有客戶備註（需留意）\n` +
+        `${headline}\n` +
         `━━━━━━━━━━━━\n` +
         `${head}\n\n` +
         `${noteBlock}\n\n` +
         `👉 ${adminUrl}`;
       // 站內通知（通知中心）內容
-      const inAppTitle = "📝 新訂單有客戶備註";
+      const inAppTitle = opts?.updated ? "📝 客戶更新了訂單備註" : "📝 新訂單有客戶備註";
       const inAppBody = `${head}\n\n${noteBlock}`;
 
       for (const [to, canLine] of recip) {
