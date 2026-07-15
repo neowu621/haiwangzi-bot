@@ -1250,12 +1250,15 @@ function AutoSendSection({
 
   React.useEffect(() => {
     setUsersLoading(true);
-    adminFetch<{ users: AutoSendUser[] }>("/api/admin/users?role=admin,boss,coach")
+    adminFetch<{ users: AutoSendUser[] }>("/api/admin/users?role=admin,boss,coach,it,assistant")
       .then((d) => {
-        // 只留有真實 role 的（admin/boss/coach）。
+        // 只留有真實職員 role 的。
         // v454：role 或 roles[] 任一命中即算職員，避免殘留 roles=["customer"]
         // 卻 role="admin" 的帳號被誤濾掉。
-        const STAFF = ["admin", "boss", "coach"];
+        // v858 修正：原本漏了 it / assistant → IT 帳號不會出現在收件人清單，
+        //   導致「他自己的 line:/inapp: 收件設定」被誤判成無效收件人（畫面無勾選框可控制，
+        //   卻仍會被發送），還會被「清除無效收件人」誤刪。
+        const STAFF = ["admin", "boss", "coach", "it", "assistant"];
         const filtered = (d.users ?? []).filter(
           (u) =>
             STAFF.includes(u.role) ||
@@ -1531,7 +1534,7 @@ function AutoSendSection({
               {usersLoading ? (
                 <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
               ) : users.length === 0 ? (
-                <p className="text-[11px] text-[var(--muted-foreground)]">（沒有 admin / boss / coach 用戶）</p>
+                <p className="text-[11px] text-[var(--muted-foreground)]">（沒有職員帳號：老闆 / IT / 管理 / 教練 / 助教）</p>
               ) : (
                 <div className="space-y-1 rounded-md border bg-white p-2 max-h-60 overflow-y-auto" style={{ borderColor: "var(--border)" }}>
                   {users.map((u) => (
@@ -1659,7 +1662,7 @@ function AutoSendSection({
         {usersLoading ? (
           <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
         ) : users.length === 0 ? (
-          <p className="text-[11px] text-[var(--muted-foreground)]">（沒有 admin / boss / coach 用戶）</p>
+          <p className="text-[11px] text-[var(--muted-foreground)]">（沒有職員帳號：老闆 / IT / 管理 / 教練 / 助教）</p>
         ) : (
           <div className="space-y-1 rounded-md border p-2 max-h-72 overflow-y-auto" style={{ borderColor: "var(--border)" }}>
             {users.map((u) => {

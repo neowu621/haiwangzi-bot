@@ -208,7 +208,8 @@ model Notification {
   title       String
   body        String
   linkUrl     String?   @map("link_url")
-  icon        String?   @db.VarChar(16)
+  // v858：原 VarChar(16) 只夠放 emoji；改 255 以容納品牌 logo 圖片網址（NotifIcon 會自動判斷）
+  icon        String?   @db.VarChar(255)
   isRead      Boolean   @default(false) @map("is_read")
   readAt      DateTime? @map("read_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz

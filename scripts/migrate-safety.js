@@ -520,7 +520,7 @@ const PATCHES = [
      title TEXT NOT NULL,
      body TEXT NOT NULL,
      link_url TEXT,
-     icon VARCHAR(16),
+     icon VARCHAR(255),
      is_read BOOLEAN NOT NULL DEFAULT FALSE,
      read_at TIMESTAMPTZ,
      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -528,6 +528,9 @@ const PATCHES = [
    )`,
   `CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS notifications_user_read_idx ON notifications(user_id, is_read)`,
+  // v858：既有資料庫的 icon 欄位由 VARCHAR(16) 放寬到 255（原本只夠 emoji，放不下 logo 圖片網址）。
+  //   放寬型別是安全操作(不會截斷既有資料)；CREATE TABLE IF NOT EXISTS 不會改既有表，故需這道 ALTER。
+  `ALTER TABLE notifications ALTER COLUMN icon TYPE VARCHAR(255)`,
 
   // ── v521/v522：客服信箱 Console（email console）─────────────────────
   //   prisma db push 因既有 drift 一直失敗（data-loss），新表/enum 一律靠 migrate-safety 建。
