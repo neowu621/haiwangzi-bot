@@ -222,7 +222,10 @@ export async function runDailyWeatherReport(opts?: {
         where: {
           refId: { in: allTripIds },
           type: "daily",
-          status: { in: ["pending", "confirmed"] },
+          // v857 修正：原本只算 pending/confirmed，會漏掉「待確認匯款(awaiting_verify)」
+          //   與「已完成(completed)」的客人 → 報告顯示 0 人（實際有人報名）。
+          //   改用與 /api/trips、/api/admin/trips 完全相同的規則，讓報告人數與後台/前台一致。
+          status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] },
         },
         _sum: { participants: true },
       })
