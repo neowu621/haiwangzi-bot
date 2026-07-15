@@ -273,8 +273,8 @@ export async function POST(req: NextRequest) {
               templateKey: "daily_order_briefing",
               title: `明日訂單預報 ${fmtDate(now)}`,
               body: bossText,
-              // v859：站內通知在 LINE WebView 開 → 走 LIFF 橋接頁換後台 token 再導向
-              linkUrl: "/liff/admin-go?to=/admin/m/tonight",
+              // v860：預報全文已在 body，無需再導頁 → 不放連結（通知只顯示「已閱讀，關閉」）
+              linkUrl: null,
               icon: BUSINESS.logo, // v856：站內用 logo 圖（webview 支援 WebP）
             },
           });

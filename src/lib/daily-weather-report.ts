@@ -371,9 +371,8 @@ export async function runDailyWeatherReport(opts?: {
             templateKey: "daily_ops_report",
             title: `每日營運報告 ${dateStr}`,
             body: textReport,
-            // v859：站內通知在 LINE WebView 開啟 → 直連 /admin/* 會因沒有後台 token 被踢到
-            //   /admin/login(要密碼＝死路)。改走 LIFF 橋接頁換 token 再導向手機後台。
-            linkUrl: "/liff/admin-go?to=/admin/m/tonight",
+            // v860：報告全文已在 body，無需再導頁 → 不放連結（通知只顯示「已閱讀，關閉」）
+            linkUrl: null,
             icon: BUSINESS.logo, // v856：站內用 logo 圖（webview 支援 WebP）
           },
         });

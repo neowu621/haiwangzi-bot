@@ -234,7 +234,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
               onClick={onClose}
               className="block w-full rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
             >
-              關閉通知
+              ✓ 訊息已閱讀，關閉
             </button>
           )}
         </div>
