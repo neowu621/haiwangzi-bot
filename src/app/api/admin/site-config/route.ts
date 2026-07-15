@@ -152,6 +152,7 @@ const PatchSchema = z.object({
   // v315：訂單日報（每日 07:00 自動發給 admin/boss）
   dailyBriefingEnabled: z.boolean().optional(),
   dailyBriefingIncludeCoaches: z.boolean().optional(),
+  dailyBriefingRecipients: z.array(z.string()).optional(), // v855：收件人與管道
   // v391：場次 Dump 自動優惠開頭
   dumpPromoEnabled: z.boolean().optional(),
   dumpPromoText: z.string().max(2000).optional(),
@@ -293,6 +294,7 @@ export async function GET(req: NextRequest) {
       // v315 訂單日報
       dailyBriefingEnabled: (row as unknown as { dailyBriefingEnabled?: boolean }).dailyBriefingEnabled ?? true,
       dailyBriefingIncludeCoaches: (row as unknown as { dailyBriefingIncludeCoaches?: boolean }).dailyBriefingIncludeCoaches ?? true,
+      dailyBriefingRecipients: ((row as unknown as { dailyBriefingRecipients?: unknown }).dailyBriefingRecipients as string[] | undefined) ?? [], // v855
       // v391 場次 Dump 優惠開頭
       dumpPromoEnabled: (row as unknown as { dumpPromoEnabled?: boolean }).dumpPromoEnabled ?? false,
       dumpPromoText: (row as unknown as { dumpPromoText?: string }).dumpPromoText ?? "",

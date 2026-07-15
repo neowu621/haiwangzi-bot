@@ -799,6 +799,8 @@ model SiteConfig {
   // 是否也發給有 coach 角色的人（教練版只列場次+客戶，不含金額）
   dailyBriefingIncludeCoaches Boolean   @default(true) @map("daily_briefing_include_coaches")
   dailyBriefingLastSentAt     DateTime? @map("daily_briefing_last_sent_at") @db.Timestamptz
+  // v855：訂單預報收件人與管道 ["line:Uxxx","inapp:Uxxx","email:xx@yy.com"]；空=沿用舊行為(自動抓 boss/admin，LINE+Email)
+  dailyBriefingRecipients     Json      @default("[]") @map("daily_briefing_recipients")
 
   // v391：場次 Dump 自動優惠開頭（開關 + 可編輯文案）
   dumpPromoEnabled Boolean @default(false) @map("dump_promo_enabled")

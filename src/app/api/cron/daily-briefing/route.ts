@@ -228,39 +228,83 @@ export async function POST(req: NextRequest) {
 
   let lineSent = 0;
   let emailSent = 0;
+  let inAppSent = 0;
   const errors: string[] = [];
   const client = getLineClient();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
+  const emailSubject = `🌊 海王子日報 ${fmtDate(now)}`;
 
-  // 老闆 + admin
-  const admins = await prisma.user.findMany({
-    where: {
-      OR: [
-        { role: "admin" }, { role: "boss" },
-        { roles: { has: "admin" } }, { roles: { has: "boss" } },
-      ],
-    },
-    select: { lineUserId: true, email: true, notifyByLine: true, notifyByEmail: true, realName: true, displayName: true },
-  });
-  for (const a of admins) {
-    if (a.notifyByLine && client) {
+  // v855：後台設定的收件人與管道（line:/inapp:/email:）。空 = 沿用舊行為（自動抓 boss/admin，LINE+Email）。
+  const briefRecipRaw = (cfg as unknown as { dailyBriefingRecipients?: unknown }).dailyBriefingRecipients;
+  const briefRecip: string[] = Array.isArray(briefRecipRaw)
+    ? briefRecipRaw.filter((x): x is string => typeof x === "string")
+    : [];
+
+  // 已收到「老闆完整版」的 lineUserId（教練版要跳過，避免同一人收兩封）
+  const bossAudience = new Set<string>();
+
+  if (briefRecip.length > 0) {
+    // ── 依後台設定發送 ──
+    for (const r of briefRecip) {
       try {
-        await client.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text: bossText }] });
-        lineSent++;
-      } catch (e) { errors.push(`line admin ${a.lineUserId}: ${e instanceof Error ? e.message : String(e)}`); }
+        if (r.startsWith("line:")) {
+          const uid = r.slice(5);
+          bossAudience.add(uid);
+          if (client) {
+            await client.pushMessage({ to: uid, messages: [{ type: "text", text: bossText }] });
+            lineSent++;
+          }
+        } else if (r.startsWith("inapp:")) {
+          const uid = r.slice(6);
+          bossAudience.add(uid);
+          await prisma.notification.create({
+            data: {
+              userId: uid,
+              templateKey: "daily_order_briefing",
+              title: `📋 明日訂單預報 ${fmtDate(now)}`,
+              body: bossText,
+              linkUrl: `${baseUrl}/admin/m/tonight`,
+              icon: "📋",
+            },
+          });
+          inAppSent++;
+        } else if (r.startsWith("email:")) {
+          await sendEmail({ to: r.slice(6), subject: emailSubject, html: bossEmailHtml });
+          emailSent++;
+        }
+      } catch (e) {
+        errors.push(`${r}: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
-    if (a.notifyByEmail && a.email) {
-      try {
-        await sendEmail({
-          to: a.email,
-          subject: `🌊 海王子日報 ${fmtDate(now)}`,
-          html: bossEmailHtml,
-        });
-        emailSent++;
-      } catch (e) { errors.push(`email admin ${a.email}: ${e instanceof Error ? e.message : String(e)}`); }
+  } else {
+    // ── 舊行為：自動抓 boss/admin，依個人 opt-in 發 LINE + Email ──
+    const admins = await prisma.user.findMany({
+      where: {
+        OR: [
+          { role: "admin" }, { role: "boss" },
+          { roles: { has: "admin" } }, { roles: { has: "boss" } },
+        ],
+      },
+      select: { lineUserId: true, email: true, notifyByLine: true, notifyByEmail: true, realName: true, displayName: true },
+    });
+    for (const a of admins) {
+      bossAudience.add(a.lineUserId);
+      if (a.notifyByLine && client) {
+        try {
+          await client.pushMessage({ to: a.lineUserId, messages: [{ type: "text", text: bossText }] });
+          lineSent++;
+        } catch (e) { errors.push(`line admin ${a.lineUserId}: ${e instanceof Error ? e.message : String(e)}`); }
+      }
+      if (a.notifyByEmail && a.email) {
+        try {
+          await sendEmail({ to: a.email, subject: emailSubject, html: bossEmailHtml });
+          emailSent++;
+        } catch (e) { errors.push(`email admin ${a.email}: ${e instanceof Error ? e.message : String(e)}`); }
+      }
     }
   }
 
-  // 教練版
+  // 教練版（獨立開關；跳過已收到完整版的人）
   if (cfg.dailyBriefingIncludeCoaches && client) {
     const coaches = await prisma.user.findMany({
       where: {
@@ -270,8 +314,7 @@ export async function POST(req: NextRequest) {
       select: { lineUserId: true },
     });
     for (const c of coaches) {
-      // 跳過已發過 boss 版的（admin 兼任 coach）
-      if (admins.some((a) => a.lineUserId === c.lineUserId)) continue;
+      if (bossAudience.has(c.lineUserId)) continue;
       try {
         await client.pushMessage({ to: c.lineUserId, messages: [{ type: "text", text: coachText }] });
         lineSent++;
@@ -310,9 +353,10 @@ export async function POST(req: NextRequest) {
       if (emailsWaiting) tl.push(`📧 客服信箱待回 ${emailsWaiting}`);
       const body = tl.join("\n");
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
-      for (const a of admins) {
+      // v855：發給「收到完整版日報的同一批人」（兩種模式通用）
+      for (const uid of bossAudience) {
         await prisma.notification.create({
-          data: { userId: a.lineUserId, templateKey: "admin_todo_reminder", title: `🔔 有 ${todoTotal} 件待處理`, body, linkUrl: `${appUrl}/admin/m/tonight`, icon: "🔔" },
+          data: { userId: uid, templateKey: "admin_todo_reminder", title: `🔔 有 ${todoTotal} 件待處理`, body, linkUrl: `${appUrl}/admin/m/tonight`, icon: "🔔" },
         }).catch(() => {});
       }
     }
@@ -331,6 +375,7 @@ export async function POST(req: NextRequest) {
     date: todayStr,
     lineSent,
     emailSent,
+    inAppSent, // v855
     errors: errors.slice(0, 10),
     summary: {
       todayBookings: totalBookings,

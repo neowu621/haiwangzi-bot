@@ -313,6 +313,8 @@ const PATCHES = [
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_enabled BOOLEAN DEFAULT TRUE`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_include_coaches BOOLEAN DEFAULT TRUE`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_last_sent_at TIMESTAMPTZ`,
+  // v855：訂單預報收件人與管道（line:/inapp:/email: 前綴），空陣列=沿用舊行為
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_briefing_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`,
   // v318：客製化潛水願望單
   `CREATE TABLE IF NOT EXISTS dive_wishes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

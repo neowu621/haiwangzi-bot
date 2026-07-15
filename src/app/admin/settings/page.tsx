@@ -107,6 +107,7 @@ interface Config {
   // v315：訂單日報
   dailyBriefingEnabled?: boolean;
   dailyBriefingIncludeCoaches?: boolean;
+  dailyBriefingRecipients?: string[]; // v855：收件人與管道（line:/inapp:/email:）
   // v391：場次 Dump 自動優惠開頭
   dumpPromoEnabled?: boolean;
   dumpPromoText?: string;
@@ -1352,6 +1353,31 @@ function AutoSendSection({
     );
   }
 
+  // ── v855：訂單預報（每晚 21:00）收件人與管道 ──
+  const briefRecipients = cfg.dailyBriefingRecipients ?? [];
+  const briefSet = new Set(briefRecipients);
+  async function persistBriefRecipients(next: string[]) {
+    setCfg((c) => (c ? { ...c, dailyBriefingRecipients: next } : c));
+    setRecipSaving(true);
+    try {
+      await adminFetch("/api/admin/site-config", {
+        method: "POST",
+        body: JSON.stringify({ dailyBriefingRecipients: next }),
+      });
+      setRecipSaved(true);
+      window.setTimeout(() => setRecipSaved(false), 1500);
+    } catch (e) {
+      alert("儲存收件人失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRecipSaving(false);
+    }
+  }
+  function toggleBrief(tag: string) {
+    void persistBriefRecipients(
+      briefSet.has(tag) ? briefRecipients.filter((r) => r !== tag) : [...briefRecipients, tag],
+    );
+  }
+
   // v389：發送時段（台灣時間）+ 內容開關
   const slots = cfg.weatherReportSlots ?? [{ h: 22, m: 0 }, { h: 5, m: 0 }];
   const content = { forecast: true, ...(cfg.weatherReportContent ?? { wind: true, temp: true, sessions: true, wave: false }) };
@@ -1471,15 +1497,16 @@ function AutoSendSection({
         這些通知由 Cronicle 排程觸發，可在此設定是否啟用、寄送對象。
       </p>
 
-      {/* v315：訂單日報設定（v393：移到最上面） */}
+      {/* v315：訂單日報設定（v393：移到最上面；v855：主題寫清楚 + 可選收件人與管道） */}
       <div className="mb-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(96,165,250,0.06)" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-[var(--foreground)]">📋 每晚 21:00 預報明日（訂單，非天氣）</p>
-            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
-              每天台灣 21:00 自動發送「明日訂單預報」（Cronicle 以台灣時間跑 → cron <span className="font-mono">0 21 * * *</span>）。<br/>
-              老闆/admin：完整版（明日場次+客戶+應收+待審匯款+今日待結算+月統計）LINE + Email。<br/>
-              教練：精簡版 LINE，只列明日場次與客戶清單+電話（不含金額）。
+            <p className="text-sm font-bold text-[var(--foreground)]">📋 明日訂單預報（每晚 21:00）</p>
+            <p className="mt-1 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              <b className="text-[var(--foreground)]">訊息主題</b>：「🌊 海王子日報 ＋ 日期」——<b>只講訂單，不含天氣</b>。<br/>
+              <b className="text-[var(--foreground)]">內容</b>：明日場次＋客戶名單＋應收＋待審匯款＋今日待結算＋月統計。<br/>
+              <b className="text-[var(--foreground)]">時間</b>：每天台灣 21:00（Cronicle cron <span className="font-mono">0 21 * * *</span>）。<br/>
+              <span className="text-[10px]">※ 想收「天氣＋場次」的每日營運報告，請設定下方「🌤️ 每日天氣回報」。</span>
             </p>
           </div>
           <label className="flex items-center gap-2 text-sm shrink-0">
@@ -1491,15 +1518,66 @@ function AutoSendSection({
             <span className="text-[var(--foreground)]">啟用</span>
           </label>
         </div>
+
         {cfg.dailyBriefingEnabled !== false && (
-          <label className="mt-3 flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={cfg.dailyBriefingIncludeCoaches ?? true}
-              onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingIncludeCoaches: e.target.checked } : c)}
-            />
-            <span className="text-[var(--foreground)]">也發給教練（精簡版）</span>
-          </label>
+          <>
+            {/* v855：收件人與管道（勾選即自動儲存） */}
+            <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
+                發送給誰 與 路徑（勾選即<b className="text-[var(--color-ocean-deep)]">自動儲存</b>）
+                {recipSaving && <span className="ml-2 text-[10px] text-amber-600">儲存中…</span>}
+                {recipSaved && <span className="ml-2 text-[10px] text-emerald-600">✓ 已儲存</span>}
+              </Label>
+              {usersLoading ? (
+                <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
+              ) : users.length === 0 ? (
+                <p className="text-[11px] text-[var(--muted-foreground)]">（沒有 admin / boss / coach 用戶）</p>
+              ) : (
+                <div className="space-y-1 rounded-md border bg-white p-2 max-h-60 overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+                  {users.map((u) => (
+                    <div key={u.lineUserId} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-1.5 text-[12px] hover:bg-[var(--muted)]/40">
+                      <span className="flex-1 min-w-[160px]">
+                        <b>{u.realName ?? u.displayName}</b>
+                        <span className="ml-1.5 rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">{u.roles && u.roles.length > 0 ? u.roles.join("/") : u.role}</span>
+                      </span>
+                      <label className="flex items-center gap-1.5 text-[11px]">
+                        <input type="checkbox" checked={briefSet.has(`line:${u.lineUserId}`)} onChange={() => toggleBrief(`line:${u.lineUserId}`)} />
+                        <span>LINE</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 text-[11px]" title="站內通知（寫入通知中心）">
+                        <input type="checkbox" checked={briefSet.has(`inapp:${u.lineUserId}`)} onChange={() => toggleBrief(`inapp:${u.lineUserId}`)} />
+                        <span>站內</span>
+                      </label>
+                      <label className={cn("flex items-center gap-1.5 text-[11px]", !u.email && "opacity-40")}>
+                        <input
+                          type="checkbox"
+                          disabled={!u.email}
+                          checked={u.email ? briefSet.has(`email:${u.email}`) : false}
+                          onChange={() => u.email && toggleBrief(`email:${u.email}`)}
+                          title={u.email ?? "此用戶沒填 Email"}
+                        />
+                        <span>Email {u.email ? `(${u.email})` : ""}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {briefRecipients.length === 0 && (
+                <p className="mt-1.5 rounded bg-amber-50 border border-amber-200 px-2 py-1.5 text-[10.5px] text-amber-800 leading-relaxed">
+                  ⚠️ 目前<b>沒有勾選任何收件人</b> → 沿用舊行為：自動發給所有老闆/admin（依各人通知偏好走 LINE + Email）。勾選任一項後即改為<b>只發給你勾的對象與管道</b>。
+                </p>
+              )}
+            </div>
+
+            <label className="mt-3 flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={cfg.dailyBriefingIncludeCoaches ?? true}
+                onChange={(e) => setCfg(c => c ? { ...c, dailyBriefingIncludeCoaches: e.target.checked } : c)}
+              />
+              <span className="text-[var(--foreground)]">也發給教練（精簡版 LINE：只列明日場次＋客戶＋電話，不含金額）</span>
+            </label>
+          </>
         )}
       </div>
 
@@ -1890,6 +1968,7 @@ function AutoSendSection({
             weatherMarineFields: marineFields,
             dailyBriefingEnabled: cfg.dailyBriefingEnabled ?? true,
             dailyBriefingIncludeCoaches: cfg.dailyBriefingIncludeCoaches ?? true,
+            dailyBriefingRecipients: cfg.dailyBriefingRecipients ?? [], // v855
           })}
           disabled={saving === "自動發送"}>
           <Save className="mr-1.5 h-4 w-4" />
