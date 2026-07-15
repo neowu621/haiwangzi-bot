@@ -167,6 +167,31 @@ export default function NotificationsPage() {
 }
 
 // v467：點通知 → 彈窗顯示完整內容；有連結 → 一顆「前往」鈕點了才跳轉（確認後才執行）
+// v856：通知圖示 —— icon 是圖片網址就顯示品牌 logo 圖，否則照舊當 emoji 文字渲染。
+//   （既有通知的 icon 都是 emoji，行為完全不變）
+function NotifIcon({ icon, size }: { icon: string | null; size: number }) {
+  const isUrl = !!icon && /^(https?:)?\/\//.test(icon);
+  if (isUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={icon!}
+        alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        className="flex-shrink-0 rounded-[6px]"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <span className="leading-none flex-shrink-0 text-center" style={{ fontSize: size - 6, width: size }}>
+      {icon ?? "🔔"}
+    </span>
+  );
+}
+
 function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -185,7 +210,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-2.5 p-4 border-b border-[var(--border)]">
-          <span className="text-2xl leading-none flex-shrink-0">{n.icon ?? "🔔"}</span>
+          <NotifIcon icon={n.icon} size={28} />
           <div className="min-w-0 flex-1">
             <div className="text-base font-bold leading-snug text-[var(--foreground)]">{n.title}</div>
             <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">{relativeTime(n.createdAt)}</div>
@@ -239,7 +264,7 @@ function NotificationCard({ n, onOpen }: { n: NotificationItem; onOpen: () => vo
         />
       )}
       <div className="flex items-start gap-2 pl-2">
-        <span className="text-lg leading-none flex-shrink-0">{n.icon ?? "🔔"}</span>
+        <NotifIcon icon={n.icon} size={22} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className={cn("text-sm truncate", !n.isRead ? "font-bold" : "font-semibold")}>

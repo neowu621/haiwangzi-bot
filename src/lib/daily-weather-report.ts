@@ -6,6 +6,8 @@
 import { prisma } from "./prisma";
 import { getLineClient } from "./line";
 import { sendEmail } from "./email/send";
+import { BUSINESS } from "./business-info"; // v856：品牌 logo（Email/LINE 用 PNG、站內用 WebP）
+import type { messagingApi } from "@line/bot-sdk";
 import {
   buildMarineSection,
   DEFAULT_MARINE_POINTS,
@@ -36,6 +38,59 @@ export interface DailyWeatherResult {
   results?: Array<{ to: string; ok: boolean; error?: string }>;
   textPreview?: string;
   tookMs?: number;
+}
+
+// v856：LINE 訊息 —— Flex（頁首帶專屬 logo）。LINE 純文字訊息放不了自訂圖，故改 Flex。
+//   altText 保留純文字，通知列/舊版客戶端仍可讀。
+function buildReportMessage(dateStr: string, bodyReport: string, textReport: string): messagingApi.Message {
+  return {
+    type: "flex",
+    altText: textReport.slice(0, 400),
+    contents: {
+      type: "bubble",
+      header: {
+        type: "box",
+        layout: "horizontal",
+        backgroundColor: "#0A2342",
+        paddingAll: "12px",
+        spacing: "md",
+        contents: [
+          { type: "image", url: BUSINESS.logoPng, size: "28px", aspectMode: "fit", aspectRatio: "1:1", flex: 0 },
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              { type: "text", text: "DAILY REPORT", size: "xxs", color: "#8fd8ff", weight: "bold" },
+              { type: "text", text: `每日營運報告 ${dateStr}`, size: "sm", color: "#ffffff", weight: "bold", wrap: true },
+            ],
+          },
+        ],
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "13px",
+        contents: [{ type: "text", text: bodyReport || "（無內容）", size: "sm", color: "#1a2330", wrap: true }],
+      },
+    },
+  };
+}
+
+// v856：Email 內文 —— 標題列用真 logo（PNG；Outlook 不吃 WebP、也不支援 flex → 用 table）
+function emailHtml(dateStr: string, bodyReport: string): string {
+  const safe = bodyReport.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  return `<div style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#1A2330;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>
+    <td width="34" style="padding-right:10px;vertical-align:middle;">
+      <img src="${BUSINESS.logoPng}" alt="東北角海王子潛水" width="34" height="34" style="width:34px;height:34px;border-radius:8px;display:block;">
+    </td>
+    <td style="vertical-align:middle;">
+      <h2 style="margin:0;font-size:18px;color:#0A2342;">海王子潛水 每日營運報告</h2>
+      <div style="font-size:12px;color:#6b7280;">${dateStr}</div>
+    </td>
+  </tr></table>
+  <pre style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;margin:0;">${safe}</pre>
+</div>`;
 }
 
 export async function runDailyWeatherReport(opts?: {
@@ -223,7 +278,9 @@ export async function runDailyWeatherReport(opts?: {
       : [`【${dayLabel}】 （無場次）`];
 
   // v459：依老闆指定編排——標題日期一行 → 場次一行式 → 天氣預報 → 綜合海況 → 海況 → 海象明細
-  const blocks: string[] = [`🌊 海王子潛水 每日營運報告 ${dateStr}`];
+  // v856：🌊 emoji 改 🔱（三叉戟＝logo 本體符號）；LINE/Email 有 logo 圖的地方則直接用圖。
+  const reportTitle = `🔱 海王子潛水 每日營運報告 ${dateStr}`;
+  const blocks: string[] = [reportTitle];
 
   if (content.sessions) {
     blocks.push(["", ...fmtTripLines("今日", todayTrips), ...fmtTripLines("明日", tomorrowTrips)].join("\n"));
@@ -261,8 +318,11 @@ export async function runDailyWeatherReport(opts?: {
   blocks.push("", "—", `此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`);
 
   const textReport = blocks.join("\n");
+  // v856：Flex / Email 用 —— 標題已由 logo 頁首呈現，內文不再重複標題行
+  const bodyReport = blocks.slice(1).join("\n").replace(/^\n+/, "");
 
-  const subject = `🌊 海王子日報 ${dateStr}（風速 ${maxWind?.toFixed(1) ?? "-"} m/s）`;
+  // Email 主旨只能純文字（放不了圖）→ 用 🔱（logo 的三叉戟）取代 🌊
+  const subject = `🔱 海王子日報 ${dateStr}（風速 ${maxWind?.toFixed(1) ?? "-"} m/s）`;
 
   // ── 4. dry-run 直接回 preview，不發送 ──────────────
   if (opts?.dryRun) {
@@ -291,12 +351,12 @@ export async function runDailyWeatherReport(opts?: {
         }
         await lineClient.pushMessage({
           to: userId,
-          messages: [{ type: "text", text: textReport }],
+          messages: [buildReportMessage(dateStr, bodyReport, textReport)],
         });
         results.push({ to: r, ok: true });
       } else if (r.startsWith("email:")) {
         const to = r.slice(6);
-        const html = `<pre style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;">${textReport.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`;
+        const html = emailHtml(dateStr, bodyReport);
         const er = await sendEmail({ to, subject, text: textReport, html });
         results.push({ to: r, ok: er.ok, error: er.error });
       } else if (r.startsWith("inapp:")) {
@@ -306,10 +366,10 @@ export async function runDailyWeatherReport(opts?: {
           data: {
             userId,
             templateKey: "daily_ops_report",
-            title: `🌊 每日營運報告 ${dateStr}`,
+            title: `每日營運報告 ${dateStr}`,
             body: textReport,
             linkUrl: "/admin/tonight",
-            icon: "🌊",
+            icon: BUSINESS.logo, // v856：站內用 logo 圖（webview 支援 WebP）
           },
         });
         results.push({ to: r, ok: true });

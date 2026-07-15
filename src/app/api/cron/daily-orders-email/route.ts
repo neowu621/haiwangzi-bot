@@ -3,6 +3,7 @@ import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { makeMultiSheetXlsxBuffer } from "@/lib/email/excel";
+import { BUSINESS } from "@/lib/business-info"; // v856：Email logo
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -255,9 +256,17 @@ function buildHtmlSummary(params: {
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:'Helvetica Neue',Arial,'PingFang TC','Microsoft JhengHei',sans-serif;margin:0;padding:24px;background:#f5f5f5;color:#1f2937;">
   <div style="max-width:720px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <div style="background:linear-gradient(135deg,#0A2342 0%,#1B3A5C 100%);padding:24px 28px;color:#fff;">
-      <div style="font-size:11px;letter-spacing:0.3em;color:#00D9CB;">DAILY REPORT</div>
-      <div style="font-size:20px;font-weight:bold;margin-top:4px;">📊 ${params.todayStr} 訂單日報</div>
+    <!-- v856：頁首改用專屬 logo（PNG；Outlook 不吃 WebP、不支援 flex → 用 table） -->
+    <div style="background:linear-gradient(135deg,#0A2342 0%,#1B3A5C 100%);padding:22px 28px;color:#fff;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="38" style="padding-right:12px;vertical-align:middle;">
+          <img src="${BUSINESS.logoPng}" alt="東北角海王子潛水" width="38" height="38" style="width:38px;height:38px;border-radius:9px;display:block;">
+        </td>
+        <td style="vertical-align:middle;">
+          <div style="font-size:11px;letter-spacing:0.3em;color:#00D9CB;">DAILY REPORT</div>
+          <div style="font-size:20px;font-weight:bold;margin-top:2px;">${params.todayStr} 訂單日報</div>
+        </td>
+      </tr></table>
     </div>
     <div style="padding:24px 28px;">
       <!-- v854：改 table 橫排（Outlook 不支援 grid，避免逐張直排把版面拉高）；每張卡壓成「標題一行＋數字一行」 -->

@@ -10,6 +10,7 @@ import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { getLineClient } from "@/lib/line";
 import { sendEmail } from "@/lib/email/send";
+import { BUSINESS } from "@/lib/business-info"; // v856：Email logo
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -220,8 +221,16 @@ export async function POST(req: NextRequest) {
   const bossText = buildBossText();
   const coachText = buildCoachText();
 
+  // v856：Email 內文標題改用專屬 logo（PNG；Outlook 不支援 WebP，版面用 table 不用 flex）
   const bossEmailHtml = `
-    <h2 style="font-family:sans-serif">🌊 海王子日報｜${fmtDate(now)}</h2>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>
+      <td width="34" style="padding-right:10px;vertical-align:middle;">
+        <img src="${BUSINESS.logoPng}" alt="東北角海王子潛水" width="34" height="34" style="width:34px;height:34px;border-radius:8px;display:block;">
+      </td>
+      <td style="vertical-align:middle;">
+        <h2 style="font-family:sans-serif;margin:0;">海王子日報｜${fmtDate(now)}</h2>
+      </td>
+    </tr></table>
     <pre style="font-family:'PingFang TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:8px">${bossText.replace(/</g, "&lt;")}</pre>
     <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin">👉 進入後台</a></p>
   `;
@@ -232,7 +241,8 @@ export async function POST(req: NextRequest) {
   const errors: string[] = [];
   const client = getLineClient();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
-  const emailSubject = `🌊 海王子日報 ${fmtDate(now)}`;
+  // v856：主旨只能純文字（放不了圖）→ 🌊 改 🔱（logo 的三叉戟，最貼近品牌）
+  const emailSubject = `🔱 海王子日報 ${fmtDate(now)}`;
 
   // v855：後台設定的收件人與管道（line:/inapp:/email:）。空 = 沿用舊行為（自動抓 boss/admin，LINE+Email）。
   const briefRecipRaw = (cfg as unknown as { dailyBriefingRecipients?: unknown }).dailyBriefingRecipients;
@@ -261,10 +271,10 @@ export async function POST(req: NextRequest) {
             data: {
               userId: uid,
               templateKey: "daily_order_briefing",
-              title: `📋 明日訂單預報 ${fmtDate(now)}`,
+              title: `明日訂單預報 ${fmtDate(now)}`,
               body: bossText,
               linkUrl: `${baseUrl}/admin/m/tonight`,
-              icon: "📋",
+              icon: BUSINESS.logo, // v856：站內用 logo 圖（webview 支援 WebP）
             },
           });
           inAppSent++;
