@@ -4,6 +4,25 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { makeMultiSheetXlsxBuffer } from "@/lib/email/excel";
 import { BUSINESS } from "@/lib/business-info"; // v856：Email logo
+import { deriveBookingDisplay } from "@/lib/booking-status"; // v861：狀態顯示中文（與後台同一套）
+
+// v861：日報原本直接印資料庫 enum（pending / awaiting_verify …）→ 老闆看不懂。
+//   訂單狀態一律走全站共用的 deriveBookingDisplay（與後台顯示完全一致）。
+function statusLabel(b: { status: string; paymentStatus: string; createdAt: Date | string }): string {
+  return deriveBookingDisplay({ status: b.status, paymentStatus: b.paymentStatus, createdAt: b.createdAt }).label;
+}
+
+// 付款狀態（Excel 另有獨立欄位；deriveBookingDisplay 是合併後的單一標籤，故這裡另外對照）
+const PAY_STATUS_ZH: Record<string, string> = {
+  pending: "未付款",
+  deposit_paid: "已付訂金",
+  fully_paid: "已付清",
+  refunding: "退款處理中",
+  refunded: "已退款",
+};
+const payStatusLabel = (s: string) => PAY_STATUS_ZH[s] ?? s;
+
+const typeLabel = (t: string) => (t === "daily" ? "日潛" : t === "tour" ? "潛水團" : "—");
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,12 +144,12 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(b.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }),
         user: b.user.realName ?? b.user.displayName,
         phone: b.user.phone ?? "",
-        type: b.type === "daily" ? "日潛" : "潛水團",
+        type: typeLabel(b.type),
         participants: b.participants,
         total: b.totalAmount,
         paid: b.paidAmount,
-        payStatus: b.paymentStatus,
-        status: b.status,
+        payStatus: payStatusLabel(b.paymentStatus), // v861
+        status: statusLabel(b),                     // v861
         notes: b.notes ?? "", // v837：客戶下單備註
       })),
     },
@@ -188,7 +207,7 @@ export async function POST(req: NextRequest) {
           tripTime: trip?.startTime ?? "",
           total: b.totalAmount,
           paid: b.paidAmount,
-          status: b.status,
+          status: statusLabel(b), // v861
         };
       }),
     },
@@ -231,6 +250,8 @@ export async function POST(req: NextRequest) {
 interface OrderRow {
   code: string | null;
   id: string;
+  type: string;              // v861：daily / tour（查詢用 include，資料本來就有）
+  createdAt: Date | string;  // v861：deriveBookingDisplay 需要（分辨 建立訂單 / 等待付款）
   totalAmount: number;
   paidAmount: number;
   paymentStatus: string;
@@ -282,16 +303,16 @@ function buildHtmlSummary(params: {
         params.newBookings.slice(0, 20).map((b) => [
           b.code ?? b.id.slice(0,8),
           b.user.realName ?? b.user.displayName,
-          "—",
+          typeLabel(b.type),  // v861：原本寫死 "—"
           String(b.participants),
           `NT$${b.totalAmount.toLocaleString()}`,
-          b.status,
+          statusLabel(b),     // v861：原本直接印英文 enum
           (b.notes ?? "").trim() ? `📝 ${(b.notes ?? "").replace(/</g, "&lt;")}` : "—", // v837
         ]),
         params.newBookings.length === 0 ? "今日無新訂單" : params.newBookings.length > 20 ? `（僅顯示前 20 筆，共 ${params.newBookings.length} 筆，完整資料請見 Excel）` : "",
       ))}
 
-      ${section("⚠️ 待結算（場次已過但訂單仍 pending/confirmed）", buildTable(
+      ${section("⚠️ 待結算（場次已過，訂單還沒結案）", buildTable(
         ["編號", "客戶", "場次", "總額", "已付"],
         params.pendingBookings.slice(0, 20).map((b) => [
           b.code ?? b.id.slice(0,8),
