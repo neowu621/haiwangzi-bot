@@ -273,7 +273,8 @@ export async function POST(req: NextRequest) {
               templateKey: "daily_order_briefing",
               title: `明日訂單預報 ${fmtDate(now)}`,
               body: bossText,
-              linkUrl: `${baseUrl}/admin/m/tonight`,
+              // v859：站內通知在 LINE WebView 開 → 走 LIFF 橋接頁換後台 token 再導向
+              linkUrl: "/liff/admin-go?to=/admin/m/tonight",
               icon: BUSINESS.logo, // v856：站內用 logo 圖（webview 支援 WebP）
             },
           });
@@ -362,11 +363,10 @@ export async function POST(req: NextRequest) {
       if (wishesPending) tl.push(`📝 待回覆願望 ${wishesPending}`);
       if (emailsWaiting) tl.push(`📧 客服信箱待回 ${emailsWaiting}`);
       const body = tl.join("\n");
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz";
       // v855：發給「收到完整版日報的同一批人」（兩種模式通用）
       for (const uid of bossAudience) {
         await prisma.notification.create({
-          data: { userId: uid, templateKey: "admin_todo_reminder", title: `🔔 有 ${todoTotal} 件待處理`, body, linkUrl: `${appUrl}/admin/m/tonight`, icon: "🔔" },
+          data: { userId: uid, templateKey: "admin_todo_reminder", title: `🔔 有 ${todoTotal} 件待處理`, body, linkUrl: "/liff/admin-go?to=/admin/m/tonight", icon: "🔔" }, // v859：走 LIFF 橋接
         }).catch(() => {});
       }
     }

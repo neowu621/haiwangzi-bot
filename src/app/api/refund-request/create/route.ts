@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     templateKey: "refund_request_created",
     title: "↩️ 新退款申請待處理",
     body: `客戶申請退款 NT$${data.amount}（${data.method}），原因：${data.reason ?? "未填"}。請進後台審核。`,
-    linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/admin/bookings`,
+    linkUrl: "/liff/admin-go?to=/admin/m/bookings", // v859：走 LIFF 橋接換後台 token
     icon: "↩️",
   });
   return NextResponse.json({ ok: true, refundRequest: rr });

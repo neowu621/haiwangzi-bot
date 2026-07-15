@@ -86,7 +86,8 @@ export function notifyStaffCustomerNote(bookingId: string, opts?: { updated?: bo
         // 2) 站內通知（一律寫入內部通知中心；FK 失敗只 log 不中斷）
         try {
           await prisma.notification.create({
-            data: { userId: to, templateKey: "staff_customer_note", title: inAppTitle, body: inAppBody, linkUrl: adminUrl, icon: "📝" },
+            // v859：站內通知走 LIFF 橋接頁換後台 token（直連 /admin/* 在 LINE WebView 會被踢到登入頁）
+            data: { userId: to, templateKey: "staff_customer_note", title: inAppTitle, body: inAppBody, linkUrl: "/liff/admin-go?to=/admin/m/bookings", icon: "📝" },
           });
         } catch (e) {
           console.error("[notifyStaffCustomerNote inApp]", to, e);

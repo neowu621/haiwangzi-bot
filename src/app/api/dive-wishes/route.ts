@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       templateKey: "dive_wish_created",
       title: "📝 新客製潛水願望單",
       body: `客戶提了一張願望單（${data.type}，${data.participants} 人，希望日期 ${data.preferredDate}）。請進後台回覆討論。`,
-      linkUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz"}/admin/dive-wishes`,
+      linkUrl: "/liff/admin-go?to=/admin/m/dive-wishes", // v859：走 LIFF 橋接換後台 token
       icon: "📝",
     });
     return NextResponse.json({ ok: true, wish });
