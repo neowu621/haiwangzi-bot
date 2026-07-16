@@ -24,6 +24,30 @@ const payStatusLabel = (s: string) => PAY_STATUS_ZH[s] ?? s;
 
 const typeLabel = (t: string) => (t === "daily" ? "日潛" : t === "tour" ? "潛水團" : "—");
 
+// v865：老闆帳務調整（例：共乘 +300 / 補上次沒潛水 −600）存在 booking.priceBreakdown.bossAdjustments。
+//   日報的「客戶備註」欄自動附上，讓老闆看日報就知道這筆有特別收費/折讓，不用再點進訂單。
+function adjustmentsText(priceBreakdown: unknown): string {
+  const pb = priceBreakdown as { bossAdjustments?: Array<{ label?: unknown; amount?: unknown }> } | null;
+  const list = Array.isArray(pb?.bossAdjustments) ? pb.bossAdjustments : [];
+  return list
+    .filter((a) => typeof a?.label === "string" && typeof a?.amount === "number")
+    .map((a) => {
+      const amt = a.amount as number;
+      return `${a.label as string} ${amt > 0 ? "+" : "−"}NT$${Math.abs(amt).toLocaleString()}`;
+    })
+    .join("、");
+}
+
+/** v865：客戶備註欄 = 客戶自填備註 ＋ 老闆帳務調整（任一有就顯示，都沒有回「—」） */
+function noteCell(b: { notes?: string | null; priceBreakdown?: unknown }, esc: (s: string) => string): string {
+  const parts: string[] = [];
+  const note = (b.notes ?? "").trim();
+  if (note) parts.push(`📝 ${esc(note)}`);
+  const adj = adjustmentsText(b.priceBreakdown);
+  if (adj) parts.push(`🧮 ${esc(adj)}`);
+  return parts.length ? parts.join("<br>") : "—";
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -61,6 +85,54 @@ export async function POST(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     include: { user: { select: { realName: true, displayName: true, phone: true } } },
   });
+
+  // v865：新訂單要顯示「日期時間 / 場次名稱」→ 撈對應的場次(日潛)與潛旅(tour)。
+  //   日潛 diveSiteIds 可能存 DiveSite.id 或直接存中文名(v153 起)，查得到用站名、查不到用原字串。
+  const newTripIds = newBookings.filter((b) => b.type === "daily").map((b) => b.refId);
+  const newTourIds = newBookings.filter((b) => b.type === "tour").map((b) => b.refId);
+  const [newTrips, newTours] = await Promise.all([
+    newTripIds.length
+      ? prisma.divingTrip.findMany({
+          where: { id: { in: newTripIds } },
+          select: { id: true, date: true, startTime: true, diveSiteIds: true, isNightDive: true, isScooter: true },
+        })
+      : Promise.resolve([]),
+    newTourIds.length
+      ? prisma.tourPackage.findMany({
+          where: { id: { in: newTourIds } },
+          select: { id: true, title: true, dateStart: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const newSiteIds = [...new Set(newTrips.flatMap((t) => t.diveSiteIds))];
+  const newSites = newSiteIds.length
+    ? await prisma.diveSite.findMany({ where: { id: { in: newSiteIds } }, select: { id: true, name: true } })
+    : [];
+  const siteNameMap = new Map(newSites.map((s) => [s.id, s.name]));
+  const newTripMap = new Map(newTrips.map((t) => [t.id, t]));
+  const newTourMap = new Map(newTours.map((t) => [t.id, t]));
+
+  /** 場次日期時間（台灣時間）。日潛＝日期＋開始時間；潛旅＝出發日 */
+  function sessionWhen(b: { type: string; refId: string }): string {
+    if (b.type === "daily") {
+      const t = newTripMap.get(b.refId);
+      if (!t) return "—";
+      return `${t.date.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" })} ${t.startTime}`;
+    }
+    const t = newTourMap.get(b.refId);
+    return t ? t.dateStart.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }) : "—";
+  }
+  /** 場次名稱。日潛＝潛點(＋夜潛/水推標記)；潛旅＝團名 */
+  function sessionName(b: { type: string; refId: string }): string {
+    if (b.type === "daily") {
+      const t = newTripMap.get(b.refId);
+      if (!t) return "—";
+      const site = t.diveSiteIds.map((id) => siteNameMap.get(id) ?? id).join("／") || "東北角";
+      const extra = `${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}`;
+      return site + extra;
+    }
+    return newTourMap.get(b.refId)?.title ?? "—";
+  }
 
   // 撈今天 verified 的付款憑證
   const verifiedProofs = await prisma.paymentProof.findMany({
@@ -112,6 +184,8 @@ export async function POST(req: NextRequest) {
   // 組 HTML 摘要
   const html = buildHtmlSummary({
     todayStr,
+    sessionWhen, // v865
+    sessionName, // v865
     newBookings,
     verifiedProofs,
     refunds,
@@ -132,26 +206,38 @@ export async function POST(req: NextRequest) {
         { header: "客戶", key: "user", width: 14 },
         { header: "電話", key: "phone", width: 14 },
         { header: "類型", key: "type", width: 8 },
+        // v865：與 Email 表格一致 —— 場次資訊 + 扣抵/實付分開
+        { header: "日期時間", key: "when", width: 18 },
+        { header: "場次名稱", key: "session", width: 20 },
         { header: "人數", key: "participants", width: 6 },
         { header: "總額", key: "total", width: 10 },
-        { header: "已付", key: "paid", width: 10 },
+        { header: "扣抵金額", key: "credit", width: 10 },
+        { header: "實際付款金額", key: "cashPaid", width: 13 },
         { header: "付款狀態", key: "payStatus", width: 12 },
         { header: "訂單狀態", key: "status", width: 12 },
-        { header: "客戶備註", key: "notes", width: 28 }, // v837
+        { header: "客戶備註", key: "notes", width: 32 }, // v837；v865 併老闆帳務調整
       ],
-      rows: newBookings.map((b) => ({
-        code: b.code ?? b.id.slice(0, 8),
-        createdAt: new Date(b.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }),
-        user: b.user.realName ?? b.user.displayName,
-        phone: b.user.phone ?? "",
-        type: typeLabel(b.type),
-        participants: b.participants,
-        total: b.totalAmount,
-        paid: b.paidAmount,
-        payStatus: payStatusLabel(b.paymentStatus), // v861
-        status: statusLabel(b),                     // v861
-        notes: b.notes ?? "", // v837：客戶下單備註
-      })),
+      rows: newBookings.map((b) => {
+        const adj = adjustmentsText(b.priceBreakdown);
+        return {
+          code: b.code ?? b.id.slice(0, 8),
+          createdAt: new Date(b.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }),
+          user: b.user.realName ?? b.user.displayName,
+          phone: b.user.phone ?? "",
+          type: typeLabel(b.type),
+          when: sessionWhen(b),
+          session: sessionName(b),
+          participants: b.participants,
+          total: b.totalAmount,
+          credit: b.creditUsed,
+          // v865：實際付款金額＝已付總額 − 抵用金折抵（原本的「已付」含抵用金，
+          //   與「扣抵金額」並列會重複計算，看起來像收了兩次錢）
+          cashPaid: Math.max(0, b.paidAmount - b.creditUsed),
+          payStatus: payStatusLabel(b.paymentStatus), // v861
+          status: statusLabel(b),                     // v861
+          notes: [b.notes?.trim(), adj ? `【帳務調整】${adj}` : ""].filter(Boolean).join(" / "),
+        };
+      }),
     },
     {
       name: "付款核可",
@@ -251,9 +337,12 @@ interface OrderRow {
   code: string | null;
   id: string;
   type: string;              // v861：daily / tour（查詢用 include，資料本來就有）
+  refId: string;             // v865：對應場次/潛旅 id（查日期時間與場次名稱）
   createdAt: Date | string;  // v861：deriveBookingDisplay 需要（分辨 建立訂單 / 等待付款）
   totalAmount: number;
   paidAmount: number;
+  creditUsed: number;        // v865：扣抵金額
+  priceBreakdown?: unknown;  // v865：老闆帳務調整（共乘等）在這裡
   paymentStatus: string;
   status: string;
   participants: number;
@@ -263,6 +352,8 @@ interface OrderRow {
 
 function buildHtmlSummary(params: {
   todayStr: string;
+  sessionWhen: (b: { type: string; refId: string }) => string; // v865
+  sessionName: (b: { type: string; refId: string }) => string; // v865
   newBookings: OrderRow[];
   verifiedProofs: Array<{ amount: number; type: string; booking: OrderRow }>;
   refunds: Array<{ code: string | null; id: string; refundAmount: number | null; refundMethod: string | null; cancellationReason: string | null; user: { realName: string | null; displayName: string } }>;
@@ -299,15 +390,20 @@ function buildHtmlSummary(params: {
       </tr></table>
 
       ${section("🆕 今日新增訂單", buildTable(
-        ["編號", "客戶", "類型", "人數", "總額", "狀態", "客戶備註"],
+        // v865：加「日期時間 / 場次名稱」(老闆一眼看出是哪一場) + 「扣抵金額 / 實際付款金額」
+        ["編號", "客戶", "類型", "日期時間", "場次名稱", "人數", "總額", "扣抵金額", "實際付款金額", "狀態", "客戶備註"],
         params.newBookings.slice(0, 20).map((b) => [
           b.code ?? b.id.slice(0,8),
           b.user.realName ?? b.user.displayName,
           typeLabel(b.type),  // v861：原本寫死 "—"
+          params.sessionWhen(b),
+          params.sessionName(b),
           String(b.participants),
           `NT$${b.totalAmount.toLocaleString()}`,
+          b.creditUsed > 0 ? `− NT$${b.creditUsed.toLocaleString()}` : "—",
+          `NT$${Math.max(0, b.paidAmount - b.creditUsed).toLocaleString()}`, // 實收的錢(不含抵用金)
           statusLabel(b),     // v861：原本直接印英文 enum
-          (b.notes ?? "").trim() ? `📝 ${(b.notes ?? "").replace(/</g, "&lt;")}` : "—", // v837
+          noteCell(b, (s) => s.replace(/</g, "&lt;")), // v837 客戶備註；v865 併老闆帳務調整
         ]),
         params.newBookings.length === 0 ? "今日無新訂單" : params.newBookings.length > 20 ? `（僅顯示前 20 筆，共 ${params.newBookings.length} 筆，完整資料請見 Excel）` : "",
       ))}
