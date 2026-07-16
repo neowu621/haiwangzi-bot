@@ -64,6 +64,9 @@ export default function PublicPayPage({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // v864：付款方式區的展開狀態。null = 跟隨預設（未送出證明→展開；已送出→收合），
+  //   客戶手動點過標題才覆寫。送出成功後重設回 null，讓它自動收合。
+  const [payOpenOverride, setPayOpenOverride] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -191,6 +194,8 @@ export default function PublicPayPage({
         } catch { /* 重新整理失敗不影響已送出 */ }
         // 清掉已送出的表單內容，避免誤按再送一次
         setFile(null); setPreview(null); setNote(""); setLast5("");
+        // v864：送出後付款方式區自動收合（回到跟隨預設）
+        setPayOpenOverride(null); setPaymentMethod(null);
       }
     } catch {
       setSubmitError("網路錯誤");
@@ -247,6 +252,10 @@ export default function PublicPayPage({
 
   const proofs = data.proofs ?? [];
   const hasPending = proofs.some((p) => !p.verifiedAt && !p.rejectedAt);
+  // v864：客戶已把證明送出（剛送出，或回訪時仍有待審的）→ 該做的事已完成，
+  //   付款方式區預設收合；要補上傳再點標題展開。
+  const payDone = submitted || hasPending;
+  const payOpen = payOpenOverride ?? !payDone;
 
   // v476：客製訂單 — 未簽署則只顯示合約簽署，簽完才出現付款
   const needSign = !!data.contract && !data.contract.signed;
@@ -283,24 +292,46 @@ export default function PublicPayPage({
         </section>
       ) : null}
 
+      {/* v864：已送出證明後預設收合（客戶已完成該做的事，不用再看一長串表單）；
+          需要補上傳時點標題列即可展開。尚未送出 → 一律展開。 */}
       <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="text-base font-bold mb-3">選擇付款方式</div>
-        {/* v783：按鈕加大，手機好點 */}
-        <div className="grid grid-cols-3 gap-3">
+        {payDone ? (
+          <button
+            type="button"
+            onClick={() => setPayOpenOverride(!payOpen)}
+            className="flex w-full items-center justify-between gap-2 text-left"
+          >
+            <div>
+              <div className="text-base font-bold">請選擇並上傳付款資訊</div>
+              <div className="mt-0.5 text-[12.5px] text-gray-500">
+                {payOpen ? "已送出證明，如需補上傳可繼續操作" : "已送出證明。要再補上傳？點這裡展開"}
+              </div>
+            </div>
+            <span className="shrink-0 text-lg text-gray-400">{payOpen ? "▴" : "▾"}</span>
+          </button>
+        ) : (
+          <div className="text-base font-bold mb-3">請選擇並上傳付款資訊</div>
+        )}
+
+        {payOpen && (<>
+        {/* v783：按鈕加大，手機好點。v864：再放大 + 選中改用品牌色，避免客戶看不出要點 */}
+        <div className={"grid grid-cols-3 gap-3" + (payDone ? " mt-3" : "")}>
           {(["bank", "linepay", "other"] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setPaymentMethod(m)}
               className={
-                "flex flex-col items-center justify-center gap-2 rounded-2xl px-2 py-6 transition active:scale-95 " +
+                "flex flex-col items-center justify-center gap-2.5 rounded-2xl px-2 py-8 transition active:scale-95 " +
                 (paymentMethod === m
-                  ? "border-2 border-cyan-600 bg-cyan-50 shadow"
-                  : "border border-gray-300 bg-white hover:bg-gray-50")
+                  ? "border-[3px] border-cyan-500 bg-cyan-50 shadow-lg ring-2 ring-cyan-200"
+                  : "border-2 border-gray-300 bg-white hover:bg-gray-50")
               }
             >
-              <span className="text-4xl leading-none">{m === "bank" ? "🏦" : m === "linepay" ? "💚" : "📝"}</span>
-              <span className="text-[15px] font-bold text-gray-800">{m === "bank" ? "銀行轉帳" : m === "linepay" ? "LINE Pay" : "其他"}</span>
+              <span className="text-5xl leading-none">{m === "bank" ? "🏦" : m === "linepay" ? "💚" : "📝"}</span>
+              <span className={"text-[16px] font-extrabold " + (paymentMethod === m ? "text-cyan-800" : "text-gray-800")}>
+                {m === "bank" ? "銀行轉帳" : m === "linepay" ? "LINE Pay" : "其他"}
+              </span>
             </button>
           ))}
         </div>
@@ -360,9 +391,10 @@ export default function PublicPayPage({
             </div>
           </div>
         )}
+        </>)}
       </section>
 
-      {paymentMethod && (
+      {payOpen && paymentMethod && (
         <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm font-semibold">填寫付款資訊</div>
 

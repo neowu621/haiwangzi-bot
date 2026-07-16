@@ -584,14 +584,17 @@ function BookingCard({
     return Math.round((done / 4) * 100);
   })();
   const cancellable = isCancellable(b);
-  // v698：每筆預約預設縮起,點擊展開
-  const [open, setOpen] = useState(false);
   const d = deriveBookingDisplay({
     status: b.status,
     paymentStatus: b.paymentStatus,
     createdAt: b.createdAt,
     activityDate: (ref && "date" in ref) ? ref.date : (ref && "dateStart" in ref ? ref.dateStart : null),
   });
+  // v698：每筆預約預設縮起,點擊展開
+  // v864：但「還等客戶付款」的訂單(建立訂單 / 等待付款)預設展開 —— 客戶還沒選付款方式，
+  //   收起來會看不到要做什麼。選好付款方式後狀態就會變(待確認匯款/已付款)，自然收合。
+  const needsAction = d.key === "created" || d.key === "awaiting_pay";
+  const [open, setOpen] = useState(needsAction);
   const [proofLightbox, setProofLightbox] = useState<{
     url: string;
     caption?: string;
@@ -766,26 +769,12 @@ function BookingCard({
           </div>
         )}
 
-        {/* v289：下方 — 付款方式選擇（左）+ 截止日提醒（緊鄰右側）/ 金額（中）/ 申請退款（右） */}
+        {/* v289：下方 — 截止日提醒（左）/ 金額（中）/ 申請退款（右）；v864：付款 CTA 改到這排下方獨立整排 */}
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-          {/* 左：付款方式選擇（主要 CTA）+ 截止日提醒 */}
+          {/* 左：截止日提醒（v864：付款 CTA 移到下方獨立整排大按鈕） */}
           <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
             {needsPayment ? (
               <>
-                <Link
-                  href={`/liff/payment/${b.id}`}
-                  onClick={() => setPaying(true)}
-                  aria-disabled={paying}
-                  className={paying ? "pointer-events-none" : ""}
-                >
-                  <button
-                    disabled={paying}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-3 py-2 text-xs font-bold text-[var(--color-ocean-deep)] shadow-sm whitespace-nowrap disabled:opacity-80"
-                  >
-                    {paying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    {paying ? "開啟中…" : "付款方式選擇"}
-                  </button>
-                </Link>
                 {paymentDeadline && daysLeft !== null && (
                   <div
                     className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium whitespace-nowrap"
@@ -797,11 +786,6 @@ function BookingCard({
                   >
                     ⏰ {paymentDeadline.toLocaleDateString("zh-TW", { month: "long", day: "numeric" })} 前付清
                     {daysLeft > 0 ? `（剩 ${daysLeft} 天）` : "（已逾期）"}
-                  </div>
-                )}
-                {paying && paySlow && (
-                  <div className="w-full text-[10px] text-[var(--muted-foreground)]">
-                    載入較久…可能網路較慢。若遲遲沒反應，請關掉重開或稍後再試。
                   </div>
                 )}
               </>
@@ -831,6 +815,30 @@ function BookingCard({
             </Link>
           )}
         </div>
+
+        {/* v864：付款主要 CTA —— 整排、置中、品牌珊瑚色，讓客戶一眼知道要做什麼。
+            原本是左下角的小藥丸按鈕，跟金額擠在同一排，容易被忽略。 */}
+        {needsPayment && (
+          <Link
+            href={`/liff/payment/${b.id}`}
+            onClick={() => setPaying(true)}
+            aria-disabled={paying}
+            className={"mt-3 block " + (paying ? "pointer-events-none" : "")}
+          >
+            <button
+              disabled={paying}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-coral)] px-4 py-3.5 text-[15px] font-extrabold text-white shadow-md active:scale-[.99] transition disabled:opacity-80"
+            >
+              {paying ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Upload className="h-4.5 w-4.5" />}
+              {paying ? "開啟中…" : "請選擇並上傳付款資訊"}
+            </button>
+          </Link>
+        )}
+        {needsPayment && paying && paySlow && (
+          <div className="mt-1.5 text-center text-[10px] text-[var(--muted-foreground)]">
+            載入較久…可能網路較慢。若遲遲沒反應，請關掉重開或稍後再試。
+          </div>
+        )}
 
         {/* 我上傳的轉帳截圖 — 點縮圖放大 */}
         {b.paymentProofs.length > 0 && (

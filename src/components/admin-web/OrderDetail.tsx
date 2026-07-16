@@ -115,6 +115,9 @@ export function OrderDetail({ id, onActed }: { id: string; onActed?: () => void 
   const proofs = data?.proofs ?? [];
   const pendingProofs = proofs.filter((p) => p.state === "pending");
   const needsPayment = !!b && b.paymentStatus !== "fully_paid" && b.paymentStatus !== "refunded" && b.totalAmount > 0;
+  // v864：實付金額（真正收到的錢）= 已付總額 − 抵用金折抵。paidAmount 本身含抵用金，
+  //   直接顯示會與「折抵用金」那行重複計算，導致明細相減對不上應付金額。
+  const cashPaid = b ? Math.max(0, b.paidAmount - b.creditUsed) : 0;
 
   if (error) {
     return <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "rgba(255,107,107,0.12)", color: "var(--color-coral)" }}>載入失敗：{error}</div>;
@@ -153,7 +156,11 @@ export function OrderDetail({ id, onActed }: { id: string; onActed?: () => void 
         <div className="mb-1.5 text-sm font-bold" style={{ color: "var(--color-ocean-deep)" }}>金額明細</div>
         <Row k="訂單總額" v={`NT$ ${b.totalAmount.toLocaleString()}`} />
         {b.creditUsed > 0 && <Row k="折抵用金" v={`− NT$ ${b.creditUsed.toLocaleString()}`} />}
-        {b.paidAmount > 0 && <Row k="已付（含抵用金）" v={`NT$ ${b.paidAmount.toLocaleString()}`} />}
+        {/* v864：原本顯示「已付（含抵用金）」＝ paidAmount，但 paidAmount 本來就含抵用金，
+            與上一行的「折抵用金」重複計算 → 明細照字面相減會對不上應付金額。
+            改為只列「實付金額」＝ paidAmount − creditUsed，讓 總額 − 折抵 − 實付 = 應付。
+            客戶只用抵用金折抵、還沒真的付錢時，這一行自然不顯示（0 元不列）。 */}
+        {cashPaid > 0 && <Row k="已付款" v={`− NT$ ${cashPaid.toLocaleString()}`} />}
         <div className="mt-1.5 flex items-center justify-between border-t pt-1.5" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
           <span className="text-sm font-bold">{needsPayment ? "應付金額" : "已付清"}</span>
           <span className="font-mono text-lg font-extrabold tabular-nums" style={{ color: "var(--color-coral)" }}>
