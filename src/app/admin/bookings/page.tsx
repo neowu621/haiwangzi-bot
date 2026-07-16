@@ -1114,8 +1114,8 @@ export default function AdminBookingsPage() {
                     <th className="px-3 py-3 font-medium"><SortBtn k="type" curK={sortKey} dir={sortDir} onClick={toggleSort}>類型</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="customer" curK={sortKey} dir={sortDir} onClick={toggleSort}>客戶</SortBtn></th>
                     <th className="px-4 py-3 font-medium"><SortBtn k="date" curK={sortKey} dir={sortDir} onClick={toggleSort}>場次時間</SortBtn></th>
-                    <th className="px-4 py-3 font-medium">地點 / 行程</th>
-                    <th className="px-3 py-3 font-medium" title="個=客戶個人備註(長期·跟著人) 客=客戶下單填的備註(本筆)。活動提醒請在『日潛場次/潛旅』編輯，客戶可見。">備註 ⓘ</th>
+                    {/* v867：備註併入本欄（上：地點；下：備註）→ 少一欄、表格變窄 */}
+                    <th className="px-4 py-3 font-medium" title="上＝地點/行程。下＝備註：個=客戶個人備註(長期·跟著人)、客=客戶下單填的備註(本筆)、🧮=老闆帳務調整(共乘等)。活動提醒請在『日潛場次/潛旅』編輯，客戶可見。">地點 / 行程・備註 ⓘ</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="amount" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">總金額</SortBtn></th>
                     <th className="px-4 py-3 font-medium text-right">抵扣金額</th>
                     <th className="px-4 py-3 font-medium text-right"><SortBtn k="paid" curK={sortKey} dir={sortDir} onClick={toggleSort} align="right">實際付款</SortBtn></th>
@@ -1175,7 +1175,8 @@ export default function AdminBookingsPage() {
                         </td>
                         {/* v320：客戶名可點 → 開全站統一客戶詳情 modal */}
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
+                          {/* v867：備註徽章改放名字「下方」，客戶欄不再被撐寬 */}
+                          <div className="flex flex-col items-start gap-0.5">
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setOpenCustomerId(b.user.lineUserId); }}
@@ -1183,14 +1184,14 @@ export default function AdminBookingsPage() {
                             >
                               {b.user.realName ?? b.user.displayName}
                             </button>
-                            {/* v837：客戶下單備註標記 — 一眼看出有特別需求（hover 看內容） */}
+                            {/* v837：客戶下單備註標記 — 一眼看出有特別需求（內容在「地點/行程」欄下方） */}
                             {b.notes && b.notes.trim() && (
                               <span
                                 title={`訂單備註：${b.notes}`}
-                                className="inline-flex items-center rounded-md px-1 py-0.5 text-[10px] font-bold"
+                                className="inline-flex items-center rounded px-1 py-0.5 text-[10px] font-bold whitespace-nowrap"
                                 style={{ background: "rgba(220,38,38,0.12)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}
                               >
-                                📝 訂單備註
+                                📝 備註
                               </span>
                             )}
                           </div>
@@ -1227,29 +1228,40 @@ export default function AdminBookingsPage() {
                             </>
                           )}
                         </td>
-                        {/* 地點 / 行程 */}
-                        <td className="px-4 py-2.5 text-xs">
-                          {b.type === "daily" ? (
-                            b.ref.sites && b.ref.sites.length > 0 ? (
-                              <span>{b.ref.sites.join("・")}</span>
+                        {/* v867：地點/行程 + 備註合併成一欄（上：地點；下：備註內容）。
+                            原本備註是獨立一欄，兩欄都被擠得很窄、地點常斷成 4 行；
+                            合併後空間集中，備註也不必再 hover 才看得到。 */}
+                        <td className="px-4 py-2.5 text-xs min-w-[190px] max-w-[300px]">
+                          {/* 上：地點 / 行程 */}
+                          <div>
+                            {b.type === "daily" ? (
+                              b.ref.sites && b.ref.sites.length > 0 ? (
+                                <span>{b.ref.sites.join("・")}</span>
+                              ) : (
+                                <span className="text-[var(--muted-foreground)]">—</span>
+                              )
                             ) : (
-                              <span className="text-[var(--muted-foreground)]">—</span>
-                            )
-                          ) : (
-                            <span className="font-medium">{b.ref.title ?? "潛水團"}</span>
-                          )}
-                        </td>
-                        {/* v660：備註欄（客戶 / 網站 / 管理）*/}
-                        <td className="px-3 py-2.5 text-[11px] max-w-[170px]">
+                              <span className="font-medium">{b.ref.title ?? "潛水團"}</span>
+                            )}
+                          </div>
+                          {/* 下：備註內容（個人備註 / 訂單備註 / 老闆帳務調整如共乘） */}
                           {(() => {
                             const parts: Array<{ l: string; t: string; c: string }> = [];
                             if (b.user?.notes) parts.push({ l: "個", t: b.user.notes, c: "text-pink-700" });
                             if (b.notes) parts.push({ l: "客", t: b.notes, c: "text-red-600 font-semibold" });
-                            if (parts.length === 0) return <span className="text-[var(--muted-foreground)]">—</span>;
+                            // v867：老闆帳務調整（共乘 +300 / 補上次沒潛水 −600）也顯示，
+                            //   老闆掃列表就知道這筆有特別收費，不用點進去看。
+                            const adj = (b.priceBreakdown?.bossAdjustments ?? [])
+                              .map((a) => `${a.label} ${a.amount > 0 ? "+" : "−"}${Math.abs(a.amount).toLocaleString()}`)
+                              .join("、");
+                            if (adj) parts.push({ l: "🧮", t: adj, c: "text-amber-700 font-semibold" });
+                            if (parts.length === 0) return null;
                             return (
-                              <div className="space-y-0.5">
+                              <div className="mt-1 space-y-0.5 text-[11px]">
                                 {parts.map((p, i) => (
-                                  <div key={i} className={`truncate ${p.c}`} title={p.t}><b>{p.l}</b> {p.t}</div>
+                                  <div key={i} className={p.c} title={p.t}>
+                                    <b>{p.l}</b> {p.t}
+                                  </div>
                                 ))}
                               </div>
                             );
@@ -1418,7 +1430,8 @@ export default function AdminBookingsPage() {
                   })}
                   {pagedBookings.length === 0 && (
                     <tr>
-                      <td colSpan={14} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
+                      {/* v867：實際欄數 11（原本寫 14 就已多算，合併備註欄後一併修正） */}
+                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-[var(--muted-foreground)]">
                         無資料
                       </td>
                     </tr>
