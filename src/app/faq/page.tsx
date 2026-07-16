@@ -10,17 +10,18 @@ export const metadata: Metadata = {
 
 // v495：FAQ 獨立頁（複製首頁 FAQ，server 渲染、可被 Google 索引）+ FAQPage 結構化資料
 export default function FaqPage() {
-  // JSON-LD：只收純文字答案（JSX 答案略過），讓 Google 可呈現 FAQ 摘要
+  // JSON-LD：純文字答案直接收；JSX 答案改收 plain 欄位（v863）—— 兩者皆無才略過。
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: FAQ.flatMap((cat) =>
       cat.items
-        .filter((qa) => typeof qa.a === "string")
-        .map((qa) => ({
+        .map((qa) => ({ q: qa.q, text: typeof qa.a === "string" ? qa.a : qa.plain }))
+        .filter((x): x is { q: string; text: string } => typeof x.text === "string" && x.text.length > 0)
+        .map((x) => ({
           "@type": "Question",
-          name: qa.q,
-          acceptedAnswer: { "@type": "Answer", text: qa.a as string },
+          name: x.q,
+          acceptedAnswer: { "@type": "Answer", text: x.text },
         })),
     ),
   };
