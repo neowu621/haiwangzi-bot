@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       title: true,
       body: true,
       linkUrl: true,
+      buttonLabel: true, // v862：站內按鈕文字（來自模板設定）
       icon: true,
       isRead: true,
       createdAt: true,

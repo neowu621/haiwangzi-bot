@@ -531,6 +531,8 @@ const PATCHES = [
   // v858：既有資料庫的 icon 欄位由 VARCHAR(16) 放寬到 255（原本只夠 emoji，放不下 logo 圖片網址）。
   //   放寬型別是安全操作(不會截斷既有資料)；CREATE TABLE IF NOT EXISTS 不會改既有表，故需這道 ALTER。
   `ALTER TABLE notifications ALTER COLUMN icon TYPE VARCHAR(255)`,
+  // v862：站內通知按鈕文字（發送當下從模板複製；null → 前端用預設「前往查看 →」）
+  `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS button_label VARCHAR(64)`,
 
   // ── v521/v522：客服信箱 Console（email console）─────────────────────
   //   prisma db push 因既有 drift 一直失敗（data-loss），新表/enum 一律靠 migrate-safety 建。

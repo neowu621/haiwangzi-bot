@@ -63,6 +63,8 @@ export const MSG_EDITABLE_FIELDS: Record<
   deposit_confirm: [
     { key: "title", label: "標題", defaultValue: "✅ 訂金已收到" },
     { key: "subtitle", label: "副標", defaultValue: "謝謝您的繳費，位置已保留 🎉" },
+    // v862：補按鈕設定（原本沒有 → 站內無法自訂按鈕文字）。留空＝純告知不放按鈕。
+    { key: "buttonLabel", label: "按鈕文字（留空＝不放按鈕）", defaultValue: "" },
     { key: "altText", label: "通知列文字", defaultValue: "訂金已收" },
   ],
   final_reminder: [
@@ -74,6 +76,8 @@ export const MSG_EDITABLE_FIELDS: Record<
   trip_guide: [
     { key: "title", label: "標題", defaultValue: "📘 行前手冊" },
     { key: "bodyText", label: "注意事項", defaultValue: "請攜帶證照、防寒衣、防曬等" },
+    // v862：補按鈕設定（原本沒有）
+    { key: "buttonLabel", label: "按鈕文字（留空＝不放按鈕）", defaultValue: "查看行前手冊" },
     { key: "altText", label: "通知列文字", defaultValue: "行前手冊" },
   ],
   weather_cancel: [
@@ -135,6 +139,8 @@ export const MSG_EDITABLE_FIELDS: Record<
   refund_complete: [
     { key: "title", label: "標題", defaultValue: "退款已完成" },
     { key: "bodyText", label: "說明文字", defaultValue: "您的退款已處理完成，感謝您的耐心。" },
+    // v862：補按鈕設定。預設留空＝純告知不放按鈕（錢已退，客戶沒有要做什麼）。
+    { key: "buttonLabel", label: "按鈕文字（留空＝不放按鈕）", defaultValue: "" },
     { key: "altText", label: "通知列文字", defaultValue: "退款已完成" },
   ],
   vip_upgrade: [

@@ -23,6 +23,7 @@ import {
   composeFullBody,
   msgField,
   resolveLinkUrl,
+  MSG_EDITABLE_FIELDS, // v862：判斷模板有沒有「按鈕文字」欄位
 } from "./message-content";
 import { sendEmail } from "./email/send";
 import { logMessage } from "./message-log"; // v473：發送紀錄
@@ -107,13 +108,21 @@ export function notifyCustomer(opts: {
           const title = msgField(key, "title", tpl) || label;
           const body = composeFullBody(key, opts.params, tpl) || altText;
           const icon = meta?.icon ?? null;
+          // v862：站內按鈕文字＝後台模板的「按鈕文字」（與 LINE/Email 同一份設定）。
+          //   規則：模板有「按鈕文字」欄位但老闆清空 → 視為「這則不放按鈕」→ 站內不給連結，
+          //   只顯示「訊息已閱讀，關閉」。模板根本沒有該欄位 → 留 null，前端用預設「前往查看 →」。
+          const hasBtnField = (MSG_EDITABLE_FIELDS[key] ?? []).some((f) => f.key === "buttonLabel");
+          const rawBtn = hasBtnField ? msgField(key, "buttonLabel", tpl).trim() : "";
+          const suppressBtn = hasBtnField && rawBtn === "";
+          const inAppLink = suppressBtn ? null : linkUrl;
           await prisma.notification.create({
             data: {
               userId: opts.userId,
               templateKey: key,
               title,
               body,
-              linkUrl,
+              linkUrl: inAppLink,
+              buttonLabel: inAppLink ? rawBtn || null : null,
               icon,
             },
           });

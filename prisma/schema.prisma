@@ -208,6 +208,8 @@ model Notification {
   title       String
   body        String
   linkUrl     String?   @map("link_url")
+  // v862：按鈕文字（發送當下從模板複製）。null → 前端顯示預設「前往查看 →」
+  buttonLabel String?   @map("button_label") @db.VarChar(64)
   // v858：原 VarChar(16) 只夠放 emoji；改 255 以容納品牌 logo 圖片網址（NotifIcon 會自動判斷）
   icon        String?   @db.VarChar(255)
   isRead      Boolean   @default(false) @map("is_read")

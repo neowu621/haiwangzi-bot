@@ -14,6 +14,7 @@ interface NotificationItem {
   title: string;
   body: string;
   linkUrl: string | null;
+  buttonLabel: string | null; // v862：按鈕文字（來自後台模板設定）
   icon: string | null;
   isRead: boolean;
   createdAt: string;
@@ -220,15 +221,24 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
         <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--foreground)]">
           {n.body}
         </div>
-        {/* v471：底部按鈕 — 有連結→「前往查看」(導頁)；沒連結→「關閉」 */}
+        {/* v471：底部按鈕。v862：有連結→用模板設定的按鈕文字(與 LINE/Email 一致) + 旁邊一律附「關閉訊息」 */}
         <div className="p-4 pt-1">
           {n.linkUrl ? (
-            <a
-              href={n.linkUrl}
-              className="block w-full rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
-            >
-              前往查看 →
-            </a>
+            <div className="flex gap-2">
+              <a
+                href={n.linkUrl}
+                className="flex-1 rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
+              >
+                {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
+              </a>
+              <button
+                onClick={onClose}
+                className="shrink-0 rounded-xl border px-4 py-3 text-center text-sm font-bold text-[var(--muted-foreground)]"
+                style={{ borderColor: "var(--border)" }}
+              >
+                關閉訊息
+              </button>
+            </div>
           ) : (
             <button
               onClick={onClose}
