@@ -77,6 +77,9 @@ export default function PaymentUploadPage({
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // v866：付款方式區展開狀態。null = 跟隨預設（有待審證明→收合；沒有→展開），
+  //   客戶點過標題才覆寫。上傳成功後重設回 null，讓它自動收合。
+  const [payOpenOverride, setPayOpenOverride] = useState<boolean | null>(null);
   // v621：同步防重入鎖 — 慢網路下 React state 來不及把按鈕 disable，連點會觸發多次 submit()。
   const submittingRef = useRef(false);
   // v368：訂單載入失敗狀態 + 重試 key（避免 fetch 失敗時無限轉圈）
@@ -384,6 +387,11 @@ export default function PaymentUploadPage({
 
   const isDaily = booking.type === "daily";
 
+  // v866：客戶已上傳證明且仍待審 → 該做的事已完成，付款方式區預設收合。
+  //   （被駁回的不算，那種情況客戶要重傳，應該保持展開。）
+  const payDone = (booking.paymentProofs ?? []).some((p) => !p.verifiedAt && !p.rejectedAt);
+  const payOpen = payOpenOverride ?? !payDone;
+
   // v297：訂單已完結（已付清 / 已退款 / 已取消）→ 不顯示上傳表單
   const isAlreadyPaid = booking.paymentStatus === "fully_paid" ||
     (booking.totalAmount > 0 && booking.paidAmount >= booking.totalAmount);
@@ -463,11 +471,30 @@ export default function PaymentUploadPage({
           />
         )}
 
-        {/* v289：付款方式選擇 — 3 選 1 */}
+        {/* v289：付款方式選擇 — 3 選 1
+            v866：已上傳付款證明(仍待審)→ 預設收合。客戶該做的事已完成，
+            不用再看一長串表單；要補上傳點標題即可展開。 */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{(booking.paymentProofs?.length ?? 0) > 0 ? "補上傳付款證明" : "選擇付款方式"}</CardTitle>
+            {payDone ? (
+              <button
+                type="button"
+                onClick={() => setPayOpenOverride(!payOpen)}
+                className="flex w-full items-center justify-between gap-2 text-left"
+              >
+                <div>
+                  <CardTitle className="text-base">補上傳付款證明</CardTitle>
+                  <div className="mt-0.5 text-[12px] font-normal text-[var(--muted-foreground)]">
+                    {payOpen ? "已上傳證明，如需補上傳可繼續操作" : "已上傳證明。要再補上傳？點這裡展開"}
+                  </div>
+                </div>
+                <span className="shrink-0 text-lg text-[var(--muted-foreground)]">{payOpen ? "▴" : "▾"}</span>
+              </button>
+            ) : (
+              <CardTitle className="text-base">請選擇並上傳付款資訊</CardTitle>
+            )}
           </CardHeader>
+          {payOpen && (
           <CardContent>
             {/* v783：按鈕加大，手機好點 */}
             <div className="grid grid-cols-3 gap-2.5">
@@ -502,6 +529,7 @@ export default function PaymentUploadPage({
               </p>
             )}
           </CardContent>
+          )}
         </Card>
 
         {booking.type === "tour" && (
@@ -547,7 +575,9 @@ export default function PaymentUploadPage({
         )}
 
         {/* v289：bank 顯示銀行資訊 + 一鍵複製帳號 */}
-        {paymentMethod === "bank" && bank?.account && (
+        {/* v866：收合時這些附屬區塊也一起收（第112行會自動帶入上次選的付款方式，
+            否則會變成「上面收起來、下面表單還開著」） */}
+        {payOpen && paymentMethod === "bank" && bank?.account && (
           <Card className="bg-[var(--color-ocean-deep)] text-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base text-white">
@@ -580,7 +610,7 @@ export default function PaymentUploadPage({
         )}
 
         {/* v289：linepay 顯示 QR + Lite ID */}
-        {paymentMethod === "linepay" && (linepay?.qrUrl || linepay?.liteId || linepay?.lineUrl) && (
+        {payOpen && paymentMethod === "linepay" && (linepay?.qrUrl || linepay?.liteId || linepay?.lineUrl) && (
           <Card className="bg-green-50/40 border-green-200">
             <CardHeader>
               <CardTitle className="text-base text-green-900">💚 LINE Pay 轉帳</CardTitle>
@@ -620,7 +650,7 @@ export default function PaymentUploadPage({
         )}
 
         {/* v289：依付款方式不同顯示不同表單 */}
-        {paymentMethod && (
+        {payOpen && paymentMethod && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">付款證明</CardTitle>
