@@ -25,8 +25,19 @@ interface ProofRow {
     activityDate?: string;
     activitySite?: string;
     notes?: string | null; // v843：客戶訂單備註
+    priceBreakdown?: BossAdjPb | null; // v868：老闆帳務調整（共乘等）
     user: { displayName: string; realName: string | null };
   };
+}
+
+// v868：只取這頁要用的部分（完整型別在 components/admin/PriceBreakdown）
+type BossAdjPb = { bossAdjustments?: Array<{ label: string; amount: number }> };
+
+/** v868：老闆帳務調整摘要（共乘 +NT$300、補上次沒潛水 −NT$600）。無調整回空字串 */
+function adjText(pb?: BossAdjPb | null): string {
+  return (pb?.bossAdjustments ?? [])
+    .map((a) => `${a.label} ${a.amount > 0 ? "+" : "−"}NT$${Math.abs(a.amount).toLocaleString()}`)
+    .join("、");
 }
 interface ProofsResp { proofs: ProofRow[] }
 
@@ -40,6 +51,7 @@ interface BookingRow {
   paymentStatus?: string;
   status: string;
   notes?: string | null; // v843：客戶訂單備註（老闆結帳列表一起顯示）
+  priceBreakdown?: BossAdjPb | null; // v868：老闆帳務調整（共乘等）
   ref?: { date?: string; dateStart?: string; startTime?: string; sites?: string[]; title?: string };
   user?: { displayName: string; realName: string | null };
 }
@@ -143,6 +155,9 @@ export default function MobileTonightPage() {
               {p.booking.notes && p.booking.notes.trim() && (
                 <div className="mt-1 rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>📝 訂單備註：{p.booking.notes}</div>
               )}
+              {adjText(p.booking.priceBreakdown) && (
+                <div className="mt-1 rounded-md px-2.5 py-1.5 text-[13px] font-bold" style={{ background: "rgba(180,120,10,0.10)", color: "#8a5f10", border: "1px solid rgba(180,120,10,0.30)" }}>🧮 帳務調整：{adjText(p.booking.priceBreakdown)}</div>
+              )}
             </Card>
           ))
         )}
@@ -165,6 +180,9 @@ export default function MobileTonightPage() {
               {b.notes && b.notes.trim() && (
                 <div className="mt-1 rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>📝 訂單備註：{b.notes}</div>
               )}
+              {adjText(b.priceBreakdown) && (
+                <div className="mt-1 rounded-md px-2.5 py-1.5 text-[13px] font-bold" style={{ background: "rgba(180,120,10,0.10)", color: "#8a5f10", border: "1px solid rgba(180,120,10,0.30)" }}>🧮 帳務調整：{adjText(b.priceBreakdown)}</div>
+              )}
             </Card>
           ))}
         </Section>
@@ -185,6 +203,9 @@ export default function MobileTonightPage() {
               </div>
               {b.notes && b.notes.trim() && (
                 <div className="mt-1 rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>📝 訂單備註：{b.notes}</div>
+              )}
+              {adjText(b.priceBreakdown) && (
+                <div className="mt-1 rounded-md px-2.5 py-1.5 text-[13px] font-bold" style={{ background: "rgba(180,120,10,0.10)", color: "#8a5f10", border: "1px solid rgba(180,120,10,0.30)" }}>🧮 帳務調整：{adjText(b.priceBreakdown)}</div>
               )}
             </Card>
           ))}

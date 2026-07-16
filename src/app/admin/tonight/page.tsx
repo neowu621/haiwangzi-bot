@@ -69,6 +69,7 @@ interface BookingRow {
   paymentStatus: string;
   paymentMethod?: string | null; // v776：客戶選的付款方式（cash=現場支付 → 不催匯款）
   priceBreakdown?: PriceBreakdownData | null; // v712
+  notes?: string | null; // v868：客戶訂單備註（API 用 include，本來就有回傳，只是型別沒宣告）
   creditUsed?: number;
   rentalGear?: GearItem[];
   tankCount?: number | null;
@@ -325,6 +326,24 @@ export default function TonightPage() {
               <PriceBreakdown pb={b.priceBreakdown ?? null} fallback={{ type: b.type, totalAmount: b.totalAmount, creditUsed: b.creditUsed, rentalGear: b.rentalGear, tankCount: b.tankCount ?? b.ref?.tankCount, participants: b.participants, extraTank: b.ref?.extraTank, baseTrip: b.ref?.baseTrip, isBoat: b.ref?.isBoat }} />
             </div>
           )}
+          {/* v868：訂單備註 —— 樣式對齊「待確認匯款」區，讓老闆在所有待辦區都看得到客戶的特別需求 */}
+          {b.notes && b.notes.trim() && (
+            <div className="mt-1 rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>
+              📝 訂單備註：{b.notes}
+            </div>
+          )}
+          {/* v868：老闆帳務調整（共乘 +300 等）— 也是老闆要留意的特別收費 */}
+          {(() => {
+            const adj = (b.priceBreakdown?.bossAdjustments ?? [])
+              .map((a) => `${a.label} ${a.amount > 0 ? "+" : "−"}NT$${Math.abs(a.amount).toLocaleString()}`)
+              .join("、");
+            if (!adj) return null;
+            return (
+              <div className="mt-1 rounded-md px-2.5 py-1.5 text-[13px] font-bold" style={{ background: "rgba(180,120,10,0.10)", color: "#8a5f10", border: "1px solid rgba(180,120,10,0.30)" }}>
+                🧮 帳務調整：{adj}
+              </div>
+            );
+          })()}
         </div>
         {variant === "transfer" ? (
           <Link href={`/admin/bookings?status=created`}>
@@ -595,6 +614,18 @@ export default function TonightPage() {
                           {p.booking.notes && p.booking.notes.trim() && (
                             <div className="mt-1 rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>📝 訂單備註：{p.booking.notes}</div>
                           )}
+                          {/* v868：老闆帳務調整（共乘等）— 與「已下單・待匯款」區一致 */}
+                          {(() => {
+                            const adj = ((p.booking.priceBreakdown as PriceBreakdownData | null)?.bossAdjustments ?? [])
+                              .map((a) => `${a.label} ${a.amount > 0 ? "+" : "−"}NT$${Math.abs(a.amount).toLocaleString()}`)
+                              .join("、");
+                            if (!adj) return null;
+                            return (
+                              <div className="mt-1 rounded-md px-2.5 py-1.5 text-[13px] font-bold" style={{ background: "rgba(180,120,10,0.10)", color: "#8a5f10", border: "1px solid rgba(180,120,10,0.30)" }}>
+                                🧮 帳務調整：{adj}
+                              </div>
+                            );
+                          })()}
                           {p.booking.adminNotes && (
                             <div className="mt-0.5 text-[11px] text-slate-500">🔒 管理：{p.booking.adminNotes}</div>
                           )}
