@@ -52,7 +52,7 @@ body{background:#eef3f6;}
 .rwd *{box-sizing:border-box;}
 .rwd .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px;}
 
-.rwd .hero{position:relative; overflow:hidden; color:#0A2342; background:linear-gradient(165deg,#e6f2f6 0%,#eef6f8 48%,#f4f8fb 100%); padding:60px 20px 84px; border-bottom:1px solid #dfe7ee;}
+.rwd .hero{position:relative; overflow:hidden; color:#0A2342; background:linear-gradient(165deg,#e6f2f6 0%,#eef6f8 48%,#f4f8fb 100%); padding:60px 20px 84px;}
 .rwd .hero-inner{max-width:var(--maxw); margin:0 auto; position:relative; z-index:2;}
 .rwd .eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--mint); margin-bottom:16px;}
 .rwd .eyebrow::before{content:""; width:26px; height:2px; background:var(--mint); display:inline-block;}
