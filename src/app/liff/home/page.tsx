@@ -19,8 +19,11 @@ export default function LiffHomePage() {
           <div style={{ fontSize: 11, letterSpacing: 2, color: "#7fbfb6" }}>LAILAI YINGGE ROCK · NORTHEAST COAST</div>
           <h1 style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.2, margin: "6px 0 8px" }}>潛入大海<br />看見<span style={{ color: "#5fe0cf" }}>另一個世界</span></h1>
           <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#d6e6ef", margin: "0 0 12px" }}>剛入門也沒關係——有汪汪教練在身邊，每一潛都安心。</p>
+          {/* v871：hero 在首屏第一眼，原本標 lazy 反而拖慢 —— 瀏覽器預載掃描器會跳過 lazy 圖，
+              得等排版算完才開始下載。改 eager + fetchPriority=high 讓它最優先。
+              width/height 給瀏覽器先保留位置，避免圖載入時把下面內容往下撞。 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/home/src-hero-diver.webp" alt="汪汪教練帶你安心潛水" loading="lazy" style={{ width: "100%", borderRadius: 14, display: "block", marginBottom: 12 }} />
+          <img src="/home/src-hero-diver.webp" alt="汪汪教練帶你安心潛水" width={640} height={1137} loading="eager" fetchPriority="high" decoding="async" style={{ width: "100%", height: "auto", borderRadius: 14, display: "block", marginBottom: 12 }} />
           <div style={{ display: "flex", gap: 8 }}>
             {lineBtn("LINE 立即預約")}
             <button onClick={goDive} style={{ flex: 1, background: "rgba(255,255,255,.12)", color: "#fff", border: "1px solid rgba(255,255,255,.3)", borderRadius: 999, padding: "11px 0", fontSize: 14 }}>看場次</button>
@@ -43,8 +46,9 @@ export default function LiffHomePage() {
           </div>
 
           <Sect t="關於汪汪 · About" />
+          {/* v871：在下面，維持 lazy；補 width/height 讓瀏覽器先保留位置，消除載入時的版面跳動 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/home/src-about.webp" alt="教練汪汪" loading="lazy" style={{ width: "100%", borderRadius: 12, display: "block", marginBottom: 10 }} />
+          <img src="/home/src-about.webp" alt="教練汪汪" width={720} height={1279} loading="lazy" decoding="async" style={{ width: "100%", height: "auto", borderRadius: 12, display: "block", marginBottom: 10 }} />
           <p style={{ fontSize: 13.5, lineHeight: 1.7, color: C.ink, margin: "0 0 12px" }}>潛水最重要的不是裝備多好，而是帶你下水的人夠不夠專業、細心。我最在意的就是兩個字——「安心」。</p>
           <div style={{ display: "flex", background: C.navy, borderRadius: 12, padding: "13px 0", color: "#fff", textAlign: "center" }}>
             {[["10+", "年教學"], ["1萬+", "次潛水"], ["1千+", "人帶過"]].map(([n, l]) => (
@@ -66,8 +70,9 @@ export default function LiffHomePage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
             {SPOTS.map((s) => (
               <div key={s.slug} style={{ border: `0.5px solid ${C.line}`, borderRadius: 12, overflow: "hidden", background: C.card }}>
+                {/* v871：改用縮圖 + 補 width/height（原本圖載入前高度 0，會把內容往下撞） */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={SPOT_IMG[s.bg] ?? "/home/src-08.webp"} alt={s.zh} loading="lazy" style={{ width: "100%", height: 78, objectFit: "cover", display: "block" }} />
+                <img src={SPOT_IMG[s.bg] ?? "/home/src-08-thumb.webp"} alt={s.zh} width={340} height={156} loading="lazy" decoding="async" style={{ width: "100%", height: 78, objectFit: "cover", display: "block" }} />
                 <div style={{ padding: "8px 10px 10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <span style={{ fontSize: 13, fontWeight: 500 }}>{s.zh}</span>
