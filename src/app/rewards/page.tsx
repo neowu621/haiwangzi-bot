@@ -89,7 +89,8 @@ body{background:#eef3f6;}
 /* v872：VIP 潛級改表格（比卡片省版面、一眼比較）*/
 .rwd .vtbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); background:var(--surface);}
 .rwd .vtbl{width:100%; border-collapse:collapse; min-width:540px;}
-.rwd .vtbl th{background:var(--surface-2); color:var(--muted); font-size:12px; font-weight:800; text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; letter-spacing:.02em;}
+/* v874：表頭整列置中 */
+.rwd .vtbl th{background:var(--surface-2); color:var(--muted); font-size:12px; font-weight:800; text-align:center; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; letter-spacing:.02em;}
 .rwd .vtbl td{padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; color:var(--ink); font-size:14px;}
 .rwd .vtbl tr:last-child td{border-bottom:none;}
 .rwd .vt-name{white-space:nowrap;}
