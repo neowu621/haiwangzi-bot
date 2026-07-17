@@ -35,8 +35,9 @@ export default function LiffHomePage() {
                 <div style={{ fontSize: 10.5, color: C.accFg, letterSpacing: .5 }}>{c.badge}</div>
                 <div style={{ fontSize: 14, fontWeight: 500, margin: "5px 0 3px", lineHeight: 1.3 }}>{c.title}</div>
                 <div style={{ fontSize: 16, fontWeight: 500, color: C.coral }}>{c.price}</div>
-                <div style={{ fontSize: 11.5, color: C.mute, margin: "3px 0 10px", lineHeight: 1.5 }}>{c.includes}</div>
-                {lineBtn("LINE 報名")}
+                {/* v870：移除課程卡的「LINE 報名」按鈕，版面乾淨（hero 已有 LINE 立即預約）。
+                    與桌機/手機官網首頁一致（v842 已移除該處）。 */}
+                <div style={{ fontSize: 11.5, color: C.mute, margin: "3px 0 2px", lineHeight: 1.5 }}>{c.includes}</div>
               </div>
             ))}
           </div>
