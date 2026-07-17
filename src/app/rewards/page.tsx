@@ -229,11 +229,7 @@ export default async function RewardsPage() {
           <span className="eyebrow">東北角海王子潛水 · 會員回饋</span>
           <h1>越潛越深，<span className="hl">福利越多</span>。</h1>
           <p>從註冊那一刻起，每一次下水都在累積回饋。抵用金、生日禮金、VIP 等級與升等獎勵——潛得越深，海王子回饋得越多。</p>
-          <div className="hero-stats">
-            <div className="hstat"><b>5 級</b><span>VIP 潛級制度</span></div>
-            <div className="hstat"><b>NT$50 起</b><span>註冊＋Email 認證即送</span></div>
-            <div className="hstat"><b>1:1</b><span>抵用金直接折現</span></div>
-          </div>
+          {/* v875：移除 hero 底部統計列（5 級 / NT$50 起 / 1:1）*/}
         </div>
       </header>
 
