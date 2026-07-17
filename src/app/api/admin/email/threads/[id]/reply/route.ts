@@ -63,8 +63,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status: "SENT",
       },
     });
+    // v869：原本沒帶連結 → 客戶收到「客服回覆」卻無法直接回到對話串，得自己摸回
+    //   個人中心→聯絡客服。改帶 /liff/messages，點通知即回到對話可續談。
     await prisma.notification.create({
-      data: { userId: thread.lineUserId, templateKey: "cs_reply", title: "客服回覆", body: replyText, icon: "💬" },
+      data: {
+        userId: thread.lineUserId,
+        templateKey: "cs_reply",
+        title: "客服回覆",
+        body: replyText,
+        linkUrl: "/liff/messages",
+        buttonLabel: "回覆客服",
+        icon: "💬",
+      },
     });
     await prisma.emailThread.update({ where: { id }, data: { status: "PROCESSING", lastMessageAt: new Date() } });
     return NextResponse.json({ ok: true });

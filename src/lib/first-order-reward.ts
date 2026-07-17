@@ -134,7 +134,9 @@ export async function maybeGrantFirstOrderReward(
         balance: newBalance,
         expiresAt: expiryStr,
         bookingTitle,
-        liffUrl: `${LIFF_BASE}/profile`,
+        // v869：原本導個人資料頁；客戶剛拿到抵用金，下一步是「去用掉」→ 改導預約頁
+        //   （與生日禮金、抵用金到期提醒一致）
+        liffUrl: `${LIFF_BASE}/booking`,
       },
     });
 

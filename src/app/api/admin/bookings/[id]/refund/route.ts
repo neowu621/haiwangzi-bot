@@ -245,4 +245,34 @@ async function notifyCustomer(args: {
       console.error("[refund line push]", e);
     }
   }
+
+  // ── 站內通知 ──────────────────
+  // v869：原本漏了這段 —— Email/LINE 都受個人 opt-in 控制，兩個都關掉的客戶
+  //   完全收不到退款通知。站內無法關閉，補上才保證通知得到，也與「退款申請」
+  //   流程(refund_complete)的行為一致。純告知，不放連結。
+  const methodLabel = args.method === "cash" ? "退現金" : "轉抵用金";
+  const inAppBody =
+    `您的訂單 ${args.bookingCode}（${bookingTitle}）已完成退款。\n` +
+    `${methodLabel}：NT$ ${args.refundAmount.toLocaleString()}` +
+    (args.method === "credit" && args.creditAmount
+      ? `（抵用金入帳 NT$ ${args.creditAmount.toLocaleString()}${
+          args.newCreditBalance !== undefined
+            ? `，目前餘額 NT$ ${args.newCreditBalance.toLocaleString()}`
+            : ""
+        }）`
+      : "") +
+    (args.reason ? `\n原因：${args.reason}` : "");
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: booking.userId,
+        templateKey: "refund_complete",
+        title: "🔄 退款已完成",
+        body: inAppBody,
+        icon: "🔄",
+      },
+    });
+  } catch (e) {
+    console.error("[refund inApp]", e);
+  }
 }

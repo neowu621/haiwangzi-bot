@@ -128,7 +128,8 @@ async function handle(req: NextRequest) {
           time: trip.startTime,
           site: siteName,
           gather: [trip.meetingPoint, trip.startTime].filter(Boolean).join(" ") || `集合時間：${trip.startTime}`,
-          liffUrl,
+          // v869：原本導 LIFF 首頁；客戶要確認的是「我明天那筆」的細節 → 改導我的預約
+          liffUrl: `${liffUrl}/my`,
         },
       });
       await markSent(b.id, "d1_reminder");
