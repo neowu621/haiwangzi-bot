@@ -13,9 +13,10 @@ export const metadata: Metadata = {
 };
 
 // 日潛 Fun Dive 每支氣瓶（含高氧 Nitrox，本店一律高氧）依潛點（老闆提供）
-const DIVE_FEES: { site: string; price: number }[] = [
-  { site: "東北角各潛點", price: 600 },
-  { site: "宜蘭 萊萊鶯歌石與石城", price: 650 },
+// v873：加夜潛價（每支 +50）
+const DIVE_FEES: { site: string; price: number; night: number }[] = [
+  { site: "東北角各潛點", price: 600, night: 650 },
+  { site: "宜蘭 萊萊鶯歌石與石城", price: 650, night: 700 },
 ];
 
 // 裝備租借：後台未設定時的 fallback（與後台 SiteConfig 同步）
@@ -66,14 +67,14 @@ export default async function PricingPage() {
           <p style={{ fontSize: 13.5, color: "#7c9296", margin: "0 0 14px" }}>費用以「每支氣瓶（含高氧）」計，依潛點不同；一天通常 3 支氣瓶。裝備租借另計（見下表）。</p>
           <p style={{ fontSize: 12.5, fontWeight: 700, color: "#0e9f93", margin: "-8px 0 12px" }}>💨 本店氣瓶一律採用高氧（Nitrox），下水更輕鬆、水下停留時間更長。</p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含高氧）</th></tr></thead>
+            <thead><tr><th style={th}>潛點</th><th style={th}>每支氣瓶（含高氧）</th><th style={th}>夜潛（每支＋NT$50）</th></tr></thead>
             <tbody>
               {DIVE_FEES.map((d) => (
-                <tr key={d.site}><td style={td}>{d.site}</td><td style={tdP}>{nt(d.price)}</td></tr>
+                <tr key={d.site}><td style={td}>{d.site}</td><td style={tdP}>{nt(d.price)}</td><td style={tdP}>{nt(d.night)}</td></tr>
               ))}
             </tbody>
           </table>
-          <p style={{ fontSize: 12.5, color: "#9aabae", margin: "12px 0 0" }}>※ 夜潛、船潛、水中推進器等特殊行程費用另計，歡迎 LINE 詢問。</p>
+          <p style={{ fontSize: 12.5, color: "#9aabae", margin: "12px 0 0" }}>※ 船潛、水中推進器等特殊行程費用另計，歡迎 LINE 詢問。</p>
         </Card>
 
         {/* 課程 */}
