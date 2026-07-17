@@ -57,7 +57,6 @@ export const VIP_TIERS: VipTier[] = [
     benefits: [
       "潛水裝備租借 9 折",
       "個人裝備購買專屬折扣",
-      "生日當月一般潛水行程 9 折",
     ],
     upgradeCredit: 200,
     upgradeCreditExpiryDays: 30,
@@ -91,7 +90,6 @@ export const VIP_TIERS: VipTier[] = [
     benefits: [
       "潛水裝備租借 8 折",
       "進階潛水課程專屬優惠",
-      "熱門海外行程早鳥優先卡位權",
     ],
     upgradeCredit: 1000,
     upgradeCreditExpiryDays: 30,

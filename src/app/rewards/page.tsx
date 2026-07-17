@@ -86,6 +86,26 @@ body{background:#eef3f6;}
 .rwd .perks li::before{content:"◆"; position:absolute; left:0; color:var(--tint,var(--teal)); font-size:10px; top:4px;}
 .rwd .perks li b{color:var(--coral); font-variant-numeric:tabular-nums;}
 
+/* v872：VIP 潛級改表格（比卡片省版面、一眼比較）*/
+.rwd .vtbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); background:var(--surface);}
+.rwd .vtbl{width:100%; border-collapse:collapse; min-width:540px;}
+.rwd .vtbl th{background:var(--surface-2); color:var(--muted); font-size:12px; font-weight:800; text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); white-space:nowrap; letter-spacing:.02em;}
+.rwd .vtbl td{padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; color:var(--ink); font-size:14px;}
+.rwd .vtbl tr:last-child td{border-bottom:none;}
+.rwd .vt-name{white-space:nowrap;}
+.rwd .vt-em{font-size:24px; margin-right:9px; vertical-align:middle;}
+.rwd .vt-nm{display:inline-block; vertical-align:middle; line-height:1.25;}
+.rwd .vt-nm b{font-size:15px; font-weight:900; display:block;}
+.rwd .vt-nm span{font-size:11px; color:var(--muted);}
+.rwd .vt-req{white-space:nowrap; color:var(--ink); font-size:13.5px;}
+.rwd .vt-req .top{display:inline-block; margin-left:5px; font-size:10.5px; font-weight:800; color:var(--gold); background:color-mix(in srgb,var(--gold) 14%,transparent); border-radius:999px; padding:1px 7px;}
+.rwd .vt-gift{color:var(--coral); font-weight:900; font-variant-numeric:tabular-nums; white-space:nowrap;}
+.rwd .vt-perks{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;}
+.rwd .vt-perks li{font-size:13px; padding-left:15px; position:relative; line-height:1.5;}
+.rwd .vt-perks li::before{content:"◆"; position:absolute; left:0; top:4px; font-size:8px; color:var(--tint,var(--teal));}
+.rwd .vt-perks li b{color:var(--coral); font-variant-numeric:tabular-nums;}
+.rwd .vt-dash{color:var(--muted);}
+
 .rwd .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px;}
 .rwd .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px;}
 .rwd .card .ic{font-size:24px;}
@@ -223,33 +243,49 @@ export default async function RewardsPage() {
             <h2>五個潛級，一路潛向鯨鯊</h2>
             <p>升級只看你在海王子的<b>累積潛次</b>（一場 3 潛＝3 次），與消費金額無關。每升一級都自動送升等禮金，潛得越深、回饋越高。</p>
           </div>
-          <div className="ladder">
-            {tiers.map((t, i) => {
-              const isLast = i === total - 1;
-              const req = t.minLogs <= 0
-                ? "🐚 新會員 · 0 潛起"
-                : `🤿 累積 ${t.minLogs} 潛${isLast ? " · 最高等級" : ""}`;
-              return (
-                <article className="tier" style={tint(tintFor(i, total))} key={t.key || t.level}>
-                  <div className="tier-badge"><span className="em">{t.emoji}</span><span className="lv">LV{t.level}</span></div>
-                  <div className="tier-main">
-                    <h3>{t.name} {t.enName && <span className="en">{t.enName}</span>}</h3>
-                    <span className="req">{req}</span>
-                    <ul className="perks">
-                      {t.upgradeCredit > 0 && (
-                        <li>升等禮金 <b>NT${t.upgradeCredit.toLocaleString()}</b></li>
-                      )}
-                      {/* 去重：升等禮金已由欄位單獨顯示，福利文字若重述「升等/升級獎勵」就略過 */}
-                      {t.benefits
-                        .filter((b) => !/升[等級]獎勵/.test(b))
-                        .map((b, j) => (
-                          <li key={j}>{highlight(b)}</li>
-                        ))}
-                    </ul>
-                  </div>
-                </article>
-              );
-            })}
+          {/* v872：改表格。過濾規則：升等禮金已獨立成欄故不重複；
+              並移除「生日當月一般潛水行程」與「早鳥優先卡位權」兩類福利（老闆要求下架）。 */}
+          <div className="vtbl-wrap">
+            <table className="vtbl">
+              <thead>
+                <tr>
+                  <th>潛級</th>
+                  <th>達成條件</th>
+                  <th>升等禮金</th>
+                  <th>專屬福利</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tiers.map((t, i) => {
+                  const isLast = i === total - 1;
+                  const perks = t.benefits.filter(
+                    (b) => !/升[等級]獎勵/.test(b) && !/生日當月|早鳥優先卡位/.test(b),
+                  );
+                  return (
+                    <tr key={t.key || t.level}>
+                      <td className="vt-name" style={{ borderLeft: `4px solid ${tintFor(i, total)}` }}>
+                        <span className="vt-em">{t.emoji}</span>
+                        <span className="vt-nm"><b>{t.name}</b><span>LV{t.level} · {t.enName}</span></span>
+                      </td>
+                      <td className="vt-req">
+                        {t.minLogs <= 0 ? "新會員・0 潛起" : `累積 ${t.minLogs} 潛`}
+                        {isLast && <span className="top">最高</span>}
+                      </td>
+                      <td>
+                        {t.upgradeCredit > 0
+                          ? <span className="vt-gift">NT${t.upgradeCredit.toLocaleString()}</span>
+                          : <span className="vt-dash">—</span>}
+                      </td>
+                      <td>
+                        {perks.length > 0
+                          ? <ul className="vt-perks" style={tint(tintFor(i, total))}>{perks.map((b, j) => <li key={j}>{highlight(b)}</li>)}</ul>
+                          : <span className="vt-dash">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
 
