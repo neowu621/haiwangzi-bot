@@ -1000,7 +1000,7 @@ export default function AdminTripsPage() {
     const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
     const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
     lines.push(`🌊 日潛場次 ${startLabel} ~ ${endLabel}`);
-    lines.push("📱 請用手機開啟連結，以 LINE 登入預約潛水（有優惠喔）");
+    lines.push("📱 請用手機開啟連結 可以累積潛水並贈送抵用金");
     lines.push(`${baseUrl}/d`);
     lines.push("");
     if (inRange.length === 0) {
