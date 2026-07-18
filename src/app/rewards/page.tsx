@@ -142,6 +142,18 @@ body{background:#eef3f6;}
 
 @media (max-width:600px){
   .rwd .wrap{padding:0 16px;}
+  /* v884：VIP 潛級表格 → 手機自動改堆疊卡片（不用側滑；桌機維持表格）。
+     每列變一張卡：潛級當卡頭(色條)，其餘欄用 data-label 顯示「欄名：值」。 */
+  .rwd .vtbl-wrap{overflow:visible; border:none; box-shadow:none; background:transparent;}
+  .rwd .vtbl{min-width:0; display:block;}
+  .rwd .vtbl thead{display:none;}
+  .rwd .vtbl tbody{display:block;}
+  .rwd .vtbl tr{display:block; background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); margin-bottom:12px; overflow:hidden;}
+  .rwd .vtbl td{display:block; border-bottom:1px solid var(--line); padding:10px 15px;}
+  .rwd .vtbl tr td:last-child{border-bottom:none;}
+  .rwd .vtbl td.vt-name{border-bottom:1px solid var(--line); background:var(--surface-2); padding:12px 15px;}
+  .rwd .vtbl td[data-label]::before{content:attr(data-label); display:block; font-size:11px; font-weight:800; color:var(--muted); margin-bottom:3px; letter-spacing:.03em;}
+  .rwd .vt-nm b{font-size:16px;}
   .rwd .hero{padding:44px 18px 60px;}
   .rwd .hero p{font-size:15px; line-height:1.75;}
   .rwd .hero-stats{gap:16px 24px;}
@@ -264,16 +276,16 @@ export default async function RewardsPage() {
                         <span className="vt-em">{t.emoji}</span>
                         <span className="vt-nm"><b>{t.name}</b><span>LV{t.level} · {t.enName}</span></span>
                       </td>
-                      <td className="vt-req">
+                      <td className="vt-req" data-label="達成條件">
                         {t.minLogs <= 0 ? "新會員・0 潛起" : `累積 ${t.minLogs} 潛`}
                         {isLast && <span className="top">最高</span>}
                       </td>
-                      <td>
+                      <td data-label="升等禮金">
                         {t.upgradeCredit > 0
                           ? <span className="vt-gift">NT${t.upgradeCredit.toLocaleString()}</span>
                           : <span className="vt-dash">—</span>}
                       </td>
-                      <td>
+                      <td data-label="專屬福利">
                         {perks.length > 0
                           ? <ul className="vt-perks" style={tint(tintFor(i, total))}>{perks.map((b, j) => <li key={j}>{highlight(b)}</li>)}</ul>
                           : <span className="vt-dash">—</span>}
