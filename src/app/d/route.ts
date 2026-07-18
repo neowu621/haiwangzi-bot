@@ -23,8 +23,10 @@ export function GET(req: NextRequest) {
   if (!isLine) return new NextResponse(null, { status: 302, headers: { Location: "/line" } });
 
   const to = req.nextUrl.searchParams.get("to");
-  const next = to && /^\/liff\/[A-Za-z0-9/_-]+$/.test(to) ? to : "/liff/calendar";
-  const liffPath = next.replace(/^\/liff/, "") || "/"; // /liff/calendar → /calendar
+  // v880：預設直接落「潛水預約·一日潛水」整合頁，省掉舊 /liff/calendar 再轉一次的跳躍
+  //   （/liff/calendar 現在只是再 redirect 到 /liff/booking?tab=calendar；LINE WebView 慢，少一跳少一閃）。
+  const next = to && /^\/liff\/[A-Za-z0-9/_-]+$/.test(to) ? to : "/liff/booking?tab=calendar";
+  const liffPath = next.replace(/^\/liff/, "") || "/"; // /liff/booking?tab=calendar → /booking?tab=calendar
   const liffBase =
     process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
   return NextResponse.redirect(`${liffBase}${liffPath}`, 302);
