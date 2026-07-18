@@ -1047,6 +1047,12 @@ export default function AdminTripsPage() {
     lines.push("🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫");
     lines.push(`LINE  ${supportLine}`);
     lines.push(`線上詢問 ${baseUrl}/contact`);
+    // v879：dump 結尾附三個資訊頁連結（客戶點了直接看）
+    lines.push("");
+    lines.push("📖 更多資訊");
+    lines.push(`會員優惠 ${baseUrl}/rewards`);
+    lines.push(`常見問題 ${baseUrl}/faq`);
+    lines.push(`費用價目 ${baseUrl}/pricing`);
     return lines.join("\n");
   }
   async function copyDumpText() {
