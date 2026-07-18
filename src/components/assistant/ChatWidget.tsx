@@ -79,7 +79,7 @@ async function fetchLive(kind: LiveKind): Promise<{ content: string; links?: Men
     const r = await fetch(`/api/trips?from=${from}&to=${to}`, { headers: { accept: "application/json" } });
     const data = (await r.json()) as { trips?: TripLite[] };
     const trips = data.trips ?? [];
-    const links: MenuLink[] = [{ label: "打開完整場次表", href: "/schedule" }, { label: "線上預約／會員", href: "/pclogin" }];
+    const links: MenuLink[] = [{ label: "打開完整場次表", href: "/schedule" }, { label: "線上詢問", href: "/contact" }];
     if (trips.length === 0) return { content: `${head}\n這段期間目前沒有開放預約的場次 😅 可以加 LINE 問汪汪教練，或許願開團！`, links };
     return { content: head, links, tripCards: toTripCards(trips) };
   }

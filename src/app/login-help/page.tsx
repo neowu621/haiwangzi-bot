@@ -1,6 +1,5 @@
-// v805：LINE 電腦版登入暫時無法使用時的友善引導頁。
-//   /api/auth/line/login 健檢失敗（channel 失效/未設定）會導來這裡，
-//   取代 LINE 原生的「400 Bad Request」，並給會員可行的替代路徑。
+// v805：登入引導頁。v881：全站改「只維護手機」→ 移除電腦版登入相關訊息，
+//   統一引導手機 LINE 登入預約。/api/auth/line/login 失敗時仍導來這裡當友善頁。
 import Link from "next/link";
 
 export const metadata = { title: "登入說明 — 東北角海王子潛水" };
@@ -15,12 +14,12 @@ export default function LoginHelpPage() {
   return (
     <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "24px 16px", background: `linear-gradient(180deg, ${NAVY}, #041426)`, fontFamily: "-apple-system,'Segoe UI','Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" }}>
       <div style={{ width: "min(92vw, 460px)", background: "#fff", borderRadius: 20, padding: "28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,.35)" }}>
-        <div style={{ fontSize: 40, textAlign: "center" }}>🛠️</div>
+        <div style={{ fontSize: 40, textAlign: "center" }}>📱</div>
         <h1 style={{ margin: "10px 0 6px", fontSize: 20, fontWeight: 800, color: NAVY, textAlign: "center" }}>
-          LINE 電腦版登入暫時無法使用
+          請用手機以 LINE 登入預約
         </h1>
         <p style={{ margin: "0 0 18px", fontSize: 13.5, lineHeight: 1.7, color: "#5c6b73", textAlign: "center" }}>
-          很抱歉造成不便 🙏 我們正在處理中。<br />您可以改用以下方式，功能完全相同：
+          為了更順暢的預約與付款體驗，會員登入與預約下單一律使用<b style={{ color: NAVY }}>手機 LINE</b>。<br />請用以下方式開始：
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -31,10 +30,6 @@ export default function LoginHelpPage() {
           <a href={OA_URL} style={{ display: "block", background: "#f0f7f5", border: `1px solid #cfe6e2`, color: NAVY, borderRadius: 12, padding: "13px 16px", textDecoration: "none" }}>
             <div style={{ fontSize: 14.5, fontWeight: 800 }}>💬 加 LINE 官方帳號 @894bpmew</div>
             <div style={{ fontSize: 12, color: "#5c6b73", marginTop: 3 }}>由小編／汪汪教練直接協助您預約與查詢</div>
-          </a>
-          <a href="/api/auth/line/login?next=/pclogin" style={{ display: "block", background: "#fff", border: "1px solid #d6dee7", color: NAVY, borderRadius: 12, padding: "13px 16px", textDecoration: "none" }}>
-            <div style={{ fontSize: 14.5, fontWeight: 800 }}>🔄 稍後再試電腦版登入</div>
-            <div style={{ fontSize: 12, color: "#5c6b73", marginTop: 3 }}>問題排除後此頁會自動恢復為 LINE 登入</div>
           </a>
         </div>
 

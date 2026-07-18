@@ -99,7 +99,7 @@ export const ASSISTANT_MENU: MenuNode[] = [
           "持證朋友的一日潛水依「氣瓶支數」計費（一天通常 3 支），可加租裝備 🤿 我們氣瓶一律採用高氧（Nitrox），下水更輕鬆、停留更久！東北角各潛點每支 NT$600、宜蘭萊萊鶯歌石與石城每支 NT$650，夜潛/船潛另計。加 LINE 說一下需求就給你報價～也可以先看看最近的場次！",
         links: [
           { label: "看場次表", href: "/schedule" },
-          { label: "線上預約／會員", href: "/pclogin" },
+          { label: "線上詢問", href: "/contact" },
         ],
       },
       {
@@ -230,9 +230,9 @@ export const ASSISTANT_MENU: MenuNode[] = [
     id: "booking",
     label: "📝 怎麼預約？",
     answer:
-      "預約超簡單：加我們 LINE 官方帳號跟汪汪教練說你想潛的日期／人數就可以囉 😄 線上也能看場次、登入會員、留下詢問！",
+      "預約超簡單：加我們 LINE 官方帳號跟汪汪教練說你想潛的日期／人數就可以囉 😄 也能先看場次、用手機 LINE 登入預約、或留下詢問！",
     links: [
-      { label: "線上預約／會員", href: "/pclogin" },
+      { label: "看場次・手機預約", href: "/schedule" },
       { label: "看場次表", href: "/schedule" },
       { label: "線上詢問表單", href: "/contact" },
     ],

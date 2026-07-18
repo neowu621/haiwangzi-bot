@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 
 // v481：隱私權政策 / 服務條款 / FAQ / 安全政策 共用版型（品牌化、可列印）
 // v826：頂部/頁尾改用全站共用深色 SiteHeader/SiteFooter（內容維持淺色）
-export function LegalShell({ title, updated, children, backHref = "/pclogin", backLabel = "返回會員預約", wide, current }: { title: string; updated: string; children: React.ReactNode; backHref?: string; backLabel?: string; wide?: boolean; current?: string }) {
+export function LegalShell({ title, updated, children, backHref = "/", backLabel = "返回首頁", wide, current }: { title: string; updated: string; children: React.ReactNode; backHref?: string; backLabel?: string; wide?: boolean; current?: string }) {
   const maxW = wide ? 920 : 820;
   return (
     <div style={{ minHeight: "100vh", background: "#eef3f6", color: "#1A2330", fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif" }}>
