@@ -1,8 +1,7 @@
-// v386：/line — 手機前端入口頁。
-//   給「在手機瀏覽器 / 非 LINE 環境」開到本站的客戶看的乾淨入口（取代被丟進 access.line.me 亂繞）。
-//   CTA / 捷徑一律連 liff.line.me 深連結（從手機瀏覽器點會直接喚起 LINE App 開 LIFF）；
-//   不連自家 /d /t，避免「桌機 /d→/line→/d」迴圈。
-//   與 / (未來官網) 分流：/line = 手機前門，/ = 行銷主頁。
+// v386：/line — 手機前端入口（hub）。v885：改 Apple 質感轉折頁。
+//   /d（手機）落此頁 → 客戶選：潛水預約 / 費用價目 / 會員優惠 / 線上詢問 / 常見問題。
+//   潛水預約走 liff 深連結（LINE 內開 LIFF、手機瀏覽器喚起 LINE App）；其餘為站內頁。
+//   桌機另有 QR 橫幅（v882，僅 ≥1024px 顯示）。force-static，不放即時資料。
 import Link from "next/link";
 
 export const dynamic = "force-static";
@@ -10,122 +9,135 @@ export const dynamic = "force-static";
 const LIFF =
   process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 const ADD_FRIEND = "https://line.me/R/ti/p/@894bpmew";
+const BOOKING = `${LIFF}/booking?tab=calendar`; // 潛水預約 → 日潛
 
-const CARDS: Array<{ icon: string; title: string; desc: string; href: string; glow: string }> = [
-  { icon: "🌊", title: "日潛預約", desc: "東北角全潛點", href: `${LIFF}/calendar`, glow: "#19c2a6" },
-  { icon: "✈️", title: "旅遊潛水", desc: "蘭嶼／綠島／墾丁", href: `${LIFF}/tour`, glow: "#FF7B5A" },
-  { icon: "📅", title: "場次行事曆", desc: "即時查空位", href: `${LIFF}/calendar`, glow: "#FFB800" },
-  { icon: "📋", title: "我的預約", desc: "訂單／付款", href: `${LIFF}/my`, glow: "#19c2a6" },
+// iOS 分組清單項目
+const ITEMS: Array<{ icon: string; title: string; desc: string; href: string; external?: boolean }> = [
+  { icon: "💰", title: "費用價目", desc: "日潛 · 課程 · 裝備租借", href: "/pricing" },
+  { icon: "🎁", title: "會員優惠", desc: "抵用金 · VIP 潛級回饋", href: "/rewards" },
+  { icon: "💬", title: "線上詢問", desc: "留下需求，教練聯繫你", href: "/contact" },
+  { icon: "❓", title: "常見問題", desc: "新手須知 · 耳壓 · 安全", href: "/faq" },
 ];
 
 export default function LineEntryPage() {
   return (
     <main
-      className="min-h-dvh text-white"
+      className="min-h-dvh text-white antialiased"
       style={{
         background:
-          "radial-gradient(120% 80% at 50% -10%, #14365e 0%, #0A2342 45%, #070f1c 100%)",
+          "radial-gradient(140% 100% at 50% -18%, #123a5c 0%, #0a2440 42%, #050f1d 100%)",
+        fontFamily:
+          "-apple-system,'SF Pro Text','Segoe UI','PingFang TC','Noto Sans TC',sans-serif",
       }}
     >
-      <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
+      <div className="mx-auto w-full max-w-[26rem] px-6 pb-14 pt-11">
+
         {/* 品牌 */}
         <div className="flex flex-col items-center text-center">
-          <div
-            className="mb-3 flex h-14 w-14 items-center justify-center rounded-full text-2xl"
-            style={{ background: "radial-gradient(circle at 35% 30%, #1f4d75, #0A2342)", boxShadow: "0 0 0 1px rgba(255,255,255,.08), 0 6px 18px rgba(0,0,0,.4)" }}
-          >
-            🔱
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand-icons/hwz-deepblue-256.webp"
+            alt="東北角海王子潛水"
+            width={64}
+            height={64}
+            className="rounded-[18px]"
+            style={{ width: 64, height: 64, boxShadow: "0 10px 30px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.08)" }}
+          />
+          <h1 className="mt-4 text-[22px] font-bold tracking-[-.01em]">東北角海王子潛水</h1>
+          <div className="mt-1.5 text-[10.5px] font-medium tracking-[.28em] text-[#6f9dc4]">
+            NORTHEAST&nbsp;CAPE · SEA&nbsp;PRINCE
           </div>
-          <h1
-            className="text-2xl font-black tracking-wide"
-            style={{ background: "linear-gradient(90deg,#7fe9df,#19c2a6)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
-          >
-            東北角海王子潛水團
-          </h1>
-          <div className="mt-1 text-[10px] tracking-[3px] text-[#7fa6c4]">NORTHEAST CAPE · SEA PRINCE</div>
-          <div className="mt-2 text-[12.5px] text-[#bcd2e6]">安全 · 專業 · 陪你看見海</div>
+          <div className="mt-2.5 text-[13px] text-[#aec6dc]">安全 · 專業 · 陪你看見海</div>
         </div>
 
-        {/* 標語條 */}
-        <div
-          className="my-4 flex items-center gap-2.5 rounded-2xl px-3 py-2.5"
-          style={{ background: "linear-gradient(120deg, rgba(25,194,166,.14), rgba(10,35,66,.2))", border: "1px solid rgba(25,194,166,.25)" }}
-        >
-          <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: "#19c2a6", boxShadow: "0 0 8px #19c2a6" }} />
-          <div className="text-[12.5px] text-[#dff7f3]">跟著海王子，安全看見海 — 用手機 LINE 一鍵預約</div>
-        </div>
-
-        {/* v882：桌機專屬 QR 提示（只在 ≥1024px 顯示；手機看不到，維持原樣）。
-            桌機下單已停用 → 引導用手機掃 QR 加 LINE 預約。 */}
-        <div className="mb-4 hidden lg:flex items-center gap-4 rounded-2xl bg-white p-4" style={{ boxShadow: "0 8px 24px rgba(0,0,0,.3)" }}>
+        {/* v882：桌機 QR（僅 ≥1024px） */}
+        <div className="mt-6 hidden items-center gap-4 rounded-2xl bg-white p-4 lg:flex" style={{ boxShadow: "0 12px 30px rgba(0,0,0,.35)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/qr-line-oa.png" alt="海王子 LINE QR Code" width={104} height={104} className="flex-none rounded-lg" style={{ width: 104, height: 104 }} />
           <div className="text-left">
             <div className="text-[15px] font-extrabold" style={{ color: "#0A2342" }}>用電腦看到這頁嗎？</div>
             <div className="mt-1 text-[13px] leading-relaxed" style={{ color: "#5a6b7d" }}>
-              預約下單請用<b style={{ color: "#0A2342" }}>手機</b>。用手機相機或 LINE 掃描左方 QR Code，加入海王子 LINE 即可預約潛水、查詢訂單。
+              預約下單請用<b style={{ color: "#0A2342" }}>手機</b>。用手機相機或 LINE 掃描左方 QR Code，即可加入海王子 LINE 預約潛水。
             </div>
           </div>
         </div>
 
-        {/* 主 CTA */}
+        {/* 主 CTA：潛水預約 */}
+        <a
+          href={BOOKING}
+          className="group mt-8 flex items-center gap-4 rounded-[22px] px-5 py-[18px] transition active:scale-[.985]"
+          style={{
+            background: "linear-gradient(135deg, #12c2b0 0%, #0b8f86 100%)",
+            boxShadow: "0 14px 34px rgba(11,143,134,.42), inset 0 1px 0 rgba(255,255,255,.22)",
+          }}
+        >
+          <span
+            className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl text-[24px]"
+            style={{ background: "rgba(255,255,255,.16)" }}
+          >
+            🤿
+          </span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block text-[18px] font-bold tracking-[-.01em]">潛水預約</span>
+            <span className="mt-0.5 block text-[12.5px] text-white/75">立即預約東北角日潛</span>
+          </span>
+          <span className="flex-none text-[22px] text-white/70">›</span>
+        </a>
+
+        {/* iOS 分組清單：其餘四項 */}
+        <div
+          className="mt-4 overflow-hidden rounded-[22px]"
+          style={{ background: "rgba(255,255,255,.055)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.09)", backdropFilter: "blur(12px)" }}
+        >
+          {ITEMS.map((it, i) => (
+            <Link
+              key={it.href}
+              href={it.href}
+              className="flex items-center gap-3.5 px-4 py-[15px] transition active:bg-white/10"
+              style={i < ITEMS.length - 1 ? { boxShadow: "inset 0 -1px 0 rgba(255,255,255,.08)" } : undefined}
+            >
+              <span
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] text-[19px]"
+                style={{ background: "rgba(255,255,255,.09)" }}
+              >
+                {it.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15.5px] font-semibold tracking-[-.01em] text-white">{it.title}</span>
+                <span className="mt-0.5 block truncate text-[12px] text-white/45">{it.desc}</span>
+              </span>
+              <span className="flex-none text-[19px] text-white/25">›</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* 次要：加 LINE 好友 */}
         <a
           href={ADD_FRIEND}
-          className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-base font-extrabold"
-          style={{ background: "#06C755", color: "#063b1a" }}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] py-[15px] text-[15px] font-bold transition active:scale-[.985]"
+          style={{ background: "#06C755", color: "#053218" }}
         >
-          ➕ 加入 LINE 好友
+          <LineGlyph /> 加入 LINE 好友
         </a>
-        <a
-          href={`${LIFF}/calendar`}
-          className="mb-2.5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-base font-extrabold text-white"
-          style={{ background: "linear-gradient(120deg,#06b6a4,#0e9f93)" }}
-        >
-          📱 開啟 LINE 預約
-        </a>
-        <div className="mb-4 text-center text-[10.5px] text-[#7fa6c4]">
-          或在 LINE 搜尋官方帳號　<b className="text-[#bcd2e6]">@894bpmew</b>
+        <div className="mt-3 text-center text-[11px] text-[#6f9dc4]">
+          預約功能透過 LINE 提供，請用<b className="text-[#bcd2e6]">手機</b>開啟最順 · 官方帳號 <b className="text-[#bcd2e6]">@894bpmew</b>
         </div>
 
-        {/* 捷徑格 */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {CARDS.map((c) => (
-            <a
-              key={c.title}
-              href={c.href}
-              className="relative overflow-hidden rounded-2xl p-3.5"
-              style={{ background: "linear-gradient(135deg,#0F2238 0%,#16314e 70%)", border: "1px solid rgba(255,255,255,.06)" }}
-            >
-              <span className="absolute -right-5 -top-5 h-16 w-16 rounded-full opacity-50 blur-xl" style={{ background: c.glow }} />
-              <div className="text-[22px]">{c.icon}</div>
-              <div className="mt-2 text-sm font-extrabold">{c.title}</div>
-              <div className="mt-0.5 text-[10.5px] text-[#9fb3c8]">{c.desc}</div>
-            </a>
-          ))}
-          <a
-            href={`${LIFF}/media`}
-            className="relative col-span-2 flex items-center gap-3 overflow-hidden rounded-2xl p-3.5"
-            style={{ background: "linear-gradient(135deg,#0F2238 0%,#16314e 70%)", border: "1px solid rgba(255,255,255,.06)" }}
-          >
-            <div className="text-[22px]">📸</div>
-            <div>
-              <div className="text-sm font-extrabold">最新動態</div>
-              <div className="mt-0.5 text-[10.5px] text-[#9fb3c8]">每日潛水實況 · 影像日誌</div>
-            </div>
-          </a>
+        {/* 頁尾 */}
+        <div className="mt-8 text-center">
+          <Link href="/" className="text-[12px] text-[#8fb2cf] underline underline-offset-4">前往潛水團官網 →</Link>
+          <div className="mt-5 text-[10px] tracking-[3px] text-[#4f6f88]">BREATHE THE OCEAN</div>
         </div>
 
-        {/* 桌機提示 + 官網 */}
-        <div className="mt-5 text-center text-[11px] leading-relaxed text-[#7fa6c4]">
-          📌 預約功能透過 LINE 提供，請用<b className="text-[#bcd2e6]">手機</b>開啟最順。
-          <br />
-          <Link href="/" className="underline">前往潛水團官網 →</Link>
-        </div>
-
-        <div className="mt-6 text-center text-[10px] tracking-[2px] text-[#5b7a93]">
-          BREATHE THE OCEAN
-        </div>
       </div>
     </main>
+  );
+}
+
+function LineGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#053218" aria-hidden>
+      <path d="M12 2C6.48 2 2 5.69 2 10.23c0 4.07 3.56 7.48 8.37 8.12.33.07.77.22.88.5.1.26.07.66.03.92l-.14.85c-.04.26-.2.99.87.54s5.77-3.4 7.87-5.82C21.2 13.7 22 12.04 22 10.23 22 5.69 17.52 2 12 2z" />
+    </svg>
   );
 }

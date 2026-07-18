@@ -16,23 +16,23 @@ export const dynamic = "force-dynamic";
 //     /liff/calendar → liff.line.me/{id}/calendar
 //     /liff/tour/123 → liff.line.me/{id}/tour/123
 export function GET(req: NextRequest) {
-  // v386：非 LINE 環境 → 手機瀏覽器導 /line（卡片用 liff 深連結可喚起 LINE App）；
-  //   LINE 內 → 開 LIFF。v882：桌機（非行動裝置）改導 /pclogin「請用手機預約」引導頁
-  //   （含 QR + 清楚訊息），比 /line 的手機卡片頁更明確、不會撞 LINE 網頁登入。
   const ua = req.headers.get("user-agent") ?? "";
   const isLine = /Line\//i.test(ua);
   const isMobile = /Mobile|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
-  // v387：用相對 Location 轉址（避免 new URL(req.url) 取到容器內部 host 導致瀏覽器連不到）
-  if (!isLine) {
-    return new NextResponse(null, { status: 302, headers: { Location: isMobile ? "/line" : "/pclogin" } });
+  const to = req.nextUrl.searchParams.get("to");
+  const validTo = to && /^\/liff\/[A-Za-z0-9/_-]+$/.test(to) ? to : null;
+
+  // v885：帶 ?to=/liff/xxx（特定深連結，例：某潛旅團）→ 維持「LINE 內直接開 LIFF」。
+  if (isLine && validTo) {
+    const liffPath = validTo.replace(/^\/liff/, "") || "/";
+    const liffBase = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
+    return NextResponse.redirect(`${liffBase}${liffPath}`, 302);
   }
 
-  const to = req.nextUrl.searchParams.get("to");
-  // v880：預設直接落「潛水預約·一日潛水」整合頁，省掉舊 /liff/calendar 再轉一次的跳躍
-  //   （/liff/calendar 現在只是再 redirect 到 /liff/booking?tab=calendar；LINE WebView 慢，少一跳少一閃）。
-  const next = to && /^\/liff\/[A-Za-z0-9/_-]+$/.test(to) ? to : "/liff/booking?tab=calendar";
-  const liffPath = next.replace(/^\/liff/, "") || "/"; // /liff/booking?tab=calendar → /booking?tab=calendar
-  const liffBase =
-    process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
-  return NextResponse.redirect(`${liffBase}${liffPath}`, 302);
+  // v885：一般 /d（無 to）——
+  //   手機（LINE 內或手機瀏覽器）→ /line 轉折頁（Apple 質感 hub：潛水預約/費用/優惠/詢問/FAQ）；
+  //   桌機（非行動裝置）→ /pclogin「請用手機預約」引導頁（含 QR）。
+  // v387：用相對 Location（避免 new URL(req.url) 取到容器內部 host 導致瀏覽器連不到）。
+  const dest = isLine || isMobile ? "/line" : "/pclogin";
+  return new NextResponse(null, { status: 302, headers: { Location: dest } });
 }
