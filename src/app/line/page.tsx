@@ -55,6 +55,19 @@ export default function LineEntryPage() {
           <div className="text-[12.5px] text-[#dff7f3]">跟著海王子，安全看見海 — 用手機 LINE 一鍵預約</div>
         </div>
 
+        {/* v882：桌機專屬 QR 提示（只在 ≥1024px 顯示；手機看不到，維持原樣）。
+            桌機下單已停用 → 引導用手機掃 QR 加 LINE 預約。 */}
+        <div className="mb-4 hidden lg:flex items-center gap-4 rounded-2xl bg-white p-4" style={{ boxShadow: "0 8px 24px rgba(0,0,0,.3)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/qr-line-oa.png" alt="海王子 LINE QR Code" width={104} height={104} className="flex-none rounded-lg" style={{ width: 104, height: 104 }} />
+          <div className="text-left">
+            <div className="text-[15px] font-extrabold" style={{ color: "#0A2342" }}>用電腦看到這頁嗎？</div>
+            <div className="mt-1 text-[13px] leading-relaxed" style={{ color: "#5a6b7d" }}>
+              預約下單請用<b style={{ color: "#0A2342" }}>手機</b>。用手機相機或 LINE 掃描左方 QR Code，加入海王子 LINE 即可預約潛水、查詢訂單。
+            </div>
+          </div>
+        </div>
+
         {/* 主 CTA */}
         <a
           href={ADD_FRIEND}

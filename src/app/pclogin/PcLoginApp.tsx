@@ -502,11 +502,13 @@ function LoginScreen({ error }: { error: string | null }) {
 // ─── v847：桌機下單暫停 → 引導改用手機／LINE ─────────────────────────
 function PcDisabledScreen() {
   const LINE_OA = "https://line.me/R/ti/p/%40894bpmew"; // 加海王子 LINE 官方帳號
-  const [qrUrl, setQrUrl] = useState<string>(""); // 後台設定的 LINE OA QR（與 /liff/add-friend 同源）
+  // v882：QR 保底 —— 後台有設就用後台的，沒設就用自家內建的官方 LINE QR（掃描加好友），
+  //   保證桌機引導頁一定看得到可掃的 QR。
+  const [qrUrl, setQrUrl] = useState<string>("/qr-line-oa.png");
   useEffect(() => {
     fetch("/api/config")
       .then((r) => r.json())
-      .then((c) => setQrUrl(c?.externalLinks?.lineOaQrUrl ?? ""))
+      .then((c) => { const u = c?.externalLinks?.lineOaQrUrl; if (u) setQrUrl(u); })
       .catch(() => {});
   }, []);
   const steps = [

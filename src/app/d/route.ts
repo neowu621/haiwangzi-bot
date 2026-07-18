@@ -16,11 +16,16 @@ export const dynamic = "force-dynamic";
 //     /liff/calendar → liff.line.me/{id}/calendar
 //     /liff/tour/123 → liff.line.me/{id}/tour/123
 export function GET(req: NextRequest) {
-  // v386：非 LINE 環境（桌機/手機瀏覽器）→ 導到乾淨入口頁 /line，
-  //   避免直接丟進 liff.line.me → access.line.me 網頁登入亂繞。LINE 內 → 開 LIFF。
-  const isLine = /Line\//i.test(req.headers.get("user-agent") ?? "");
+  // v386：非 LINE 環境 → 手機瀏覽器導 /line（卡片用 liff 深連結可喚起 LINE App）；
+  //   LINE 內 → 開 LIFF。v882：桌機（非行動裝置）改導 /pclogin「請用手機預約」引導頁
+  //   （含 QR + 清楚訊息），比 /line 的手機卡片頁更明確、不會撞 LINE 網頁登入。
+  const ua = req.headers.get("user-agent") ?? "";
+  const isLine = /Line\//i.test(ua);
+  const isMobile = /Mobile|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
   // v387：用相對 Location 轉址（避免 new URL(req.url) 取到容器內部 host 導致瀏覽器連不到）
-  if (!isLine) return new NextResponse(null, { status: 302, headers: { Location: "/line" } });
+  if (!isLine) {
+    return new NextResponse(null, { status: 302, headers: { Location: isMobile ? "/line" : "/pclogin" } });
+  }
 
   const to = req.nextUrl.searchParams.get("to");
   // v880：預設直接落「潛水預約·一日潛水」整合頁，省掉舊 /liff/calendar 再轉一次的跳躍
