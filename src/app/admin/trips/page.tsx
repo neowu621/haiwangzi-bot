@@ -1034,11 +1034,8 @@ export default function AdminTripsPage() {
         const remain = t.capacity == null
           ? ""
           : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
+        // v887：不列訂金/團費（客戶點進潛旅頁看即可，dump 只留日期/名稱/餘額）
         lines.push(`${range} ${t.title}${dur}${remain}`);
-        const sub: string[] = [];
-        if (t.deposit) sub.push(`訂金 $${t.deposit.toLocaleString()}/人`);
-        if (t.basePrice) sub.push(`團費 $${t.basePrice.toLocaleString()}/人`);
-        if (sub.length) lines.push(`　${sub.join("・")}`);
       }
     }
     lines.push(HR);
