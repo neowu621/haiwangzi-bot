@@ -987,22 +987,21 @@ export default function AdminTripsPage() {
     // v383：小編 LINE 群組連結（如需更換改這裡）
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
     const lines: string[] = [];
-    lines.push("🔱 東北角海王子官網"); // v554：品牌三叉戟 emoji(純文字無法嵌真圖)
-    lines.push(baseUrl);
-    lines.push("");
+    // v886：壓縮排版 — 全篇不用空行，改用 ━ 分隔線分段（LINE 上更緊湊好讀）
+    const HR = "━━━━━━━━━━━━━━";
+    // v554：品牌三叉戟 emoji(純文字無法嵌真圖)。v886：標題與網址同行
+    lines.push(`🔱 東北角海王子官網 ${baseUrl}`);
     // v391：開啟「Dump 優惠開頭」時，先帶出系統設定的優惠文案 + 分隔線
     if (dumpPromo.enabled && dumpPromo.text.trim()) {
-      lines.push(dumpPromo.text.trim());
-      lines.push("");
-      lines.push("━━━━━━━━━━━━━━");
-      lines.push("");
+      // 後台文案本身可能含空行 → 一併壓掉，避免整份被撐開
+      lines.push(...dumpPromo.text.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
     }
+    lines.push(HR);
     const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
     const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
     lines.push(`🌊 日潛場次 ${startLabel} ~ ${endLabel}`);
     lines.push("📱 請用手機開啟連結 可以累積潛水並贈送抵用金");
     lines.push(`${baseUrl}/d`);
-    lines.push("");
     if (inRange.length === 0) {
       lines.push("（此週尚無場次）");
     } else {
@@ -1025,8 +1024,7 @@ export default function AdminTripsPage() {
       })
       .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
     if (toursInRange.length > 0) {
-      lines.push("");
-      lines.push("━━━━━━━━━━━━━━");
+      lines.push(HR);
       lines.push("⛴️ 本週出發潛旅");
       for (const t of toursInRange) {
         const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
@@ -1043,12 +1041,11 @@ export default function AdminTripsPage() {
         if (sub.length) lines.push(`　${sub.join("・")}`);
       }
     }
-    lines.push("");
+    lines.push(HR);
     lines.push("🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫");
     lines.push(`LINE  ${supportLine}`);
     lines.push(`線上詢問 ${baseUrl}/contact`);
     // v879：dump 結尾附三個資訊頁連結（客戶點了直接看）
-    lines.push("");
     lines.push("📖 更多資訊");
     lines.push(`會員優惠 ${baseUrl}/rewards`);
     lines.push(`常見問題 ${baseUrl}/faq`);
