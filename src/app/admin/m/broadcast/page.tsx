@@ -10,12 +10,14 @@ import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { Send } from "lucide-react";
 
 type Audience = "all" | "customers" | "coaches";
-type Channel = "line" | "email" | "both";
+// v889：新增「站內」通道。ChannelKey 為 UI 單選鍵，送出時映射成 channels[] 陣列。
+type ChannelKey = "line" | "email" | "inapp" | "all";
 
 interface BroadcastResult {
   ok: boolean;
   delivered: number;
   emailed: number;
+  inapp?: number;
   dryRun?: boolean;
   note?: string;
   channel: string;
@@ -26,16 +28,24 @@ const AUDIENCES: Array<{ key: Audience; label: string }> = [
   { key: "customers", label: "僅客戶" },
   { key: "coaches", label: "僅教練" },
 ];
-const CHANNELS: Array<{ key: Channel; label: string }> = [
+const CHANNELS: Array<{ key: ChannelKey; label: string }> = [
   { key: "line", label: "LINE" },
   { key: "email", label: "Email" },
-  { key: "both", label: "兩者" },
+  { key: "inapp", label: "站內" },
+  { key: "all", label: "全部" },
 ];
+// UI 單選鍵 → 後端 channels[] 陣列
+const CHANNEL_MAP: Record<ChannelKey, Array<"line" | "email" | "inapp">> = {
+  line: ["line"],
+  email: ["email"],
+  inapp: ["inapp"],
+  all: ["line", "email", "inapp"],
+};
 
 export default function MobileBroadcastPage() {
   const { ready } = useAdminAuth();
   const [audience, setAudience] = useState<Audience>("all");
-  const [channel, setChannel] = useState<Channel>("line");
+  const [channel, setChannel] = useState<ChannelKey>("line");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +67,7 @@ export default function MobileBroadcastPage() {
         method: "POST",
         body: JSON.stringify({
           audience,
-          channel,
+          channels: CHANNEL_MAP[channel],
           template: "text",
           text: body,
           altText,
@@ -165,7 +175,7 @@ export default function MobileBroadcastPage() {
           style={{ background: "rgba(0,217,203,0.12)", color: "var(--color-ocean-deep)" }}
         >
           {result.dryRun ? "⚠ Dry-run（部分通道未設定）：" : "✅ 已送出："}
-          LINE {result.delivered} 筆・Email {result.emailed} 筆
+          LINE {result.delivered} 筆・Email {result.emailed} 筆・站內 {result.inapp ?? 0} 筆
           {result.note ? `（${result.note}）` : ""}
         </div>
       )}

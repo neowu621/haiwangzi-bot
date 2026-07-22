@@ -23,7 +23,8 @@ const VARS: Array<[string, string]> = [
 
 // v649：多選對象（與角色系統一致）
 type Audience = "all" | "customers" | "staff" | "mgmt" | "single" | "daily" | "tour";
-type Channel = "line" | "email" | "both";
+// v889：管道改「可複選」三通道 —— LINE / Email / 站內通知。站內一律寫入(不看個人 opt-in)。
+type Channel = "line" | "email" | "inapp";
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
   all: "全部",
@@ -34,7 +35,8 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
   daily: "日潛場次參加者",
   tour: "潛旅團參加者",
 };
-const CHANNEL_LABELS: Record<Channel, string> = { line: "LINE", email: "Email", both: "LINE + Email" };
+const CHANNEL_LABELS: Record<Channel, string> = { line: "LINE", email: "Email", inapp: "站內" };
+const CHANNEL_ORDER: Channel[] = ["line", "email", "inapp"];
 
 const TEMPLATES = [
   { key: "text", label: "純文字" },
@@ -142,7 +144,17 @@ export default function BroadcastPage() {
     });
   }
   const sel = (a: Audience) => selected.includes(a);
-  const [channel, setChannel] = useState<Channel>("line");
+  // v889：管道多選（至少留一個）。ch() 判斷是否勾選某通道
+  const [channels, setChannels] = useState<Channel[]>(["line"]);
+  const ch = (c: Channel) => channels.includes(c);
+  function toggleChannel(c: Channel) {
+    setChannels((prev) => {
+      const next = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c];
+      return next.length === 0 ? prev : CHANNEL_ORDER.filter((x) => next.includes(x)); // 不可全空、維持固定順序
+    });
+  }
+  // 要顯示 LINE 文字編輯區的條件：勾 LINE 或 站內（站內內文沿用這段文字）
+  const needsText = ch("line") || ch("inapp");
   const [template, setTemplate] = useState("booking_confirm");
   const [altText, setAltText] = useState(TEMPLATE_DEFAULTS.booking_confirm.altText);
   const [textMsg, setTextMsg] = useState(TEMPLATE_DEFAULTS.booking_confirm.text);
@@ -196,7 +208,7 @@ export default function BroadcastPage() {
     showToast("已插入標頭文字");
   };
   const testSelf = () => {
-    const chTxt = channel === "line" ? "LINE" : channel === "email" ? "Email" : "LINE + Email";
+    const chTxt = channels.map((c) => CHANNEL_LABELS[c]).join(" + ");
     showToast(`已將此訊息 ${chTxt} 試送給您自己 ✓`);
   };
 
@@ -237,7 +249,8 @@ export default function BroadcastPage() {
     try {
       const r = await adminFetch<{ presets: Preset[] }>("/api/admin/broadcast/presets", {
         method: "POST",
-        body: JSON.stringify({ name, channel, template, altText, text: textMsg, emailSubject, emailBody, params: paramsJson }),
+        // v889：channel 欄位改存複選（逗號串）；載入時再拆回
+        body: JSON.stringify({ name, channel: channels.join(","), template, altText, text: textMsg, emailSubject, emailBody, params: paramsJson }),
       });
       setPresets(r.presets ?? []);
       setPresetName("");
@@ -250,7 +263,11 @@ export default function BroadcastPage() {
   }
 
   function loadPreset(p: Preset) {
-    setChannel((p.channel as Channel) || "line");
+    // v889：相容舊值（line/email/both）與新值（逗號串，如 "line,inapp"）
+    const raw = (p.channel || "line").split(",").map((s) => s.trim()).filter(Boolean);
+    const expanded = raw.flatMap((c) => (c === "both" ? ["line", "email"] : [c]));
+    const parsed = CHANNEL_ORDER.filter((c) => expanded.includes(c));
+    setChannels(parsed.length ? parsed : ["line"]);
     setTemplate(p.template || "text");
     setAltText(p.altText ?? "");
     setTextMsg(p.text ?? "");
@@ -391,6 +408,9 @@ export default function BroadcastPage() {
   const previewLineText = useMemo(() => substituteParams(textMsg, parsedParams), [textMsg, parsedParams]);
   const previewEmailSubject = useMemo(() => substituteParams(emailSubject || altText || textMsg.split("\n")[0], parsedParams), [emailSubject, altText, textMsg, parsedParams]);
   const previewEmailBody = useMemo(() => substituteParams(emailBody || textMsg, parsedParams), [emailBody, textMsg, parsedParams]);
+  // v889：站內通知預覽 —— 標題取 altText/主旨/首行，內文沿用 LINE 文字（或 email 內文）
+  const previewInAppTitle = useMemo(() => substituteParams(altText || emailSubject || textMsg.split("\n")[0] || "海王子通知", parsedParams), [altText, emailSubject, textMsg, parsedParams]);
+  const previewInAppBody = useMemo(() => substituteParams(textMsg || emailBody || altText, parsedParams), [textMsg, emailBody, altText, parsedParams]);
 
   async function copyParams() {
     try {
@@ -430,19 +450,21 @@ export default function BroadcastPage() {
     try {
       let params: Record<string, unknown> = {};
       try { params = JSON.parse(paramsJson); } catch { setErr("params JSON 格式錯誤"); setSending(false); return; }
-      const body: Record<string, unknown> = { audiences: selected, channel, template, altText: altText || textMsg, params };
-      if (template === "text") body.text = textMsg;
-      if (channel === "email" || channel === "both") {
+      // v889：channels 多選；文字內容在勾 LINE 或 站內時都送（站內內文沿用）
+      const body: Record<string, unknown> = { audiences: selected, channels, template, altText: altText || textMsg, params };
+      if (needsText) body.text = textMsg;
+      if (ch("email")) {
         body.emailSubject = emailSubject;
         body.emailBody = emailBody;
       }
       if (sel("single")) body.singleUserId = singleUserId;
       if (sel("daily")) body.dailyRefId = dailyRefId;
       if (sel("tour")) body.tourRefId = tourRefId;
-      const data = await adminFetch<{ ok: boolean; delivered?: number; emailed?: number; dryRun?: boolean; note?: string }>("/api/admin/broadcast", { method: "POST", body: JSON.stringify(body) });
+      const data = await adminFetch<{ ok: boolean; delivered?: number; emailed?: number; inapp?: number; dryRun?: boolean; note?: string }>("/api/admin/broadcast", { method: "POST", body: JSON.stringify(body) });
       const parts: string[] = [];
       if ((data.delivered ?? 0) > 0) parts.push(`LINE ${data.delivered} 筆`);
       if ((data.emailed ?? 0) > 0) parts.push(`Email ${data.emailed} 筆`);
+      if ((data.inapp ?? 0) > 0) parts.push(`站內 ${data.inapp} 筆`);
       const summary = parts.length > 0 ? parts.join("、") + " 已發送" : "發送完成（0 筆）";
       const finalMsg = data.dryRun ? `${summary}（dry-run：${data.note ?? "env 未設定"}）` : summary;
       setResult(finalMsg);
@@ -455,7 +477,7 @@ export default function BroadcastPage() {
   }
   // 預覽用的「發送對象」中文標籤（多選 → 逗號串接）
   const audienceLabel = selected.length === 0 ? "（未選）" : selected.map((a) => AUDIENCE_LABELS[a]).join("、");
-  const channelLabel = CHANNEL_LABELS[channel];
+  const channelLabel = channels.map((c) => CHANNEL_LABELS[c]).join(" + ");
   const templateLabel = TEMPLATES.find((t) => t.key === template)?.label ?? template;
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "潛水團";
@@ -468,7 +490,7 @@ export default function BroadcastPage() {
         {/* Warning bar */}
         <div className="bcn-warnbar">
           <span className="bcn-warnbar-i">⚠️</span>
-          此操作會向<b style={{ margin: "0 2px" }}>真實用戶</b>發送 LINE / Email 訊息，請確認內容後再送出。
+          此操作會向<b style={{ margin: "0 2px" }}>真實用戶</b>發送 LINE / Email / 站內 通知，請確認內容後再送出。
         </div>
 
         {err && (
@@ -489,18 +511,18 @@ export default function BroadcastPage() {
           </div>
           <div className="bcn-pane-b">
             <div className="bcn-setgrid">
-              {/* 管道 segmented（v349：移到最前，第一行）*/}
+              {/* 管道（v889：可複選，至少一個）*/}
               <div>
-                <span className="bcn-lbl">發送管道</span>
+                <span className="bcn-lbl">發送管道（可複選）</span>
                 <div className="bcn-seg">
-                  {(Object.keys(CHANNEL_LABELS) as Channel[]).map((c) => (
+                  {CHANNEL_ORDER.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      onClick={() => setChannel(c)}
-                      className={channel === c ? "on" : ""}
+                      onClick={() => toggleChannel(c)}
+                      className={ch(c) ? "on" : ""}
                     >
-                      {c === "line" ? "💬 LINE" : c === "email" ? "✉️ Email" : "LINE + Email"}
+                      {c === "line" ? "💬 LINE" : c === "email" ? "✉️ Email" : "🔔 站內"}
                     </button>
                   ))}
                 </div>
@@ -620,11 +642,14 @@ export default function BroadcastPage() {
               </button>
             </div>
 
-            <div className={`bcn-content-grid ${channel === "line" || channel === "email" ? "single" : ""}`}>
-              {(channel === "line" || channel === "both") && (
+            <div className={`bcn-content-grid ${!(needsText && ch("email")) ? "single" : ""}`}>
+              {needsText && (
                 <div className="bcn-col">
                   <div className="bcn-fld">
-                    <label><span className="bcn-tagico">💬</span> LINE 內容</label>
+                    <label>
+                      <span className="bcn-tagico">{ch("line") ? "💬" : "🔔"}</span>{" "}
+                      {ch("line") && ch("inapp") ? "LINE／站內 內容" : ch("line") ? "LINE 內容" : "站內通知 內容"}
+                    </label>
                     <textarea
                       ref={textMsgRef}
                       className="bcn-ta-line"
@@ -642,7 +667,7 @@ export default function BroadcastPage() {
                 </div>
               )}
 
-              {(channel === "email" || channel === "both") && (
+              {ch("email") && (
                 <div className="bcn-col">
                   <div className="bcn-fld">
                     <label><span className="bcn-tagico">✉️</span> Email 主旨</label>
@@ -702,8 +727,8 @@ export default function BroadcastPage() {
             <span className="bcn-sub">送出前最後確認</span>
           </div>
           <div className="bcn-pane-b">
-            <div className={`bcn-pv-grid ${channel === "line" || channel === "email" ? "single" : ""}`}>
-              {(channel === "line" || channel === "both") && (
+            <div className={`bcn-pv-grid ${channels.length === 1 ? "single" : ""}`}>
+              {ch("line") && (
                 <div className="bcn-pv-col">
                   <div className="bcn-pv-cap"><span className="bcn-pv-cap-b l">L</span>LINE 預覽</div>
                   <div className="bcn-pv-stage">
@@ -722,7 +747,7 @@ export default function BroadcastPage() {
                 </div>
               )}
 
-              {(channel === "email" || channel === "both") && (
+              {ch("email") && (
                 <div className="bcn-pv-col">
                   <div className="bcn-pv-cap"><span className="bcn-pv-cap-b m">@</span>Email 預覽</div>
                   <div className="bcn-pv-stage">
@@ -735,6 +760,24 @@ export default function BroadcastPage() {
                     </div>
                   </div>
                   <div className="bcn-pv-foot">此為 Email 訊息模擬預覽，實際內容可能因 Email 客戶端而異。</div>
+                </div>
+              )}
+
+              {/* v889：站內通知預覽 —— 仿會員端「通知中心」卡片 */}
+              {ch("inapp") && (
+                <div className="bcn-pv-col">
+                  <div className="bcn-pv-cap"><span className="bcn-pv-cap-b n">🔔</span>站內通知 預覽</div>
+                  <div className="bcn-pv-stage">
+                    <div className="bcn-inapp-card">
+                      <span className="bcn-inapp-ico">🔔</span>
+                      <div className="bcn-inapp-tx">
+                        <div className="bcn-inapp-tt">{previewInAppTitle || "（標題為空）"}</div>
+                        <div className="bcn-inapp-time">剛剛</div>
+                        <div className="bcn-inapp-bd">{previewInAppBody || "（內文為空）"}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bcn-pv-foot">站內通知一律送達（不受個人 LINE/Email 開關影響），會員可在「通知中心」看到。</div>
                 </div>
               )}
             </div>
@@ -1050,6 +1093,17 @@ function BroadcastStyles() {
       }
       .bcn-pv-cap-b.l { background: #06c755; }
       .bcn-pv-cap-b.m { background: var(--bcn-sea); }
+      .bcn-pv-cap-b.n { background: var(--bcn-teal); font-size: 12px; }
+      /* v889：站內通知預覽卡片（仿會員通知中心 list item）*/
+      .bcn-inapp-card {
+        background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        padding: 14px; display: flex; gap: 10px; align-items: flex-start;
+      }
+      .bcn-inapp-ico { font-size: 22px; line-height: 1.1; flex: none; }
+      .bcn-inapp-tx { min-width: 0; flex: 1; }
+      .bcn-inapp-tt { font-size: 14px; font-weight: 800; color: var(--bcn-ink); line-height: 1.4; }
+      .bcn-inapp-time { font-size: 10.5px; color: var(--bcn-mute); margin-top: 2px; }
+      .bcn-inapp-bd { margin-top: 7px; font-size: 12.5px; line-height: 1.65; color: #3f5358; white-space: pre-wrap; }
       .bcn-pv-stage {
         background: #eef3f5; border: 1px solid var(--bcn-line);
         border-radius: 14px; padding: 16px;

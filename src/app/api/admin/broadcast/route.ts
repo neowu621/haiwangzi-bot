@@ -7,6 +7,7 @@ import { buildFlexByKeyAsync, type FlexTemplateKey } from "@/lib/flex";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { broadcastEmail } from "@/lib/email/templates";
 import { logAudit } from "@/lib/audit";
+import { logMessage } from "@/lib/message-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,13 +29,20 @@ const BodySchema = z.object({
   template: z.string(),
   altText: z.string().min(1),
   params: z.record(z.unknown()).default({}),
-  text: z.string().optional(), // 純文字模式（template = "text" 時使用）
-  // 通道：line / email / both
-  channel: z.enum(["line", "email", "both"]).default("line"),
+  text: z.string().optional(), // 純文字模式（template = "text" 時使用；站內內文也用）
+  // v889：通道改「可複選」line / email / inapp（新前端送 channels）
+  channels: z.array(z.enum(["line", "email", "inapp"])).default([]),
+  // 舊版單選（向後相容）：line / email / both
+  channel: z.enum(["line", "email", "both"]).optional(),
   // Email 專用欄位
   emailSubject: z.string().optional(),
   emailBody: z.string().optional(),
 });
+
+// 站內通知/純文字：把共享 params 代進 {變數}
+function substituteParams(text: string, params: Record<string, unknown>): string {
+  return text.replace(/\{(\w+)\}/g, (_, k: string) => (k in params ? String(params[k]) : `{${k}}`));
+}
 
 // POST /api/admin/broadcast
 export async function POST(req: NextRequest) {
@@ -46,6 +54,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: role.message }, { status: role.status });
 
   const data = BodySchema.parse(await req.json());
+
+  // v889：正規化通道集合 —— 新前端送 channels[]；相容舊 channel(single/both)
+  const chSet = new Set<string>(data.channels);
+  if (chSet.size === 0) {
+    if (data.channel === "both") { chSet.add("line"); chSet.add("email"); }
+    else if (data.channel) chSet.add(data.channel);
+    else chSet.add("line");
+  }
+  const wantLine = chSet.has("line");
+  const wantEmail = chSet.has("email");
+  const wantInApp = chSet.has("inapp");
 
   // v649：把舊版單一 audience 正規化成多選陣列(向後相容)
   const audiences = new Set<string>(data.audiences);
@@ -91,7 +110,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (idSet.size === 0) {
-    return NextResponse.json({ ok: true, delivered: 0, emailed: 0, note: "無符合對象（請確認對象選取）" });
+    return NextResponse.json({ ok: true, delivered: 0, emailed: 0, inapp: 0, note: "無符合對象（請確認對象選取）" });
   }
 
   // 拿完整 user 物件（後面 LINE / Email 都要用）；findMany by 唯一 lineUserId → 自然去重
@@ -100,13 +119,14 @@ export async function POST(req: NextRequest) {
     where: { lineUserId: { in: Array.from(idSet) }, deletedAt: null, blacklisted: false },
   });
   if (targets.length === 0) {
-    return NextResponse.json({ ok: true, delivered: 0, emailed: 0, note: "符合對象都被排除（軟刪除/黑名單）" });
+    return NextResponse.json({ ok: true, delivered: 0, emailed: 0, inapp: 0, note: "符合對象都被排除（軟刪除/黑名單）" });
   }
 
   const result: {
     ok: boolean;
     delivered: number;
     emailed: number;
+    inapp: number;
     dryRun?: boolean;
     note?: string;
     channel: string;
@@ -114,11 +134,12 @@ export async function POST(req: NextRequest) {
     ok: true,
     delivered: 0,
     emailed: 0,
-    channel: data.channel,
+    inapp: 0,
+    channel: Array.from(chSet).join("+"),
   };
 
   // ── LINE 通道 ───────────────────────────────────
-  if (data.channel === "line" || data.channel === "both") {
+  if (wantLine) {
     let messages;
     if (data.template === "text") {
       messages = [{ type: "text" as const, text: data.text ?? data.altText }];
@@ -159,7 +180,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Email 通道 ───────────────────────────────────
-  if (data.channel === "email" || data.channel === "both") {
+  if (wantEmail) {
     if (!emailConfigured()) {
       result.dryRun = true;
       result.note =
@@ -189,13 +210,56 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── 站內通知 通道（v889）──────────────────────────
+  //   一律寫入所有 targets（已排除軟刪除/黑名單），不看個人 LINE/Email opt-in。
+  //   標題取 altText/主旨/首行；內文沿用純文字內容(text)或 email 內文；共享 params 代入 {變數}。
+  if (wantInApp) {
+    const rawTitle =
+      data.altText?.trim() ||
+      data.emailSubject?.trim() ||
+      (data.text ?? "").split("\n")[0].trim() ||
+      "海王子通知";
+    const rawBody =
+      data.text?.trim() ||
+      data.emailBody?.trim() ||
+      data.altText?.trim() ||
+      "";
+    const title = substituteParams(rawTitle, data.params as Record<string, unknown>).slice(0, 300);
+    const bodyTxt = substituteParams(rawBody, data.params as Record<string, unknown>);
+    try {
+      // 分批寫入（一次上限保守，避免單筆 payload 過大）
+      const rows = targets.map((t) => ({
+        userId: t.lineUserId,
+        templateKey: data.template,
+        title,
+        body: bodyTxt,
+        icon: "🔔",
+      }));
+      for (let i = 0; i < rows.length; i += 500) {
+        const chunk = rows.slice(i, i + 500);
+        await prisma.notification.createMany({ data: chunk });
+        result.inapp += chunk.length;
+      }
+      logMessage({
+        channel: "inapp",
+        templateKey: data.template,
+        recipient: `會員 ×${result.inapp}`,
+        title,
+        status: "sent",
+        source: "broadcast",
+      });
+    } catch (e) {
+      console.error("broadcast inapp error", e);
+    }
+  }
+
   await logAudit({
     actorId: auth.user.lineUserId,
     action: "broadcast.send",
     targetType: "broadcast",
     metadata: {
       audiences: Array.from(audiences),
-      channel: data.channel,
+      channels: Array.from(chSet),
       template: data.template,
       targets: targets.length,
       singleUserId: data.singleUserId,

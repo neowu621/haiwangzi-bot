@@ -26,7 +26,7 @@ export interface BroadcastPreset {
 
 const CreateSchema = z.object({
   name: z.string().trim().min(1).max(40),
-  channel: z.string().max(16).default("line"),
+  channel: z.string().max(40).default("line"), // v889：可存複選逗號串（line,email,inapp）
   template: z.string().max(64).default("text"),
   altText: z.string().max(200).default(""),
   text: z.string().max(5000).default(""),
