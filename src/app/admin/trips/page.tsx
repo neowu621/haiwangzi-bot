@@ -267,6 +267,7 @@ export default function AdminTripsPage() {
     return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
   });
   const [dumpDays, setDumpDays] = useState(7); // v558：一次抓幾天(手動,預設 7)
+  const [dumpMode, setDumpMode] = useState<"line" | "fb">("line"); // v892：LINE 筆記本版 / FB 貼文版
   const [dumpText, setDumpText] = useState(""); // v559：可手動編輯的預覽內容
   const [dumpCopied, setDumpCopied] = useState(false);
   // v592：可加入 Dump 的「生效中公開優惠代碼」
@@ -370,11 +371,11 @@ export default function AdminTripsPage() {
   }, []);
   // v399：場次本地變動同步回快取
   useEffect(() => { setCached("/api/admin/trips", { trips }); }, [trips]);
-  // v559：開啟 Dump / 改起始日或天數 → 重生預覽(中間的手動編輯保留,直到這些改變才覆蓋)
+  // v559：開啟 Dump / 改起始日或天數 / 切換版型 → 重生預覽(中間的手動編輯保留,直到這些改變才覆蓋)
   useEffect(() => {
     if (dumpOpen) setDumpText(computeDumpText());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dumpOpen, dumpStartDate, dumpDays]);
+  }, [dumpOpen, dumpStartDate, dumpDays, dumpMode]);
 
   // v592：開 Dump 時載入生效中的公開優惠代碼(供下拉加入)
   useEffect(() => {
@@ -968,8 +969,8 @@ export default function AdminTripsPage() {
     return 0;
   });
 
-  // v336：Dump 一週場次（給 LINE 筆記本貼）
-  function computeDumpText(): string {
+  // v336：Dump 一週場次（給 LINE 筆記本貼）。v892：支援 FB 貼文版
+  function computeDumpText(mode: "line" | "fb" = dumpMode): string {
     const start = new Date(`${dumpStartDate}T00:00:00+08:00`);
     const end = new Date(start);
     end.setDate(end.getDate() + Math.max(1, dumpDays) - 1); // v558：天數手動(含當日)
@@ -992,6 +993,63 @@ export default function AdminTripsPage() {
       typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
     // v383：小編 LINE 群組連結（如需更換改這裡）
     const supportLine = "https://line.me/R/ti/p/@894bpmew";
+
+    // ── v892：FB 貼文版 ──────────────────────────────
+    //   與 LINE 版差異：開頭鉤子標題、段落間留空行(FB 好讀)、只放一個主連結(/d)、
+    //   不列多個資訊網址(FB 多裸網址壓觸及)、結尾加 hashtag 助擴散。
+    if (mode === "fb") {
+      const startLabelFb = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
+      const endLabelFb = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
+      const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
+      const toursFb = tours
+        .filter((t) => {
+          if (t.status === "cancelled") return false;
+          const sd = new Date(`${t.dateStart.slice(0, 10)}T00:00:00+08:00`);
+          return sd >= start && sd <= end;
+        })
+        .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
+      const fb: string[] = [];
+      fb.push("🌊 東北角海王子・本週日潛開放預約 🤿");
+      // 開頭優惠當鉤子（沿用後台「開頭優惠」設定）
+      if (dumpPromo.enabled && dumpPromo.text.trim()) {
+        fb.push("");
+        fb.push(...dumpPromo.text.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
+      }
+      fb.push("");
+      fb.push(`📅 本週場次 ${startLabelFb} ~ ${endLabelFb}`);
+      if (inRange.length === 0) {
+        fb.push("・本週場次陸續安排中，先追蹤粉專不錯過！");
+      } else {
+        for (const t of inRange) {
+          const d = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
+          const wd = weekdayMap[d.getDay()];
+          const sitesStr = t.diveSiteIds.map(siteName).join("·") || "未設潛點";
+          const moon = t.isNightDive ? "🌙" : "";
+          fb.push(`・${fmtMD(d)}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount}支`);
+        }
+      }
+      if (toursFb.length > 0) {
+        fb.push("");
+        fb.push("⛴️ 本週出發潛旅");
+        for (const t of toursFb) {
+          const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
+            ? fmtMDs(t.dateStart)
+            : `${fmtMDs(t.dateStart)}–${fmtMDs(t.dateEnd)}`;
+          const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
+          const remain = t.capacity == null
+            ? ""
+            : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
+          fb.push(`・${range} ${t.title}${dur}${remain}`);
+        }
+      }
+      fb.push("");
+      fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
+      fb.push(`👉 ${baseUrl}/d`);
+      fb.push("");
+      fb.push("#東北角潛水 #龍洞潛水 #海王子潛水團 #水肺潛水 #潛水預約 #自由潛水 #潛旅");
+      return fb.join("\n");
+    }
+
     const lines: string[] = [];
     // v886：壓縮排版 — 全篇不用空行，改用 ━ 分隔線分段（LINE 上更緊湊好讀）
     const HR = "━━━━━━━━━━━━━━";
@@ -1982,7 +2040,7 @@ export default function AdminTripsPage() {
       <Dialog open={dumpOpen} onOpenChange={(o) => setDumpOpen(o)}>
         <DialogContent className="max-w-[min(95vw,560px)]">
           <DialogHeader>
-            <DialogTitle>📋 Dump 一週場次（給 LINE 筆記本）</DialogTitle>
+            <DialogTitle>📋 Dump 一週場次（LINE 筆記本／FB 貼文）</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-[80px_1fr] items-center gap-2">
@@ -2024,6 +2082,27 @@ export default function AdminTripsPage() {
                 </select>
               </div>
             )}
+            {/* v892：LINE 版 / FB 版 切換 */}
+            <div className="flex items-center gap-2">
+              <Label className="text-xs whitespace-nowrap">版型</Label>
+              <div className="inline-flex rounded-lg bg-[var(--muted)] p-0.5">
+                {([["line", "💬 LINE 筆記本"], ["fb", "📘 FB 貼文"]] as const).map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setDumpMode(m)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      dumpMode === m ? "bg-white text-[var(--color-ocean-deep)] shadow-sm" : "text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10px] text-[var(--muted-foreground)]">
+                {dumpMode === "fb" ? "精簡＋#標籤，適合粉專" : "完整資訊，適合 LINE 筆記本"}
+              </span>
+            </div>
             <div>
               <Label className="text-xs mb-1 block">預覽（可直接編輯）</Label>
               <textarea

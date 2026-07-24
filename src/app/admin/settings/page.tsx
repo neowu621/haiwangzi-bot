@@ -179,15 +179,61 @@ const DEFAULT_TRIP: TripPricing = {
 };
 // v346：場次預設定價 UI 移除（不需初始設定），但 defaultTripPricing 仍保留現值寫回
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="rounded-xl border p-5 bg-white" style={{ borderColor: "var(--border)" }}>
-      <h2 className="mb-4 text-base font-semibold text-[var(--foreground)]">
-        {title}
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-[var(--foreground)]">
+          {title}
+        </h2>
+        {action}
+      </div>
       {children}
     </div>
   );
+}
+
+// v892：Dump 預覽用 —— 設定頁沒有真實場次，用範例場次示意（實際於日潛場次頁自動帶入）
+const DUMP_PREVIEW_BASE = "https://haiwangzi.xyz";
+const DUMP_PREVIEW_SAMPLE_DAILY = [
+  "07/29(週三) 08:00 龍洞·和美 2 支",
+  "08/01(週六) 08:00 🌙鼻頭 2 支",
+];
+function buildDumpPreviewLine(promoEnabled: boolean, promoText: string, footerEnabled: boolean, footerText: string): string {
+  const HR = "━━━━━━━━━━━━━━";
+  const L: string[] = [];
+  L.push(`🔱 東北角海王子官網 ${DUMP_PREVIEW_BASE}`);
+  if (promoEnabled && promoText.trim()) {
+    L.push(...promoText.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
+  }
+  L.push(HR);
+  L.push("📱 請用手機開啟連結 可以累積潛水並贈送抵用金");
+  L.push(`${DUMP_PREVIEW_BASE}/d`);
+  L.push("🌊 日潛場次 07/27(週一) ~ 08/02(週日)");
+  L.push(...DUMP_PREVIEW_SAMPLE_DAILY);
+  if (footerEnabled) {
+    const f = (footerText.trim() || DEFAULT_DUMP_FOOTER).split("\n").map((s) => s.trimEnd()).filter((s) => s !== "");
+    if (f.length) { L.push(HR); L.push(...f); }
+  }
+  return L.join("\n");
+}
+function buildDumpPreviewFb(promoEnabled: boolean, promoText: string): string {
+  const fb: string[] = [];
+  fb.push("🌊 東北角海王子・本週日潛開放預約 🤿");
+  if (promoEnabled && promoText.trim()) {
+    fb.push("");
+    fb.push(...promoText.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
+  }
+  fb.push("");
+  fb.push("📅 本週場次 07/27(週一) ~ 08/02(週日)");
+  fb.push("・07/29(週三) 08:00 龍洞·和美 2支");
+  fb.push("・08/01(週六) 08:00 🌙鼻頭 2支");
+  fb.push("");
+  fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
+  fb.push(`👉 ${DUMP_PREVIEW_BASE}/d`);
+  fb.push("");
+  fb.push("#東北角潛水 #龍洞潛水 #海王子潛水團 #水肺潛水 #潛水預約 #自由潛水 #潛旅");
+  return fb.join("\n");
 }
 
 // v391：抵用金表格用的小徽章
@@ -232,6 +278,8 @@ export default function SettingsPage() {
   const [cfg, setCfg] = useState<Config | null>(null);
   // v345：支援 ?tab= 直接開特定分頁（VIP 設定從舊頁 redirect 進來時用）
   const [activeTab, setActiveTab] = useState("home");
+  // v892：Dump 預覽模擬視窗（line / fb）
+  const [dumpPreview, setDumpPreview] = useState<null | "line" | "fb">(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
     let t = new URLSearchParams(window.location.search).get("tab");
@@ -1001,7 +1049,19 @@ export default function SettingsPage() {
 
         {/* v891：📋 Dump 貼文設定 —— 開頭優惠(區塊1) + 結尾聯繫/資訊(區塊3) 由此編輯；中間場次自動產生 */}
         <TabsContent value="dump" className="mt-4">
-          <SectionCard title="📋 Dump 貼文設定（LINE 筆記本／FB 貼文）">
+          <SectionCard
+            title="📋 Dump 貼文設定（LINE 筆記本／FB 貼文）"
+            action={
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setDumpPreview("line")}>
+                  💬 LINE 訊息預覽
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setDumpPreview("fb")}>
+                  📘 FB 貼文預覽
+                </Button>
+              </div>
+            }
+          >
             <p className="-mt-2 mb-1 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
               「Dump 一週場次」的貼文分三段：
             </p>
@@ -1276,6 +1336,67 @@ export default function SettingsPage() {
         </Tabs>
 
       </div>
+
+      {/* v892：Dump 模擬預覽視窗（LINE / FB）*/}
+      {dumpPreview && cfg && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setDumpPreview(null); }}
+        >
+          <div className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <div className="text-sm font-bold text-[var(--foreground)]">
+                {dumpPreview === "line" ? "💬 LINE 訊息預覽" : "📘 FB 貼文預覽"}
+              </div>
+              <button type="button" onClick={() => setDumpPreview(null)} aria-label="關閉"
+                className="px-1 text-xl leading-none text-[var(--muted-foreground)]">✕</button>
+            </div>
+
+            <div className="overflow-y-auto p-4" style={{ background: dumpPreview === "line" ? "#8aabc0" : "#f0f2f5" }}>
+              {dumpPreview === "line" ? (
+                <div className="flex items-start gap-2">
+                  <div className="grid h-8 w-8 flex-none place-items-center rounded-full bg-[#06364a] text-xs font-bold text-white">東</div>
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-[4px_14px_14px_14px] bg-white px-3 py-2.5 text-[13px] leading-relaxed shadow" style={{ wordBreak: "break-all" }}>
+                    {buildDumpPreviewLine(
+                      cfg.dumpPromoEnabled ?? false, cfg.dumpPromoText ?? "",
+                      cfg.dumpFooterEnabled ?? true, cfg.dumpFooterText ?? "",
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl bg-white shadow">
+                  <div className="flex items-center gap-2 p-3">
+                    <div className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[#06364a] text-sm font-bold text-white">海</div>
+                    <div>
+                      <div className="text-[13px] font-bold text-[#050505]">東北角海王子潛水團</div>
+                      <div className="text-[11px] text-gray-500">剛剛 · 🌐</div>
+                    </div>
+                  </div>
+                  <div className="px-3 pb-3 text-[13px] leading-relaxed text-[#050505]" style={{ wordBreak: "break-word" }}>
+                    {buildDumpPreviewFb(cfg.dumpPromoEnabled ?? false, cfg.dumpPromoText ?? "")
+                      .split("\n").map((ln, i) =>
+                        ln.includes("#") ? (
+                          <div key={i}>
+                            {ln.split(/(\s+)/).map((w, j) => w.startsWith("#")
+                              ? <span key={j} className="text-[#1877f2]">{w}</span>
+                              : <span key={j}>{w}</span>)}
+                          </div>
+                        ) : (
+                          <div key={i}>{ln || " "}</div>
+                        ),
+                      )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t px-4 py-2.5 text-[11px] leading-relaxed text-[var(--muted-foreground)]" style={{ borderColor: "var(--border)" }}>
+              ℹ️ 場次為<b>範例</b>；實際內容於「日潛場次 → Dump 一週場次」依起始日/天數自動帶入。
+              {dumpPreview === "fb" && "　FB 版精簡：只放一個主連結，不含結尾資訊區。"}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }
