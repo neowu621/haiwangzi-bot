@@ -273,6 +273,8 @@ export default function AdminTripsPage() {
   const [activePromos, setActivePromos] = useState<Array<{ code: string; title: string; label: string; endAt: string }>>([]);
   // v391：場次 Dump 自動優惠開頭（由系統設定控制）
   const [dumpPromo, setDumpPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: "" });
+  // v891：Dump 結尾聯繫／資訊（後台可編輯；enabled 預設 true，text 空 → 用程式預設）
+  const [dumpFooter, setDumpFooter] = useState<{ enabled: boolean; text: string }>({ enabled: true, text: "" });
 
   // v183：展開查看訂單
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -341,7 +343,7 @@ export default function AdminTripsPage() {
       adminFetch<{ trips: Trip[] }>("/api/admin/trips"),
       adminFetch<Site[]>("/api/admin/sites"),
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches"),
-      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string } }>("/api/admin/site-config"),
+      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string; dumpFooterEnabled?: boolean; dumpFooterText?: string } }>("/api/admin/site-config"),
       adminFetch<{ tours: DumpTour[] }>("/api/admin/tours"),
     ]).then(([t, s, c, cfg, to]) => {
       if (t.status === "fulfilled") { setTrips(t.value.trips ?? []); setCached("/api/admin/trips", { trips: t.value.trips ?? [] }); }
@@ -358,6 +360,10 @@ export default function AdminTripsPage() {
         setDumpPromo({
           enabled: !!cfg.value.config.dumpPromoEnabled,
           text: cfg.value.config.dumpPromoText ?? "",
+        });
+        setDumpFooter({
+          enabled: cfg.value.config.dumpFooterEnabled ?? true,
+          text: cfg.value.config.dumpFooterText ?? "",
         });
       }
     }).finally(() => setLoading(false));
@@ -1039,13 +1045,22 @@ export default function AdminTripsPage() {
         lines.push(`${range} ${t.title}${dur}${remain}`);
       }
     }
-    lines.push(HR);
-    lines.push("🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫");
-    lines.push(`LINE  ${supportLine}`);
-    // v890：移除「線上詢問」與「📖 更多資訊」標題，三個資訊連結直接接在聯繫之後
-    lines.push(`會員優惠 ${baseUrl}/rewards`);
-    lines.push(`常見問題 ${baseUrl}/faq`);
-    lines.push(`費用價目 ${baseUrl}/pricing`);
+    // v891：結尾聯繫／資訊（區塊 3）由後台 Dump 設定控制；留空 → 用程式預設
+    const DEFAULT_FOOTER = [
+      "🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫",
+      `LINE  ${supportLine}`,
+      `會員優惠 ${baseUrl}/rewards`,
+      `常見問題 ${baseUrl}/faq`,
+      `費用價目 ${baseUrl}/pricing`,
+    ].join("\n");
+    if (dumpFooter.enabled) {
+      const footerLines = (dumpFooter.text.trim() || DEFAULT_FOOTER)
+        .split("\n").map((s) => s.trimEnd()).filter((s) => s !== "");
+      if (footerLines.length) {
+        lines.push(HR);
+        lines.push(...footerLines);
+      }
+    }
     return lines.join("\n");
   }
   async function copyDumpText() {

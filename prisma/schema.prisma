@@ -809,6 +809,10 @@ model SiteConfig {
   dumpPromoEnabled Boolean @default(false) @map("dump_promo_enabled")
   dumpPromoText    String  @default("") @map("dump_promo_text")
 
+  // v891：場次 Dump 結尾聯繫／資訊（開關 + 可編輯文案；留空用系統預設）
+  dumpFooterEnabled Boolean @default(true) @map("dump_footer_enabled")
+  dumpFooterText    String  @default("") @map("dump_footer_text")
+
   // v403：首頁「最新動態」影片清單 + 模式
   // homeVideosMode: "curated" 用 homeVideos JSON；"auto" 改打 /api/youtube/recent
   // homeVideos: [{id, title, isShort}]

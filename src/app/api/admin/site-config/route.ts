@@ -156,6 +156,9 @@ const PatchSchema = z.object({
   // v391：場次 Dump 自動優惠開頭
   dumpPromoEnabled: z.boolean().optional(),
   dumpPromoText: z.string().max(2000).optional(),
+  // v891：場次 Dump 結尾聯繫／資訊
+  dumpFooterEnabled: z.boolean().optional(),
+  dumpFooterText: z.string().max(2000).optional(),
   // v392：氣瓶限時折扣
   tankPromoEnabled: z.boolean().optional(),
   tankPromoDiscount: z.number().int().min(0).max(100000).optional(),
@@ -298,6 +301,8 @@ export async function GET(req: NextRequest) {
       // v391 場次 Dump 優惠開頭
       dumpPromoEnabled: (row as unknown as { dumpPromoEnabled?: boolean }).dumpPromoEnabled ?? false,
       dumpPromoText: (row as unknown as { dumpPromoText?: string }).dumpPromoText ?? "",
+      dumpFooterEnabled: (row as unknown as { dumpFooterEnabled?: boolean }).dumpFooterEnabled ?? true,
+      dumpFooterText: (row as unknown as { dumpFooterText?: string }).dumpFooterText ?? "",
       // v392 氣瓶限時折扣
       tankPromoEnabled: (row as unknown as { tankPromoEnabled?: boolean }).tankPromoEnabled ?? false,
       tankPromoDiscount: (row as unknown as { tankPromoDiscount?: number }).tankPromoDiscount ?? 0,

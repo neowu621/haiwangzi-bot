@@ -485,6 +485,9 @@ const PATCHES = [
   // v391: 場次 Dump 自動優惠開頭
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_promo_enabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_promo_text TEXT NOT NULL DEFAULT ''`,
+  // v891：Dump 結尾聯繫／資訊（預設開啟，文字留空 → 用程式預設）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_footer_enabled BOOLEAN NOT NULL DEFAULT true`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_footer_text TEXT NOT NULL DEFAULT ''`,
   // v392: 氣瓶限時折扣
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_enabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_discount INTEGER NOT NULL DEFAULT 0`,
