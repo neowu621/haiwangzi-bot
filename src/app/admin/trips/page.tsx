@@ -211,6 +211,15 @@ const BLANK_FORM = {
 
 type TripForm = typeof BLANK_FORM;
 
+// v897：快速範本（只存跟著潛點固定的欄位，不含日期/教練/狀態）
+type TripTemplate = {
+  id: string; name: string; emoji: string;
+  isBoat: boolean; isNightDive: boolean; isScooter: boolean;
+  diveSiteIds: string[]; tankCount: number; capacity: number; startTime: string;
+  pricing: Pricing; meetingPoint: string; meetingPointUrl: string;
+  referenceVideoUrl: string; activityNote: string; notes: string; createdAt: string;
+};
+
 function estimatedRevenue(trip: Trip): number {
   // v224：優先用 API 回傳的實際 booking 加總（更準確）
   //   排除取消、no_show、退款中、已退款
@@ -249,6 +258,9 @@ export default function AdminTripsPage() {
   const [form, setForm] = useState<TripForm>({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
   const [defaultPricing, setDefaultPricing] = useState<Pricing>(BLANK_PRICING_DEFAULT);
+  // v897：日潛場次快速範本
+  const [tripTemplates, setTripTemplates] = useState<TripTemplate[]>([]);
+  const [tplBusy, setTplBusy] = useState(false);
   // v242：取消場次原因 modal
   const [cancelTarget, setCancelTarget] = useState<Trip | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -374,8 +386,66 @@ export default function AdminTripsPage() {
       }
     }).finally(() => setLoading(false));
   }, []);
+  // v897：載入快速範本
+  useEffect(() => {
+    adminFetch<{ templates: TripTemplate[] }>("/api/admin/trip-templates")
+      .then((r) => setTripTemplates(r.templates ?? []))
+      .catch(() => {});
+  }, []);
   // v399：場次本地變動同步回快取
   useEffect(() => { setCached("/api/admin/trips", { trips }); }, [trips]);
+
+  // v897：套用範本 → 帶入「跟著潛點固定」的欄位（保留當前 日期/教練/狀態）
+  function applyTemplate(t: TripTemplate) {
+    setForm((f) => ({
+      ...f,
+      isBoat: t.isBoat, isNightDive: t.isNightDive, isScooter: t.isScooter,
+      diveSiteIds: [...t.diveSiteIds], tankCount: t.tankCount, capacity: t.capacity,
+      startTime: t.startTime || f.startTime,
+      pricing: { ...BLANK_PRICING_DEFAULT, ...t.pricing },
+      meetingPoint: t.meetingPoint, meetingPointUrl: t.meetingPointUrl,
+      referenceVideoUrl: t.referenceVideoUrl, activityNote: t.activityNote, notes: t.notes,
+    }));
+  }
+  // v897：把目前表單另存為範本
+  async function saveAsTemplate() {
+    const suggested = form.diveSiteIds[0] ?? "";
+    const name = (typeof window !== "undefined" ? window.prompt("範本名稱（例：鶯歌石）", suggested) : suggested)?.trim();
+    if (!name) return;
+    const emoji = (typeof window !== "undefined" ? window.prompt(`「${name}」的圖示 emoji（可留空）`, form.isBoat ? "🚤" : "🏖") : "🏖")?.trim() || "🤿";
+    setTplBusy(true);
+    try {
+      const r = await adminFetch<{ templates: TripTemplate[] }>("/api/admin/trip-templates", {
+        method: "POST",
+        body: JSON.stringify({
+          name, emoji,
+          isBoat: form.isBoat, isNightDive: form.isNightDive, isScooter: form.isScooter,
+          diveSiteIds: form.diveSiteIds, tankCount: form.tankCount, capacity: form.capacity ?? 0,
+          startTime: form.startTime, pricing: form.pricing,
+          meetingPoint: form.meetingPoint, meetingPointUrl: form.meetingPointUrl,
+          referenceVideoUrl: form.referenceVideoUrl, activityNote: form.activityNote, notes: form.notes,
+        }),
+      });
+      setTripTemplates(r.templates ?? []);
+    } catch (e) {
+      alert("存範本失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setTplBusy(false);
+    }
+  }
+  // v897：刪除範本
+  async function deleteTemplate(t: TripTemplate) {
+    if (typeof window !== "undefined" && !window.confirm(`刪除範本「${t.name}」？`)) return;
+    setTplBusy(true);
+    try {
+      const r = await adminFetch<{ templates: TripTemplate[] }>(`/api/admin/trip-templates?id=${encodeURIComponent(t.id)}`, { method: "DELETE" });
+      setTripTemplates(r.templates ?? []);
+    } catch (e) {
+      alert("刪除失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setTplBusy(false);
+    }
+  }
   // v559：開啟 Dump / 改起始日或天數 / 切換版型 → 重生預覽(中間的手動編輯保留,直到這些改變才覆蓋)
   useEffect(() => {
     if (dumpOpen) setDumpText(computeDumpText());
@@ -1630,6 +1700,44 @@ export default function AdminTripsPage() {
             </div>
             {/* /panel header */}
             <div className="space-y-3" style={{ padding: "16px 24px", overflowY: "auto", flex: 1, minHeight: 0 }}>
+            {/* v897：快速範本（僅新增模式）—— 選潛點範本一鍵帶入固定欄位，只剩日期/教練要填 */}
+            {dialogMode === "create" && (
+              <div className="rounded-xl border p-3" style={{ borderColor: "#CFE8E4", background: "linear-gradient(180deg,#f2fbfa,#ffffff)" }}>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#0E9E91" }}>
+                    ⚡ 快速範本
+                    <span className="font-normal text-[10px] text-[var(--muted-foreground)]">選一個 → 只剩填日期/教練</span>
+                  </span>
+                  <button type="button" onClick={saveAsTemplate} disabled={tplBusy}
+                    className="rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-teal-50 disabled:opacity-50"
+                    style={{ borderColor: "#CFE8E4", color: "#0E9E91" }}>
+                    💾 另存目前表單為範本
+                  </button>
+                </div>
+                {tripTemplates.length === 0 ? (
+                  <div className="text-[11px] text-[var(--muted-foreground)]">尚無範本。填好一場後按「💾 另存目前表單為範本」即可建立。</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {tripTemplates.map((t) => (
+                      <div key={t.id} className="group relative inline-flex items-stretch overflow-hidden rounded-lg border bg-white transition hover:border-teal-400" style={{ borderColor: "#D7E6E4" }}>
+                        <button type="button" onClick={() => applyTemplate(t)} className="flex items-center gap-2 py-1.5 pl-2.5 pr-2 text-left" title="套用此範本">
+                          <span className="text-base leading-none">{t.emoji || "🤿"}</span>
+                          <span>
+                            <span className="block text-[12.5px] font-bold leading-tight text-[var(--foreground)]">{t.name}</span>
+                            <span className="block text-[10px] leading-tight text-[var(--muted-foreground)]">
+                              {t.isBoat ? "🚤船潛" : "🏖岸潛"} · {t.tankCount}支 · ${t.pricing?.extraTank ?? 0}
+                            </span>
+                          </span>
+                        </button>
+                        <button type="button" onClick={() => deleteTemplate(t)} disabled={tplBusy}
+                          className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                          style={{ borderColor: "#EBF1F0" }} title="刪除此範本">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Row 1: 日期 + 集合時間 + 場次狀態 (三欄並排) */}
             {/* v226：日期拿到大空間（5/12），集合時間縮窄（4/12），狀態 3/12 */}
             <div className="grid grid-cols-12 gap-3">
