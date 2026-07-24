@@ -1047,7 +1047,7 @@ export default function AdminTripsPage() {
       fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
       fb.push(`👉 ${baseUrl}/d`);
       fb.push("");
-      fb.push("#東北角潛水 #龍洞潛水 #海王子潛水團 #水肺潛水 #潛水預約 #自由潛水 #潛旅");
+      fb.push("#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅");
       return fb.join("\n");
     }
 
