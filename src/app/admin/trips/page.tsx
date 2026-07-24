@@ -270,6 +270,7 @@ export default function AdminTripsPage() {
   const [dumpMode, setDumpMode] = useState<"line" | "fb">("line"); // v892：LINE 筆記本版 / FB 貼文版
   const [dumpText, setDumpText] = useState(""); // v559：可手動編輯的預覽內容
   const [dumpCopied, setDumpCopied] = useState(false);
+  const [dumpStylePreview, setDumpStylePreview] = useState(false); // v893：對話框/貼文樣式模擬視窗
   // v592：可加入 Dump 的「生效中公開優惠代碼」
   const [activePromos, setActivePromos] = useState<Array<{ code: string; title: string; label: string; endAt: string }>>([]);
   // v391：場次 Dump 自動優惠開頭（由系統設定控制）
@@ -2120,6 +2121,9 @@ export default function AdminTripsPage() {
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setDumpOpen(false)}>關閉</Button>
+                <Button variant="outline" size="sm" onClick={() => setDumpStylePreview(true)}>
+                  {dumpMode === "fb" ? "📘 貼文預覽" : "💬 訊息預覽"}
+                </Button>
                 <Button size="sm" onClick={copyDumpText} className={dumpCopied ? "bg-emerald-600 hover:bg-emerald-600" : ""}>
                   {dumpCopied ? <><Check className="mr-1.5 h-3.5 w-3.5" />已複製</> : <><Copy className="mr-1.5 h-3.5 w-3.5" />一鍵複製</>}
                 </Button>
@@ -2128,6 +2132,65 @@ export default function AdminTripsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* v893：Dump 樣式模擬視窗（依當前版型：LINE 對話框 / FB 貼文）— 用真實場次內容 */}
+      {dumpStylePreview && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setDumpStylePreview(false); }}
+        >
+          <div className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <div className="text-sm font-bold text-[var(--foreground)]">
+                {dumpMode === "fb" ? "📘 FB 貼文預覽" : "💬 LINE 訊息預覽"}
+              </div>
+              <button type="button" onClick={() => setDumpStylePreview(false)} aria-label="關閉"
+                className="px-1 text-xl leading-none text-[var(--muted-foreground)]">✕</button>
+            </div>
+
+            <div className="overflow-y-auto p-4" style={{ background: dumpMode === "fb" ? "#f0f2f5" : "#8aabc0" }}>
+              {dumpMode === "fb" ? (
+                <div className="overflow-hidden rounded-xl bg-white shadow">
+                  <div className="flex items-center gap-2 p-3">
+                    <div className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[#06364a] text-sm font-bold text-white">海</div>
+                    <div>
+                      <div className="text-[13px] font-bold text-[#050505]">東北角海王子潛水團</div>
+                      <div className="text-[11px] text-gray-500">剛剛 · 🌐</div>
+                    </div>
+                  </div>
+                  <div className="px-3 pb-3 text-[13px] leading-relaxed text-[#050505]" style={{ wordBreak: "break-word" }}>
+                    {dumpText.split("\n").map((ln, i) =>
+                      ln.includes("#") ? (
+                        <div key={i}>
+                          {ln.split(/(\s+)/).map((w, j) => w.startsWith("#")
+                            ? <span key={j} className="text-[#1877f2]">{w}</span>
+                            : <span key={j}>{w}</span>)}
+                        </div>
+                      ) : (
+                        <div key={i}>{ln || " "}</div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <div className="grid h-8 w-8 flex-none place-items-center rounded-full bg-[#06364a] text-xs font-bold text-white">東</div>
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-[4px_14px_14px_14px] bg-white px-3 py-2.5 text-[13px] leading-relaxed shadow" style={{ wordBreak: "break-all" }}>
+                    {dumpText}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: "var(--border)" }}>
+              <span className="text-[11px] text-[var(--muted-foreground)]">確認無誤後即可複製貼出</span>
+              <Button size="sm" onClick={() => { copyDumpText(); setDumpStylePreview(false); }}>
+                <Copy className="mr-1.5 h-3.5 w-3.5" />複製並關閉
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }
