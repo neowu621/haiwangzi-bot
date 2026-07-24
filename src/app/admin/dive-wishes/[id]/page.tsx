@@ -17,6 +17,7 @@ interface Wish {
   preferredDate: string;
   alternativeDates: string[];
   diveSiteIds: string[];
+  diveSiteNames?: string[]; // v899：API 轉好的中文潛點名
   otherSites: string | null;
   participants: number;
   budgetPerPerson: number | null;
@@ -145,7 +146,7 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
                 </>
               )}
               <div className="text-[var(--muted-foreground)]">潛點</div>
-              <div>{[...wish.diveSiteIds, wish.otherSites ?? ""].filter(Boolean).join("、")}</div>
+              <div>{[...(wish.diveSiteNames ?? wish.diveSiteIds), wish.otherSites ?? ""].filter(Boolean).join("、")}</div>
               <div className="text-[var(--muted-foreground)]">人數</div>
               <div>×{wish.participants} 人</div>
               {wish.budgetPerPerson && (<><div className="text-[var(--muted-foreground)]">預算</div><div>NT$ {wish.budgetPerPerson.toLocaleString()} / 人</div></>)}
@@ -318,7 +319,7 @@ function ConvertDialog({ open, wish, onClose, onDone }: { open: boolean; wish: W
       const body = asType === "tour"
         ? {
             asType: "tour" as const,
-            title: tourTitle.trim() || `${wish.otherSites ?? wish.diveSiteIds.join("/")} 潛水團`,
+            title: tourTitle.trim() || `${wish.otherSites ?? (wish.diveSiteNames ?? wish.diveSiteIds).join("/")} 潛水團`,
             subtitle: tourSubtitle || undefined,
             destination,
             dateStart: wish.preferredDate.slice(0, 10),

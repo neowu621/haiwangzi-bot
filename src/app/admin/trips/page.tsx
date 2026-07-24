@@ -261,6 +261,8 @@ export default function AdminTripsPage() {
   // v897：日潛場次快速範本
   const [tripTemplates, setTripTemplates] = useState<TripTemplate[]>([]);
   const [tplBusy, setTplBusy] = useState(false);
+  // v899：正在編輯的範本（設定後，另存按鈕變成「儲存範本變更」就地覆蓋）
+  const [editingTpl, setEditingTpl] = useState<TripTemplate | null>(null);
   // v242：取消場次原因 modal
   const [cancelTarget, setCancelTarget] = useState<Trip | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -407,31 +409,51 @@ export default function AdminTripsPage() {
       referenceVideoUrl: t.referenceVideoUrl, activityNote: t.activityNote, notes: t.notes,
     }));
   }
-  // v897：把目前表單另存為範本
+  // v897/v899：以目前表單內容組成範本 payload（id 有值 = 就地覆蓋）
+  function tplBodyFromForm(name: string, emoji: string, id?: string) {
+    return {
+      id, name, emoji,
+      isBoat: form.isBoat, isNightDive: form.isNightDive, isScooter: form.isScooter,
+      diveSiteIds: form.diveSiteIds, tankCount: form.tankCount, capacity: form.capacity ?? 0,
+      startTime: form.startTime, pricing: form.pricing,
+      meetingPoint: form.meetingPoint, meetingPointUrl: form.meetingPointUrl,
+      referenceVideoUrl: form.referenceVideoUrl, activityNote: form.activityNote, notes: form.notes,
+    };
+  }
+  async function postTemplate(body: object, failMsg: string) {
+    setTplBusy(true);
+    try {
+      const r = await adminFetch<{ templates: TripTemplate[] }>("/api/admin/trip-templates", {
+        method: "POST", body: JSON.stringify(body),
+      });
+      setTripTemplates(r.templates ?? []);
+      return true;
+    } catch (e) {
+      alert(failMsg + "：" + (e instanceof Error ? e.message : String(e)));
+      return false;
+    } finally {
+      setTplBusy(false);
+    }
+  }
+  // v897：把目前表單另存為「新」範本
   async function saveAsTemplate() {
     const suggested = form.diveSiteIds[0] ?? "";
     const name = (typeof window !== "undefined" ? window.prompt("範本名稱（例：鶯歌石）", suggested) : suggested)?.trim();
     if (!name) return;
     const emoji = (typeof window !== "undefined" ? window.prompt(`「${name}」的圖示 emoji（可留空）`, form.isBoat ? "🚤" : "🏖") : "🏖")?.trim() || "🤿";
-    setTplBusy(true);
-    try {
-      const r = await adminFetch<{ templates: TripTemplate[] }>("/api/admin/trip-templates", {
-        method: "POST",
-        body: JSON.stringify({
-          name, emoji,
-          isBoat: form.isBoat, isNightDive: form.isNightDive, isScooter: form.isScooter,
-          diveSiteIds: form.diveSiteIds, tankCount: form.tankCount, capacity: form.capacity ?? 0,
-          startTime: form.startTime, pricing: form.pricing,
-          meetingPoint: form.meetingPoint, meetingPointUrl: form.meetingPointUrl,
-          referenceVideoUrl: form.referenceVideoUrl, activityNote: form.activityNote, notes: form.notes,
-        }),
-      });
-      setTripTemplates(r.templates ?? []);
-    } catch (e) {
-      alert("存範本失敗：" + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setTplBusy(false);
-    }
+    await postTemplate(tplBodyFromForm(name, emoji), "存範本失敗");
+  }
+  // v899：開始編輯範本 —— 套用進表單，並記住是哪一個
+  function startEditTemplate(t: TripTemplate) {
+    applyTemplate(t);
+    setEditingTpl(t);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  // v899：儲存編輯中的範本（就地覆蓋，保留 id）
+  async function saveTemplateChanges() {
+    if (!editingTpl) return;
+    const ok = await postTemplate(tplBodyFromForm(editingTpl.name, editingTpl.emoji, editingTpl.id), "儲存範本變更失敗");
+    if (ok) setEditingTpl(null);
   }
   // v897：刪除範本
   async function deleteTemplate(t: TripTemplate) {
@@ -1708,13 +1730,32 @@ export default function AdminTripsPage() {
                     ⚡ 快速範本
                     <span className="font-normal text-[10px] text-[var(--muted-foreground)]">選一個 → 只剩填日期/教練</span>
                   </span>
-                  <button type="button" onClick={saveAsTemplate} disabled={tplBusy}
-                    className="rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-teal-50 disabled:opacity-50"
-                    style={{ borderColor: "#CFE8E4", color: "#0E9E91" }}>
-                    💾 另存目前表單為範本
-                  </button>
+                  {!editingTpl && (
+                    <button type="button" onClick={saveAsTemplate} disabled={tplBusy}
+                      className="rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-teal-50 disabled:opacity-50"
+                      style={{ borderColor: "#CFE8E4", color: "#0E9E91" }}>
+                      💾 另存目前表單為範本
+                    </button>
+                  )}
                 </div>
-                {tripTemplates.length === 0 ? (
+
+                {/* v899：編輯範本中的橫幅 */}
+                {editingTpl ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2" style={{ borderColor: "#F3D98A", background: "#FFFBEF" }}>
+                    <span className="text-[12px] font-bold" style={{ color: "#8a5a00" }}>
+                      ✏️ 編輯範本「{editingTpl.emoji} {editingTpl.name}」中
+                    </span>
+                    <span className="text-[10.5px] text-[var(--muted-foreground)]">改好下方欄位後按儲存（會覆蓋此範本）</span>
+                    <div className="ml-auto flex gap-1.5">
+                      <button type="button" onClick={() => setEditingTpl(null)}
+                        className="rounded-md border px-2 py-1 text-[11px] font-medium text-[var(--muted-foreground)] hover:bg-gray-50"
+                        style={{ borderColor: "#E4E8ED" }}>取消</button>
+                      <button type="button" onClick={saveTemplateChanges} disabled={tplBusy}
+                        className="rounded-md px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-50"
+                        style={{ background: "#0E9E91" }}>💾 儲存範本變更</button>
+                    </div>
+                  </div>
+                ) : tripTemplates.length === 0 ? (
                   <div className="text-[11px] text-[var(--muted-foreground)]">尚無範本。填好一場後按「💾 另存目前表單為範本」即可建立。</div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
@@ -1729,6 +1770,9 @@ export default function AdminTripsPage() {
                             </span>
                           </span>
                         </button>
+                        <button type="button" onClick={() => startEditTemplate(t)} disabled={tplBusy}
+                          className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
+                          style={{ borderColor: "#EBF1F0" }} title="編輯此範本">✏️</button>
                         <button type="button" onClick={() => deleteTemplate(t)} disabled={tplBusy}
                           className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
                           style={{ borderColor: "#EBF1F0" }} title="刪除此範本">✕</button>

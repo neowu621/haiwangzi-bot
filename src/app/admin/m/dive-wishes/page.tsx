@@ -22,6 +22,7 @@ interface Wish {
   preferredDate: string;
   alternativeDates: string[];
   diveSiteIds: string[];
+  diveSiteNames?: string[]; // v899：API 轉好的中文潛點名
   otherSites: string | null;
   participants: number;
   budgetPerPerson: number | null;
@@ -185,7 +186,7 @@ export default function MobileDiveWishesPage() {
           const isWaitingBoss =
             lastMsg?.from === "customer" && (w.status === "pending" || w.status === "discussing");
           const canReply = w.status === "pending" || w.status === "discussing";
-          const sitesAll = [...w.diveSiteIds, w.otherSites ?? ""].filter(Boolean).join("、");
+          const sitesAll = [...(w.diveSiteNames ?? w.diveSiteIds), w.otherSites ?? ""].filter(Boolean).join("、");
           const name = w.user.realName ?? w.user.displayName;
 
           return (

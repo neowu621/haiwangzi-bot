@@ -31,5 +31,17 @@ export async function GET(req: NextRequest) {
     _count: { _all: true },
   });
 
-  return NextResponse.json({ wishes, counts });
+  // v899：把 diveSiteIds(Json，如 yingge-stone) 轉成中文潛點名；找不到就保留原值
+  const idsOf = (w: { diveSiteIds: unknown }) => (Array.isArray(w.diveSiteIds) ? (w.diveSiteIds as string[]) : []);
+  const allIds = [...new Set(wishes.flatMap(idsOf))];
+  const sites = allIds.length
+    ? await prisma.diveSite.findMany({ where: { id: { in: allIds } }, select: { id: true, name: true } })
+    : [];
+  const nameMap = new Map(sites.map((s) => [s.id, s.name]));
+  const wishesOut = wishes.map((w) => ({
+    ...w,
+    diveSiteNames: idsOf(w).map((id) => nameMap.get(id) ?? id),
+  }));
+
+  return NextResponse.json({ wishes: wishesOut, counts });
 }

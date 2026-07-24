@@ -22,7 +22,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     },
   });
   if (!wish) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  return NextResponse.json({ wish });
+  // v899：diveSiteIds(Json) → 中文潛點名（找不到保留原值）
+  const ids = Array.isArray(wish.diveSiteIds) ? (wish.diveSiteIds as string[]) : [];
+  const sites = ids.length
+    ? await prisma.diveSite.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+    : [];
+  const nameMap = new Map(sites.map((s) => [s.id, s.name]));
+  const diveSiteNames = ids.map((sid) => nameMap.get(sid) ?? sid);
+  return NextResponse.json({ wish: { ...wish, diveSiteNames } });
 }
 
 const Body = z.object({
