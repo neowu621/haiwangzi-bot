@@ -114,6 +114,8 @@ interface Config {
   // v891：場次 Dump 結尾聯繫／資訊
   dumpFooterEnabled?: boolean;
   dumpFooterText?: string;
+  // v895：FB 貼文版 hashtag
+  dumpFbHashtags?: string;
   // v392：氣瓶限時折扣
   tankPromoEnabled?: boolean;
   tankPromoDiscount?: number;
@@ -166,6 +168,9 @@ LINE  https://line.me/R/ti/p/@894bpmew
 常見問題 https://haiwangzi.xyz/faq
 費用價目 https://haiwangzi.xyz/pricing`;
 
+// v895：FB 貼文版 hashtag 預設
+const DEFAULT_DUMP_FB_TAGS = "#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅";
+
 const DEFAULT_GEAR: GearPrices = {
   BCD: 200, regulator: 200, wetsuit: 300, fins: 100,
   mask: 100, computer: 300, full_set: 800,
@@ -217,7 +222,7 @@ function buildDumpPreviewLine(promoEnabled: boolean, promoText: string, footerEn
   }
   return L.join("\n");
 }
-function buildDumpPreviewFb(promoEnabled: boolean, promoText: string): string {
+function buildDumpPreviewFb(promoEnabled: boolean, promoText: string, hashtags: string): string {
   const fb: string[] = [];
   fb.push("🌊 東北角海王子・本週日潛開放預約 🤿");
   if (promoEnabled && promoText.trim()) {
@@ -231,8 +236,10 @@ function buildDumpPreviewFb(promoEnabled: boolean, promoText: string): string {
   fb.push("");
   fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
   fb.push(`👉 ${DUMP_PREVIEW_BASE}/d`);
-  fb.push("");
-  fb.push("#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅");
+  if (hashtags.trim()) {
+    fb.push("");
+    fb.push(hashtags.trim());
+  }
   return fb.join("\n");
 }
 
@@ -1147,6 +1154,37 @@ export default function SettingsPage() {
             </div>
           </SectionCard>
           </div>
+
+          {/* 區塊 FB：貼文專屬 hashtag（僅 FB 版用） */}
+          <div className="mt-4">
+          <SectionCard title="📘 FB 貼文 Hashtag（僅 FB 版）">
+            <p className="-mt-2 mb-3 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              只在<b>FB 貼文版</b>最下方出現（LINE 版不放）。一行、用空格分隔多個 #標籤；<b>清空 = 不放 hashtag</b>。可依當週主打潛點自行調整。
+            </p>
+            <textarea
+              className="w-full rounded-md border p-2 text-sm font-mono leading-relaxed"
+              style={{ borderColor: "var(--border)" }}
+              rows={3}
+              placeholder="#東北角潛水 #海王子潛水團 …"
+              value={cfg.dumpFbHashtags ?? ""}
+              onChange={(e) => setCfg(c => c ? { ...c, dumpFbHashtags: e.target.value } : c)} />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline"
+                onClick={() => setCfg(c => c ? { ...c, dumpFbHashtags: DEFAULT_DUMP_FB_TAGS } : c)}>
+                套用預設 hashtag
+              </Button>
+              <span className="text-[10px] text-[var(--muted-foreground)]">最多 500 字。</span>
+              <Button size="sm" className="ml-auto" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
+                onClick={() => save("Dump FB Hashtag", {
+                  dumpFbHashtags: cfg.dumpFbHashtags ?? "",
+                })}
+                disabled={saving === "Dump FB Hashtag"}>
+                <Save className="mr-1.5 h-4 w-4" />
+                {saving === "Dump FB Hashtag" ? "儲存中..." : "儲存 Hashtag"}
+              </Button>
+            </div>
+          </SectionCard>
+          </div>
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
@@ -1373,7 +1411,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="px-3 pb-3 text-[13px] leading-relaxed text-[#050505]" style={{ wordBreak: "break-word" }}>
-                    {buildDumpPreviewFb(cfg.dumpPromoEnabled ?? false, cfg.dumpPromoText ?? "")
+                    {buildDumpPreviewFb(cfg.dumpPromoEnabled ?? false, cfg.dumpPromoText ?? "", cfg.dumpFbHashtags ?? DEFAULT_DUMP_FB_TAGS)
                       .split("\n").map((ln, i) =>
                         ln.includes("#") ? (
                           <div key={i}>

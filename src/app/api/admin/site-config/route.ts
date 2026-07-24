@@ -13,6 +13,9 @@ import { invalidateSocialFooterCache } from "@/lib/social-footer"; // v344
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// v895：FB 貼文版 hashtag 預設（與 schema @default 一致）
+const DEFAULT_DUMP_FB_TAGS = "#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅";
+
 const CardSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
@@ -159,6 +162,8 @@ const PatchSchema = z.object({
   // v891：場次 Dump 結尾聯繫／資訊
   dumpFooterEnabled: z.boolean().optional(),
   dumpFooterText: z.string().max(2000).optional(),
+  // v895：FB 貼文版 hashtag
+  dumpFbHashtags: z.string().max(500).optional(),
   // v392：氣瓶限時折扣
   tankPromoEnabled: z.boolean().optional(),
   tankPromoDiscount: z.number().int().min(0).max(100000).optional(),
@@ -303,6 +308,7 @@ export async function GET(req: NextRequest) {
       dumpPromoText: (row as unknown as { dumpPromoText?: string }).dumpPromoText ?? "",
       dumpFooterEnabled: (row as unknown as { dumpFooterEnabled?: boolean }).dumpFooterEnabled ?? true,
       dumpFooterText: (row as unknown as { dumpFooterText?: string }).dumpFooterText ?? "",
+      dumpFbHashtags: (row as unknown as { dumpFbHashtags?: string }).dumpFbHashtags ?? DEFAULT_DUMP_FB_TAGS,
       // v392 氣瓶限時折扣
       tankPromoEnabled: (row as unknown as { tankPromoEnabled?: boolean }).tankPromoEnabled ?? false,
       tankPromoDiscount: (row as unknown as { tankPromoDiscount?: number }).tankPromoDiscount ?? 0,

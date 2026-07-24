@@ -813,6 +813,9 @@ model SiteConfig {
   dumpFooterEnabled Boolean @default(true) @map("dump_footer_enabled")
   dumpFooterText    String  @default("") @map("dump_footer_text")
 
+  // v895：FB 貼文版專屬 hashtag（一行，空格分隔；清空 = 不放 hashtag）
+  dumpFbHashtags String @default("#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅") @map("dump_fb_hashtags")
+
   // v403：首頁「最新動態」影片清單 + 模式
   // homeVideosMode: "curated" 用 homeVideos JSON；"auto" 改打 /api/youtube/recent
   // homeVideos: [{id, title, isShort}]

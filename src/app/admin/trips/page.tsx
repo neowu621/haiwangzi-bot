@@ -277,6 +277,9 @@ export default function AdminTripsPage() {
   const [dumpPromo, setDumpPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: "" });
   // v891：Dump 結尾聯繫／資訊（後台可編輯；enabled 預設 true，text 空 → 用程式預設）
   const [dumpFooter, setDumpFooter] = useState<{ enabled: boolean; text: string }>({ enabled: true, text: "" });
+  // v895：FB 貼文版 hashtag（後台可編輯；空 = 不放）
+  const DEFAULT_FB_TAGS = "#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅";
+  const [dumpFbTags, setDumpFbTags] = useState<string>(DEFAULT_FB_TAGS);
 
   // v183：展開查看訂單
   const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
@@ -345,7 +348,7 @@ export default function AdminTripsPage() {
       adminFetch<{ trips: Trip[] }>("/api/admin/trips"),
       adminFetch<Site[]>("/api/admin/sites"),
       adminFetch<{ coaches: Coach[] }>("/api/admin/coaches"),
-      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string; dumpFooterEnabled?: boolean; dumpFooterText?: string } }>("/api/admin/site-config"),
+      adminFetch<{ config: { defaultTripPricing?: Partial<Pricing>; dumpPromoEnabled?: boolean; dumpPromoText?: string; dumpFooterEnabled?: boolean; dumpFooterText?: string; dumpFbHashtags?: string } }>("/api/admin/site-config"),
       adminFetch<{ tours: DumpTour[] }>("/api/admin/tours"),
     ]).then(([t, s, c, cfg, to]) => {
       if (t.status === "fulfilled") { setTrips(t.value.trips ?? []); setCached("/api/admin/trips", { trips: t.value.trips ?? [] }); }
@@ -367,6 +370,7 @@ export default function AdminTripsPage() {
           enabled: cfg.value.config.dumpFooterEnabled ?? true,
           text: cfg.value.config.dumpFooterText ?? "",
         });
+        setDumpFbTags(cfg.value.config.dumpFbHashtags ?? DEFAULT_FB_TAGS);
       }
     }).finally(() => setLoading(false));
   }, []);
@@ -1046,8 +1050,11 @@ export default function AdminTripsPage() {
       fb.push("");
       fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
       fb.push(`👉 ${baseUrl}/d`);
-      fb.push("");
-      fb.push("#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅");
+      // v895：hashtag 由後台 Dump 設定控制（清空 = 不放）
+      if (dumpFbTags.trim()) {
+        fb.push("");
+        fb.push(dumpFbTags.trim());
+      }
       return fb.join("\n");
     }
 

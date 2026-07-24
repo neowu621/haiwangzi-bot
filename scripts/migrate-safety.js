@@ -488,6 +488,8 @@ const PATCHES = [
   // v891：Dump 結尾聯繫／資訊（預設開啟，文字留空 → 用程式預設）
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_footer_enabled BOOLEAN NOT NULL DEFAULT true`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_footer_text TEXT NOT NULL DEFAULT ''`,
+  // v895：FB 貼文版 hashtag（預設帶一組；清空 = 不放）
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dump_fb_hashtags TEXT NOT NULL DEFAULT '#東北角潛水 #828魚群風暴潛水 #子彈流鶯歌石潛水 #海王子潛水團 #水肺潛水 #潛水預約 #潛旅'`,
   // v392: 氣瓶限時折扣
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_enabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_discount INTEGER NOT NULL DEFAULT 0`,
