@@ -24,7 +24,6 @@ import {
   ClipboardCheck,
   HelpCircle,
   Newspaper,
-  Image as ImageIcon,
   ChevronRight,
   Mail,
   Ticket,
@@ -87,7 +86,6 @@ const NAV_GROUPS = [
     roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin/promo-codes", icon: Ticket, label: "🎏 節慶優惠" },
-      { href: "/admin/promotion", icon: ImageIcon, label: "🎨 業務推廣" },
       { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
     ],
   },
