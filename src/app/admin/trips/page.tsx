@@ -263,6 +263,8 @@ export default function AdminTripsPage() {
   const [tplBusy, setTplBusy] = useState(false);
   // v899：正在編輯的範本（設定後，另存按鈕變成「儲存範本變更」就地覆蓋）
   const [editingTpl, setEditingTpl] = useState<TripTemplate | null>(null);
+  // v900：範本改下拉套用；「管理」展開才顯示編輯/刪除清單（省空間）
+  const [tplManageOpen, setTplManageOpen] = useState(false);
   // v242：取消場次原因 modal
   const [cancelTarget, setCancelTarget] = useState<Trip | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -1722,24 +1724,10 @@ export default function AdminTripsPage() {
             </div>
             {/* /panel header */}
             <div className="space-y-3" style={{ padding: "16px 24px", overflowY: "auto", flex: 1, minHeight: 0 }}>
-            {/* v897：快速範本（僅新增模式）—— 選潛點範本一鍵帶入固定欄位，只剩日期/教練要填 */}
+            {/* v897/v900：快速範本（僅新增模式）—— 下拉套用省空間，「管理」展開才顯示編輯/刪除 */}
             {dialogMode === "create" && (
               <div className="rounded-xl border p-3" style={{ borderColor: "#CFE8E4", background: "linear-gradient(180deg,#f2fbfa,#ffffff)" }}>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#0E9E91" }}>
-                    ⚡ 快速範本
-                    <span className="font-normal text-[10px] text-[var(--muted-foreground)]">選一個 → 只剩填日期/教練</span>
-                  </span>
-                  {!editingTpl && (
-                    <button type="button" onClick={saveAsTemplate} disabled={tplBusy}
-                      className="rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-teal-50 disabled:opacity-50"
-                      style={{ borderColor: "#CFE8E4", color: "#0E9E91" }}>
-                      💾 另存目前表單為範本
-                    </button>
-                  )}
-                </div>
-
-                {/* v899：編輯範本中的橫幅 */}
+                {/* 編輯中橫幅 */}
                 {editingTpl ? (
                   <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2" style={{ borderColor: "#F3D98A", background: "#FFFBEF" }}>
                     <span className="text-[12px] font-bold" style={{ color: "#8a5a00" }}>
@@ -1755,30 +1743,66 @@ export default function AdminTripsPage() {
                         style={{ background: "#0E9E91" }}>💾 儲存範本變更</button>
                     </div>
                   </div>
-                ) : tripTemplates.length === 0 ? (
-                  <div className="text-[11px] text-[var(--muted-foreground)]">尚無範本。填好一場後按「💾 另存目前表單為範本」即可建立。</div>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {tripTemplates.map((t) => (
-                      <div key={t.id} className="group relative inline-flex items-stretch overflow-hidden rounded-lg border bg-white transition hover:border-teal-400" style={{ borderColor: "#D7E6E4" }}>
-                        <button type="button" onClick={() => applyTemplate(t)} className="flex items-center gap-2 py-1.5 pl-2.5 pr-2 text-left" title="套用此範本">
-                          <span className="text-base leading-none">{t.emoji || "🤿"}</span>
-                          <span>
-                            <span className="block text-[12.5px] font-bold leading-tight text-[var(--foreground)]">{t.name}</span>
-                            <span className="block text-[10px] leading-tight text-[var(--muted-foreground)]">
-                              {t.isBoat ? "🚤船潛" : "🏖岸潛"} · {t.tankCount}支 · ${t.pricing?.extraTank ?? 0}
-                            </span>
-                          </span>
-                        </button>
-                        <button type="button" onClick={() => startEditTemplate(t)} disabled={tplBusy}
-                          className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
-                          style={{ borderColor: "#EBF1F0" }} title="編輯此範本">✏️</button>
-                        <button type="button" onClick={() => deleteTemplate(t)} disabled={tplBusy}
-                          className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-                          style={{ borderColor: "#EBF1F0" }} title="刪除此範本">✕</button>
+                  <>
+                    {/* 一行：下拉套用 + 管理 + 另存 */}
+                    <div className="flex items-center gap-2">
+                      <span className="flex-none text-xs font-bold" style={{ color: "#0E9E91" }}>⚡ 快速範本</span>
+                      <select
+                        value=""
+                        onChange={(e) => { const t = tripTemplates.find((x) => x.id === e.target.value); if (t) applyTemplate(t); }}
+                        disabled={tripTemplates.length === 0}
+                        className="min-w-0 flex-1 rounded-md border bg-white px-2 py-1.5 text-xs"
+                        style={{ borderColor: "#CFE8E4" }}
+                      >
+                        <option value="">{tripTemplates.length === 0 ? "尚無範本" : "選範本套用 → 只剩填日期/教練…"}</option>
+                        {tripTemplates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.emoji} {t.name}（{t.isBoat ? "船" : "岸"}·{t.tankCount}支·${t.pricing?.extraTank ?? 0}）
+                          </option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={() => setTplManageOpen((v) => !v)}
+                        className="flex-none rounded-md border px-2 py-1.5 text-[11px] font-medium hover:bg-teal-50"
+                        style={{ borderColor: "#CFE8E4", color: "#0E9E91" }} title="編輯 / 刪除 / 新增範本">
+                        ⚙️ 管理{tplManageOpen ? " ▲" : " ▼"}
+                      </button>
+                    </div>
+
+                    {/* 管理展開：編輯/刪除清單 + 另存 */}
+                    {tplManageOpen && (
+                      <div className="mt-2 border-t pt-2" style={{ borderColor: "#E4EFED" }}>
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-[10.5px] text-[var(--muted-foreground)]">✏️ 編輯 · ✕ 刪除</span>
+                          <button type="button" onClick={saveAsTemplate} disabled={tplBusy}
+                            className="rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-teal-50 disabled:opacity-50"
+                            style={{ borderColor: "#CFE8E4", color: "#0E9E91" }}>
+                            💾 另存目前表單為範本
+                          </button>
+                        </div>
+                        {tripTemplates.length === 0 ? (
+                          <div className="text-[11px] text-[var(--muted-foreground)]">尚無範本。填好一場後按「💾 另存目前表單為範本」即可建立。</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {tripTemplates.map((t) => (
+                              <div key={t.id} className="inline-flex items-stretch overflow-hidden rounded-lg border bg-white" style={{ borderColor: "#D7E6E4" }}>
+                                <span className="flex items-center gap-1.5 py-1.5 pl-2.5 pr-2">
+                                  <span className="text-sm leading-none">{t.emoji || "🤿"}</span>
+                                  <span className="text-[12px] font-bold leading-tight text-[var(--foreground)]">{t.name}</span>
+                                </span>
+                                <button type="button" onClick={() => startEditTemplate(t)} disabled={tplBusy}
+                                  className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
+                                  style={{ borderColor: "#EBF1F0" }} title="編輯此範本">✏️</button>
+                                <button type="button" onClick={() => deleteTemplate(t)} disabled={tplBusy}
+                                  className="border-l px-1.5 text-[11px] text-[var(--muted-foreground)] hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                  style={{ borderColor: "#EBF1F0" }} title="刪除此範本">✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
