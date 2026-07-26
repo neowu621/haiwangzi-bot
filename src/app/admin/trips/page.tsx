@@ -1816,9 +1816,10 @@ export default function AdminTripsPage() {
               <div className="col-span-5">
                 <Label className="mb-1 block text-xs">日期</Label>
                 {(() => {
-                  // v904：編輯「已過 或 已有訂單」的場次時，鎖定日期不可改（避免舊訂單被帶到新日期）
+                  // v904：編輯「日期已過」的場次時鎖定日期不可改（避免舊訂單被帶到新日期）。
+                  //   未過期(含被誤改到未來的)仍可改，才能把誤改的場次還原回正確日期。
                   const et = dialogMode === "edit" && editingId ? trips.find((t) => t.id === editingId) : null;
-                  const locked = !!et && (et.date.slice(0, 10) < taipeiToday() || (et.booked ?? 0) > 0);
+                  const locked = !!et && et.date.slice(0, 10) < taipeiToday();
                   return (
                     <>
                       <Input
@@ -1836,7 +1837,7 @@ export default function AdminTripsPage() {
                       />
                       {locked && (
                         <div className="mt-1 text-[10px] leading-relaxed text-rose-600">
-                          🔒 日期已鎖定（{(et!.booked ?? 0) > 0 ? "此場次已有訂單" : "此場次日期已過"}）。換天請用「複製」開新場次。
+                          🔒 日期已鎖定（此場次日期已過）。換天請用「複製」開新場次。
                         </div>
                       )}
                     </>
