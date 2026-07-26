@@ -236,6 +236,18 @@ const PATCHES = [
   `CREATE INDEX IF NOT EXISTS page_views_user_idx ON page_views(user_id, viewed_at DESC)`,
   `CREATE INDEX IF NOT EXISTS page_views_ref_idx ON page_views(ref_type, ref_id, viewed_at DESC)`,
 
+  // v903：客服引導問題樹事件
+  `CREATE TABLE IF NOT EXISTS cs_tree_events (
+     id TEXT PRIMARY KEY,
+     user_id VARCHAR(64),
+     category VARCHAR(40) NOT NULL,
+     question_key VARCHAR(60),
+     action VARCHAR(20) NOT NULL,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+   )`,
+  `CREATE INDEX IF NOT EXISTS cs_tree_events_created_idx ON cs_tree_events(created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS cs_tree_events_action_idx ON cs_tree_events(action, created_at DESC)`,
+
   // ── code 欄位（先 ADD，後 ALTER TYPE 至 VARCHAR(12)）─────────────────
   // 注意：必須先 ADD COLUMN IF NOT EXISTS，否則 ALTER TYPE 在欄位不存在時會靜默失敗
   `ALTER TABLE diving_trips ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,

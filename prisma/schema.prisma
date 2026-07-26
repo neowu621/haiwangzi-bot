@@ -963,6 +963,20 @@ model PageView {
   @@map("page_views")
 }
 
+// v903：站內客服「引導問題樹」事件（統計客戶都問什麼、自助解決率）
+model CsTreeEvent {
+  id          String   @id @default(cuid())
+  userId      String?  @map("user_id") @db.VarChar(64)
+  category    String   @db.VarChar(40)
+  questionKey String?  @map("question_key") @db.VarChar(60)
+  action      String   @db.VarChar(20) // category | answer | resolved | escalated
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("cs_tree_events")
+}
+
 // ─────────────────────────────────────────────────────────────
 // v521：客服信箱 Console（haiwangzi-email-console bundle）
 //   service@haiwangzi.xyz 對外 · Zeabur Email 寄信 · Inbound webhook 收信

@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { C } from "@/components/liff/mobileShared";
 import { LiffLoading } from "@/components/shell/LiffLoading";
+import { CsTree } from "@/components/liff/CsTree";
 
 interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean }
 interface Convo { who: "me" | "cs"; body: string; createdAt: string }
@@ -16,6 +17,15 @@ export default function LiffMessagesPage() {
   const [convo, setConvo] = useState<Convo[]>([]);
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [treeOpen, setTreeOpen] = useState(false);
+
+  // v903：問題樹事件打點（best-effort，不阻塞）
+  const logTree = useCallback((action: "category" | "answer" | "resolved" | "escalated", category: string, questionKey?: string) => {
+    liff.fetchWithAuth("/api/cs-tree/event", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, questionKey, action }),
+    }).catch(() => {});
+  }, [liff]);
 
   const loadConvo = useCallback(() => {
     liff.fetchWithAuth<{ messages?: Convo[] }>("/api/me/contact")
@@ -67,10 +77,17 @@ export default function LiffMessagesPage() {
 
         {/* 下半:發送訊息(客服對話) */}
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", borderTop: `1px solid ${C.line}`, background: C.card, padding: "10px 14px 0" }}>
-          <div style={{ flex: "none", fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 6 }}>發送訊息給客服</div>
+          <div style={{ flex: "none", display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>發送訊息給客服</span>
+            {/* v903：引導問題樹 — 先自助、擋掉 90% 常見問題 */}
+            <button onClick={() => setTreeOpen(true)}
+              style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, background: "#e7f7f4", color: "#0e4c5a", border: "1px solid #bfe9e1", borderRadius: 999, padding: "5px 11px", fontSize: 12, fontWeight: 700 }}>
+              🙋 常見問題快速解答
+            </button>
+          </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", gap: 6 }}>
             {convo.length === 0
-              ? <div style={{ color: C.mute, fontSize: 12.5, padding: "10px 0", lineHeight: 1.6 }}>有問題就傳訊息給我們，客服會在這裡回覆你。</div>
+              ? <div style={{ color: C.mute, fontSize: 12.5, padding: "10px 0", lineHeight: 1.6 }}>有問題可先點右上「🙋 常見問題快速解答」自助查詢；找不到答案再傳訊息，客服會在這裡回覆你。</div>
               : convo.map((m, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start" }}>
                   <div style={{ maxWidth: "80%", padding: "6px 10px", borderRadius: 10, fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap", background: m.who === "me" ? C.navy : C.page, color: m.who === "me" ? "#fff" : C.ink }}>{m.who === "cs" ? `客服：${m.body}` : m.body}</div>
@@ -83,6 +100,15 @@ export default function LiffMessagesPage() {
           </div>
         </div>
       </div>
+
+      {/* v903：引導問題樹 overlay */}
+      {treeOpen && (
+        <CsTree
+          onClose={() => setTreeOpen(false)}
+          onEscalate={(prefill) => { if (prefill) setMsg(prefill); }}
+          log={logTree}
+        />
+      )}
     </LiffShell>
   );
 }

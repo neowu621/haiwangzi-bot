@@ -48,6 +48,7 @@ const NAV_GROUPS = [
       { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
       { href: "/admin/reports", icon: BarChart2, label: "報表" },
       { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
+      { href: "/admin/cs-tree-stats", icon: BarChart2, label: "🐬 客服引導分析" },
       { href: "/admin/guide", icon: HelpCircle, label: "操作說明" },
     ],
   },
