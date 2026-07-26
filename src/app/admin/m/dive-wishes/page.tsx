@@ -131,10 +131,10 @@ export default function MobileDiveWishesPage() {
     setReplying(true);
     setReplyErr(null);
     try {
-      // PATCH /api/admin/dive-wishes/[id] → { text, channels }（預設 line 通知客戶）
+      // v908：站內一律發送(後端強制)，手機版預設不加推 LINE/Email → 以站內為主、省額度
       await adminFetch(`/api/admin/dive-wishes/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ text, channels: ["line"] }),
+        body: JSON.stringify({ text, channels: [] }),
       });
       closeReply();
       load(); // 重抓（狀態會變成 discussing）

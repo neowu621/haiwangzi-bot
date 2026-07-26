@@ -145,7 +145,8 @@ export default function BroadcastPage() {
   }
   const sel = (a: Audience) => selected.includes(a);
   // v889：管道多選（至少留一個）。ch() 判斷是否勾選某通道
-  const [channels, setChannels] = useState<Channel[]>(["line"]);
+  // v908：預設以「站內」為主（不佔 LINE 額度，一律送達）
+  const [channels, setChannels] = useState<Channel[]>(["inapp"]);
   const ch = (c: Channel) => channels.includes(c);
   function toggleChannel(c: Channel) {
     setChannels((prev) => {

@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
   userId: z.string(),
-  channel: z.enum(["line", "email", "both"]),
+  // v908：加站內。inapp=只站內；all=三通道。both 保留(line+email，向後相容)
+  channel: z.enum(["line", "email", "both", "inapp", "all"]),
   lineText: z.string().optional(),
   emailSubject: z.string().optional(),
   emailBody: z.string().optional(),
@@ -43,12 +44,29 @@ export async function POST(req: NextRequest) {
   const result = {
     lineSent: false,
     emailSent: false,
+    inappSent: false,
     lineError: null as string | null,
     emailError: null as string | null,
+    inappError: null as string | null,
   };
 
+  // ── 站內通知（v908：一律可選，不看 opt-in）──────────────────────────────────
+  if (data.channel === "inapp" || data.channel === "all") {
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: user.lineUserId, templateKey: "admin_notify", title: "通知",
+          body: data.lineText ?? data.emailBody ?? "(無訊息)", linkUrl: "/liff/messages", icon: "🔔",
+        },
+      });
+      result.inappSent = true;
+    } catch (e) {
+      result.inappError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   // ── LINE 推播 ───────────────────────────────────────────────────────────────
-  if (data.channel === "line" || data.channel === "both") {
+  if (data.channel === "line" || data.channel === "both" || data.channel === "all") {
     if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
       result.lineError = "LINE_CHANNEL_ACCESS_TOKEN 未設定";
     } else {
@@ -67,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Email ───────────────────────────────────────────────────────────────────
-  if (data.channel === "email" || data.channel === "both") {
+  if (data.channel === "email" || data.channel === "both" || data.channel === "all") {
     if (!emailConfigured()) {
       result.emailError = "Email env 未設定";
     } else if (!user.email) {

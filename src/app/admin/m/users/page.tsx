@@ -106,11 +106,12 @@ export default function MobileUsersPage() {
     setSending(true);
     setSendMsg(null);
     try {
+      // v908：手機版預設以站內為主（不佔 LINE 額度，一律送達）
       await adminFetch(`/api/admin/contact-customer`, {
         method: "POST",
-        body: JSON.stringify({ userId: openUser, message: composeText.trim(), channels: ["line"] }),
+        body: JSON.stringify({ userId: openUser, message: composeText.trim(), channels: ["inapp"] }),
       });
-      setSendMsg("✓ 已透過 LINE 傳送給會員");
+      setSendMsg("✓ 已透過站內通知傳送給會員");
       setComposeText("");
       setComposeOpen(false);
     } catch (e) {

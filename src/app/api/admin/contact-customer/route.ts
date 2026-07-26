@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   userId: z.string().min(1),
   message: z.string().min(1).max(2000),
-  channels: z.array(z.enum(["line", "email"])).min(1),
+  channels: z.array(z.enum(["line", "email", "inapp"])).min(1), // v908：加站內
   emailSubject: z.string().max(200).optional(),
 });
 
@@ -97,6 +97,21 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         results.email = { ok: false, error: e instanceof Error ? e.message : String(e) };
       }
+    }
+  }
+
+  // 3. 站內通知（v908：一律可選，且不看 opt-in）
+  if (parsed.data.channels.includes("inapp")) {
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: target.lineUserId, templateKey: "admin_contact", title: "客服訊息",
+          body: message, linkUrl: "/liff/messages", buttonLabel: "查看", icon: "💬",
+        },
+      });
+      results.inapp = { ok: true };
+    } catch (e) {
+      results.inapp = { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
 

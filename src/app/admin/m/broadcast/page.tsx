@@ -45,7 +45,7 @@ const CHANNEL_MAP: Record<ChannelKey, Array<"line" | "email" | "inapp">> = {
 export default function MobileBroadcastPage() {
   const { ready } = useAdminAuth();
   const [audience, setAudience] = useState<Audience>("all");
-  const [channel, setChannel] = useState<ChannelKey>("line");
+  const [channel, setChannel] = useState<ChannelKey>("inapp"); // v908：預設站內
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);

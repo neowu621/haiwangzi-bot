@@ -180,7 +180,8 @@ export default function AdminUsersPage() {
 
   // ── 傳送訊息 popup ──────────────────────────────────────────────────────────
   const [notifyUser, setNotifyUser] = useState<AdminUser | null>(null);
-  const [notifyChannel, setNotifyChannel] = useState<"line" | "email" | "both">("line");
+  // v908：加站內，預設站內（引導為主）
+  const [notifyChannel, setNotifyChannel] = useState<"line" | "email" | "both" | "inapp" | "all">("inapp");
   const [notifyLineText, setNotifyLineText] = useState("");
   const [notifyEmailSubject, setNotifyEmailSubject] = useState("");
   const [notifyEmailBody, setNotifyEmailBody] = useState("");
@@ -508,10 +509,11 @@ export default function AdminUsersPage() {
 
   async function sendNotify() {
     if (!notifyUser) return;
-    const needLine = notifyChannel === "line" || notifyChannel === "both";
-    const needEmail = notifyChannel === "email" || notifyChannel === "both";
-    if (needLine && !notifyLineText.trim()) {
-      alert("請填寫 LINE 訊息");
+    // v908：站內/LINE 共用「訊息內容」欄；全部(all)含站內+LINE+Email
+    const needText = ["line", "both", "inapp", "all"].includes(notifyChannel);
+    const needEmail = ["email", "both", "all"].includes(notifyChannel);
+    if (needText && !notifyLineText.trim()) {
+      alert("請填寫訊息內容");
       return;
     }
     if (needEmail && !notifyEmailBody.trim()) {
@@ -523,8 +525,10 @@ export default function AdminUsersPage() {
       const r = await adminFetch<{
         lineSent: boolean;
         emailSent: boolean;
+        inappSent: boolean;
         lineError: string | null;
         emailError: string | null;
+        inappError: string | null;
       }>("/api/admin/notify", {
         method: "POST",
         body: JSON.stringify({
@@ -536,12 +540,14 @@ export default function AdminUsersPage() {
         }),
       });
       const msgs: string[] = [];
+      if (r.inappSent) msgs.push("站內通知成功");
       if (r.lineSent) msgs.push("LINE 推播成功");
       if (r.emailSent) msgs.push("Email 發送成功");
+      if (r.inappError) msgs.push(`站內失敗：${r.inappError}`);
       if (r.lineError) msgs.push(`LINE 失敗：${r.lineError}`);
       if (r.emailError) msgs.push(`Email 失敗：${r.emailError}`);
       alert(msgs.join("\n") || "發送完成");
-      if (r.lineSent || r.emailSent) setNotifyUser(null);
+      if (r.inappSent || r.lineSent || r.emailSent) setNotifyUser(null);
     } catch (e) {
       alert("發送失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -1686,7 +1692,7 @@ export default function AdminUsersPage() {
               <div>
                 <Label className="text-xs mb-1.5 block">傳送管道</Label>
                 <div className="flex gap-2">
-                  {(["line", "email", "both"] as const).map((ch) => (
+                  {(["inapp", "line", "email", "all"] as const).map((ch) => (
                     <button
                       key={ch}
                       type="button"
@@ -1698,16 +1704,17 @@ export default function AdminUsersPage() {
                           : "border-[var(--border)] hover:border-[var(--color-ocean-deep)]",
                       )}
                     >
-                      {ch === "line" ? "LINE" : ch === "email" ? "Email" : "兩者"}
+                      {ch === "inapp" ? "🔔 站內" : ch === "line" ? "LINE" : ch === "email" ? "Email" : "全部"}
                     </button>
                   ))}
                 </div>
+                <div className="mt-1 text-[10px] text-[var(--muted-foreground)]">站內一律送達、不佔 LINE 額度，建議優先。</div>
               </div>
 
-              {/* LINE 文字 */}
-              {(notifyChannel === "line" || notifyChannel === "both") && (
+              {/* 訊息內容（站內／LINE 共用） */}
+              {(["inapp", "line", "both", "all"].includes(notifyChannel)) && (
                 <div>
-                  <Label className="text-xs mb-1 block">LINE 訊息</Label>
+                  <Label className="text-xs mb-1 block">{notifyChannel === "inapp" ? "站內訊息" : "訊息內容（站內／LINE）"}</Label>
                   <textarea
                     className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm"
                     rows={4}
@@ -1719,7 +1726,7 @@ export default function AdminUsersPage() {
               )}
 
               {/* Email 欄位 */}
-              {(notifyChannel === "email" || notifyChannel === "both") && (
+              {(["email", "both", "all"].includes(notifyChannel)) && (
                 <div className="space-y-2">
                   <div>
                     <Label className="text-xs mb-1 block">Email 主旨</Label>

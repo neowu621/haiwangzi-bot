@@ -212,7 +212,9 @@ export default function AdminBookingsPage() {
   const [customerActionFor, setCustomerActionFor] = useState<AdminBooking | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [contactEmailSubject, setContactEmailSubject] = useState("");
-  const [contactChannelLine, setContactChannelLine] = useState(true);
+  // v908：加站內為主，預設站內開、LINE/Email 選配
+  const [contactChannelInapp, setContactChannelInapp] = useState(true);
+  const [contactChannelLine, setContactChannelLine] = useState(false);
   const [contactChannelEmail, setContactChannelEmail] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactResult, setContactResult] = useState<string | null>(null);
@@ -2270,7 +2272,15 @@ export default function AdminBookingsPage() {
               {/* 通道勾選 */}
               <div>
                 <Label className="text-xs">透過哪個通道發送？</Label>
-                <div className="mt-1 flex gap-3 text-sm">
+                <div className="mt-1 flex flex-wrap gap-3 text-sm">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={contactChannelInapp}
+                      onChange={(e) => setContactChannelInapp(e.target.checked)}
+                    />
+                    <span>🔔 站內（建議）</span>
+                  </label>
                   <label className="flex items-center gap-1.5">
                     <input
                       type="checkbox"
@@ -2333,6 +2343,7 @@ export default function AdminBookingsPage() {
                   onClick={async () => {
                     if (!customerActionFor) return;
                     const channels: string[] = [];
+                    if (contactChannelInapp) channels.push("inapp");
                     if (contactChannelLine) channels.push("line");
                     if (contactChannelEmail && customerActionFor.user.email) channels.push("email");
                     if (channels.length === 0) return;
