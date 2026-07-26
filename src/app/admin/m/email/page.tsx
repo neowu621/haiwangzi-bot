@@ -253,6 +253,14 @@ export default function MobileEmailPage() {
               >
                 {detail.subject}
               </div>
+              {/* v902：LINE 對話 → 到 LINE 官方帳號聊天室回覆（不佔 API 推送流量/額度）*/}
+              {isLine && (
+                <a href="https://chat.line.biz/Uc75347a020f9d4834c0c19319995f9d8" target="_blank" rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-white"
+                  style={{ background: "#06C755" }}>
+                  💬 到 LINE 聊天室回覆 ↗
+                </a>
+              )}
             </div>
           )}
 

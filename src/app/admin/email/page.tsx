@@ -397,6 +397,14 @@ export default function AdminEmailPage() {
                     </div>
                   </div>
                   <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+                    {/* v902：LINE 對話 → 提供「到 LINE 官方帳號聊天室回覆」連結（用 LINE 原生後台回，不佔 API 推送流量/額度）*/}
+                    {detail.channel === "line" && (
+                      <a href="https://chat.line.biz/Uc75347a020f9d4834c0c19319995f9d8" target="_blank" rel="noopener noreferrer"
+                        title="在 LINE 官方帳號聊天室直接回覆（不佔 API 推送流量/額度）"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#06C755", color: "#fff", fontSize: 12.5, fontWeight: 700, padding: "6px 11px", borderRadius: 8, textDecoration: "none", whiteSpace: "nowrap" }}>
+                        💬 LINE 聊天室回覆 ↗
+                      </a>
+                    )}
                     <select value={detail.status} onChange={(e) => changeStatus(e.target.value as Status)} style={statusSel}>
                       <option value="WAITING">待回覆</option>
                       <option value="PROCESSING">處理中</option>
