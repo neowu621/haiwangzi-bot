@@ -39,21 +39,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status: "QUEUED",
       },
     });
+    // v907：一律發「站內通知」（以站內為主）——即使 LINE 推送失敗(429)也送達，客戶在通知中心看得到。
+    let inappOk = false;
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: thread.lineUserId, templateKey: "cs_reply", title: "客服回覆",
+          body: lineText, linkUrl: "/liff/messages", buttonLabel: "回覆客服", icon: "💬",
+        },
+      });
+      inappOk = true;
+    } catch (e) {
+      console.error("[cs line reply inapp]", e);
+    }
+    // LINE 推送為選配：失敗（如 429 額度）不影響站內送達
+    let lineNote = "";
     try {
       const client = getLineClient();
       await client.pushMessage({ to: thread.lineUserId, messages: [{ type: "text", text: lineText }] });
-      await prisma.emailMessage.update({ where: { id: pending.id }, data: { status: "SENT" } });
-      await prisma.emailThread.update({ where: { id }, data: { status: "PROCESSING", lastMessageAt: new Date() } });
-      return NextResponse.json({ ok: true, messageId: pending.id });
     } catch (e) {
-      await prisma.emailMessage.update({ where: { id: pending.id }, data: { status: "FAILED" } });
       const msg = e instanceof Error ? e.message : String(e);
-      // v901：429 通常是「LINE 官方帳號當月訊息額度用完」或短時間送太多 → 給看得懂的說明
-      const friendly = /429|too many requests/i.test(msg)
-        ? "LINE 回覆失敗（429）：官方帳號『當月免費訊息額度可能已用完』，或短時間送太多。請到 LINE Official Account Manager 查看訊息用量——若是額度，需等月初重置或升級方案；短暫過量則稍等幾秒重試。此筆未送出，可暫改用 Email／電話回覆客戶。"
-        : `LINE 推送失敗：${msg}`;
-      return NextResponse.json({ error: friendly }, { status: 502 });
+      lineNote = /429|too many requests/i.test(msg)
+        ? "（LINE 額度不足/送太快，已改用站內通知送達）"
+        : "（LINE 推送失敗，已改用站內通知送達）";
     }
+    await prisma.emailMessage.update({ where: { id: pending.id }, data: { status: inappOk ? "SENT" : "FAILED" } });
+    await prisma.emailThread.update({ where: { id }, data: { status: "PROCESSING", lastMessageAt: new Date() } });
+    if (!inappOk) {
+      return NextResponse.json({ error: "站內通知寫入失敗，請稍後再試。" }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, messageId: pending.id, note: lineNote });
   }
 
   // v596：web 對話(桌面 /pclogin 會員)→ 回覆寫成該會員的站內通知(member 在通知頁看得到)

@@ -45,8 +45,8 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
   const [sending, setSending] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  // v321：通道選擇
-  const [useLine, setUseLine] = useState(true);
+  // v321/v907：站內一律發送(主要)；LINE/Email 為選配，預設關（省 LINE 額度）
+  const [useLine, setUseLine] = useState(false);
   const [useEmail, setUseEmail] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
 
@@ -65,10 +65,7 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
     const channels: string[] = [];
     if (useLine) channels.push("line");
     if (useEmail && wish.user.email) channels.push("email");
-    if (channels.length === 0) {
-      setMsg("請至少勾選一個通道");
-      return;
-    }
+    // v907：站內一律發送，不用勾選也能送出
     setSending(true);
     try {
       const r = await adminFetch<{ ok: boolean; results: Record<string, { ok: boolean; error?: string }> }>(
@@ -83,6 +80,7 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
         },
       );
       const parts: string[] = [];
+      if (r.results?.inapp) parts.push(`站內：${r.results.inapp.ok ? "✓" : "❌ " + r.results.inapp.error}`);
       if (r.results?.line) parts.push(`LINE：${r.results.line.ok ? "✓" : "❌ " + r.results.line.error}`);
       if (r.results?.email) parts.push(`Email：${r.results.email.ok ? "✓" : "❌ " + r.results.email.error}`);
       const allOk = Object.values(r.results ?? {}).every((x) => x.ok);
@@ -212,8 +210,12 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="font-bold">回覆客戶</div>
-              {/* v321：通道選擇 */}
-              <div className="flex items-center gap-4 text-xs">
+              {/* v907：站內為主（一律發送）；LINE/Email 選配 */}
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
+                  🔔 站內通知（一律發送）
+                </span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">加推：</span>
                 <label className="inline-flex items-center gap-1">
                   <input type="checkbox" checked={useLine} onChange={(e) => setUseLine(e.target.checked)} />
                   📱 LINE
@@ -241,12 +243,12 @@ export default function AdminWishDetailPage({ params }: { params: Promise<{ id: 
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value.slice(0, 2000))}
                 rows={4}
-                placeholder={useLine && useEmail ? "輸入想跟客戶說的話，按送出同步推 LINE + Email..." : useEmail ? "輸入想跟客戶說的話，按送出寄 Email..." : "輸入想跟客戶說的話，按送出推 LINE..."}
+                placeholder="輸入想跟客戶說的話，按送出發站內通知給客戶…"
                 className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
               <div className="text-[10px] text-right text-[var(--muted-foreground)]">{replyText.length} / 2000</div>
               <div className="flex flex-wrap gap-2">
-                <Button disabled={!replyText.trim() || sending || (!useLine && !useEmail)} onClick={sendReply}>{sending ? "送出中..." : "💬 送出回覆"}</Button>
+                <Button disabled={!replyText.trim() || sending} onClick={sendReply}>{sending ? "送出中..." : "💬 送出回覆"}</Button>
                 <Button variant="outline" onClick={() => setConvertOpen(true)} style={{ borderColor: "var(--color-phosphor)", color: "#047857" }}>
                   ✓ 確認開場次
                 </Button>

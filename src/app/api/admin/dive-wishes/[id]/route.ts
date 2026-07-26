@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 const Body = z.object({
   text: z.string().min(1).max(2000),
   // v321：通道選擇（預設 line 維持向後相容）
-  channels: z.array(z.enum(["line", "email"])).min(1).optional(),
+  channels: z.array(z.enum(["line", "email"])).optional(), // v907：站內一律發送，line/email 為選配
   emailSubject: z.string().max(200).optional(),
 });
 
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (!parsed.success) {
     return NextResponse.json({ error: "validation_failed", issues: parsed.error.issues }, { status: 400 });
   }
-  const channels = parsed.data.channels ?? ["line"]; // v321：預設 line（向後相容）
+  const channels = parsed.data.channels ?? []; // v907：站內一律發送，line/email 由前端勾選
   const newMsg: Message = {
     from: "boss",
     text: parsed.data.text,
@@ -86,6 +86,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const results: Record<string, { ok: boolean; error?: string }> = {};
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "東北角海王子潛水";
   const previewText = parsed.data.text.slice(0, 200) + (parsed.data.text.length > 200 ? "..." : "");
+
+  // v907：一律發「站內通知」（以站內為主，不佔 LINE 推送額度；客戶在通知中心 / 願望單看得到）
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: wish.user.lineUserId,
+        templateKey: "wish_reply",
+        title: "📝 願望單回覆",
+        body: parsed.data.text,
+        linkUrl: "/liff/booking?tab=wishes",
+        buttonLabel: "查看願望單",
+        icon: "📝",
+      },
+    });
+    results.inapp = { ok: true };
+  } catch (e) {
+    results.inapp = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 
   if (channels.includes("line")) {
     if (!wish.user.notifyByLine) {
