@@ -47,7 +47,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ ok: true, messageId: pending.id });
     } catch (e) {
       await prisma.emailMessage.update({ where: { id: pending.id }, data: { status: "FAILED" } });
-      return NextResponse.json({ error: `LINE 推送失敗：${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
+      const msg = e instanceof Error ? e.message : String(e);
+      // v901：429 通常是「LINE 官方帳號當月訊息額度用完」或短時間送太多 → 給看得懂的說明
+      const friendly = /429|too many requests/i.test(msg)
+        ? "LINE 回覆失敗（429）：官方帳號『當月免費訊息額度可能已用完』，或短時間送太多。請到 LINE Official Account Manager 查看訊息用量——若是額度，需等月初重置或升級方案；短暫過量則稍等幾秒重試。此筆未送出，可暫改用 Email／電話回覆客戶。"
+        : `LINE 推送失敗：${msg}`;
+      return NextResponse.json({ error: friendly }, { status: 502 });
     }
   }
 
