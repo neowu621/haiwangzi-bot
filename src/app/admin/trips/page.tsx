@@ -1412,10 +1412,12 @@ export default function AdminTripsPage() {
                     const [effStatus, isAuto] = effectiveTripStatus(trip);
                     const isExpanded = expandedTripId === trip.id;
                     const tripBks = tripBookings[trip.id];
+                    // v905：過期(含當天)場次不可修改 → 只能查看(展開)與複製
+                    const isExpired = trip.date.slice(0, 10) <= taipeiToday();
                     return (
                       <React.Fragment key={trip.id}>
                       <tr
-                        onClick={() => openEdit(trip)}
+                        onClick={() => (isExpired ? toggleExpand(trip.id) : openEdit(trip))}
                         className={cn(
                           "border-t cursor-pointer transition-colors hover:bg-sky-50",
                           trip.status === "cancelled" && "opacity-50",
@@ -1523,10 +1525,17 @@ export default function AdminTripsPage() {
                         {/* 操作 — 縮小成 28px icon-only 按鈕 */}
                         <td className="px-3 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-0.5">
-                            <button onClick={() => openEdit(trip)} title="編輯"
-                              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 transition-colors">
-                              <Edit3 className="h-3.5 w-3.5" />
-                            </button>
+                            {isExpired ? (
+                              <button onClick={() => toggleExpand(trip.id)} title="已過期場次僅供查看（不可修改）"
+                                className="rounded p-1.5 text-slate-400 cursor-default">
+                                <Search className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <button onClick={() => openEdit(trip)} title="編輯"
+                                className="rounded p-1.5 text-slate-600 hover:bg-slate-100 transition-colors">
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button onClick={() => openDuplicate(trip)}
                               title="複製此場次 → 新增（日期自動 +1 天）"
                               className="rounded p-1.5 text-sky-600 hover:bg-sky-50 transition-colors">

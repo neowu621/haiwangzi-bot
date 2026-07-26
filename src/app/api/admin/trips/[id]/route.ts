@@ -72,9 +72,9 @@ export async function PATCH(
       const curDay = midday(existing.date);
       const newDay = midday(data.date);
       const changingDate = newDay.getTime() !== curDay.getTime();
-      // 只鎖「原日期已過」的場次（已跑完、可能有已完成訂單）→ 不可再改日期。
-      //   未過期的場次(含被誤改到未來的)仍可改，才能把誤改的場次還原回正確日期。
-      if (changingDate && curDay < today) {
+      // 只鎖「原日期已過（含當天）」的場次（已跑完/進行中、可能有已完成訂單）→ 不可再改日期。
+      //   未來的場次(含被誤改到未來的)仍可改，才能把誤改的場次還原回正確日期。
+      if (changingDate && curDay <= today) {
         const ymd = existing.date.toISOString().slice(0, 10);
         return NextResponse.json(
           { error: "trip_past_date_locked", message: `此場次原日期（${ymd}）已過、可能已有完成的訂單紀錄，日期已鎖定不可更改。若要開新的一天，請用「複製」建立新場次。` },
