@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 const Body = z.object({
   userId: z.string().min(1), // lineUserId
   message: z.string().min(1).max(1000),
+  channels: z.array(z.enum(["line", "inapp"])).optional(), // v909：加站內，預設站內
 });
 
 export async function POST(req: NextRequest) {
@@ -37,40 +38,52 @@ export async function POST(req: NextRequest) {
   if (!target) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
-  if (!target.notifyByLine) {
-    return NextResponse.json(
-      { error: "客戶關閉了 LINE 通知，無法私訊" },
-      { status: 400 },
-    );
+
+  const channels = parsed.data.channels ?? ["inapp"]; // v909：預設站內
+  const results: Record<string, { ok: boolean; error?: string }> = {};
+
+  // 站內（一律送達，不看 opt-in）
+  if (channels.includes("inapp")) {
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: target.lineUserId, templateKey: "admin_push", title: "訊息",
+          body: parsed.data.message, linkUrl: "/liff/messages", icon: "💬",
+        },
+      });
+      results.inapp = { ok: true };
+    } catch (e) {
+      results.inapp = { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
   }
 
-  const client = getLineClient();
-  if (!client) {
-    return NextResponse.json(
-      { error: "LINE Channel access token 未設定" },
-      { status: 500 },
-    );
+  // LINE（選配，需客戶開啟 LINE 通知）
+  if (channels.includes("line")) {
+    if (!target.notifyByLine) {
+      results.line = { ok: false, error: "客戶關閉了 LINE 通知" };
+    } else {
+      const client = getLineClient();
+      if (!client) {
+        results.line = { ok: false, error: "LINE Channel access token 未設定" };
+      } else {
+        try {
+          await client.pushMessage({ to: target.lineUserId, messages: [{ type: "text", text: parsed.data.message }] });
+          results.line = { ok: true };
+        } catch (e) {
+          results.line = { ok: false, error: e instanceof Error ? e.message : String(e) };
+        }
+      }
+    }
   }
 
-  try {
-    await client.pushMessage({
-      to: target.lineUserId,
-      messages: [{ type: "text", text: parsed.data.message }],
-    });
-    await logAudit({
-      actorId: auth.user.lineUserId,
-      action: "admin.push_line",
-      targetType: "user",
-      targetId: target.lineUserId,
-      targetLabel: target.realName ?? target.displayName,
-      metadata: { messagePreview: parsed.data.message.slice(0, 100) },
-    });
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error("[POST /admin/push-line]", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
-      { status: 500 },
-    );
-  }
+  await logAudit({
+    actorId: auth.user.lineUserId,
+    action: "admin.push_line",
+    targetType: "user",
+    targetId: target.lineUserId,
+    targetLabel: target.realName ?? target.displayName,
+    metadata: { channels, messagePreview: parsed.data.message.slice(0, 100), results },
+  });
+  const allOk = Object.values(results).every((r) => r.ok);
+  return NextResponse.json({ ok: allOk, results }, { status: allOk ? 200 : 207 });
 }
