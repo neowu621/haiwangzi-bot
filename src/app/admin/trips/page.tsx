@@ -596,6 +596,10 @@ export default function AdminTripsPage() {
       let friendly = msg;
       if (msg.includes("trip_date_passed")) {
         friendly = "場次日期已過，無法設為「開放」。請把『場次狀態』改為『結束』或『取消』後再儲存。";
+      } else if (msg.includes("trip_past_date_locked")) {
+        friendly = "此場次日期已過（可能已有完成的訂單），日期已鎖定不可更改。若要開新的一天，請用『複製』建立新場次。";
+      } else if (msg.includes("trip_has_bookings_date_locked")) {
+        friendly = "此場次已有訂單，不可更改日期（會把舊訂單一起帶到新日期）。若要換到別天，請用『複製』開新場次，或先取消訂單。";
       }
       alert("儲存失敗：" + friendly);
     } finally {
@@ -1811,19 +1815,33 @@ export default function AdminTripsPage() {
             <div className="grid grid-cols-12 gap-3">
               <div className="col-span-5">
                 <Label className="mb-1 block text-xs">日期</Label>
-                <Input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => {
-                    const newDate = e.target.value;
-                    // v181：選到過去日期時，若狀態還是「開放」自動切為「結束」
-                    // 避免 API 擋下「trip_date_passed」錯誤
-                    const isPast = newDate < taipeiToday();
-                    const newStatus =
-                      isPast && form.status === "open" ? "completed" : form.status;
-                    setForm({ ...form, date: newDate, status: newStatus });
-                  }}
-                />
+                {(() => {
+                  // v904：編輯「已過 或 已有訂單」的場次時，鎖定日期不可改（避免舊訂單被帶到新日期）
+                  const et = dialogMode === "edit" && editingId ? trips.find((t) => t.id === editingId) : null;
+                  const locked = !!et && (et.date.slice(0, 10) < taipeiToday() || (et.booked ?? 0) > 0);
+                  return (
+                    <>
+                      <Input
+                        type="date"
+                        value={form.date}
+                        disabled={locked}
+                        style={locked ? { background: "#f3f4f6", cursor: "not-allowed" } : undefined}
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          // v181：選到過去日期時，若狀態還是「開放」自動切為「結束」
+                          const isPast = newDate < taipeiToday();
+                          const newStatus = isPast && form.status === "open" ? "completed" : form.status;
+                          setForm({ ...form, date: newDate, status: newStatus });
+                        }}
+                      />
+                      {locked && (
+                        <div className="mt-1 text-[10px] leading-relaxed text-rose-600">
+                          🔒 日期已鎖定（{(et!.booked ?? 0) > 0 ? "此場次已有訂單" : "此場次日期已過"}）。換天請用「複製」開新場次。
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <div className="col-span-4">
                 <Label className="mb-1 block text-xs">集合時間</Label>

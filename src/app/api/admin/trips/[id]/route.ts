@@ -60,6 +60,39 @@ export async function PATCH(
   }
   const data = parsed.data;
 
+  // v904：防呆 —— 「改日期」的鎖定。
+  //   起因：舊場次(已潛完、已有已完成訂單)被改日期 → 同一筆場次記錄，舊訂單跟著被帶到新日期。
+  //   規則：要更改日期時，若①原日期已過(已跑完的場次) 或 ②已有未取消訂單 → 一律擋下。
+  //   換天請改用「複製」建立新場次（不同 id、不帶舊訂單）。
+  if (data.date !== undefined) {
+    const existing = await prisma.divingTrip.findUnique({ where: { id }, select: { date: true } });
+    if (existing) {
+      const midday = (d: Date | string) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+      const today = midday(new Date());
+      const curDay = midday(existing.date);
+      const newDay = midday(data.date);
+      const changingDate = newDay.getTime() !== curDay.getTime();
+      if (changingDate) {
+        const ymd = existing.date.toISOString().slice(0, 10);
+        if (curDay < today) {
+          return NextResponse.json(
+            { error: "trip_past_date_locked", message: `此場次原日期（${ymd}）已過、可能已有完成的訂單紀錄，日期已鎖定不可更改。若要開新的一天，請用「複製」建立新場次。` },
+            { status: 400 },
+          );
+        }
+        const activeBookings = await prisma.booking.count({
+          where: { refId: id, type: "daily", status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "no_show"] } },
+        });
+        if (activeBookings > 0) {
+          return NextResponse.json(
+            { error: "trip_has_bookings_date_locked", message: `此場次已有 ${activeBookings} 筆訂單，不可更改日期（會把訂單一起帶到新日期）。若要換到別天，請用「複製」開新場次，或先取消訂單。` },
+            { status: 400 },
+          );
+        }
+      }
+    }
+  }
+
   // 過期場次不能設回 open（cancelled / completed 仍允許）
   if (data.status === "open") {
     const existing = await prisma.divingTrip.findUnique({
