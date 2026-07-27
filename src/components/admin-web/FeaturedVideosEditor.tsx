@@ -46,7 +46,7 @@ export function FeaturedVideosEditor() {
     setSaving(true); setMsg(null);
     try {
       await adminFetch("/api/admin/site-config", {
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify({ featuredDiveVideos: list }),
       });
       setMsg("✓ 已儲存，首頁與 /api/config 已更新");
