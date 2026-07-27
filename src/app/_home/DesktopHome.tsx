@@ -64,6 +64,11 @@ export default function DesktopHome() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bizJsonLd) }} />
       <SiteNav />
 
+      {/* v929：最新動態影片移到最上面(hero 之上、導覽下方的帶狀區) */}
+      <section className="news" id="news" style={{ background: "#0a2440", paddingTop: 82, paddingBottom: 22 }}>
+        <FeaturedVideos />
+      </section>
+
       <section className="hero" id="top">
         <div className="hero-bg" />
         <span className="light-shaft s1" /><span className="light-shaft s2" /><span className="light-shaft s3" />
@@ -92,11 +97,6 @@ export default function DesktopHome() {
           </div>
         </div>
         <div className="scroll-hint">SCROLL<i /></div>
-      </section>
-
-      {/* v925：最新動態(影片)移到最上面 */}
-      <section className="news" id="news" style={{ paddingTop: 28 }}>
-        <FeaturedVideos />
       </section>
 
       <section className="reviews" id="reviews">

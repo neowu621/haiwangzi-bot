@@ -39,7 +39,6 @@ export default function FeaturedVideos() {
   return (
     <div className="fv-wrap">
       <div className="fv-head">
-        <h2 className="fv-title">最新動態</h2>
         <p className="fv-sub">海裡每天都在上演精彩——汪汪帶你直擊東北角海底世界，<b>想不想一起下水看看？</b></p>
       </div>
 
@@ -74,12 +73,11 @@ export default function FeaturedVideos() {
       </div>
 
       <style>{`
-        .fv-wrap{max-width:1180px;margin:0 auto;padding:8px 0 4px;}
-        .fv-head{text-align:center;margin-bottom:22px;padding:0 16px;}
-        .fv-title{margin:0 0 10px;font-size:34px;font-weight:900;letter-spacing:-.02em;line-height:1.15;color:#fff;text-shadow:0 2px 18px rgba(30,212,194,.25);}
-        .fv-sub{margin:0;font-size:17px;line-height:1.6;color:#bcd9ec;}
+        .fv-wrap{max-width:1180px;margin:0 auto;padding:0;}
+        .fv-head{text-align:center;margin-bottom:14px;padding:0 16px;}
+        .fv-sub{margin:0;font-size:16px;line-height:1.5;color:#dceaf5;text-shadow:0 1px 8px rgba(0,0,0,.4);}
         .fv-sub b{color:#5fe0cf;font-weight:800;}
-        @media(min-width:760px){.fv-title{font-size:42px;} .fv-sub{font-size:20px;white-space:nowrap;}}
+        @media(min-width:760px){.fv-sub{font-size:18px;white-space:nowrap;}}
 
         /* 跑馬燈：一直往左跑，右邊接著出來，無縫循環 */
         .fv-marquee{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
