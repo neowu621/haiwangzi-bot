@@ -4,6 +4,7 @@
 //   縮圖 hqdefault + lazy（facade，不預載 iframe）→ 手機也快。
 import { useEffect, useState } from "react";
 import { DEFAULT_DIVE_VIDEOS, ytThumb, ytWatchUrl, type DiveVideo } from "@/lib/dive-videos";
+import { YT_CHANNEL } from "./data";
 
 export default function FeaturedVideos() {
   const [vids, setVids] = useState<DiveVideo[]>(DEFAULT_DIVE_VIDEOS);
@@ -17,7 +18,7 @@ export default function FeaturedVideos() {
   }, []);
 
   const latest = vids.find((v) => v.category === "latest") ?? vids[0];
-  const best = vids.filter((v) => v !== latest).slice(0, 4);
+  const best = vids.filter((v) => v !== latest).slice(0, 6);
   if (!latest) return null;
 
   const Card = ({ v, feat }: { v: DiveVideo; feat?: boolean }) => (
@@ -47,7 +48,12 @@ export default function FeaturedVideos() {
         <Card v={latest} feat />
         {best.map((v) => <Card key={v.id} v={v} />)}
       </div>
+      <div className="fv-more">
+        <a href={YT_CHANNEL} target="_blank" rel="noopener noreferrer">追蹤海王子，看更多影片 → YouTube 頻道</a>
+      </div>
       <style>{`
+        .fv-more{text-align:center;margin-top:16px}
+        .fv-more a{color:#1ed4c2;font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
         .fv-wrap{max-width:1080px;margin:0 auto;padding:8px 16px 4px;}
         .fv-head{text-align:center;margin-bottom:18px;}
         .fv-eyebrow{font-size:11px;font-weight:700;letter-spacing:.28em;color:#1ed4c2;text-transform:uppercase;}

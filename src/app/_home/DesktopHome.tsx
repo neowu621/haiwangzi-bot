@@ -4,7 +4,6 @@ import "../home.css";
 import { APP_VERSION } from "@/lib/version";
 import SiteNav from "./SiteNav";
 import Bubbles from "./Bubbles";
-import NewsVideos from "./NewsVideos";
 import FeaturedVideos from "./FeaturedVideos";
 import {
   LINE_BOOK_URL, YT_CHANNEL, IG_URL, FB_URL, NAV,
@@ -234,8 +233,8 @@ export default function DesktopHome() {
       </section>
 
       <section className="news" id="news">
+        {/* v915：影片整合(3A) — 統一用 FeaturedVideos 卡片，移除自動輪播牆 NewsVideos */}
         <FeaturedVideos />
-        <NewsVideos />
       </section>
 
       <section className="faq" id="faq">

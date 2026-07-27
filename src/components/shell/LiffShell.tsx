@@ -216,7 +216,7 @@ export function LiffShell({
       {/* Splash 暫時停用（v18 rollback）— 設計 OK 但有 hydration race，待後續修 */}
       {/* <SplashOverlay /> */}
 
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
         {/* 左側：Wordmark (含版本)，點按回手機首頁(官網 /) — v696 */}
         <Link
           href="/"
