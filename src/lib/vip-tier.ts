@@ -84,7 +84,8 @@ export const VIP_TIERS: VipTier[] = [
     key: "mantaRay",
     name: "鬼蝠魟",
     enName: "Manta Ray",
-    emoji: "🪼",
+    emoji: "🦈", // v918：原 🪼(水母) 有誤；Unicode 無 manta ray，改用最接近的鯊(軟骨魚近親)
+
     minLogs: 101,
     minSpend: 80_001,
     benefits: [
@@ -100,7 +101,8 @@ export const VIP_TIERS: VipTier[] = [
     key: "whaleShark",
     name: "鯨鯊",
     enName: "Whale Shark",
-    emoji: "🦈",
+    emoji: "🐋", // v918：改鯨魚(最高等級/體型最大，鯨鯊含「鯨」)
+
     minLogs: 201,
     minSpend: 150_001,
     benefits: [
