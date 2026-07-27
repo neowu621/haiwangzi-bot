@@ -9,6 +9,7 @@ import {
 } from "@/lib/site-config";
 import { logAudit } from "@/lib/audit";
 import { invalidateSocialFooterCache } from "@/lib/social-footer"; // v344
+import { DEFAULT_DIVE_VIDEOS, sanitizeDiveVideos } from "@/lib/dive-videos"; // v911
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -164,6 +165,14 @@ const PatchSchema = z.object({
   dumpFooterText: z.string().max(2000).optional(),
   // v895：FB 貼文版 hashtag
   dumpFbHashtags: z.string().max(500).optional(),
+  // v911：首頁精選影片
+  featuredDiveVideos: z.array(z.object({
+    id: z.string().min(1).max(20),
+    isShort: z.boolean().default(false),
+    category: z.enum(["latest", "best"]).default("best"),
+    title: z.string().max(120).default(""),
+    desc: z.string().max(300).default(""),
+  })).max(12).optional(),
   // v392：氣瓶限時折扣
   tankPromoEnabled: z.boolean().optional(),
   tankPromoDiscount: z.number().int().min(0).max(100000).optional(),
@@ -309,6 +318,9 @@ export async function GET(req: NextRequest) {
       dumpFooterEnabled: (row as unknown as { dumpFooterEnabled?: boolean }).dumpFooterEnabled ?? true,
       dumpFooterText: (row as unknown as { dumpFooterText?: string }).dumpFooterText ?? "",
       dumpFbHashtags: (row as unknown as { dumpFbHashtags?: string }).dumpFbHashtags ?? DEFAULT_DUMP_FB_TAGS,
+      featuredDiveVideos: sanitizeDiveVideos((row as unknown as { featuredDiveVideos?: unknown }).featuredDiveVideos).length > 0
+        ? sanitizeDiveVideos((row as unknown as { featuredDiveVideos?: unknown }).featuredDiveVideos)
+        : DEFAULT_DIVE_VIDEOS,
       // v392 氣瓶限時折扣
       tankPromoEnabled: (row as unknown as { tankPromoEnabled?: boolean }).tankPromoEnabled ?? false,
       tankPromoDiscount: (row as unknown as { tankPromoDiscount?: number }).tankPromoDiscount ?? 0,

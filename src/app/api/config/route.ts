@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteConfigRow } from "@/lib/site-config-cache"; // v693：版本號快取（共用 siteConfig 整列）
 import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 import { PUBLIC_STATIC_CACHE_HEADERS } from "@/lib/http-cache";
+import { DEFAULT_DIVE_VIDEOS, sanitizeDiveVideos, type DiveVideo } from "@/lib/dive-videos"; // v911
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export async function GET() {
   // v409/v414：首頁學員怎麼說 + 總結語
   let homeTestimonials: Array<{ name: string; avatar: string; activity: string; title: string; text: string }> = [];
   let homeReviewsNote = "";
+  // v911：首頁精選影片（空 → 用程式預設 4 支）
+  let featuredDiveVideos: DiveVideo[] = DEFAULT_DIVE_VIDEOS;
   try {
     const cfg = await getSiteConfigRow(); // v693：命中快取時零 DB；siteConfig 一存檔自動失效
     if (cfg?.externalLinks) {
@@ -79,6 +82,9 @@ export async function GET() {
     }
     const rawNote = (cfg as unknown as { homeReviewsNote?: unknown } | null)?.homeReviewsNote;
     if (typeof rawNote === "string") homeReviewsNote = rawNote;
+    const rawFdv = (cfg as unknown as { featuredDiveVideos?: unknown } | null)?.featuredDiveVideos;
+    const cleanFdv = sanitizeDiveVideos(rawFdv);
+    if (cleanFdv.length > 0) featuredDiveVideos = cleanFdv; // 有存才覆蓋，否則用預設
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
   }
@@ -113,5 +119,6 @@ export async function GET() {
     homeVideoFilter,
     homeTestimonials,
     homeReviewsNote,
+    featuredDiveVideos,
   }, { headers: PUBLIC_STATIC_CACHE_HEADERS });
 }

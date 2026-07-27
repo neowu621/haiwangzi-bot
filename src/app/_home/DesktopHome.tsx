@@ -5,6 +5,7 @@ import { APP_VERSION } from "@/lib/version";
 import SiteNav from "./SiteNav";
 import Bubbles from "./Bubbles";
 import NewsVideos from "./NewsVideos";
+import FeaturedVideos from "./FeaturedVideos";
 import {
   LINE_BOOK_URL, YT_CHANNEL, IG_URL, FB_URL, NAV,
   COURSES, SPOTS, TRIPS, LVL_CLASS,
@@ -233,6 +234,7 @@ export default function DesktopHome() {
       </section>
 
       <section className="news" id="news">
+        <FeaturedVideos />
         <NewsVideos />
       </section>
 

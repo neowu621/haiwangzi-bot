@@ -13,6 +13,7 @@ import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/defaul
 import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VipTiersEditor } from "@/components/admin-web/VipTiersEditor"; // v345
+import { FeaturedVideosEditor } from "@/components/admin-web/FeaturedVideosEditor"; // v911
 
 /* ─── Types ─────────────────────────────────────────── */
 interface GearPrices {
@@ -291,7 +292,7 @@ export default function SettingsPage() {
     if (typeof window === "undefined") return;
     let t = new URLSearchParams(window.location.search).get("tab");
     if (t === "vip") t = "money"; // v826：VIP 已併入「金額 · VIP」tab，舊 ?tab=vip 連結導到這
-    const valid = ["home", "links", "payment", "money", "dump", "upload", "policy", "autosend", "aibot", "danger", "tools"];
+    const valid = ["home", "links", "payment", "money", "dump", "videos", "upload", "policy", "autosend", "aibot", "danger", "tools"];
     if (t && valid.includes(t)) setActiveTab(t);
   }, []);
   const [loading, setLoading] = useState(true);
@@ -483,12 +484,13 @@ export default function SettingsPage() {
 
         {/* v255/v345：9 大分類 Tab 切換（含 ⭐ VIP）；支援 ?tab= 直接開特定分頁 */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-6 lg:grid-cols-11">
+          <TabsList className="grid w-full grid-cols-3 gap-1 sm:grid-cols-6 lg:grid-cols-12">
             <TabsTrigger value="home">🏠 首頁</TabsTrigger>
             <TabsTrigger value="links">🔗 連結</TabsTrigger>
             <TabsTrigger value="payment">💳 付款</TabsTrigger>
             <TabsTrigger value="money">💰 金額 · VIP</TabsTrigger>
             <TabsTrigger value="dump">📋 Dump</TabsTrigger>
+            <TabsTrigger value="videos">🎬 影片</TabsTrigger>
             <TabsTrigger value="upload">📤 上傳</TabsTrigger>
             <TabsTrigger value="policy">📋 政策</TabsTrigger>
             <TabsTrigger value="autosend">📨 自動發送</TabsTrigger>
@@ -1185,6 +1187,12 @@ export default function SettingsPage() {
             </div>
           </SectionCard>
           </div>
+        </TabsContent>
+
+        <TabsContent value="videos" className="mt-4">
+          <SectionCard title="🎬 本週潛水精選（首頁影片卡）">
+            <FeaturedVideosEditor />
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
