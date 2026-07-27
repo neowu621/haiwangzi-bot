@@ -94,6 +94,11 @@ export default function DesktopHome() {
         <div className="scroll-hint">SCROLL<i /></div>
       </section>
 
+      {/* v925：最新動態(影片)移到最上面 */}
+      <section className="news" id="news" style={{ paddingTop: 28 }}>
+        <FeaturedVideos />
+      </section>
+
       <section className="reviews" id="reviews">
         <div className="wrap">
           <div className="sec-head reveal">
@@ -230,11 +235,6 @@ export default function DesktopHome() {
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="news" id="news">
-        {/* v915：影片整合(3A) — 統一用 FeaturedVideos 卡片，移除自動輪播牆 NewsVideos */}
-        <FeaturedVideos />
       </section>
 
       <section className="faq" id="faq">

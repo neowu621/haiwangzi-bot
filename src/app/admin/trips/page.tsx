@@ -2395,7 +2395,7 @@ export default function AdminTripsPage() {
 
             <div className="flex items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: "var(--border)" }}>
               <span className="text-[11px] text-[var(--muted-foreground)]">確認無誤後即可複製貼出</span>
-              <Button size="sm" onClick={() => { copyDumpText(); setDumpStylePreview(false); }}>
+              <Button type="button" size="sm" onClick={() => { setDumpStylePreview(false); void copyDumpText(); }}>
                 <Copy className="mr-1.5 h-3.5 w-3.5" />複製並關閉
               </Button>
             </div>

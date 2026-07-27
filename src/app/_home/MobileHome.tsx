@@ -63,6 +63,11 @@ export default function MobileHome() {
         <a href="#start" style={{ background: "rgba(255,255,255,.12)", color: "#fff", textAlign: "center", padding: "13px 16px", borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>新手看這</a>
       </div>
 
+      {/* v925：最新動態(影片)移到最上面 — 深色底延續 hero，白字才看得到 */}
+      <div style={{ background: C.navy, padding: "6px 0 22px" }}>
+        <FeaturedVideos />
+      </div>
+
       {/* 快速入口 chips */}
       <div style={{ paddingTop: 14 }}>
         <Scroller gap={8} padX={16}>
@@ -74,11 +79,6 @@ export default function MobileHome() {
             <Link key={c.t} href={c.h} style={{ flexShrink: 0, background: C.card, border: `1px solid ${C.line}`, borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 700, color: C.navy, textDecoration: "none" }}>{c.t}</Link>
           ))}
         </Scroller>
-      </div>
-
-      {/* v911：本週潛水精選（影片卡）*/}
-      <div style={{ padding: "20px 0 6px" }}>
-        <FeaturedVideos />
       </div>
 
       {/* 第一次潛水 4 步 */}
