@@ -14,6 +14,7 @@ import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VipTiersEditor } from "@/components/admin-web/VipTiersEditor"; // v345
 import { FeaturedVideosEditor } from "@/components/admin-web/FeaturedVideosEditor"; // v911
+import { DiveVideoPushPanel } from "@/components/admin-web/DiveVideoPushPanel"; // v912
 
 /* ─── Types ─────────────────────────────────────────── */
 interface GearPrices {
@@ -1193,6 +1194,11 @@ export default function SettingsPage() {
           <SectionCard title="🎬 本週潛水精選（首頁影片卡）">
             <FeaturedVideosEditor />
           </SectionCard>
+          <div className="mt-4">
+            <SectionCard title="📣 推播精選給會員">
+              <DiveVideoPushPanel />
+            </SectionCard>
+          </div>
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
