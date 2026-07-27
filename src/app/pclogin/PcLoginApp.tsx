@@ -624,7 +624,7 @@ function EmailVerifyBanner({ member, onSent }: { member: Member; onSent: () => v
   return (
     <div style={{ background: "#fff8ec", border: "1px solid #f3d8a0", borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: "#9a6a18", marginBottom: 8 }}>
-        ⚠️ 下單前請先完成 Email 驗證（潛水保險與重要通知需要）
+        ✉️ 設定並驗證 Email 可收到訂單/場次的重要通知（選填，不影響下單）
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <input

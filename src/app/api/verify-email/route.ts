@@ -83,5 +83,22 @@ export async function GET(req: NextRequest) {
     console.error("[verify-email reward]", e),
   );
 
+  // v914：驗證通過 → 補發「首潛獎勵」。若客戶已有完成的首單但當時卡在沒驗證，這裡補上。
+  void (async () => {
+    try {
+      const firstCompleted = await prisma.booking.findFirst({
+        where: { userId: user.lineUserId, status: "completed" },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
+      if (firstCompleted) {
+        const { maybeGrantFirstOrderReward } = await import("@/lib/first-order-reward");
+        await maybeGrantFirstOrderReward(user.lineUserId, firstCompleted.id, { retroactive: true });
+      }
+    } catch (e) {
+      console.error("[verify-email first-order retro]", e);
+    }
+  })();
+
   return resultRedirect("ok", { email: user.email ?? "" });
 }

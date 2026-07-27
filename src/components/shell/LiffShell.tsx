@@ -381,7 +381,7 @@ function EmailVerifyBanner({ email, onResent }: { email: string; onResent: () =>
   }
   return (
     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs flex items-center gap-2">
-      <span>✉ 請完成 Email 驗證（{email}）</span>
+      <span>✉ 驗證 Email（{email}）可多一個管道收通知 🎁 驗證+首潛得 100 元</span>
       <button
         type="button"
         onClick={resend}

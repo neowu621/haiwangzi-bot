@@ -31,6 +31,7 @@ export interface MaybeGrantResult {
 export async function maybeGrantFirstOrderReward(
   userId: string,
   triggerBookingId: string,
+  opts?: { retroactive?: boolean }, // v914：驗證 Email 後補發時 = true（略過「必須是第一筆完成」檢查）
 ): Promise<MaybeGrantResult> {
   try {
     const user = await prisma.user.findUnique({
@@ -47,9 +48,6 @@ export async function maybeGrantFirstOrderReward(
     });
     if (!user) return { granted: false, reason: "user not found" };
 
-    if (!user.emailVerifiedAt) {
-      return { granted: false, reason: "email not verified" };
-    }
     if (user.firstOrderRewardGrantedAt) {
       return { granted: false, reason: "already granted" };
     }
@@ -66,11 +64,15 @@ export async function maybeGrantFirstOrderReward(
 
     // 必須是該 user 第一筆 completed booking（防：客戶有兩筆，第一筆未完成、第二筆完成→應該也算首單）
     // 用 completed count 判斷，目前這筆已是 completed，所以 count=1 = 首單
-    const completedCount = await prisma.booking.count({
-      where: { userId, status: "completed" },
-    });
-    if (completedCount > 1) {
-      return { granted: false, reason: "not first completed order" };
+    // v914：驗證後補發(retroactive) 時略過此檢查 —— 因為當時卡在沒驗證、可能已潛過幾次，
+    //   但獎勵只發一次(firstOrderRewardGrantedAt 控管)，補發不該因「已非第一筆」被擋。
+    if (!opts?.retroactive) {
+      const completedCount = await prisma.booking.count({
+        where: { userId, status: "completed" },
+      });
+      if (completedCount > 1) {
+        return { granted: false, reason: "not first completed order" };
+      }
     }
 
     const cfg = await prisma.siteConfig.findUnique({
@@ -85,6 +87,27 @@ export async function maybeGrantFirstOrderReward(
         ?.firstOrderRewardAmount ?? 100;
     if (amount <= 0) {
       return { granted: false, reason: "feature disabled (amount=0)" };
+    }
+
+    // v914：符合資格但「還沒驗證 Email」→ 不靜默跳過，改提醒客戶「驗證後自動發放」。
+    //   驗證當下 /api/verify-email 會再呼叫本函式補發（見該 route）。
+    if (!user.emailVerifiedAt) {
+      try {
+        await prisma.notification.create({
+          data: {
+            userId,
+            templateKey: "first_order_reward_pending",
+            title: "🎁 你有一筆首潛獎勵待領取！",
+            body: `完成 Email 驗證後，NT$${amount} 首潛獎勵就會自動發放到你的抵用金。到「個人」分頁點「發送驗證信」，收信點連結即可 ✉️`,
+            linkUrl: "/liff/profile",
+            buttonLabel: "去驗證 Email",
+            icon: "🎁",
+          },
+        });
+      } catch (e) {
+        console.error("[first-order-reward] pending-notify failed", e);
+      }
+      return { granted: false, reason: "email not verified (reminded)" };
     }
     const expiryDays =
       (cfg as unknown as { firstOrderRewardExpiryDays?: number } | null)
