@@ -608,9 +608,15 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
 
-        {/* v403：首頁「最新動態」YouTube 影片清單 + 模式 */}
+        {/* v917：首頁影片整合(3A) —— 舊「最新動態影片牆」已停用，統一到「🎬 影片」分頁管理。
+            舊 HomeVideosCard 不再掛載（避免誤改失效設定）。 */}
         <div className="mt-4">
-          <HomeVideosCard cfg={cfg} setCfg={setCfg} save={save} saving={saving} />
+          <SectionCard title="🎬 首頁潛水影片">
+            <p className="text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+              首頁影片已整合為「本週潛水精選」卡片，請到上方 <b>「🎬 影片」</b> 分頁管理（貼 YouTube 網址、選本週最新/近期最佳、排序、推播）。
+              <br />舊的「最新動態影片牆」已停用，此處設定不再生效。
+            </p>
+          </SectionCard>
         </div>
 
         {/* v414：學員怎麼說改為前台內建固定內容，後台編輯已移除 */}
