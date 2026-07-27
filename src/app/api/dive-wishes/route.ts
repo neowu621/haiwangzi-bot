@@ -47,13 +47,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  // v313 email 認證強制
-  if (!auth.user.emailVerifiedAt) {
-    return NextResponse.json(
-      { error: "email_not_verified", message: "請先完成 Email 驗證" },
-      { status: 403 },
-    );
-  }
+  // v913：移除「Email 驗證才能許願」的強制 gate。
+  //   願望單是低承諾的需求提報，客戶已是 LINE 會員、可透過站內/LINE 回覆；
+  //   Email 驗證常因收不到信(垃圾信/退信)而卡住客戶，白白流失。改為不強制。
   // 黑名單
   if (auth.user.blacklisted) {
     return NextResponse.json(
