@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
 import { getSiteConfigRow } from "@/lib/site-config-cache";
 import { normalizeVipTiers } from "@/lib/vip-tier";
+import { VipTierIcon } from "@/components/VipTierIcon";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
@@ -273,7 +274,7 @@ export default async function RewardsPage() {
                   return (
                     <tr key={t.key || t.level}>
                       <td className="vt-name" style={{ borderLeft: `4px solid ${tintFor(i, total)}` }}>
-                        <span className="vt-em">{t.emoji}</span>
+                        <span className="vt-em"><VipTierIcon level={t.level} size={40} emoji={t.emoji} /></span>
                         <span className="vt-nm"><b>{t.name}</b><span>LV{t.level} · {t.enName}</span></span>
                       </td>
                       <td className="vt-req" data-label="達成條件">

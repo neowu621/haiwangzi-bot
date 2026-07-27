@@ -11,6 +11,7 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { setAdminToken, setAdminUser, type AdminWebUser } from "@/lib/admin-web-auth";
 import { formatPhoneTW } from "@/lib/phone";
 import { C, Sect } from "@/components/liff/mobileShared";
+import { VipTierIcon } from "@/components/VipTierIcon";
 
 const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
 type Cert = (typeof CERTS)[number];
@@ -233,7 +234,12 @@ export default function ProfilePage() {
   return frame(
     <>
       <div style={{ textAlign: "center", padding: "6px 0 12px" }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center", margin: "0 auto" }}><User size={30} /></div>
+        {/* v919：會員(有潛級)顯示 VIP 徽章；其餘顯示一般頭像 */}
+        {me.vipLevel >= 1 && me.vipLevel <= 5 ? (
+          <div style={{ margin: "0 auto", width: 68, height: 68 }}><VipTierIcon level={me.vipLevel} size={68} /></div>
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center", margin: "0 auto" }}><User size={30} /></div>
+        )}
         <div style={{ fontSize: 16, fontWeight: 500, marginTop: 8 }}>{name}</div>
         <div style={{ fontSize: 12, color: C.mute }}>{me.email ?? ""}</div>
         {roleLabel && (

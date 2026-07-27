@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { VipTierIcon } from "@/components/VipTierIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -143,10 +144,9 @@ export function VipTiersEditor() {
                 <tr key={tier.level} className="border-t" style={{ borderColor: "var(--border)" }}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full text-lg flex-shrink-0"
-                        style={{ background: tier.color ? `${tier.color}20` : "rgba(99,235,164,0.15)" }}>
-                        {tier.emoji}
-                      </div>
+                      {/* v919：VIP 圖示改用圖檔 */}
+                      <VipTierIcon level={tier.level} size={44} emoji={tier.emoji} />
+
                       <div>
                         <div className="font-bold text-xs" style={{ color: tier.color || "var(--color-phosphor)" }}>LV{tier.level}</div>
                         <div className="font-semibold text-sm text-[var(--foreground)]">{tier.name}</div>
