@@ -35,7 +35,7 @@ export const VIP_TIERS: VipTier[] = [
     key: "shrimp",
     name: "小蝦",
     enName: "Shrimp",
-    emoji: "🦐",
+    emoji: "", // v921：文字場合不放 emoji(統一,網頁用圖檔)
     minLogs: 0,
     minSpend: 0,
     benefits: [
@@ -51,7 +51,7 @@ export const VIP_TIERS: VipTier[] = [
     key: "lobster",
     name: "龍蝦",
     enName: "Lobster",
-    emoji: "🦞",
+    emoji: "",
     minLogs: 21,
     minSpend: 10_000,
     benefits: [
@@ -67,7 +67,7 @@ export const VIP_TIERS: VipTier[] = [
     key: "seaTurtle",
     name: "海龜",
     enName: "Sea Turtle",
-    emoji: "🐢",
+    emoji: "",
     minLogs: 51,
     minSpend: 30_001,
     benefits: [
@@ -101,7 +101,7 @@ export const VIP_TIERS: VipTier[] = [
     key: "whaleShark",
     name: "鯨鯊",
     enName: "Whale Shark",
-    emoji: "🐋", // v918：改鯨魚(最高等級/體型最大，鯨鯊含「鯨」)
+    emoji: "",
 
     minLogs: 201,
     minSpend: 150_001,
