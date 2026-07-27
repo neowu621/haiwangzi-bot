@@ -52,7 +52,7 @@ export const NAV = [
   { href: "#start", label: "新手上路" },
   { href: "#spots", label: "東北角潛點" },
   { href: "#trips", label: "潛旅目的地" },
-  { href: "#news", label: "最新動態" },
+  { href: "#news", label: "潛水影片" },
   { href: "#faq", label: "常見問題" },
 ];
 
