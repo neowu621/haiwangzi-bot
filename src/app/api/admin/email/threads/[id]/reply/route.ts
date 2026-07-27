@@ -27,6 +27,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (!thread) return NextResponse.json({ error: "not found" }, { status: 404 });
 
+  // v910：站內通知附上「前文」（客戶最近一則來訊）讓客戶有上下文
+  const lastInbound = thread.messages.find((m) => m.direction === "INBOUND");
+  const inboundText = lastInbound?.bodyText?.trim() ?? "";
+  const quotedPrev = inboundText
+    ? `↩ 您先前的訊息：\n「${inboundText.slice(0, 200)}${inboundText.length > 200 ? "…" : ""}」\n\n———\n`
+    : "";
+
   // v561：LINE 對話 → 用 LINE push 回覆(非 email)
   if (thread.channel === "line") {
     if (!thread.lineUserId) return NextResponse.json({ error: "此 LINE 對話缺 lineUserId,無法回覆" }, { status: 400 });
@@ -45,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await prisma.notification.create({
         data: {
           userId: thread.lineUserId, templateKey: "cs_reply", title: "客服回覆",
-          body: lineText, linkUrl: "/liff/messages", buttonLabel: "回覆客服", icon: "💬",
+          body: quotedPrev + lineText, linkUrl: "/liff/messages", buttonLabel: "回覆客服", icon: "💬",
         },
       });
       inappOk = true;
@@ -90,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         userId: thread.lineUserId,
         templateKey: "cs_reply",
         title: "客服回覆",
-        body: replyText,
+        body: quotedPrev + replyText,
         linkUrl: "/liff/messages",
         buttonLabel: "回覆客服",
         icon: "💬",

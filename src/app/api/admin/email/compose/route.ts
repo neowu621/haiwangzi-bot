@@ -38,6 +38,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // v910：若收件人是會員，預設也發一則站內通知（以站內為主，不佔額度）
+  try {
+    const member = await prisma.user.findFirst({
+      where: { email: to, deletedAt: null },
+      select: { lineUserId: true },
+    });
+    if (member) {
+      const inappBody = (text && text.trim()) ? text : html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      await prisma.notification.create({
+        data: {
+          userId: member.lineUserId, templateKey: "cs_reply", title: subject || "客服訊息",
+          body: inappBody, linkUrl: "/liff/messages", buttonLabel: "查看", icon: "💬",
+        },
+      });
+    }
+  } catch (e) {
+    console.error("[compose inapp]", e);
+  }
+
   // 開新 thread（OUTBOUND 主動信 → 視為處理中）
   const thread = await prisma.emailThread.create({
     data: {

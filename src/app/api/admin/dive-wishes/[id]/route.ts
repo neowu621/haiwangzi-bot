@@ -87,6 +87,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "東北角海王子潛水";
   const previewText = parsed.data.text.slice(0, 200) + (parsed.data.text.length > 200 ? "..." : "");
 
+  // v910：站內通知附上「前文」（客戶原本的願望/最近來訊）讓客戶有上下文
+  const prevMsgs = ((wish.messages as unknown as Message[]) ?? []);
+  const lastCust = [...prevMsgs].reverse().find((m) => m.from === "customer")?.text
+    ?? (wish as unknown as { customerNote?: string | null }).customerNote
+    ?? "";
+  const quotedPrev = lastCust.trim()
+    ? `↩ 您的願望：\n「${lastCust.trim().slice(0, 200)}${lastCust.trim().length > 200 ? "…" : ""}」\n\n———\n`
+    : "";
+
   // v907：一律發「站內通知」（以站內為主，不佔 LINE 推送額度；客戶在通知中心 / 願望單看得到）
   try {
     await prisma.notification.create({
@@ -94,7 +103,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         userId: wish.user.lineUserId,
         templateKey: "wish_reply",
         title: "📝 願望單回覆",
-        body: parsed.data.text,
+        body: quotedPrev + parsed.data.text,
         linkUrl: "/liff/booking?tab=wishes",
         buttonLabel: "查看願望單",
         icon: "📝",
