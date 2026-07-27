@@ -40,7 +40,6 @@ export default function FeaturedVideos() {
   return (
     <div className="fv-wrap">
       <div className="fv-head">
-        <span className="fv-eyebrow">🎬 Latest Dives</span>
         <h2 className="fv-title">最新動態</h2>
         <p className="fv-sub">海裡每天都在上演精彩——汪汪帶你直擊東北角海底世界，<b>想不想一起下水看看？</b></p>
       </div>
@@ -56,11 +55,10 @@ export default function FeaturedVideos() {
         .fv-more a{color:#1ed4c2;font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
         .fv-wrap{max-width:1080px;margin:0 auto;padding:8px 16px 4px;}
         .fv-head{text-align:center;margin-bottom:22px;}
-        .fv-eyebrow{display:inline-block;font-size:12.5px;font-weight:800;letter-spacing:.22em;color:#04323a;text-transform:uppercase;background:linear-gradient(120deg,#1ed4c2,#12b5a6);padding:4px 12px;border-radius:999px;}
-        .fv-title{margin:12px 0 8px;font-size:34px;font-weight:900;letter-spacing:-.02em;line-height:1.15;color:#fff;text-shadow:0 2px 18px rgba(30,212,194,.25);}
-        .fv-sub{margin:0 auto;max-width:560px;font-size:15.5px;line-height:1.7;color:#bcd9ec;}
+        .fv-title{margin:0 0 10px;font-size:34px;font-weight:900;letter-spacing:-.02em;line-height:1.15;color:#fff;text-shadow:0 2px 18px rgba(30,212,194,.25);}
+        .fv-sub{margin:0;font-size:17px;line-height:1.6;color:#bcd9ec;}
         .fv-sub b{color:#5fe0cf;font-weight:800;}
-        @media(min-width:760px){.fv-title{font-size:42px;} .fv-sub{font-size:16.5px;}}
+        @media(min-width:760px){.fv-title{font-size:42px;} .fv-sub{font-size:20px;white-space:nowrap;}}
         .fv-grid{display:grid;gap:14px;grid-template-columns:1fr;}
         @media(min-width:760px){.fv-grid{grid-template-columns:1.6fr 1fr 1fr;}.fv-card.feat{grid-row:span 2;}}
         .fv-card{display:flex;flex-direction:column;border-radius:15px;overflow:hidden;text-decoration:none;
