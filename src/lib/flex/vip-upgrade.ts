@@ -16,7 +16,7 @@ export function vipUpgrade(
   override?: TemplateOverride,
 ): FlexMessage {
   const tierName = asString(params.tierName, "");
-  const tierEmoji = asString(params.tierEmoji, "🌟");
+  const tierEmoji = asString(params.tierEmoji, "").trim(); // v920：可為空(如鬼蝠魟不放 emoji)
   const benefits = asString(params.benefits, "");
   const liffUrl = asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm/welcome");
 
@@ -68,7 +68,7 @@ export function vipUpgrade(
           margin: "md",
           contents: [
             { type: "text", text: "會員等級", color: COLORS.mute, size: "xs", flex: 0 },
-            { type: "text", text: `${tierEmoji} ${tierName}`, size: "sm", weight: "bold", align: "end", wrap: true, color: COLORS.gold },
+            { type: "text", text: [tierEmoji, tierName].filter(Boolean).join(" "), size: "sm", weight: "bold", align: "end", wrap: true, color: COLORS.gold },
           ],
         },
         ...(benefits

@@ -84,7 +84,7 @@ export const VIP_TIERS: VipTier[] = [
     key: "mantaRay",
     name: "鬼蝠魟",
     enName: "Manta Ray",
-    emoji: "🦈", // v918：原 🪼(水母) 有誤；Unicode 無 manta ray，改用最接近的鯊(軟骨魚近親)
+    emoji: "", // v920：Unicode 無 manta ray，任何 emoji 都不對 → 文字場合不放 emoji(網頁用圖檔)
 
     minLogs: 101,
     minSpend: 80_001,
