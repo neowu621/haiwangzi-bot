@@ -1,15 +1,19 @@
 "use client";
-// v912：首頁精選影片「推播給會員」面板 —— 站內為主 + 可加 Email、分眾、7 天鎖、預覽/送出/試送自己。
-import { useState } from "react";
+// v912/v923：首頁精選影片「每日推播」—— 挑一則影片、帶影片連結傳給會員。站內為主 + 可加 Email。
+//   每天最多一則(系統擋)；預覽/試送/送出。
+import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { Button } from "@/components/ui/button";
+import type { DiveVideo } from "@/lib/dive-videos";
 
 type Audience = "all" | "active30" | "vip5";
-interface Preview { count: number; inapp: number; email: number; preview: { title: string; body: string }; lastPushAt: string | null; canSendAt: string | null; locked: boolean }
+interface Preview { count: number; inapp: number; email: number; preview: { title: string; body: string; videoTitle?: string; watch?: string }; lastPushAt: string | null; locked: boolean }
 
 const AUD_LABEL: Record<Audience, string> = { all: "全體會員", active30: "近 30 天活躍", vip5: "VIP LV5" };
 
 export function DiveVideoPushPanel() {
+  const [videos, setVideos] = useState<DiveVideo[]>([]);
+  const [videoId, setVideoId] = useState("");
   const [inapp, setInapp] = useState(true);
   const [email, setEmail] = useState(false);
   const [audience, setAudience] = useState<Audience>("all");
@@ -17,16 +21,28 @@ export function DiveVideoPushPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    adminFetch<{ config: { featuredDiveVideos?: DiveVideo[] } }>("/api/admin/site-config")
+      .then((r) => {
+        const vs = r.config.featuredDiveVideos ?? [];
+        setVideos(vs);
+        const latest = vs.find((v) => v.category === "latest") ?? vs[0];
+        if (latest) setVideoId(latest.id);
+      })
+      .catch(() => {});
+  }, []);
+
   const channels = () => [...(inapp ? ["inapp"] : []), ...(email ? ["email"] : [])];
 
   async function call(mode: "preview" | "send", testSelf = false) {
     if (channels().length === 0) { setMsg("請至少選一個通道"); return; }
+    if (!videoId) { setMsg("請先選一支影片"); return; }
     if (mode === "send" && !testSelf && !window.confirm(`確定推播給「${AUD_LABEL[audience]}」？`)) return;
     setBusy(true); setMsg(null);
     try {
       const r = await adminFetch<Preview & { ok?: boolean; inapp?: number; email?: number }>("/api/admin/dive-videos/push", {
         method: "POST",
-        body: JSON.stringify({ channels: channels(), audience, mode, testSelf }),
+        body: JSON.stringify({ videoId, channels: channels(), audience, mode, testSelf }),
       });
       if (mode === "preview") { setPv(r as Preview); setMsg(null); }
       else { setMsg(testSelf ? "✓ 已試送給你自己" : `✓ 已推播 — 站內 ${r.inapp ?? 0} 筆、Email ${r.email ?? 0} 筆`); setPv(null); }
@@ -35,13 +51,27 @@ export function DiveVideoPushPanel() {
     } finally { setBusy(false); }
   }
 
-  const lockedNote = pv?.locked && pv.canSendAt ? `🔒 距上次推播未滿 7 天，${pv.canSendAt.slice(0, 10)} 後才能再推。` : null;
+  const lockedNote = pv?.locked ? "🔒 今天已經推過一則了，明天再推（每天最多一則）。" : null;
 
   return (
     <div className="space-y-3">
       <p className="text-[11px] leading-relaxed text-[var(--muted-foreground)]">
-        把上方精選影片推播給會員（<b>站內為主、不佔 LINE 額度</b>）。<b>預設不會自動發</b> —— 你按「推播」才送。建議 <b>7 天最多一次</b>（系統會擋）。
+        <b>每天挑一則</b>精選影片傳給會員（<b>帶影片連結、站內為主、不佔 LINE 額度</b>）。<b>預設不會自動發</b> —— 你按「推播」才送。<b>每天最多一則</b>（系統會擋）。
       </p>
+
+      {/* 挑影片 */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-semibold text-[var(--muted-foreground)]">要推的影片</span>
+        <select value={videoId} onChange={(e) => setVideoId(e.target.value)}
+          className="min-w-0 flex-1 rounded-md border bg-white px-2 py-1.5 text-xs" style={{ borderColor: "var(--border)" }}>
+          {videos.length === 0 && <option value="">（尚無影片，請先到上方新增）</option>}
+          {videos.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.category === "latest" ? "🆕 " : "⭐ "}{v.title || v.id}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex flex-wrap items-center gap-4 text-xs">
         <span className="font-semibold text-[var(--muted-foreground)]">通道</span>
@@ -81,6 +111,7 @@ export function DiveVideoPushPanel() {
           </div>
           <div className="rounded-md bg-[var(--muted)]/40 p-2.5 whitespace-pre-line leading-relaxed">
             <b>{pv.preview.title}</b>{"\n"}{pv.preview.body}
+            {pv.preview.watch && <>{"\n"}<span className="text-sky-600 underline">{pv.preview.watch}</span></>}
           </div>
         </div>
       )}

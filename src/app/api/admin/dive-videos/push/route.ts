@@ -12,9 +12,9 @@ import { DEFAULT_DIVE_VIDEOS, sanitizeDiveVideos, ytThumb, ytWatchUrl, type Dive
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PUSH_LOCK_DAYS = 7;
-
+// v923：改「每天挑一則」 → 同一天只推一則(台北時區)，隔天可再推。
 const Schema = z.object({
+  videoId: z.string().optional(), // 要推的那一則(不給 → 用第一支)
   channels: z.array(z.enum(["inapp", "email"])).min(1),
   audience: z.enum(["all", "active30", "vip5"]),
   mode: z.enum(["preview", "send"]),
@@ -28,20 +28,14 @@ function audienceWhere(audience: string): Prisma.UserWhereInput {
   return base; // all
 }
 
-function buildMessage(vids: DiveVideo[]) {
-  const latest = vids.find((v) => v.category === "latest") ?? vids[0];
-  const bestCount = vids.filter((v) => v !== latest).length;
-  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz").replace(/\/$/, "");
-  const title = "🎬 本週潛水精選上線！";
-  const lines = [
-    "汪汪這週幫你挑好片了 🌊",
-    latest ? `🆕 ${latest.title}` : "",
-    latest?.desc ? latest.desc : "",
-    bestCount > 0 ? `還有 ${bestCount} 支近期最佳精選！` : "",
-    "想一起下水嗎？點下方看本週場次 👇",
-  ].filter(Boolean);
-  const body = lines.join("\n");
-  return { title, body, latest, bestCount, base };
+const taipeiDay = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+
+// v923：單一影片訊息 —— 帶影片連結，客戶點了直接看
+function buildMessage(video: DiveVideo) {
+  const watch = ytWatchUrl(video.id);
+  const title = "🎬 今日精選潛水影片";
+  const body = [video.title, video.desc || "", "點下方看影片 👇"].filter(Boolean).join("\n");
+  return { title, body, watch };
 }
 
 export async function POST(req: NextRequest) {
@@ -52,16 +46,21 @@ export async function POST(req: NextRequest) {
 
   const parsed = Schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "格式錯誤" }, { status: 400 });
-  const { channels, audience, mode, testSelf } = parsed.data;
+  const { videoId, channels, audience, mode, testSelf } = parsed.data;
 
   const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } });
   const stored = sanitizeDiveVideos((cfg as unknown as { featuredDiveVideos?: unknown } | null)?.featuredDiveVideos);
   const vids = stored.length > 0 ? stored : DEFAULT_DIVE_VIDEOS;
-  const lastPushAt = (cfg as unknown as { diveVideoLastPushAt?: Date | null } | null)?.diveVideoLastPushAt ?? null;
-  const canSendAt = lastPushAt ? new Date(new Date(lastPushAt).getTime() + PUSH_LOCK_DAYS * 86400000) : null;
-  const locked = !testSelf && !!canSendAt && canSendAt.getTime() > Date.now();
+  // 要推的那一則：指定 videoId → 找它；否則用「本週最新」或第一支
+  const video = (videoId ? vids.find((v) => v.id === videoId) : null) ?? vids.find((v) => v.category === "latest") ?? vids[0];
+  if (!video) return NextResponse.json({ error: "沒有可推播的影片" }, { status: 400 });
 
-  const { title, body, latest, base } = buildMessage(vids);
+  const lastPushAt = (cfg as unknown as { diveVideoLastPushAt?: Date | null } | null)?.diveVideoLastPushAt ?? null;
+  const todayStr = taipeiDay(new Date());
+  const lastDay = lastPushAt ? taipeiDay(new Date(lastPushAt)) : null;
+  const locked = !testSelf && lastDay === todayStr; // 同一天已推 → 鎖(每天一則)
+
+  const { title, body, watch } = buildMessage(video);
 
   const targets = testSelf
     ? await prisma.user.findMany({ where: { lineUserId: auth.user.lineUserId } })
@@ -73,29 +72,28 @@ export async function POST(req: NextRequest) {
       count: targets.length,
       inapp: channels.includes("inapp") ? targets.length : 0,
       email: emailTargets.length,
-      preview: { title, body },
+      preview: { title, body, videoTitle: video.title, watch },
       lastPushAt,
-      canSendAt,
       locked,
     });
   }
 
-  // 7 天鎖
+  // 每天一則鎖
   if (locked) {
     return NextResponse.json(
-      { error: `距上次推播未滿 ${PUSH_LOCK_DAYS} 天，${canSendAt!.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" })} 後才能再推（避免洗版）。` },
+      { error: "今天已經推過一則了，明天再推（每天最多一則，避免洗版）。" },
       { status: 429 },
     );
   }
 
-  const bookingLink = "/liff/booking?tab=calendar";
   const result = { inapp: 0, email: 0 };
+  const base = (process.env.NEXT_PUBLIC_BASE_URL ?? "https://haiwangzi.xyz").replace(/\/$/, "");
 
-  // ── 站內（一律送達，不看 opt-in）──
+  // ── 站內（一律送達，不看 opt-in）—— linkUrl 直接指向 YouTube 影片
   if (channels.includes("inapp")) {
     const rows = targets.map((t) => ({
       userId: t.lineUserId, templateKey: "dive_video_blast", title, body,
-      linkUrl: bookingLink, buttonLabel: "看本週場次", icon: "🎬",
+      linkUrl: watch, buttonLabel: "▶ 看影片", icon: "🎬",
     }));
     for (let i = 0; i < rows.length; i += 500) {
       const chunk = rows.slice(i, i + 500);
@@ -104,28 +102,27 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Email（選配）──
-  if (emailTargets.length > 0 && emailConfigured() && latest) {
-    const thumb = ytThumb(latest.id);
-    const watch = ytWatchUrl(latest.id);
+  // ── Email（選配）── 帶影片縮圖 + 連結
+  if (emailTargets.length > 0 && emailConfigured()) {
+    const thumb = ytThumb(video.id);
     for (const u of emailTargets) {
       if (!u.email) continue;
       const html = `<div style="font-family:'Microsoft JhengHei',sans-serif;max-width:600px;font-size:15px;line-height:1.75;color:#1a2430">
         <h2 style="color:#0a2342;margin:0 0 10px">${title}</h2>
-        <p>${(u.realName ?? u.displayName ?? "潛水夥伴")} 你好 👋 汪汪這週幫你挑了幾支好片，海裡正精彩：</p>
+        <p>${(u.realName ?? u.displayName ?? "潛水夥伴")} 你好 👋 汪汪今天幫你挑了一支好片：</p>
         <a href="${watch}" style="text-decoration:none;color:inherit;display:block;border:1px solid #e6ebf0;border-radius:10px;overflow:hidden;margin:12px 0">
           <img src="${thumb}" alt="" style="width:100%;display:block" />
-          <div style="padding:11px 13px"><b style="font-size:15px">🆕 ${latest.title}</b>${latest.desc ? `<div style="color:#5a6b7d;font-size:13px;margin-top:3px">${latest.desc}</div>` : ""}</div>
+          <div style="padding:11px 13px"><b style="font-size:15px">${video.title}</b>${video.desc ? `<div style="color:#5a6b7d;font-size:13px;margin-top:3px">${video.desc}</div>` : ""}</div>
         </a>
-        <p style="margin:16px 0"><a href="${base}/d" style="display:inline-block;background:#0b8f86;color:#fff;padding:11px 22px;border-radius:9px;text-decoration:none;font-weight:700">🤿 看本週場次 →</a></p>
+        <p style="margin:14px 0"><a href="${watch}" style="display:inline-block;background:#c4302b;color:#fff;padding:10px 20px;border-radius:9px;text-decoration:none;font-weight:700">▶ 看影片</a>　<a href="${base}/d" style="display:inline-block;background:#0b8f86;color:#fff;padding:10px 20px;border-radius:9px;text-decoration:none;font-weight:700">🤿 看場次</a></p>
         <p style="color:#8090a0;font-size:12px;margin:0">跟著汪汪一起下水，東北角海王子潛水團 🔱</p>
       </div>`;
-      const r = await sendEmail({ to: u.email, subject: `🎬 本週潛水精選 — ${latest.title}`, text: `${title}\n${body}\n${watch}`, html });
+      const r = await sendEmail({ to: u.email, subject: `🎬 今日精選 — ${video.title}`, text: `${title}\n${body}\n${watch}`, html });
       if (r.ok) result.email += 1;
     }
   }
 
-  // 記錄推播時間（啟動 7 天鎖）
+  // 記錄推播時間（啟動當天鎖）
   if (!testSelf) {
     await prisma.siteConfig.update({
       where: { id: "default" },
@@ -137,7 +134,7 @@ export async function POST(req: NextRequest) {
     actorId: auth.user.lineUserId,
     action: "dive_video.push",
     targetType: "dive_video",
-    metadata: { audience, channels, testSelf: !!testSelf, ...result },
+    metadata: { videoId: video.id, videoTitle: video.title, audience, channels, testSelf: !!testSelf, ...result },
   });
 
   return NextResponse.json({ ok: true, ...result });
