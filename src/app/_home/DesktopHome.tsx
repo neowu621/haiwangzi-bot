@@ -165,28 +165,6 @@ export default function DesktopHome() {
         </div>
       </section>
 
-      <section className="courses" id="courses">
-        <div className="wrap">
-          <div className="sec-head reveal"><span className="eyebrow">Diving Courses</span><h2 className="section-title">潛水課程</h2>
-            <p className="sec-sub">從零基礎到進階，跟著汪汪一步步把證照變成真正的能力——課程時間可彈性安排。</p>
-          </div>
-          <div className="course-grid">
-            {COURSES.map((c) => (
-              <div key={c.title} className="course-card reveal">
-                <span className="badge">{c.badge}</span>
-                <h3>{c.title}</h3>
-                <div className="price-row"><span className={`price${c.price.startsWith("NT$") ? "" : " ask"}`}>{c.price}</span><span className="incl">{c.includes}</span></div>
-                <ul>
-                  {c.items.map((it, i) => (
-                    <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="startflow" id="start">
         <div className="wrap">
           <div className="sec-head reveal"><span className="eyebrow">First Dive · Step by Step</span><h2 className="section-title">第一次潛水, 這樣開始</h2><p>完全沒碰過水也別緊張——汪汪會全程陪著你, 一步一步來, 你只要放鬆呼吸。</p></div>
@@ -199,6 +177,27 @@ export default function DesktopHome() {
           <div className="flow-cta reveal">
             <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 諮詢第一次潛水</a>
           </div>
+        </div>
+      </section>
+
+      {/* v937：預約 CTA 移到東北角潛點上方；文案三段式(粗體大字開頭+內文、居中分行) */}
+      <section className="booking" id="book">
+        <div className="wrap reveal">
+          <span className="eyebrow">Let&apos;s Dive</span>
+          <h2>準備好，一起潛進大海了嗎？</h2>
+          <div className="booking-block">
+            <p className="booking-lead">加 LINE 跟汪汪說一聲</p>
+            <p className="booking-detail">想潛的日期和人數，剩下的交給我們，潛點、裝備、行程通通幫你打理好。</p>
+          </div>
+          <div className="booking-block">
+            <p className="booking-lead">第一次來</p>
+            <p className="booking-detail">自己一個人報名都沒問題，現場幫你配潛伴，輕鬆下水。</p>
+          </div>
+          <div className="booking-carpool">
+            <p className="carpool-lead">🚗 住台北？交通免煩惱</p>
+            <p className="booking-detail">想共乘到東北角潛水，跟教練說一聲就好，讓你的潛水行程更簡單！</p>
+          </div>
+          <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon s={20} />加 LINE 預約潛水</a>
         </div>
       </section>
 
@@ -236,14 +235,26 @@ export default function DesktopHome() {
         </div>
       </section>
 
-      {/* v936：預約 CTA 移到 FAQ 上方；LINE 按鈕移到共乘提醒下方 */}
-      <section className="booking" id="book">
-        <div className="wrap reveal">
-          <span className="eyebrow">Let&apos;s Dive</span>
-          <h2>準備好，一起潛進大海了嗎？</h2>
-          <p>加 LINE 跟汪汪說一聲想潛的日期和人數，剩下的交給我們——潛點、裝備、行程通通幫你打理好。<b>第一次來、自己一個人報名都沒問題</b>，現場幫你配潛伴，輕鬆下水。</p>
-          <p className="booking-carpool">🚗 <b>住台北？交通免煩惱</b>——想共乘到東北角潛水，跟教練說一聲就好，讓你的潛水行程更簡單！</p>
-          <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon s={20} />加 LINE 預約潛水</a>
+      {/* v937：潛水課程移到 FAQ 上方 */}
+      <section className="courses" id="courses">
+        <div className="wrap">
+          <div className="sec-head reveal"><span className="eyebrow">Diving Courses</span><h2 className="section-title">潛水課程</h2>
+            <p className="sec-sub">從零基礎到進階，跟著汪汪一步步把證照變成真正的能力——課程時間可彈性安排。</p>
+          </div>
+          <div className="course-grid">
+            {COURSES.map((c) => (
+              <div key={c.title} className="course-card reveal">
+                <span className="badge">{c.badge}</span>
+                <h3>{c.title}</h3>
+                <div className="price-row"><span className={`price${c.price.startsWith("NT$") ? "" : " ask"}`}>{c.price}</span><span className="incl">{c.includes}</span></div>
+                <ul>
+                  {c.items.map((it, i) => (
+                    <li key={i} className={it.hl ? "hl" : ""}><i /><span>{it.t}</span></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

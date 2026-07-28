@@ -334,14 +334,16 @@
 /* BOOKING */
 .hw .booking{position:relative;padding:90px 0;text-align:center;overflow:hidden;background:radial-gradient(100% 120% at 50% 0%,rgba(102,216,246,.2),transparent 60%),#06325b}
 .hw .booking h2{font-family:var(--serif);font-weight:900;font-size:clamp(1.9rem,7vw,3.2rem);margin-bottom:16px}
-/* v936：加大寬度讓文字不擠 */
+/* v936/v937：加大寬度讓文字不擠 */
 .hw .booking .wrap{max-width:760px}
-.hw .booking p{color:var(--glow-soft);max-width:680px;margin:0 auto 24px;font-size:1.05rem;line-height:1.85}
-.hw .booking p b{color:#fff;font-weight:800}
-.hw .booking .btn{font-size:1.08rem;padding:18px 38px}
-/* v935/v936：台北共乘提醒 — 柔和小卡，置於內文與 LINE 按鈕之間 */
-.hw .booking-carpool{max-width:680px;margin:0 auto 30px;padding:14px 24px;font-size:.98rem;line-height:1.8;color:var(--glow-soft);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.22);border-radius:14px}
-.hw .booking-carpool b{color:#fff;font-weight:800}
+.hw .booking .btn{font-size:1.08rem;padding:18px 38px;margin-top:4px}
+/* v937：三段式文案 — 每段粗體大字開頭 + 內文，居中、段與段分開 */
+.hw .booking-block{max-width:680px;margin:0 auto 30px}
+.hw .booking-lead{font-size:1.34rem;font-weight:900;color:#fff;line-height:1.45;margin:0 0 7px}
+.hw .booking-detail{font-size:1.05rem;line-height:1.85;color:var(--glow-soft);margin:0}
+/* 台北共乘小卡 */
+.hw .booking-carpool{max-width:680px;margin:0 auto 30px;padding:18px 28px;background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.22);border-radius:14px}
+.hw .carpool-lead{font-size:1.18rem;font-weight:900;color:#fff;line-height:1.45;margin:0 0 7px}
 
 /* FOOTER */
 .hw footer{background:var(--abyss);padding:54px 0 30px;border-top:1px solid rgba(102,216,246,.15)}

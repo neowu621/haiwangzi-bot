@@ -49,10 +49,10 @@ export const NAV = [
   { href: "#news", label: "最新動態" },   // v928：最新動態移到最上面 → 導覽/圓點對齊
   { href: "#reviews", label: "學員怎麼說" },
   { href: "#about", label: "關於汪汪" },
-  { href: "#courses", label: "潛水課程" },
   { href: "#start", label: "新手上路" },
   { href: "#spots", label: "東北角潛點" },
   { href: "#trips", label: "潛旅目的地" },
+  { href: "#courses", label: "潛水課程" }, // v937：潛水課程移到 FAQ 上方 → 導覽/圓點對齊
   { href: "#faq", label: "常見問題" },
 ];
 
