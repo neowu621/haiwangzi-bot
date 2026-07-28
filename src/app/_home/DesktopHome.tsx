@@ -65,7 +65,7 @@ export default function DesktopHome() {
       <SiteNav />
 
       {/* v929：最新動態影片移到最上面(hero 之上、導覽下方的帶狀區) */}
-      <section className="news" id="news" style={{ background: "#0a2440", paddingTop: 82, paddingBottom: 22 }}>
+      <section className="news news-top" id="news">
         <FeaturedVideos />
       </section>
 

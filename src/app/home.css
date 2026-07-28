@@ -55,7 +55,8 @@
 @media(min-width:980px){.hw .dev-badge{margin-left:0}}
 
 /* HERO */
-.hw .hero{position:relative;min-height:100svh;display:flex;align-items:center;padding:90px 0 9vh;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
+/* v931：首屏整合 — 影片帶+Hero 一畫面看完：取消強制滿版、大幅縮上下留白 */
+.hw .hero{position:relative;display:flex;align-items:center;padding:24px 0 34px;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
 /* v423：hero 背景圖手機改用較小裁切版（src-08.webp 21KB vs src-01.webp 137KB）+ 加深 overlay 讓低解析也耐看；桌機維持 src-01.webp 高解析 */
 .hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.55),rgba(2,21,42,.94)),url(/home/src-08.webp) center/cover}
 @media(min-width:980px){.hw .hero-bg{background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.webp) center/cover}}
@@ -83,17 +84,38 @@
 }
 .hw .hero-grid{position:relative;z-index:5;width:100%;display:grid;grid-template-columns:1fr;gap:30px;align-items:center}
 @media(min-width:980px){.hw .hero-grid{grid-template-columns:1.15fr .85fr}}
-.hw .hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(2.8rem,11vw,5.6rem);line-height:1.06;letter-spacing:.02em;text-shadow:0 12px 50px rgba(0,0,0,.6)}
+.hw .hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(2.4rem,8vw,4.2rem);line-height:1.06;letter-spacing:.02em;text-shadow:0 12px 50px rgba(0,0,0,.6)}
 .hw .hero h1 .hl{color:var(--glow)}
-.hw .hero .lead{max-width:520px;margin:22px 0 30px;font-size:clamp(1.02rem,4vw,1.22rem);color:var(--glow-soft);font-weight:300}
+.hw .hero .lead{max-width:520px;margin:14px 0 20px;font-size:clamp(.98rem,3.4vw,1.12rem);color:var(--glow-soft);font-weight:300}
 .hw .hero-cta{display:flex;flex-wrap:wrap;gap:14px}
 /* v423：修手機看不到教練圖 — 改成手機也顯示（hero 文字下方、置中、限寬 360px），桌機維持右側 */
 .hw .hero-coach{position:relative;display:block;align-self:center;width:100%;max-width:360px;margin:6px auto 0}
 @media(min-width:980px){.hw .hero-coach{max-width:none;margin:0}}
-.hw .hero-coach img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center top;border-radius:24px;border:1px solid rgba(102,216,246,.3);box-shadow:0 30px 80px -20px rgba(2,21,42,.9),0 0 0 6px rgba(102,216,246,.06);animation:hw-float 6s ease-in-out infinite}
+.hw .hero-coach img{display:block;width:100%;height:auto;aspect-ratio:4/3.4;object-fit:cover;object-position:center top;border-radius:24px;border:1px solid rgba(102,216,246,.3);box-shadow:0 30px 80px -20px rgba(2,21,42,.9),0 0 0 6px rgba(102,216,246,.06);animation:hw-float 6s ease-in-out infinite}
 @keyframes hw-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
 .hw .hero-coach .tagpill{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(2,21,42,.78);backdrop-filter:blur(8px);border:1px solid rgba(102,216,246,.35);border-radius:999px;padding:9px 20px;font-size:.86rem;color:var(--glow-soft)}
-.hw .scroll-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--en);letter-spacing:.32em;font-size:.62rem;color:var(--mist);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
+/* v931：頂端影片帶（在 hero 之上）— 用 class 才能被矮螢幕 media query 壓縮 */
+.hw .news.news-top{background:#0a2440;padding:72px 0 12px}
+/* v931：Hero 高度主要被教練照撐大 → 依視窗高度上限，確保與影片帶同屏 */
+.hw .hero-coach img{max-height:min(46vh,430px)}
+
+/* v931：矮螢幕(筆電/有書籤列)再自動壓縮，確保影片帶+Hero 仍一畫面看完 */
+@media(max-height:820px){
+  .hw .news.news-top{padding:66px 0 8px}
+  .hw .hero{padding:14px 0 20px}
+  .hw .hero h1{font-size:clamp(2.1rem,6vw,3.3rem)}
+  .hw .hero .lead{margin:10px 0 14px;font-size:1rem}
+  .hw .hero-cta .btn{padding:12px 24px;font-size:.94rem}
+  .hw .hero-cta-sub{margin-top:10px}
+}
+@media(max-height:700px){
+  .hw .news.news-top{padding:62px 0 6px}
+  .hw .hero{padding:10px 0 14px}
+  .hw .hero h1{font-size:clamp(1.9rem,5vw,2.7rem)}
+  .hw .hero .lead{margin:8px 0 11px;font-size:.94rem}
+}
+/* v931：Hero 不再滿版 → SCROLL 提示會壓到內容，隱藏 */
+.hw .scroll-hint{display:none;position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--en);letter-spacing:.32em;font-size:.62rem;color:var(--mist);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
 .hw .scroll-hint i{width:1px;height:34px;background:linear-gradient(var(--glow),transparent);animation:hw-drop 1.8s ease-in-out infinite}
 @keyframes hw-drop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
 
