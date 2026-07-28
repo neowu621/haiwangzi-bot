@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
 import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
+import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
 import { genBookingCode } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
@@ -182,7 +183,7 @@ export async function POST(req: NextRequest) {
       toStatus: status,
       actorId: auth.user.lineUserId,
       actorRole: "customer",
-      note: `下單（付款狀態：${paymentStatus}）`,
+      note: `下單（付款狀態：${paymentStatusZh(paymentStatus)}）`,
     }),
   ).catch((e) => console.error("[booking-status-log]", e));
 

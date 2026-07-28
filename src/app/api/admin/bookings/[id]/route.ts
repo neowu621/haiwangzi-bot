@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole, getUserRoles } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { refundBookingCredit } from "@/lib/refund-booking-credit"; // v603
+import { bookingStatusZh } from "@/lib/booking-status"; // v944：note 顯示中文狀態
 
 const CANCELLED_STATUSES = new Set([
   "cancelled_by_user",
@@ -116,7 +117,7 @@ export async function PATCH(
       CANCELLED_STATUSES.has(patch.status as string)
     ) {
       creditRefunded = await refundBookingCredit(id, {
-        note: `訂單 ${id.slice(0, 8)} 改為${patch.status}，退還折抵的抵用金`,
+        note: `訂單 ${id.slice(0, 8)} 改為${bookingStatusZh(patch.status as string)}，退還折抵的抵用金`,
         createdBy: auth.user.lineUserId,
       }).catch((e) => {
         console.error("[admin patch refund credit]", e);

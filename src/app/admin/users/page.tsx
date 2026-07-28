@@ -135,11 +135,13 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "待確認",
+  pending: "待付款",
+  awaiting_verify: "待審核款項",
   confirmed: "已確認",
   completed: "已完成",
   cancelled_by_user: "用戶取消",
   cancelled_by_weather: "天氣取消",
+  cancelled_unpaid: "逾期未付取消",
   no_show: "未到",
 };
 

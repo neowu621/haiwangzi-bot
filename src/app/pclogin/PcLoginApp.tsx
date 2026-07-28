@@ -1465,7 +1465,7 @@ function pcOrderDone(b: MyBooking, todayStr: string): { done: boolean; cancelled
   return { done: false, cancelled: false };
 }
 const PAY_ZH: Record<string, string> = {
-  unpaid: "未付款", pending: "未付款", deposit_paid: "已付訂金", fully_paid: "已付清", refunded: "已退款",
+  unpaid: "未付款", pending: "未付款", deposit_paid: "已付訂金", fully_paid: "已付清", refunding: "退款處理中", refunded: "已退款",
 };
 // v592/v596：桌面訊息中心 — 通知(可篩選) + 聯絡客服(雙向,複用客服信箱)
 type Notif = { id: string; title: string; body: string; isRead: boolean; createdAt: string };

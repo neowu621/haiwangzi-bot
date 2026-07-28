@@ -187,3 +187,24 @@ export function reverseDerivedStatus(key: BookingStatusKey): {
  */
 export const BOOKING_STATUS_EDITABLE_KEYS: Array<{ key: BookingStatusKey; label: string }> =
   BOOKING_STATUS_FILTER_KEYS.filter((k) => k.key !== "awaiting_pay");
+
+// v944：單純 enum → 中文 對照（供 API log note / 各處顯示重用；涵蓋所有 enum 值）
+export const BOOKING_STATUS_ZH: Record<string, string> = {
+  pending: "待付款",
+  awaiting_verify: "待審核款項",
+  confirmed: "已確認",
+  completed: "已完成",
+  cancelled_by_user: "客戶取消",
+  cancelled_by_weather: "天候取消",
+  cancelled_unpaid: "逾期未付取消",
+  no_show: "未到場",
+};
+export const PAYMENT_STATUS_ZH: Record<string, string> = {
+  pending: "未付款",
+  deposit_paid: "已付訂金",
+  fully_paid: "已付清",
+  refunding: "退款處理中",
+  refunded: "已退款",
+};
+export const bookingStatusZh = (s: string) => BOOKING_STATUS_ZH[s] ?? s;
+export const paymentStatusZh = (s: string) => PAYMENT_STATUS_ZH[s] ?? s;

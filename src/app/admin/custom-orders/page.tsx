@@ -155,7 +155,7 @@ export default function CustomOrdersPage() {
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{o.itemName} · NT$ {o.amount.toLocaleString()}</div>
                     <div style={{ fontSize: 11, color: "#7c8a96" }}>給 {o.customer}（{o.memberCode}）· {o.code} · {new Date(o.createdAt).toLocaleDateString("zh-TW")}</div>
                     <div style={{ fontSize: 11, marginTop: 2 }}>
-                      <span style={badge(o.paymentStatus === "paid" ? "#0a8f6a" : "#c08a2b")}>付款：{o.paymentStatus}</span>{" "}
+                      <span style={badge(o.paymentStatus === "paid" ? "#0a8f6a" : "#c08a2b")}>付款：{o.paymentStatus === "paid" ? "已付款" : o.paymentStatus === "pending" ? "未付款" : o.paymentStatus}</span>{" "}
                       <span style={badge(o.signed ? "#0a8f6a" : "#9aa")}>{o.signed ? "已簽署" : "未簽署"}</span>
                     </div>
                   </div>
