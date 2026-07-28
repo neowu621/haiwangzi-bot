@@ -222,6 +222,7 @@ export default function BroadcastPage() {
 
   // v649：日潛/潛旅 場次參加者
   const [trips, setTrips] = useState<TripOption[]>([]);
+  const [dailyMeta, setDailyMeta] = useState<Record<string, Record<string, string>>>({}); // v940：日潛場次真實參數(預覽同步)
   const [dailyRefId, setDailyRefId] = useState<string>("");
   const [tourRefId, setTourRefId] = useState<string>("");
   const [dailyPartIds, setDailyPartIds] = useState<string[]>([]);
@@ -292,7 +293,7 @@ export default function BroadcastPage() {
   useEffect(() => {
     if ((sel("daily") || sel("tour")) && trips.length === 0) {
       Promise.all([
-        adminFetch<{ trips: { id: string; date: string; startTime: string; status: string; diveSiteIds?: string[] }[] }>("/api/admin/trips"),
+        adminFetch<{ trips: { id: string; date: string; startTime: string; status: string; diveSiteIds?: string[]; meetingPoint?: string | null; meetingPointUrl?: string | null; activityNote?: string | null }[] }>("/api/admin/trips"),
         adminFetch<{ tours: { id: string; title: string; dateStart: string; status: string }[] }>("/api/admin/tours"),
         adminFetch<Array<{ id: string; name: string }>>("/api/admin/sites").catch(() => [] as Array<{ id: string; name: string }>),
       ])
@@ -302,12 +303,29 @@ export default function BroadcastPage() {
           const siteLabel = (ids?: string[]) =>
             (ids ?? []).map((id) => siteMap.get(id) ?? id).filter(Boolean).join("・");
           const today = new Date(); today.setHours(0, 0, 0, 0);
-          const dailyOpts = (t.trips ?? [])
-            .filter((x) => x.status === "open" && new Date(x.date) >= today)
-            .map((x) => {
-              const site = siteLabel(x.diveSiteIds);
-              return { type: "daily" as const, id: x.id, label: `日潛 ${x.date.slice(0, 10)} ${x.startTime}${site ? ` · ${site}` : ""}` };
-            });
+          const dailyList = (t.trips ?? []).filter((x) => x.status === "open" && new Date(x.date) >= today);
+          const dailyOpts = dailyList.map((x) => {
+            const site = siteLabel(x.diveSiteIds);
+            return { type: "daily" as const, id: x.id, label: `日潛 ${x.date.slice(0, 10)} ${x.startTime}${site ? ` · ${site}` : ""}` };
+          });
+          // v940：預覽同步 —— 記錄每個日潛場次的真實參數(與 broadcast 路由自動帶入邏輯一致)
+          const WD = ["日", "一", "二", "三", "四", "五", "六"];
+          const meta: Record<string, Record<string, string>> = {};
+          for (const x of dailyList) {
+            const d = new Date(x.date);
+            const dateStr = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+            const siteName = (x.diveSiteIds ?? []).map((id) => siteMap.get(id) ?? id).filter(Boolean).join("＋") || "東北角";
+            const meeting = [x.meetingPoint?.trim(), x.meetingPointUrl?.trim()].filter(Boolean).join("\n");
+            const note = (x.activityNote ?? "").trim();
+            const noteBlock = note ? `\n\n📝 貼心提醒：${note}` : "";
+            const m: Record<string, string> = {
+              tripDate: dateStr, weekday: `週${WD[d.getUTCDay()]}`, startTime: x.startTime, siteName, activityNote: noteBlock,
+              date: dateStr, time: x.startTime, site: siteName,
+            };
+            if (meeting) { m.meetingPoint = meeting; m.gather = meeting + noteBlock; }
+            meta[x.id] = m;
+          }
+          setDailyMeta(meta);
           const tourOpts = (tour.tours ?? [])
             .filter((x) => x.status === "open" && new Date(x.dateStart) >= today)
             .map((x) => ({ type: "tour" as const, id: x.id, label: `潛水團 ${x.title}` }));
@@ -317,6 +335,19 @@ export default function BroadcastPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, trips.length]);
+
+  // v940：選定日潛場次(或切換模板) → 把該場次真實參數併入 params JSON，讓「訊息內容預覽」= 實際送出內容
+  useEffect(() => {
+    if (!sel("daily") || !dailyRefId) return;
+    const m = dailyMeta[dailyRefId];
+    if (!m) return;
+    setParamsJson((prev) => {
+      let obj: Record<string, unknown> = {};
+      try { obj = JSON.parse(prev); } catch { obj = {}; }
+      return JSON.stringify({ ...obj, ...m });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyRefId, selected, template, dailyMeta]);
 
   // v649：選定日潛場次 → 抓參加者 userId
   useEffect(() => {
