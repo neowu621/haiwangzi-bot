@@ -56,7 +56,9 @@
 
 /* HERO */
 /* v931：首屏整合 — 影片帶+Hero 一畫面看完：取消強制滿版、大幅縮上下留白 */
-.hw .hero{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 0 34px;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
+.hw .hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;padding:0 0 34px;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
+/* v933：首屏填滿整個畫面（下一區塊「學員怎麼說」不露出）；影片帶置頂、主內容佔滿剩餘空間並垂直置中 */
+.hw .hero .hero-grid{flex:1 1 auto;align-content:center}
 /* v423：hero 背景圖手機改用較小裁切版（src-08.webp 21KB vs src-01.webp 137KB）+ 加深 overlay 讓低解析也耐看；桌機維持 src-01.webp 高解析 */
 .hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.55),rgba(2,21,42,.94)),url(/home/src-08.webp) center/cover}
 @media(min-width:980px){.hw .hero-bg{background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.webp) center/cover}}
@@ -115,7 +117,7 @@
   .hw .hero .lead{margin:8px 0 11px;font-size:.94rem}
 }
 /* v931：Hero 不再滿版 → SCROLL 提示會壓到內容，隱藏 */
-.hw .scroll-hint{display:none;position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--en);letter-spacing:.32em;font-size:.62rem;color:var(--mist);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
+.hw .scroll-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--en);letter-spacing:.32em;font-size:.62rem;color:var(--mist);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}
 .hw .scroll-hint i{width:1px;height:34px;background:linear-gradient(var(--glow),transparent);animation:hw-drop 1.8s ease-in-out infinite}
 @keyframes hw-drop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
 
