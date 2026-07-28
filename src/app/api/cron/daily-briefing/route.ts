@@ -217,6 +217,69 @@ export async function POST(req: NextRequest) {
     return lines.join("\n");
   }
 
+  // v945：老闆 Email 改「表格列表」版（table 佈局，Outlook 相容）
+  function buildBossEmailBody(): string {
+    const esc = (s: string) => s.replace(/</g, "&lt;");
+    const money = (n: number) => `NT$ ${n.toLocaleString()}`;
+    const H3 = "margin:18px 0 8px;font-size:15px;color:#0A2342;font-weight:800";
+    const TH = "padding:8px 10px;text-align:left;font-size:13px";
+    const TD = "border:1px solid #e5eaf0;padding:8px 10px;vertical-align:top;font-size:14px";
+    const p: string[] = [];
+    p.push(`<p style="margin:0 0 4px;color:#0A2342;font-weight:700">🌊 明日預報｜${fmtDate(tomorrow)}</p>`);
+    p.push(`<p style="margin:0 0 8px;color:#8a97a5;font-size:12px">今日 ${fmtDate(now)}　21:00 發送</p>`);
+
+    // 明日場次
+    if (allGroups.length === 0) {
+      p.push(`<p style="${H3}">📅 明日無場次 — 可以休息 🌴</p>`);
+    } else {
+      p.push(`<div style="${H3}">📅 明日場次（${allGroups.length} 場 / ${totalBookings} 筆 / ${totalPeople} 人）</div>`);
+      let rows = "";
+      for (const g of allGroups) {
+        const names = g.bookings.length
+          ? g.bookings.map((b) => `${esc(b.user.realName ?? b.user.displayName)}×${b.participants}`).join("、")
+          : `<span style="color:#9aa7b2">（尚無預約）</span>`;
+        const notes = g.bookings
+          .map((b) => { const n = (b.notes ?? "").trim(); return n ? `<div style="color:#c0392b;font-size:12px;margin-top:3px">📝 ${esc(b.user.realName ?? b.user.displayName)}：${esc(n)}</div>` : ""; })
+          .join("");
+        const due = g.due > 0 ? `<div style="color:#c0392b;font-size:12px;margin-top:2px">待繳 ${money(g.due)}</div>` : "";
+        rows += `<tr>
+          <td style="${TD};font-weight:700;white-space:nowrap">${esc(g.label)}</td>
+          <td style="${TD}">${names}${notes}</td>
+          <td style="${TD};text-align:center;white-space:nowrap">${g.totalPeople}</td>
+          <td style="${TD};text-align:right;white-space:nowrap">${money(g.paidAmt)}<br><span style="color:#8a97a5;font-size:12px">/ ${money(g.totalAmt)}</span>${due}</td>
+        </tr>`;
+      }
+      p.push(`<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%">
+        <thead><tr style="background:#0A2342;color:#fff">
+          <th style="${TH}">場次</th><th style="${TH}">客戶</th><th style="${TH};text-align:center">人</th><th style="${TH};text-align:right">已收 / 應收</th>
+        </tr></thead><tbody>${rows}</tbody></table>`);
+    }
+
+    // 待確認匯款
+    if (pendingProofs.length > 0) {
+      let rows = "";
+      for (const b of pendingProofs.slice(0, 10)) {
+        rows += `<tr>
+          <td style="${TD};border-color:#f0d9b5">${esc(b.user.realName ?? b.user.displayName)}</td>
+          <td style="${TD};border-color:#f0d9b5;font-family:monospace;font-size:13px">${esc(b.code ?? b.id.slice(0, 8))}</td>
+          <td style="${TD};border-color:#f0d9b5;text-align:right;white-space:nowrap">${money(b.totalAmount)}</td>
+        </tr>`;
+      }
+      if (pendingProofs.length > 10) rows += `<tr><td colspan="3" style="${TD};border-color:#f0d9b5;color:#8a97a5">⋯ 還有 ${pendingProofs.length - 10} 筆</td></tr>`;
+      p.push(`<div style="${H3}">💰 待確認匯款（${pendingProofs.length} 筆）</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;background:#fffdf6"><tbody>${rows}</tbody></table>`);
+    }
+
+    // 今日待結算
+    if (pastUnsettled > 0) {
+      p.push(`<p style="margin:14px 0;color:#c0392b;font-weight:700">⚠ 今日場次待結算（還沒勾到場）：${pastUnsettled} 筆　→ 進「今晚結帳」處理</p>`);
+    }
+
+    // 本月統計
+    p.push(`<div style="margin-top:16px;background:#eef6ff;border-radius:10px;padding:12px 16px;font-weight:800;color:#0A2342">📈 本月：${monthAdded} 筆訂單　／　入帳 ${money(monthRevenue._sum.paidAmount ?? 0)}</div>`);
+    return p.join("\n");
+  }
+
   // ── 發送 ──
   const bossText = buildBossText();
   const coachText = buildCoachText();
@@ -231,8 +294,8 @@ export async function POST(req: NextRequest) {
         <h2 style="font-family:sans-serif;margin:0;">海王子日報｜${fmtDate(now)}</h2>
       </td>
     </tr></table>
-    <pre style="font-family:'PingFang TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:8px">${bossText.replace(/</g, "&lt;")}</pre>
-    <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin">👉 進入後台</a></p>
+    <div style="font-family:'PingFang TC','Microsoft JhengHei',sans-serif;color:#1A2330;line-height:1.6">${buildBossEmailBody()}</div>
+    <p style="margin-top:16px"><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://haiwangzi.xyz"}/admin" style="display:inline-block;background:#06325b;color:#fff;text-decoration:none;font-weight:700;padding:10px 20px;border-radius:8px">👉 進入後台</a></p>
   `;
 
   let lineSent = 0;
