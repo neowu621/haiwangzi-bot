@@ -78,6 +78,7 @@ export function CustomerDetailDialog({
   // 聯絡訊息 form
   const [msg, setMsg] = useState("");
   const [subject, setSubject] = useState("");
+  const [useInApp, setUseInApp] = useState(true); // v941：站內為主，預設開
   const [useLine, setUseLine] = useState(true);
   const [useEmail, setUseEmail] = useState(false);
   const [sending, setSending] = useState(false);
@@ -105,6 +106,7 @@ export function CustomerDetailDialog({
   async function send() {
     if (!data || !msg.trim()) return;
     const channels: string[] = [];
+    if (useInApp) channels.push("inapp");
     if (useLine) channels.push("line");
     if (useEmail && data.user.email) channels.push("email");
     if (channels.length === 0) return;
@@ -124,6 +126,7 @@ export function CustomerDetailDialog({
         },
       );
       const parts: string[] = [];
+      if (r.results.inapp) parts.push(`站內：${r.results.inapp.ok ? "✓" : "❌ " + r.results.inapp.error}`);
       if (r.results.line) parts.push(`LINE：${r.results.line.ok ? "✓" : "❌ " + r.results.line.error}`);
       if (r.results.email) parts.push(`Email：${r.results.email.ok ? "✓" : "❌ " + r.results.email.error}`);
       setResult((r.ok ? "✓ 全部送出成功 — " : "⚠ 部分失敗 — ") + parts.join(" / "));
@@ -299,6 +302,10 @@ export function CustomerDetailDialog({
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <label className="inline-flex items-center gap-1">
+                  <input type="checkbox" checked={useInApp} onChange={(e) => setUseInApp(e.target.checked)} />
+                  🔔 站內
+                </label>
+                <label className="inline-flex items-center gap-1">
                   <input type="checkbox" checked={useLine} onChange={(e) => setUseLine(e.target.checked)} />
                   LINE
                 </label>
@@ -332,7 +339,7 @@ export function CustomerDetailDialog({
                 <div className="text-[10px] text-[var(--muted-foreground)]">{msg.length} / 2000</div>
                 <Button
                   size="sm"
-                  disabled={!msg.trim() || sending || (!useLine && !useEmail)}
+                  disabled={!msg.trim() || sending || (!useInApp && !useLine && !useEmail)}
                   onClick={() => void send()}
                 >
                   {sending ? "送出中..." : "📤 送出訊息"}
