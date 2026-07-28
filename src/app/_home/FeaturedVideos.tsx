@@ -40,6 +40,7 @@ export default function FeaturedVideos() {
     <div className="fv-wrap">
       <div className="fv-head">
         <p className="fv-sub">海裡每天都在上演精彩——汪汪帶你直擊東北角海底世界，<b>想不想一起下水看看？</b></p>
+        <a className="fv-yt-link" href={YT_CHANNEL} target="_blank" rel="noopener noreferrer">更多影片 →</a>
       </div>
 
       <div className="fv-marquee" ref={trackWrapRef}>
@@ -68,16 +69,14 @@ export default function FeaturedVideos() {
         </div>
       </div>
 
-      <div className="fv-more">
-        <a href={YT_CHANNEL} target="_blank" rel="noopener noreferrer">追蹤海王子，看更多影片 → YouTube 頻道</a>
-      </div>
-
       <style>{`
         .fv-wrap{max-width:1180px;margin:0 auto;padding:0;}
-        .fv-head{text-align:center;margin-bottom:14px;padding:0 16px;}
+        .fv-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:6px 14px;margin-bottom:14px;padding:0 16px;text-align:center;}
         .fv-sub{margin:0;font-size:16px;line-height:1.5;color:#dceaf5;text-shadow:0 1px 8px rgba(0,0,0,.4);}
         .fv-sub b{color:#5fe0cf;font-weight:800;}
-        @media(min-width:760px){.fv-sub{font-size:18px;white-space:nowrap;}}
+        .fv-yt-link{flex:none;font-size:13.5px;font-weight:700;color:#1ed4c2;text-decoration:none;white-space:nowrap;}
+        .fv-yt-link:hover{text-decoration:underline;text-underline-offset:3px;}
+        @media(min-width:760px){.fv-sub{font-size:18px;white-space:nowrap;} .fv-yt-link{font-size:14.5px;}}
 
         /* 跑馬燈：一直往左跑，右邊接著出來，無縫循環 */
         .fv-marquee{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
@@ -102,8 +101,6 @@ export default function FeaturedVideos() {
         .fv-play::before{content:"";position:absolute;top:50%;left:54%;transform:translate(-50%,-50%);border-left:14px solid #0a2440;border-top:8px solid transparent;border-bottom:8px solid transparent;}
         .fv-ttl{padding:11px 12px 13px;font-size:14px;font-weight:800;line-height:1.4;letter-spacing:-.01em;}
 
-        .fv-more{text-align:center;margin-top:16px;padding:0 16px;}
-        .fv-more a{color:#1ed4c2;font-size:13px;text-decoration:underline;text-underline-offset:3px;}
       `}</style>
     </div>
   );
