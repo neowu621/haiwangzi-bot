@@ -44,7 +44,35 @@ interface CustomerData {
   };
   stats: { bookingCount: number; wishCount: number; totalPaid: number };
   activityNotes?: Array<{ bookingId: string; note: string; label: string; at: string }>; // v661：各活動備註
+  orders?: OrderRow[]; // v942：過往訂單紀錄
 }
+
+interface OrderRow {
+  id: string;
+  code: string | null;
+  type: string;
+  label: string;
+  participants: number;
+  tankCount: number | null;
+  totalAmount: number;
+  paidAmount: number;
+  paymentStatus: string;
+  status: string;
+  at: string;
+}
+
+const ORDER_STATUS: Record<string, { t: string; c: string }> = {
+  pending: { t: "待確認", c: "bg-amber-100 text-amber-700" },
+  confirmed: { t: "已確認", c: "bg-sky-100 text-sky-700" },
+  completed: { t: "已完成", c: "bg-emerald-100 text-emerald-700" },
+  cancelled_by_user: { t: "客取消", c: "bg-gray-100 text-gray-500" },
+  cancelled_by_weather: { t: "天候取消", c: "bg-gray-100 text-gray-500" },
+  cancelled_unpaid: { t: "逾期取消", c: "bg-gray-100 text-gray-500" },
+  no_show: { t: "未到場", c: "bg-rose-100 text-rose-600" },
+};
+const PAY_STATUS: Record<string, string> = {
+  pending: "未付", partial: "訂金", paid: "已付清", refunding: "退款中", refunded: "已退款",
+};
 
 interface ContactLogEntry {
   id: string;
@@ -254,6 +282,37 @@ export function CustomerDetailDialog({
                   <div className="text-xs text-[var(--muted-foreground)]">（客人下單時未填備註）</div>
                 )}
               </div>
+            </section>
+
+            {/* v942：過往訂單紀錄 */}
+            <section className="rounded-xl border border-[var(--border)] p-3">
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                🧾 過往訂單紀錄{data.orders && data.orders.length > 0 && `（近 ${data.orders.length} 筆）`}
+              </div>
+              {data.orders && data.orders.length > 0 ? (
+                <div className="space-y-1.5">
+                  {data.orders.map((o) => {
+                    const st = ORDER_STATUS[o.status] ?? { t: o.status, c: "bg-gray-100 text-gray-500" };
+                    const cancelled = o.status.startsWith("cancelled") || o.status === "no_show";
+                    return (
+                      <div key={o.id} className={cn("rounded-lg border border-[var(--border)] px-2.5 py-2 text-xs", cancelled && "opacity-60")}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-[var(--foreground)] break-all">{o.label || "訂單"}</span>
+                          <span className={cn("flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", st.c)}>{st.t}</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[var(--muted-foreground)]">
+                          {o.code && <span className="font-mono">{o.code}</span>}
+                          <span>{o.participants} 人{o.tankCount ? `・${o.tankCount} 潛` : ""}</span>
+                          <span>NT$ {o.paidAmount.toLocaleString()} / {o.totalAmount.toLocaleString()}（{PAY_STATUS[o.paymentStatus] ?? o.paymentStatus}）</span>
+                          <span>{new Date(o.at).toLocaleDateString("zh-TW")}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-[var(--muted-foreground)]">尚無訂單紀錄</div>
+              )}
             </section>
 
             {/* Section 2：完整討論串 */}

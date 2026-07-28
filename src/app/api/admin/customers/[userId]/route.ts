@@ -55,31 +55,49 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
   ]);
   const totalPaid = paidAgg._sum.paidAmount ?? 0;
 
-  // v664：彙整該會員「各筆訂單的客戶備註」(Booking.notes，客人下單自己填的)，附活動標籤
-  const noted = await prisma.booking.findMany({
-    where: { userId, notes: { not: null } },
-    select: { id: true, type: true, refId: true, notes: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-  const dailyIds = noted.filter((b) => b.type === "daily").map((b) => b.refId);
-  const tourIds = noted.filter((b) => b.type === "tour").map((b) => b.refId);
+  // v664：各筆訂單客戶備註(Booking.notes)  +  v942：完整訂單清單(過往訂單紀錄)
+  const [noted, orderRows] = await Promise.all([
+    prisma.booking.findMany({
+      where: { userId, notes: { not: null } },
+      select: { id: true, type: true, refId: true, notes: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.booking.findMany({
+      where: { userId },
+      select: { id: true, code: true, type: true, refId: true, participants: true, tankCount: true, totalAmount: true, paidAmount: true, paymentStatus: true, status: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }),
+  ]);
+  // 兩份資料的 refId 一起解析場次/潛旅標籤（去重，一次查）
+  const allRows = [...noted, ...orderRows];
+  const dailyIds = Array.from(new Set(allRows.filter((b) => b.type === "daily").map((b) => b.refId)));
+  const tourIds = Array.from(new Set(allRows.filter((b) => b.type === "tour").map((b) => b.refId)));
   const [trips, tours] = await Promise.all([
     dailyIds.length ? prisma.divingTrip.findMany({ where: { id: { in: dailyIds } }, select: { id: true, date: true, startTime: true } }) : Promise.resolve([]),
     tourIds.length ? prisma.tourPackage.findMany({ where: { id: { in: tourIds } }, select: { id: true, title: true } }) : Promise.resolve([]),
   ]);
   const tripMap = new Map(trips.map((t) => [t.id, t]));
   const tourMap = new Map(tours.map((t) => [t.id, t]));
-  const activityNotes = noted.map((b) => {
-    const label = b.type === "daily"
-      ? `日潛 ${tripMap.get(b.refId)?.date?.toISOString().slice(0, 10) ?? ""} ${tripMap.get(b.refId)?.startTime ?? ""}`.trim()
-      : (tourMap.get(b.refId)?.title ?? "潛旅");
-    return { bookingId: b.id, note: b.notes, label, at: b.createdAt };
-  });
+  const labelFor = (type: string, refId: string) =>
+    type === "daily"
+      ? `日潛 ${tripMap.get(refId)?.date?.toISOString().slice(0, 10) ?? ""} ${tripMap.get(refId)?.startTime ?? ""}`.trim()
+      : type === "tour"
+        ? (tourMap.get(refId)?.title ?? "潛旅")
+        : "客製訂單";
+  const activityNotes = noted.map((b) => ({ bookingId: b.id, note: b.notes, label: labelFor(b.type, b.refId), at: b.createdAt }));
+  const orders = orderRows.map((b) => ({
+    id: b.id, code: b.code, type: b.type, label: labelFor(b.type, b.refId),
+    participants: b.participants, tankCount: b.tankCount,
+    totalAmount: b.totalAmount, paidAmount: b.paidAmount,
+    paymentStatus: b.paymentStatus, status: b.status, at: b.createdAt,
+  }));
 
   return NextResponse.json({
     user,
     stats: { bookingCount, wishCount, totalPaid },
     activityNotes,
+    orders,
   });
 }
