@@ -334,11 +334,13 @@
 /* BOOKING */
 .hw .booking{position:relative;padding:90px 0;text-align:center;overflow:hidden;background:radial-gradient(100% 120% at 50% 0%,rgba(102,216,246,.2),transparent 60%),#06325b}
 .hw .booking h2{font-family:var(--serif);font-weight:900;font-size:clamp(1.9rem,7vw,3.2rem);margin-bottom:16px}
-.hw .booking p{color:var(--glow-soft);max-width:560px;margin:0 auto 30px}
+/* v936：加大寬度讓文字不擠 */
+.hw .booking .wrap{max-width:760px}
+.hw .booking p{color:var(--glow-soft);max-width:680px;margin:0 auto 24px;font-size:1.05rem;line-height:1.85}
 .hw .booking p b{color:#fff;font-weight:800}
 .hw .booking .btn{font-size:1.08rem;padding:18px 38px}
-/* v935：台北共乘提醒 — 預約按鈕下方的小卡，柔和不搶主 CTA */
-.hw .booking-carpool{max-width:560px;margin:22px auto 0;padding:12px 20px;font-size:.94rem;line-height:1.7;color:var(--glow-soft);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.22);border-radius:14px}
+/* v935/v936：台北共乘提醒 — 柔和小卡，置於內文與 LINE 按鈕之間 */
+.hw .booking-carpool{max-width:680px;margin:0 auto 30px;padding:14px 24px;font-size:.98rem;line-height:1.8;color:var(--glow-soft);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.22);border-radius:14px}
 .hw .booking-carpool b{color:#fff;font-weight:800}
 
 /* FOOTER */
