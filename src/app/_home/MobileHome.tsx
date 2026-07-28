@@ -99,6 +99,13 @@ export default function MobileHome() {
             </div>
           ))}
         </div>
+        {/* v935：台北共乘提醒 */}
+        <div style={{ display: "flex", gap: 9, alignItems: "flex-start", marginTop: 10, background: "#eef7fb", border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 13px" }}>
+          <span style={{ fontSize: 17, lineHeight: 1.3 }}>🚗</span>
+          <div style={{ fontSize: 12.5, lineHeight: 1.65, color: C.ink }}>
+            <b style={{ color: C.navy }}>住台北？交通免煩惱</b>——想共乘到東北角潛水，跟教練說一聲就好，讓你的潛水行程更簡單！
+          </div>
+        </div>
       </Section>
 
       {/* 課程（橫向滑動，體驗潛水優先）*/}

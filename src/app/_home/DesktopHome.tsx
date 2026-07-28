@@ -259,9 +259,10 @@ export default function DesktopHome() {
       <section className="booking" id="book">
         <div className="wrap reveal">
           <span className="eyebrow">Let&apos;s Dive</span>
-          <h2>準備好下水了嗎？</h2>
-          <p>加入官方 LINE, 告訴汪汪你想潛的日期與人數, 幫你把行程安排好。單人報名也 OK, 現場幫你找潛伴。</p>
+          <h2>準備好，一起潛進大海了嗎？</h2>
+          <p>加 LINE 跟汪汪說一聲想潛的日期和人數，剩下的交給我們——潛點、裝備、行程通通幫你打理好。<b>第一次來、自己一個人報名都沒問題</b>，現場幫你配潛伴，輕鬆下水。</p>
           <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon s={20} />加 LINE 預約潛水</a>
+          <p className="booking-carpool">🚗 <b>住台北？交通免煩惱</b>——想共乘到東北角潛水，跟教練說一聲就好，讓你的潛水行程更簡單！</p>
         </div>
       </section>
 

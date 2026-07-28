@@ -334,8 +334,12 @@
 /* BOOKING */
 .hw .booking{position:relative;padding:90px 0;text-align:center;overflow:hidden;background:radial-gradient(100% 120% at 50% 0%,rgba(102,216,246,.2),transparent 60%),#06325b}
 .hw .booking h2{font-family:var(--serif);font-weight:900;font-size:clamp(1.9rem,7vw,3.2rem);margin-bottom:16px}
-.hw .booking p{color:var(--glow-soft);max-width:520px;margin:0 auto 30px}
+.hw .booking p{color:var(--glow-soft);max-width:560px;margin:0 auto 30px}
+.hw .booking p b{color:#fff;font-weight:800}
 .hw .booking .btn{font-size:1.08rem;padding:18px 38px}
+/* v935：台北共乘提醒 — 預約按鈕下方的小卡，柔和不搶主 CTA */
+.hw .booking-carpool{max-width:560px;margin:22px auto 0;padding:12px 20px;font-size:.94rem;line-height:1.7;color:var(--glow-soft);background:rgba(102,216,246,.08);border:1px solid rgba(102,216,246,.22);border-radius:14px}
+.hw .booking-carpool b{color:#fff;font-weight:800}
 
 /* FOOTER */
 .hw footer{background:var(--abyss);padding:54px 0 30px;border-top:1px solid rgba(102,216,246,.15)}
