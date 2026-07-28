@@ -19,17 +19,15 @@ const wd = (d: Date) => WD[d.getUTCDay()];
 const LIFF_BOOK_URL = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
 export default async function SchedulePage() {
-  // 台北「今天」→ 本月底
+  // 台北「今天」（含今天）→ 之後所有開放場次
   const now = new Date();
   const todayStr = now.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
-  const [y, m] = todayStr.split("-").map(Number);
-  const lastStr = `${y}-${String(m).padStart(2, "0")}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
   const todayD = new Date(todayStr);
-  const lastD = new Date(lastStr);
 
+  // v938：日潛不再限制「本月底」，列出今天起所有開放場次（與潛旅一致）
   const trips = await prisma.divingTrip
     .findMany({
-      where: { status: { in: ["open", "full"] }, date: { gte: todayD, lte: lastD } },
+      where: { status: { in: ["open", "full"] }, date: { gte: todayD } },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     })
     .catch(() => []);
@@ -87,7 +85,7 @@ export default async function SchedulePage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 22, alignItems: "start" }}>
             {/* 左：日潛 */}
             <section>
-              <h2 style={hStyle}>🔱 日潛 Fun Dive　<span style={{ fontSize: 12.5, fontWeight: 700, color: "#9aabae" }}>本月場次</span></h2>
+              <h2 style={hStyle}>🔱 日潛 Fun Dive　<span style={{ fontSize: 12.5, fontWeight: 700, color: "#9aabae" }}>近期場次</span></h2>
               {trips.length > 0 ? (
                 trips.map((t) => {
                   const booked = bookedMap.get(t.id) ?? 0;
