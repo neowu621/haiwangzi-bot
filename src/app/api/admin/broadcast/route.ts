@@ -76,6 +76,37 @@ export async function POST(req: NextRequest) {
   }
   const has = (k: string) => audiences.has(k);
 
+  // v939：選了日潛場次 → 用該場次真實資料自動填變數，避免沿用模板示範值(06/01…)送錯。
+  //   內容：日期/星期/集合時間/潛點/集合地點(含 Google Map URL)/活動提醒事項。
+  //   站內·文字·Email 用 {tripDate}{weekday}{startTime}{siteName}{meetingPoint}{activityNote}；
+  //   LINE flex(d1_reminder) 用不同鍵名 {date}{time}{site}{gather} → 兩套都填。場次資料優先蓋示範值。
+  if (has("daily") && data.dailyRefId) {
+    const trip = await prisma.divingTrip.findUnique({ where: { id: data.dailyRefId } }).catch(() => null);
+    if (trip) {
+      const WD = ["日", "一", "二", "三", "四", "五", "六"];
+      const d = trip.date;
+      const dateStr = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+      let siteName = "東北角";
+      if (trip.diveSiteIds.length) {
+        const sites = await prisma.diveSite.findMany({ where: { id: { in: trip.diveSiteIds } }, select: { name: true } }).catch(() => []);
+        if (sites.length) siteName = sites.map((s) => s.name).join("＋");
+      }
+      const meeting = [trip.meetingPoint?.trim(), trip.meetingPointUrl?.trim()].filter(Boolean).join("\n");
+      const note = trip.activityNote?.trim() || "";
+      const noteBlock = note ? `\n\n📝 貼心提醒：${note}` : ""; // 空 → 不顯示；有值 → 換行+標籤，整段塞入 {activityNote}
+      const auto: Record<string, unknown> = {
+        tripDate: dateStr, weekday: `週${WD[d.getUTCDay()]}`, startTime: trip.startTime, siteName,
+        activityNote: noteBlock,
+        date: dateStr, time: trip.startTime, site: siteName, // LINE flex 相容鍵名
+      };
+      if (meeting) {
+        auto.meetingPoint = meeting;             // 站內/文字/Email：集合地點(含地圖 URL)
+        auto.gather = meeting + noteBlock;        // LINE flex：集合地點/時間欄合併地點+提醒
+      }
+      data.params = { ...(data.params as Record<string, unknown>), ...auto };
+    }
+  }
+
   // 收集所有命中的 lineUserId（Set 去重 → 同一人只發一次）
   const idSet = new Set<string>();
 

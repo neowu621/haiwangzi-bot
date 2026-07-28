@@ -50,8 +50,9 @@ export default async function SchedulePage() {
     : [];
   const tourBookedMap = new Map(tourBookings.map((b) => [b.refId, b._sum.participants ?? 0]));
 
+  // v939：不顯示剩餘數量 —— 只標「可約 / 額滿」
   const availLabel = (capacity: number | null, booked: number) =>
-    capacity == null ? { t: "可約", ok: true } : capacity - booked > 0 ? { t: `餘 ${capacity - booked}`, ok: true } : { t: "額滿", ok: false };
+    capacity != null && capacity - booked <= 0 ? { t: "額滿", ok: false } : { t: "可約", ok: true };
 
   const empty = trips.length === 0 && tours.length === 0;
 

@@ -62,10 +62,10 @@ const TEMPLATE_DEFAULTS: Record<string, { altText: string; text: string; emailSu
   },
   d1_reminder: {
     altText: "明日潛水提醒",
-    text: "🌊 明日潛水提醒\n\n📅 日期：{tripDate}\n⏰ 集合時間：{startTime}\n📍 集合地點：{meetingPoint}\n\n請攜帶 C 卡、身分證、防曬乳。如遇天氣異常將另行通知，明天見！",
+    text: "🌊 明日潛水提醒\n\n📅 日期：{tripDate}\n⏰ 集合時間：{startTime}\n📍 集合地點：{meetingPoint}{activityNote}\n\n請攜帶 C 卡、身分證、防曬乳。如遇天氣異常將另行通知，明天見！",
     emailSubject: "明日潛水提醒",
-    emailBody: "日期：{tripDate}\n集合時間：{startTime}\n集合地點：{meetingPoint}\n\n請攜帶 C 卡、身分證、防曬乳。明天見！",
-    params: '{"tripDate":"06/01","startTime":"08:00","meetingPoint":"潮境公園停車場"}',
+    emailBody: "日期：{tripDate}\n集合時間：{startTime}\n集合地點：{meetingPoint}{activityNote}\n\n請攜帶 C 卡、身分證、防曬乳。明天見！",
+    params: '{"tripDate":"06/01","startTime":"08:00","meetingPoint":"潮境公園停車場（選日潛場次後自動帶入真實地點+地圖）","activityNote":""}',
   },
   deposit_notice: {
     altText: "訂金繳費通知",
