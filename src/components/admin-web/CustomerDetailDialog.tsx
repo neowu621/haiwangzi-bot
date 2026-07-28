@@ -62,16 +62,17 @@ interface OrderRow {
 }
 
 const ORDER_STATUS: Record<string, { t: string; c: string }> = {
-  pending: { t: "待確認", c: "bg-amber-100 text-amber-700" },
+  pending: { t: "待付款", c: "bg-amber-100 text-amber-700" },
+  awaiting_verify: { t: "待審核款項", c: "bg-orange-100 text-orange-700" },
   confirmed: { t: "已確認", c: "bg-sky-100 text-sky-700" },
   completed: { t: "已完成", c: "bg-emerald-100 text-emerald-700" },
   cancelled_by_user: { t: "客取消", c: "bg-gray-100 text-gray-500" },
   cancelled_by_weather: { t: "天候取消", c: "bg-gray-100 text-gray-500" },
-  cancelled_unpaid: { t: "逾期取消", c: "bg-gray-100 text-gray-500" },
+  cancelled_unpaid: { t: "逾期未付取消", c: "bg-gray-100 text-gray-500" },
   no_show: { t: "未到場", c: "bg-rose-100 text-rose-600" },
 };
 const PAY_STATUS: Record<string, string> = {
-  pending: "未付", partial: "訂金", paid: "已付清", refunding: "退款中", refunded: "已退款",
+  pending: "未付", deposit_paid: "已付訂金", fully_paid: "已付清", refunding: "退款中", refunded: "已退款",
 };
 
 interface ContactLogEntry {
