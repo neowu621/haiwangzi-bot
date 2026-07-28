@@ -64,15 +64,14 @@ export default function DesktopHome() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(bizJsonLd) }} />
       <SiteNav />
 
-      {/* v929：最新動態影片移到最上面(hero 之上、導覽下方的帶狀區) */}
-      <section className="news news-top" id="news">
-        <FeaturedVideos />
-      </section>
-
       <section className="hero" id="top">
         <div className="hero-bg" />
         <span className="light-shaft s1" /><span className="light-shaft s2" /><span className="light-shaft s3" />
         <Bubbles />
+        {/* v932：最新動態影片移進 hero 內部 → 共用同一張海底背景，首屏視覺一體不分割 */}
+        <div className="hero-videos" id="news">
+          <FeaturedVideos />
+        </div>
         <div className="wrap hero-grid">
           <div>
             <p className="eyebrow">Lailai Yingge Rock · Northeast Coast</p>
