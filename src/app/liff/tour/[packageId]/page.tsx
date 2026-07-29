@@ -109,6 +109,7 @@ export default function TourDetailPage({
   // v955：下單時就選付款方式（必選、收合卡）
   const [paymentMethod, setPaymentMethod] = useState<PayMethodSel>("");
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false); // v957：備註預設收合
   // 抵用金折抵
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
@@ -486,22 +487,22 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
-        {/* 備註（v353：抽出成獨立、清楚標題的卡）*/}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">📝 備註 / 特殊需求</CardTitle>
-            <p className="-mt-1 text-[11px] text-[var(--muted-foreground)]">選填。飲食 / 房型偏好 / 同行者 / 其他需求。</p>
-          </CardHeader>
-          <CardContent>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="例：素食、想住雙人房、與 OOO 同房…"
-              rows={3}
-              className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40 resize-y"
-            />
-          </CardContent>
-        </Card>
+        {/* v957：備註改預設收合（選填）*/}
+        <CollapsibleCard
+          title="📝 備註 / 特殊需求"
+          complete={notes.trim().length > 0}
+          open={notesOpen}
+          onToggle={() => setNotesOpen(!notesOpen)}
+          summary={notes.trim() ? notes.trim().slice(0, 24) : "選填 · 飲食 / 房型偏好 / 同行者…"}
+        >
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="例：素食、想住雙人房、與 OOO 同房…"
+            rows={3}
+            className="w-full rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40 resize-y"
+          />
+        </CollapsibleCard>
 
         {/* v955：付款方式（下單時必選、收合卡）*/}
         <CollapsibleCard
