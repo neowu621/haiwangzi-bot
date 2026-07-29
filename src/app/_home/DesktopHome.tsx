@@ -69,10 +69,6 @@ export default function DesktopHome() {
         <div className="hero-bg" />
         <span className="light-shaft s1" /><span className="light-shaft s2" /><span className="light-shaft s3" />
         <Bubbles />
-        {/* v932：最新動態影片移進 hero 內部 → 共用同一張海底背景，首屏視覺一體不分割 */}
-        <div className="hero-videos" id="news">
-          <FeaturedVideos />
-        </div>
         <div className="wrap hero-grid">
           <div>
             <p className="eyebrow">Lailai Yingge Rock · Northeast Coast</p>
@@ -96,7 +92,8 @@ export default function DesktopHome() {
             <span className="tagpill">潛水教練 ｜ 海王子．汪汪</span>
           </div>
         </div>
-        {/* v947：潛點主題影片併進 Hero 內部 → 區塊1(影片)+2(清單牆)+3(主視覺)同一首屏、共用背景 */}
+        {/* v950：主視覺(hero-grid)移到最上面當區塊1 → 影片、潛點清單牆接在下方；三塊同一首屏、共用背景 */}
+        <div className="hero-videos" id="news"><FeaturedVideos /></div>
         <div className="hero-playlists" id="playlists"><HomePlaylists transparent /></div>
       </section>
 
