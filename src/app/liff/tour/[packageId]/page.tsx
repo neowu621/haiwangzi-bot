@@ -26,6 +26,8 @@ import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
+import { PAY_OPTIONS, PAY_LABEL, type PayMethodSel } from "@/lib/payment-methods";
 
 // v655：證照等級（與日潛一致）
 const TOUR_CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
@@ -104,6 +106,9 @@ export default function TourDetailPage({
   const [mePhone, setMePhone] = useState<string | null>(null);
   const [missingInfoModalOpen, setMissingInfoModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // v955：下單時就選付款方式（必選、收合卡）
+  const [paymentMethod, setPaymentMethod] = useState<PayMethodSel>("");
+  const [paymentOpen, setPaymentOpen] = useState(false);
   // 抵用金折抵
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
@@ -167,7 +172,8 @@ export default function TourDetailPage({
     emergencyName.trim().length >= 2 &&
     emergencyPhone.trim().length >= 8 &&
     cert !== "" &&                   // v655：證照等級必填
-    logCount.trim().length >= 1;     // v655：潛水次數必填（新手填 0 也可）
+    logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
+    paymentMethod !== "";            // v955：付款方式必選
 
   async function submit() {
     if (!tour || !canSubmit) return;
@@ -193,7 +199,7 @@ export default function TourDetailPage({
           ),
           notes: notes || undefined,
           creditUsed: Math.min(creditUsed, creditBalance, total),
-          // v289：建立時不送 paymentMethod，後端寫 null
+          paymentMethod, // v955：下單時已選付款方式
           agreedToTerms: true as const,
           // v260：手寫簽名 PNG data URL
           signatureDataUrl: signatureDataUrl ?? undefined,
@@ -497,17 +503,39 @@ export default function TourDetailPage({
           </CardContent>
         </Card>
 
-        {/* v289：付款方式不再於下單頁選，改到「我的預約 → 付款方式選擇」 */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="rounded-md border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 text-xs text-[var(--color-ocean-deep)]">
-              <div className="font-semibold mb-1">💳 下單後再選付款方式</div>
-              <div className="text-[var(--muted-foreground)]">
-                預約完成後請至「我的預約」→ <span className="font-semibold">付款方式選擇</span>，可選擇 🏦 轉帳 / 💚 LINE Pay / 📝 其他並上傳對應的付款截圖。
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* v955：付款方式（下單時必選、收合卡）*/}
+        <CollapsibleCard
+          title="付款方式"
+          required
+          complete={paymentMethod !== ""}
+          open={paymentOpen}
+          onToggle={() => setPaymentOpen(!paymentOpen)}
+          summary={paymentMethod !== "" ? PAY_LABEL[paymentMethod] : "尚未選擇（必選）"}
+        >
+          <div className="space-y-2">
+            {PAY_OPTIONS.map((o) => (
+              <button
+                key={o.k}
+                type="button"
+                onClick={() => { setPaymentMethod(o.k); setPaymentOpen(false); }}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition-colors",
+                  paymentMethod === o.k ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10" : "border-[var(--border)]",
+                )}
+              >
+                <span className="text-lg leading-none">{o.ic}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">{o.nm}</span>
+                  <span className="block text-[11px] text-[var(--muted-foreground)]">{o.ds}</span>
+                </span>
+                <span className={cn("h-4 w-4 flex-shrink-0 rounded-full border-2", paymentMethod === o.k ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--border)]")} />
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+            🏦 轉帳 / 💚 LINE Pay → 下單後到「我的預約」上傳付款證明；💵 現場支付 → 當天付給教練、免上傳。
+          </p>
+        </CollapsibleCard>
 
         {/* v259：政策同意流程（兩個 checkbox + modal）+ 簽名 + 同意 banner */}
         <Card>

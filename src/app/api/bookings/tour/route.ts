@@ -18,7 +18,7 @@ const BodySchema = z.object({
   selectedAddons: z.array(z.string()).default([]),
   notes: z.string().optional(),
   // v289：建立訂單時不選付款方式，等客戶到「付款方式選擇」頁才寫入
-  paymentMethod: z.enum(["bank", "linepay", "other"]).nullable().optional(),
+  paymentMethod: z.enum(["bank", "linepay", "cash", "other"]).nullable().optional(),
   paymentNote: z.string().max(200).optional(), // 客戶選「其他」時填寫的說明
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),

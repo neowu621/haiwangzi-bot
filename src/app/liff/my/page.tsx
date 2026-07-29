@@ -69,6 +69,7 @@ interface MyBooking {
     | "fully_paid"
     | "refunding"
     | "refunded";
+  paymentMethod?: "bank" | "linepay" | "cash" | "other" | null; // v955：下單時選的付款方式
   totalAmount: number;
   depositAmount: number;
   paidAmount: number;
@@ -557,6 +558,7 @@ function BookingCard({
     b.paymentStatus !== "fully_paid" &&
     b.paymentStatus !== "refunded" &&
     b.totalAmount > 0;
+  const isCashPay = b.paymentMethod === "cash"; // v955：現場支付 → 免線上付款/上傳
   // v367：付款截止日 = min(下訂+10天, 活動出發前48小時)。修正先前截止日可能晚於活動日的 bug。
   const paymentDeadline = (() => {
     if (!needsPayment) return null;
@@ -818,7 +820,7 @@ function BookingCard({
 
         {/* v864：付款主要 CTA —— 整排、置中、品牌珊瑚色，讓客戶一眼知道要做什麼。
             原本是左下角的小藥丸按鈕，跟金額擠在同一排，容易被忽略。 */}
-        {needsPayment && (
+        {needsPayment && !isCashPay && (
           <Link
             href={`/liff/payment/${b.id}`}
             onClick={() => setPaying(true)}
@@ -833,6 +835,12 @@ function BookingCard({
               {paying ? "開啟中…" : "請選擇並上傳付款資訊"}
             </button>
           </Link>
+        )}
+        {/* v955：現場支付 → 不催上傳，顯示現場付款提示 */}
+        {needsPayment && isCashPay && (
+          <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 px-4 py-3 text-[13.5px] font-bold text-[var(--color-ocean-deep)]">
+            💵 現場付款・當天付給教練（免線上上傳）
+          </div>
         )}
         {needsPayment && paying && paySlow && (
           <div className="mt-1.5 text-center text-[10px] text-[var(--muted-foreground)]">

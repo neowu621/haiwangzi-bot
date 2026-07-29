@@ -31,6 +31,7 @@ import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
+import { PAY_OPTIONS, PAY_LABEL, type PayMethodSel } from "@/lib/payment-methods";
 import { useLiff } from "@/lib/liff/LiffProvider";
 import { formatPhoneTW } from "@/lib/phone";
 import { cn, isBookingClosed } from "@/lib/utils";
@@ -202,6 +203,9 @@ export default function TripBookingPage({
   // 折疊狀態：個人資料、緊急聯絡人預設折疊；缺資料時自動展開
   const [personalOpen, setPersonalOpen] = useState(false);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
+  // v955：下單時就選付款方式（必選、收合卡）
+  const [paymentMethod, setPaymentMethod] = useState<PayMethodSel>("");
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -442,7 +446,8 @@ export default function TripBookingPage({
     emergencyPhone.trim().length >= 8 &&
     cert !== "" &&
     logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
-    companionsValid;
+    companionsValid &&
+    paymentMethod !== "";            // v955：付款方式必選
 
   // v703：按鈕變灰時，列出「還差什麼」讓使用者知道要補哪些（按鈕不再無聲 disabled）
   const missing: string[] = [];
@@ -456,6 +461,7 @@ export default function TripBookingPage({
   if (cert === "") missing.push("證照等級");
   if (logCount.trim().length < 1) missing.push("潛水次數");
   if (!companionsValid) missing.push("同行者資料");
+  if (paymentMethod === "") missing.push("選擇付款方式");
 
   async function submit() {
     if (!trip || !canSubmit) return;
@@ -502,7 +508,7 @@ export default function TripBookingPage({
           qty: g.qty,
         })),
         notes: notes || undefined,
-        // v289：不再送 paymentMethod，後端寫 null（建立時不選付款方式）
+        paymentMethod, // v955：下單時已選付款方式（bank/linepay/cash/other）
         creditUsed: Math.min(creditUsed, creditBalance, finalTotal),
         // v592：節慶優惠代碼(後端二次驗證 + 取其優)
         promoCode: promoApplied?.code,
@@ -885,19 +891,45 @@ export default function TripBookingPage({
           </Card>
         )}
 
-        {/* v289：付款方式不再於下單頁選，改到「我的預約 → 付款方式選擇」 */}
+        {/* v955：付款方式（下單時必選、收合卡）*/}
+        <CollapsibleCard
+          title="付款方式"
+          required
+          complete={paymentMethod !== ""}
+          open={paymentOpen}
+          onToggle={() => setPaymentOpen(!paymentOpen)}
+          summary={paymentMethod !== "" ? PAY_LABEL[paymentMethod] : "尚未選擇（必選）"}
+        >
+          <div className="space-y-2">
+            {PAY_OPTIONS.map((o) => (
+              <button
+                key={o.k}
+                type="button"
+                onClick={() => { setPaymentMethod(o.k); setPaymentOpen(false); }}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition-colors",
+                  paymentMethod === o.k ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10" : "border-[var(--border)]",
+                )}
+              >
+                <span className="text-lg leading-none">{o.ic}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">{o.nm}</span>
+                  <span className="block text-[11px] text-[var(--muted-foreground)]">{o.ds}</span>
+                </span>
+                <span className={cn("h-4 w-4 flex-shrink-0 rounded-full border-2", paymentMethod === o.k ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]" : "border-[var(--border)]")} />
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+            🏦 轉帳 / 💚 LINE Pay → 下單後到「我的預約」上傳付款證明；💵 現場支付 → 當天付給教練、免上傳。
+          </p>
+        </CollapsibleCard>
+
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">付款與優惠</CardTitle>
+            <CardTitle className="text-base">優惠與抵用</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-md border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3 text-xs text-[var(--color-ocean-deep)]">
-              <div className="font-semibold mb-1">💳 下單後再選付款方式</div>
-              <div className="text-[var(--muted-foreground)]">
-                預約完成後請至「我的預約」→ <span className="font-semibold">付款方式選擇</span>，可選擇 🏦 轉帳 / 💚 LINE Pay / 📝 其他並上傳對應的付款截圖。
-              </div>
-            </div>
-
             {/* v592：節慶優惠代碼（v638：套用教練氣瓶優惠價時隱藏，因不可併用） */}
             {!staffTankApplied && (
             <div className="rounded-md border border-[var(--color-ocean-deep)]/20 bg-[var(--color-ocean-deep)]/5 p-3">
