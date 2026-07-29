@@ -87,6 +87,7 @@ const GEAR_LABELS: Record<GearItemType, string> = {
 
 // v211：UI picker 移除 Rescue（既有資料仍可顯示）
 const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
+const SHOW_PROMO_CODE = false; // v957：暫時隱藏「優惠代碼」，要開放改 true
 
 const SignaturePad = dynamic<SignaturePadProps>(
   () => import("@/components/ui/SignaturePad").then((m) => m.SignaturePad),
@@ -925,6 +926,7 @@ export default function TripBookingPage({
           </p>
         </CollapsibleCard>
 
+        {SHOW_PROMO_CODE && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">優惠與抵用</CardTitle>
@@ -948,6 +950,7 @@ export default function TripBookingPage({
             {/* v807：抵用金操作與「應付」整合到最下方付款總結區（金額只在一處出現） */}
           </CardContent>
         </Card>
+        )}
 
         {/* v259：政策同意流程（兩個 checkbox + modal）+ 簽名 + 同意 banner */}
         <Card>
