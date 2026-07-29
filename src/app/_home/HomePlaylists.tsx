@@ -2,11 +2,14 @@
 // v946/v947：首頁「潛點主題影片」磚牆 —— 各地點一磚，點下去開該 YouTube 播放清單。
 //   縮圖：上傳封面 > 代表影片縮圖 > 漸層底+名稱。橫向可滑；資料來自 /api/config.homePlaylists。
 //   transparent：放進 Hero 內部時用(共用 Hero 背景，與區塊1/3 同一首屏)；預設(手機)自帶深色底。
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DEFAULT_HOME_PLAYLISTS, playlistUrl, playlistThumb, type HomePlaylist } from "@/lib/home-playlists";
 
 export default function HomePlaylists({ transparent = false }: { transparent?: boolean }) {
   const [list, setList] = useState<HomePlaylist[]>(DEFAULT_HOME_PLAYLISTS);
+  const [overflow, setOverflow] = useState(false); // 滿了(溢出) → 輪播；沒滿 → 置中
+  const rowRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let off = false;
@@ -17,17 +20,40 @@ export default function HomePlaylists({ transparent = false }: { transparent?: b
     return () => { off = true; };
   }, []);
 
+  // 量測：原始磚總寬 > 容器寬 → 溢出(輪播)；否則置中
+  useEffect(() => {
+    const measure = () => {
+      const row = rowRef.current, track = trackRef.current;
+      if (!row || !track) return;
+      const kids = Array.from(track.children).slice(0, list.length) as HTMLElement[];
+      if (kids.length === 0) return;
+      const contentW = kids.reduce((s, k) => s + k.offsetWidth, 0) + 12 * (kids.length - 1);
+      setOverflow(contentW > row.clientWidth + 1);
+    };
+    const raf = () => requestAnimationFrame(measure);
+    raf();
+    const t = setTimeout(measure, 300); // 等縮圖/字體載入後再量一次
+    window.addEventListener("resize", raf);
+    const ro = rowRef.current ? new ResizeObserver(raf) : null;
+    if (ro && rowRef.current) ro.observe(rowRef.current);
+    return () => { window.removeEventListener("resize", raf); clearTimeout(t); ro?.disconnect(); };
+  }, [list]);
+
   if (list.length === 0) return null;
+  const items = overflow ? [...list, ...list] : list; // 溢出才複製一份做無縫輪播
+  const dur = Math.max(20, list.length * 6);
 
   return (
     <div className={`hpl-wrap${transparent ? " hpl-transparent" : ""}`}>
       <p className="hpl-sub">跟著海王子看遍東北角各潛點 —— <b>點一下，直接看整個系列。</b></p>
 
-      <div className="hpl-row">
-        {list.map((p) => {
+      <div className={`hpl-row${overflow ? " is-overflow" : ""}`} ref={rowRef}>
+        <div className={`hpl-track${overflow ? " run" : ""}`} ref={trackRef} style={overflow ? { animationDuration: `${dur}s` } : undefined}>
+        {items.map((p, idx) => {
           const thumb = playlistThumb(p);
           return (
-            <a key={p.playlistId} className="hpl-card" href={playlistUrl(p.playlistId)} target="_blank" rel="noopener noreferrer" title={p.title || "播放清單"}>
+            <a key={`${p.playlistId}-${idx}`} className="hpl-card" href={playlistUrl(p.playlistId)} target="_blank" rel="noopener noreferrer" title={p.title || "播放清單"}
+              aria-hidden={idx >= list.length} tabIndex={idx >= list.length ? -1 : 0}>
               <span className="hpl-thumb">
                 {thumb ? (
                   <>
@@ -44,6 +70,7 @@ export default function HomePlaylists({ transparent = false }: { transparent?: b
             </a>
           );
         })}
+        </div>
       </div>
 
       <style>{`
@@ -52,8 +79,15 @@ export default function HomePlaylists({ transparent = false }: { transparent?: b
         .hpl-sub{margin:0 auto 12px;max-width:760px;padding:0 16px;text-align:center;font-size:18px;line-height:1.55;color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.5);}
         .hpl-sub b{color:#7fe9d9;font-weight:800;}
         @media(min-width:760px){.hpl-sub{font-size:20px;}}
-        .hpl-row{display:flex;gap:12px;overflow-x:auto;padding:2px 16px 4px;max-width:1180px;margin:0 auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
-        .hpl-row::-webkit-scrollbar{display:none;}
+        /* 沒滿 → 置中；滿了(溢出) → 左對齊並自動輪播 */
+        .hpl-row{display:flex;justify-content:center;padding:2px 16px 4px;max-width:1180px;margin:0 auto;overflow:hidden;}
+        .hpl-row.is-overflow{justify-content:flex-start;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);}
+        .hpl-track{display:flex;gap:12px;width:max-content;max-width:100%;}
+        .hpl-row.is-overflow .hpl-track{max-width:none;}
+        .hpl-track.run{animation:hplscroll linear infinite;}
+        .hpl-track.run:hover{animation-play-state:paused;}
+        @keyframes hplscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+        @media(prefers-reduced-motion:reduce){.hpl-track.run{animation:none;} .hpl-row.is-overflow{overflow-x:auto;scrollbar-width:none;}}
         .hpl-card{flex:none;width:200px;text-decoration:none;}
         @media(max-width:520px){.hpl-card{width:172px;}}
         @media(max-height:820px){.hpl-card{width:180px;}}
