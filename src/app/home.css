@@ -57,7 +57,9 @@
 /* HERO */
 /* v931：首屏整合 — 影片帶+Hero 一畫面看完：取消強制滿版、大幅縮上下留白 */
 /* v934：整組內容（影片帶＋主視覺）在首屏中垂直置中，畫面更和諧；padding-top 保留導覽列淨空 */
-.hw .hero{position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:88px 0 88px;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
+.hw .hero{position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:72px 0 22px;overflow:hidden;background:linear-gradient(180deg,#0b4f86,#031a32 72%,var(--abyss))}
+/* v947：三塊(影片+清單牆+主視覺)同一首屏 → 主標略縮、教練照壓矮、清單牆併入 hero 底 */
+.hw .hero-playlists{position:relative;z-index:5;width:100%;margin-top:16px}
 /* v423：hero 背景圖手機改用較小裁切版（src-08.webp 21KB vs src-01.webp 137KB）+ 加深 overlay 讓低解析也耐看；桌機維持 src-01.webp 高解析 */
 .hw .hero-bg{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(4,40,75,.55),rgba(2,21,42,.94)),url(/home/src-08.webp) center/cover}
 @media(min-width:980px){.hw .hero-bg{background:linear-gradient(180deg,rgba(4,40,75,.4),rgba(2,21,42,.9)),url(/home/src-01.webp) center/cover}}
@@ -85,7 +87,7 @@
 }
 .hw .hero-grid{position:relative;z-index:5;width:100%;display:grid;grid-template-columns:1fr;gap:30px;align-items:center}
 @media(min-width:980px){.hw .hero-grid{grid-template-columns:1.15fr .85fr}}
-.hw .hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(2.4rem,8vw,4.2rem);line-height:1.06;letter-spacing:.02em;text-shadow:0 12px 50px rgba(0,0,0,.6)}
+.hw .hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(2.2rem,6.4vw,3.5rem);line-height:1.06;letter-spacing:.02em;text-shadow:0 12px 50px rgba(0,0,0,.6)}
 .hw .hero h1 .hl{color:var(--glow)}
 .hw .hero .lead{max-width:520px;margin:14px 0 20px;font-size:clamp(.98rem,3.4vw,1.12rem);color:var(--glow-soft);font-weight:300}
 .hw .hero-cta{display:flex;flex-wrap:wrap;gap:14px}
@@ -96,24 +98,30 @@
 @keyframes hw-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
 .hw .hero-coach .tagpill{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(2,21,42,.78);backdrop-filter:blur(8px);border:1px solid rgba(102,216,246,.35);border-radius:999px;padding:9px 20px;font-size:.86rem;color:var(--glow-soft)}
 /* v932：影片帶改放進 hero 內部（共用海底背景，首屏一體不分割） */
-.hw .hero-videos{position:relative;z-index:5;width:100%;padding:0 0 26px}
-@media(max-height:820px){.hw .hero-videos{padding:0 0 20px}}
-@media(max-height:700px){.hw .hero-videos{padding:0 0 16px}}
+.hw .hero-videos{position:relative;z-index:5;width:100%;padding:0 0 14px}
+@media(max-height:820px){.hw .hero-videos{padding:0 0 10px}}
+@media(max-height:700px){.hw .hero-videos{padding:0 0 8px}}
 /* v931：Hero 高度主要被教練照撐大 → 依視窗高度上限，確保與影片帶同屏 */
-.hw .hero-coach img{max-height:min(46vh,430px)}
+.hw .hero-coach img{max-height:min(38vh,360px)}
 
 /* v931：矮螢幕(筆電/有書籤列)再自動壓縮，確保影片帶+Hero 仍一畫面看完 */
 @media(max-height:820px){
-  .hw .hero{padding:76px 0 76px}
-  .hw .hero h1{font-size:clamp(2.1rem,6vw,3.3rem)}
-  .hw .hero .lead{margin:10px 0 14px;font-size:1rem}
+  .hw .hero{padding:70px 0 16px}
+  .hw .hero h1{font-size:clamp(1.9rem,5vw,2.9rem)}
+  .hw .hero .lead{margin:8px 0 12px;font-size:.98rem}
+  .hw .hero-playlists{margin-top:10px}
   .hw .hero-cta .btn{padding:12px 24px;font-size:.94rem}
   .hw .hero-cta-sub{margin-top:10px}
 }
 @media(max-height:700px){
-  .hw .hero{padding:74px 0 24px}
-  .hw .hero h1{font-size:clamp(1.9rem,5vw,2.7rem)}
-  .hw .hero .lead{margin:8px 0 11px;font-size:.94rem}
+  .hw .hero{padding:64px 0 10px}
+  .hw .hero h1{font-size:clamp(1.6rem,4vw,2.1rem)}
+  .hw .hero .lead{margin:6px 0 8px;font-size:.9rem}
+  .hw .hero-playlists{margin-top:4px}
+  .hw .hero .eyebrow{margin-bottom:5px;font-size:.6rem}
+  .hw .hero-cta .btn{padding:10px 18px;font-size:.9rem}
+  .hw .hero-cta-sub{margin-top:7px;font-size:.82rem}
+  .hw .hero-coach img{max-height:min(30vh,260px)}
 }
 /* v931：Hero 不再滿版 → SCROLL 提示會壓到內容，隱藏 */
 .hw .scroll-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--en);letter-spacing:.32em;font-size:.62rem;color:var(--mist);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:5}

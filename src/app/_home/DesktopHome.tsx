@@ -96,11 +96,9 @@ export default function DesktopHome() {
             <span className="tagpill">潛水教練 ｜ 海王子．汪汪</span>
           </div>
         </div>
-        <div className="scroll-hint">SCROLL<i /></div>
+        {/* v947：潛點主題影片併進 Hero 內部 → 區塊1(影片)+2(清單牆)+3(主視覺)同一首屏、共用背景 */}
+        <div className="hero-playlists" id="playlists"><HomePlaylists transparent /></div>
       </section>
-
-      {/* v946：潛點主題播放清單牆（Hero 下方） */}
-      <section id="playlists"><HomePlaylists /></section>
 
       <section className="reviews" id="reviews">
         <div className="wrap">

@@ -41,18 +41,39 @@ export function HomePlaylistsEditor() {
     setUrl(""); setMsg(null);
   }
 
+  // v947：上傳前自動最佳化 —— 裁成 16:9（cover）、壓成 WebP、寬 640，手機也輕量
+  async function optimizeToWebp(file: File): Promise<Blob> {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(file);
+    });
+    const TW = 640, TH = 360; // 16:9
+    const canvas = document.createElement("canvas"); canvas.width = TW; canvas.height = TH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { URL.revokeObjectURL(img.src); return file; }
+    const scale = Math.max(TW / img.width, TH / img.height); // cover
+    const w = img.width * scale, h = img.height * scale;
+    ctx.drawImage(img, (TW - w) / 2, (TH - h) / 2, w, h);
+    URL.revokeObjectURL(img.src);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), "image/webp", 0.82));
+    return blob ?? file;
+  }
+
   async function uploadCover(i: number, file: File) {
     setUploadingIdx(i); setMsg(null);
     try {
+      let body: Blob = file, contentType = file.type, filename = file.name;
+      try { // 最佳化失敗就退回原圖，不擋上傳
+        body = await optimizeToWebp(file); contentType = "image/webp"; filename = file.name.replace(/\.[^.]+$/, "") + ".webp";
+      } catch { /* fallback 原圖 */ }
       const presign = await adminFetch<{ url: string; publicUrl: string | null }>("/api/uploads/presign", {
         method: "POST",
-        body: JSON.stringify({ prefix: "media", filename: file.name, contentType: file.type }),
+        body: JSON.stringify({ prefix: "media", filename, contentType }),
       });
-      const put = await fetch(presign.url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      const put = await fetch(presign.url, { method: "PUT", headers: { "Content-Type": contentType }, body });
       if (!put.ok) throw new Error(`上傳失敗 (${put.status})`);
       if (!presign.publicUrl) throw new Error("無公開網址");
       upd(i, { coverImageUrl: presign.publicUrl });
-      setMsg("✓ 封面已上傳，記得按下方儲存");
+      setMsg(`✓ 封面已最佳化上傳（${Math.round(body.size / 1024)}KB），記得按下方儲存`);
     } catch (e) {
       setMsg("封面上傳失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -78,6 +99,7 @@ export function HomePlaylistsEditor() {
     <div className="space-y-3">
       <p className="text-[11px] leading-relaxed text-[var(--muted-foreground)]">
         首頁「🌊 潛點主題影片」磚牆。點磚 → 開該 YouTube <b>播放清單</b>。縮圖：<b>貼一支代表影片網址</b>（用它的縮圖），或 <b>上傳封面照</b>（優先）。
+        <br />📐 封面照<b>不用管尺寸</b> —— 上傳後系統會自動裁成 16:9、壓成 WebP（約 30–60KB），手機也順。
       </p>
 
       {/* 加入 */}
