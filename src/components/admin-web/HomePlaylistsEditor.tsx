@@ -61,19 +61,18 @@ export function HomePlaylistsEditor() {
   async function uploadCover(i: number, file: File) {
     setUploadingIdx(i); setMsg(null);
     try {
-      let body: Blob = file, contentType = file.type, filename = file.name;
+      let body: Blob = file, contentType = file.type || "image/*", filename = file.name;
       try { // 最佳化失敗就退回原圖，不擋上傳
         body = await optimizeToWebp(file); contentType = "image/webp"; filename = file.name.replace(/\.[^.]+$/, "") + ".webp";
       } catch { /* fallback 原圖 */ }
-      const presign = await adminFetch<{ url: string; publicUrl: string | null }>("/api/uploads/presign", {
-        method: "POST",
-        body: JSON.stringify({ prefix: "media", filename, contentType }),
-      });
-      const put = await fetch(presign.url, { method: "PUT", headers: { "Content-Type": contentType }, body });
-      if (!put.ok) throw new Error(`上傳失敗 (${put.status})`);
-      if (!presign.publicUrl) throw new Error("無公開網址");
-      upd(i, { coverImageUrl: presign.publicUrl });
-      setMsg(`✓ 封面已最佳化上傳（${Math.round(body.size / 1024)}KB），記得按下方儲存`);
+      // v949：走伺服器端上傳（避開瀏覽器直傳 R2 的 CORS），body 帶二進位、header 覆蓋成圖片型別
+      const r = await adminFetch<{ publicUrl: string | null; bytes?: number }>(
+        `/api/admin/upload-image?prefix=media&filename=${encodeURIComponent(filename)}`,
+        { method: "POST", headers: { "Content-Type": contentType }, body },
+      );
+      if (!r.publicUrl) throw new Error("伺服器未回傳網址");
+      upd(i, { coverImageUrl: r.publicUrl });
+      setMsg(`✓ 封面已最佳化上傳（${Math.round((r.bytes ?? body.size) / 1024)}KB），記得按下方「儲存播放清單牆」`);
     } catch (e) {
       setMsg("封面上傳失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
