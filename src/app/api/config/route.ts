@@ -3,6 +3,7 @@ import { getSiteConfigRow } from "@/lib/site-config-cache"; // v693：版本號�
 import { DEFAULT_CANCELLATION_POLICY, DEFAULT_SAFETY_POLICY } from "@/lib/default-policies";
 import { PUBLIC_STATIC_CACHE_HEADERS } from "@/lib/http-cache";
 import { DEFAULT_DIVE_VIDEOS, sanitizeDiveVideos, type DiveVideo } from "@/lib/dive-videos"; // v911
+import { DEFAULT_HOME_PLAYLISTS, sanitizeHomePlaylists, type HomePlaylist } from "@/lib/home-playlists"; // v946
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,8 @@ export async function GET() {
   let homeReviewsNote = "";
   // v911：首頁精選影片（空 → 用程式預設 4 支）
   let featuredDiveVideos: DiveVideo[] = DEFAULT_DIVE_VIDEOS;
+  // v946：首頁潛點主題播放清單牆（空 → 用程式預設）
+  let homePlaylists: HomePlaylist[] = DEFAULT_HOME_PLAYLISTS;
   try {
     const cfg = await getSiteConfigRow(); // v693：命中快取時零 DB；siteConfig 一存檔自動失效
     if (cfg?.externalLinks) {
@@ -85,6 +88,9 @@ export async function GET() {
     const rawFdv = (cfg as unknown as { featuredDiveVideos?: unknown } | null)?.featuredDiveVideos;
     const cleanFdv = sanitizeDiveVideos(rawFdv);
     if (cleanFdv.length > 0) featuredDiveVideos = cleanFdv; // 有存才覆蓋，否則用預設
+    const rawHpl = (cfg as unknown as { homePlaylists?: unknown } | null)?.homePlaylists;
+    const cleanHpl = sanitizeHomePlaylists(rawHpl);
+    if (cleanHpl.length > 0) homePlaylists = cleanHpl;
   } catch {
     // DB 失敗就用空物件（避免 LIFF 整個壞掉）
   }
@@ -120,5 +126,6 @@ export async function GET() {
     homeTestimonials,
     homeReviewsNote,
     featuredDiveVideos,
+    homePlaylists,
   }, { headers: PUBLIC_STATIC_CACHE_HEADERS });
 }

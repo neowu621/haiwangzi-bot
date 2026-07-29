@@ -507,6 +507,8 @@ const PATCHES = [
   // v911：首頁精選影片 + 推播時間戳
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS featured_dive_videos JSONB NOT NULL DEFAULT '[]'`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS dive_video_last_push_at TIMESTAMPTZ`,
+  // v946：首頁潛點主題播放清單牆
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS home_playlists JSONB NOT NULL DEFAULT '[]'`,
   // v392: 氣瓶限時折扣
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_enabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS tank_promo_discount INTEGER NOT NULL DEFAULT 0`,

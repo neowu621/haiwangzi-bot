@@ -14,6 +14,7 @@ import { ExternalLink, Save, Send, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VipTiersEditor } from "@/components/admin-web/VipTiersEditor"; // v345
 import { FeaturedVideosEditor } from "@/components/admin-web/FeaturedVideosEditor"; // v911
+import { HomePlaylistsEditor } from "@/components/admin-web/HomePlaylistsEditor"; // v946
 import { DiveVideoPushPanel } from "@/components/admin-web/DiveVideoPushPanel"; // v912
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -1200,6 +1201,11 @@ export default function SettingsPage() {
           <SectionCard title="🎬 本週潛水精選（首頁影片卡）">
             <FeaturedVideosEditor />
           </SectionCard>
+          <div className="mt-4">
+            <SectionCard title="🌊 潛點主題影片（首頁播放清單牆）">
+              <HomePlaylistsEditor />
+            </SectionCard>
+          </div>
           <div className="mt-4">
             <SectionCard title="📣 推播精選給會員">
               <DiveVideoPushPanel />

@@ -5,6 +5,7 @@ import { APP_VERSION } from "@/lib/version";
 import SiteNav from "./SiteNav";
 import Bubbles from "./Bubbles";
 import FeaturedVideos from "./FeaturedVideos";
+import HomePlaylists from "./HomePlaylists";
 import {
   LINE_BOOK_URL, YT_CHANNEL, IG_URL, FB_URL, NAV,
   COURSES, SPOTS, TRIPS, LVL_CLASS,
@@ -97,6 +98,9 @@ export default function DesktopHome() {
         </div>
         <div className="scroll-hint">SCROLL<i /></div>
       </section>
+
+      {/* v946：潛點主題播放清單牆（Hero 下方） */}
+      <section id="playlists"><HomePlaylists /></section>
 
       <section className="reviews" id="reviews">
         <div className="wrap">

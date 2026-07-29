@@ -8,6 +8,7 @@ import {
 import { localBusinessJsonLd } from "@/lib/business-info";
 import { MantaTridentMark } from "@/components/brand/MantaTrident";
 import FeaturedVideos from "./FeaturedVideos";
+import HomePlaylists from "./HomePlaylists";
 
 // v549：手機潛點 2×4 格用的縮圖（沿用既有 WebP，對應 home.css 的 bg-* 圖）
 const SPOT_IMG: Record<string, string> = {
@@ -80,6 +81,9 @@ export default function MobileHome() {
           ))}
         </Scroller>
       </div>
+
+      {/* v946：潛點主題播放清單牆 */}
+      <HomePlaylists />
 
       {/* 第一次潛水 4 步 */}
       <Section id="start" title="第一次潛水，這樣開始" sub="First Dive" icon="🐠">

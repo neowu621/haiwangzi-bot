@@ -10,6 +10,7 @@ import {
 import { logAudit } from "@/lib/audit";
 import { invalidateSocialFooterCache } from "@/lib/social-footer"; // v344
 import { DEFAULT_DIVE_VIDEOS, sanitizeDiveVideos } from "@/lib/dive-videos"; // v911
+import { DEFAULT_HOME_PLAYLISTS, sanitizeHomePlaylists } from "@/lib/home-playlists"; // v946
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -173,6 +174,13 @@ const PatchSchema = z.object({
     title: z.string().max(120).default(""),
     desc: z.string().max(300).default(""),
   })).max(12).optional(),
+  // v946：首頁潛點主題播放清單牆
+  homePlaylists: z.array(z.object({
+    playlistId: z.string().min(1).max(60),
+    title: z.string().max(60).default(""),
+    coverVideoId: z.string().max(20).default(""),
+    coverImageUrl: z.string().max(500).default(""),
+  })).max(12).optional(),
   // v392：氣瓶限時折扣
   tankPromoEnabled: z.boolean().optional(),
   tankPromoDiscount: z.number().int().min(0).max(100000).optional(),
@@ -321,6 +329,9 @@ export async function GET(req: NextRequest) {
       featuredDiveVideos: sanitizeDiveVideos((row as unknown as { featuredDiveVideos?: unknown }).featuredDiveVideos).length > 0
         ? sanitizeDiveVideos((row as unknown as { featuredDiveVideos?: unknown }).featuredDiveVideos)
         : DEFAULT_DIVE_VIDEOS,
+      homePlaylists: sanitizeHomePlaylists((row as unknown as { homePlaylists?: unknown }).homePlaylists).length > 0
+        ? sanitizeHomePlaylists((row as unknown as { homePlaylists?: unknown }).homePlaylists)
+        : DEFAULT_HOME_PLAYLISTS,
       // v392 氣瓶限時折扣
       tankPromoEnabled: (row as unknown as { tankPromoEnabled?: boolean }).tankPromoEnabled ?? false,
       tankPromoDiscount: (row as unknown as { tankPromoDiscount?: number }).tankPromoDiscount ?? 0,
