@@ -35,7 +35,7 @@ export default function LiffHomePage() {
         </section>
 
         {/* ② 影片跑馬燈 */}
-        <div style={{ background: "#0A2342", padding: "16px 0 20px" }}>
+        <div style={{ background: "#0A2342", padding: "16px 0 6px" }}>
           <FeaturedVideos />
         </div>
 

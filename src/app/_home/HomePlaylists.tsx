@@ -74,7 +74,7 @@ export default function HomePlaylists({ transparent = false }: { transparent?: b
       </div>
 
       <style>{`
-        .hpl-wrap{background:linear-gradient(180deg,#05284a,#031a32);padding:32px 0 36px;}
+        .hpl-wrap{background:linear-gradient(180deg,#05284a,#031a32);padding:10px 0 32px;}
         .hpl-wrap.hpl-transparent{background:transparent;padding:0;}
         .hpl-sub{margin:0 auto 12px;max-width:760px;padding:0 16px;text-align:center;font-size:18px;line-height:1.55;color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.5);}
         .hpl-sub b{color:#7fe9d9;font-weight:800;}

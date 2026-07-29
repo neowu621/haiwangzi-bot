@@ -50,7 +50,7 @@ export default function MobileHome() {
       </section>
 
       {/* ② 影片跑馬燈（深色底延續 hero）*/}
-      <div style={{ background: C.navy, padding: "16px 0 20px" }}>
+      <div style={{ background: C.navy, padding: "16px 0 6px" }}>
         <FeaturedVideos />
       </div>
 

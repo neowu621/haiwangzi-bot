@@ -39,8 +39,7 @@ export default function FeaturedVideos() {
   return (
     <div className="fv-wrap">
       <div className="fv-head">
-        <p className="fv-sub">海裡每天都在上演精彩——汪汪帶你直擊東北角海底世界，<b>想不想一起下水看看？</b></p>
-        <a className="fv-yt-link" href={YT_CHANNEL} target="_blank" rel="noopener noreferrer">更多影片 →</a>
+        <p className="fv-sub">海裡每天都在上演精彩——汪汪帶你直擊東北角海底世界，<b>想不想一起下水看看？</b> <a className="fv-yt-link" href={YT_CHANNEL} target="_blank" rel="noopener noreferrer">更多影片 →</a></p>
       </div>
 
       <div className="fv-marquee" ref={trackWrapRef}>
@@ -71,12 +70,12 @@ export default function FeaturedVideos() {
 
       <style>{`
         .fv-wrap{max-width:1180px;margin:0 auto;padding:0;}
-        .fv-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:5px 12px;margin-bottom:10px;padding:0 16px;text-align:center;}
-        .fv-sub{margin:0;font-size:15px;line-height:1.45;color:#dceaf5;text-shadow:0 1px 8px rgba(0,0,0,.4);}
+        .fv-head{margin-bottom:10px;padding:0 16px;text-align:center;}
+        .fv-sub{margin:0 auto;max-width:640px;font-size:14.5px;line-height:1.5;color:#dceaf5;text-shadow:0 1px 8px rgba(0,0,0,.4);}
         .fv-sub b{color:#5fe0cf;font-weight:800;}
-        .fv-yt-link{flex:none;font-size:13.5px;font-weight:700;color:#1ed4c2;text-decoration:none;white-space:nowrap;}
+        .fv-yt-link{font-size:13.5px;font-weight:800;color:#1ed4c2;text-decoration:none;white-space:nowrap;}
         .fv-yt-link:hover{text-decoration:underline;text-underline-offset:3px;}
-        @media(min-width:760px){.fv-sub{font-size:17px;white-space:nowrap;} .fv-yt-link{font-size:14px;}}
+        @media(min-width:760px){.fv-sub{font-size:18px;white-space:nowrap;max-width:none;} .fv-yt-link{font-size:15px;}}
         /* 矮螢幕再壓縮：卡片縮小、留白縮小，確保與 Hero 同屏 */
         @media(max-height:820px){.fv-card{width:172px;} .fv-ttl{padding:6px 9px 8px;font-size:11.5px;} .fv-head{margin-bottom:8px;} .fv-sub{font-size:14px;}}
         @media(max-height:700px){.fv-card{width:150px;} .fv-ttl{font-size:11px;} .fv-sub{font-size:13px;}}
