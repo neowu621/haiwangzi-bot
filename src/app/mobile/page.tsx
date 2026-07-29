@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import MobileHome from "../_home/MobileHome";
 
+// v952：改為即時渲染，避免被靜態化成 s-maxage=1年 → 改版後手機一直看到舊快取。與 `/` 一致。
+export const dynamic = "force-dynamic";
+
 // v507：手機真人首頁（proxy 把手機 / 轉向到這裡）。canonical 指回 `/` 集中排名，
 //   noindex 避免與 `/` 重複內容（Googlebot 不會被轉來，仍在 `/` 看行動版內容）。
 export const metadata: Metadata = {
