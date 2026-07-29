@@ -90,7 +90,9 @@
 .hw .hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(2.2rem,6.4vw,3.5rem);line-height:1.06;letter-spacing:.02em;text-shadow:0 12px 50px rgba(0,0,0,.6)}
 .hw .hero h1 .hl{color:var(--glow)}
 .hw .hero .lead{max-width:520px;margin:14px 0 20px;font-size:clamp(.98rem,3.4vw,1.12rem);color:var(--glow-soft);font-weight:300}
-.hw .hero-cta{display:flex;flex-wrap:wrap;gap:14px}
+.hw .hero-cta{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+/* v951：「第一次潛水？看這裡」移進 CTA 排、置中對齊按鈕（覆蓋原 margin-top） */
+.hw .hero-cta .hero-cta-sub{margin-top:0;margin-left:4px}
 /* v423：修手機看不到教練圖 — 改成手機也顯示（hero 文字下方、置中、限寬 360px），桌機維持右側 */
 .hw .hero-coach{position:relative;display:block;align-self:center;width:100%;max-width:360px;margin:6px auto 0}
 @media(min-width:980px){.hw .hero-coach{max-width:none;margin:0}}

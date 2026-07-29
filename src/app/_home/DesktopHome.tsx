@@ -77,8 +77,9 @@ export default function DesktopHome() {
             <div className="hero-cta">
               <a href={LINE_BOOK_URL} target="_blank" rel="noopener" className="btn btn-line"><LineIcon />LINE 立即預約</a>
               <Link href="/contact" className="btn btn-ask">✉️ 線上詢問</Link>
+              {/* v951：「第一次潛水？看這裡」移到按鈕右邊同一排 */}
+              <a href="#start" className="hero-cta-sub">第一次潛水？看這裡 →</a>
             </div>
-            <a href="#start" className="hero-cta-sub">第一次潛水？看這裡 →</a>
           </div>
           <div className="hero-coach">
             <Image
