@@ -313,8 +313,7 @@ export function AdminShell({
             </button>
           </div>
         )}
-        {/* v401：連線測速面板 */}
-        <ConnDiag variant="panel" />
+        {/* v960：移除側欄「連線測速」面板（保留頂部小徽章）*/}
       </div>
 
       <div className="mx-3 mb-2 border-t border-white/10" />
