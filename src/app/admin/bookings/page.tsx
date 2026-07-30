@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronUp, Edit3, X, AlertTriangle, Trash2, ImageOff } from "lucide-react";
+import { ChevronDown, ChevronUp, ImageOff } from "lucide-react";
 import { cn, weekdayTW, toTaipeiDateString, toTaipeiISODate } from "@/lib/utils";
 import { deriveBookingDisplay, BOOKING_STATUS_FILTER_GROUPS, BOOKING_STATUS_EDITABLE_KEYS, reverseDerivedStatus, type BookingStatusKey } from "@/lib/booking-status"; // v319 / v324 / v327
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
@@ -1349,7 +1349,7 @@ export default function AdminBookingsPage() {
                         </td>
                         {/* 操作 */}
                         <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex gap-1 flex-wrap">
+                          <div className="flex gap-1 flex-nowrap whitespace-nowrap">
                             {/* 待結算（過期+pending/confirmed）→ 快速結算按鈕 */}
                             {past && (b.status === "pending" || b.status === "confirmed") && (
                               <>
@@ -1403,8 +1403,9 @@ export default function AdminBookingsPage() {
                                 setRefundCreditPct(100);
                               }}
                               title="編輯"
+                              className="px-2 text-xs"
                             >
-                              <Edit3 className="h-3 w-3" />
+                              編輯
                             </Button>
                             {(b.status === "pending" || b.status === "confirmed") && (
                               <Button
@@ -1412,8 +1413,9 @@ export default function AdminBookingsPage() {
                                 variant="outline"
                                 onClick={() => cancelBooking(b)}
                                 title="取消訂單"
+                                className="px-2 text-xs"
                               >
-                                <X className="h-3 w-3" />
+                                取消
                               </Button>
                             )}
                             <Button
@@ -1421,9 +1423,9 @@ export default function AdminBookingsPage() {
                               variant="outline"
                               onClick={() => deleteBooking(b)}
                               title="永久刪除"
-                              className="border-[var(--color-coral)]"
+                              className="border-[var(--color-coral)] px-2 text-xs text-[var(--color-coral)]"
                             >
-                              <AlertTriangle className="h-3 w-3 text-[var(--color-coral)]" />
+                              刪除
                             </Button>
                           </div>
                         </td>
