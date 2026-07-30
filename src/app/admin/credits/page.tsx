@@ -2,7 +2,7 @@
 /**
  * v225：抵用金管理頁 — 完整 CRUD + 編碼 + 經辦人
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { getCached, cachedFetch } from "@/lib/admin-cache";
@@ -76,6 +76,10 @@ export default function CreditsPage() {
   const [to, setTo] = useState("");
   const [expiryFilter, setExpiryFilter] = useState<"" | "7d" | "30d" | "expired">(""); // v959：到期篩選
   const [remindBusy, setRemindBusy] = useState(false); // v959：一鍵提醒
+  // v962：前端排序 + 會員關鍵字
+  const [sortKey, setSortKey] = useState<"time" | "member" | "amount" | "balance" | "expiry">("time");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [keyword, setKeyword] = useState("");
 
   // ── 新增 dialog ─────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false);
@@ -256,6 +260,46 @@ export default function CreditsPage() {
       setRemindBusy(false);
     }
   }
+
+  // v962：點欄位標題排序
+  function toggleSort(k: typeof sortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir(k === "member" ? "asc" : "desc"); }
+  }
+  const arrow = (k: typeof sortKey) => (sortKey === k ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕");
+
+  // v962：會員關鍵字過濾 + 排序（前端即時）
+  const displayedTxs = useMemo(() => {
+    const kw = keyword.trim().toLowerCase();
+    let arr = txs;
+    if (kw) {
+      arr = txs.filter((t) =>
+        (t.user?.realName ?? "").toLowerCase().includes(kw) ||
+        (t.user?.displayName ?? "").toLowerCase().includes(kw) ||
+        (t.user?.code ?? "").toLowerCase().includes(kw) ||
+        (t.code ?? "").toLowerCase().includes(kw) ||
+        (t.note ?? "").toLowerCase().includes(kw));
+    }
+    const dir = sortDir === "asc" ? 1 : -1;
+    const num = (t: CreditTx): number => {
+      switch (sortKey) {
+        case "time": return new Date(t.createdAt).getTime();
+        case "amount": return t.amount;
+        case "balance": return t.balanceAfter;
+        case "expiry": return t.expiresAt ? new Date(t.expiresAt).getTime() : (sortDir === "asc" ? Infinity : -Infinity);
+        default: return 0;
+      }
+    };
+    return [...arr].sort((a, b) => {
+      if (sortKey === "member") {
+        const va = a.user?.realName ?? a.user?.displayName ?? "";
+        const vb = b.user?.realName ?? b.user?.displayName ?? "";
+        return va.localeCompare(vb, "zh-Hant") * dir;
+      }
+      const na = num(a), nb = num(b);
+      return (na < nb ? -1 : na > nb ? 1 : 0) * dir;
+    });
+  }, [txs, keyword, sortKey, sortDir]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -441,7 +485,11 @@ export default function CreditsPage() {
               <Label className="text-[10px] text-[var(--muted-foreground)]">迄</Label>
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="inline-block ml-2 w-36" />
             </div>
-            <span className="text-xs text-[var(--muted-foreground)]">共 {txs.length} 筆</span>
+            {/* v962：會員/編碼/備註 關鍵字搜尋（前端即時） */}
+            <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="🔍 搜尋會員 / 編碼 / 備註" className="w-52" />
+            <span className="text-xs text-[var(--muted-foreground)]">
+              {keyword.trim() ? `${displayedTxs.length} / ${txs.length} 筆` : `共 ${txs.length} 筆`}
+            </span>
             <Button size="sm" variant="outline" className="ml-auto" onClick={openBackfill}>
               <Gift className="mr-1 h-4 w-4" /> 一鍵補發
             </Button>
@@ -462,19 +510,19 @@ export default function CreditsPage() {
                 <thead>
                   <tr className="text-left text-xs text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
                     <th className="px-3 py-2 font-medium whitespace-nowrap">編碼</th>
-                    <th className="px-3 py-2 font-medium whitespace-nowrap">時間</th>
-                    <th className="px-3 py-2 font-medium">會員</th>
+                    <th className="px-3 py-2 font-medium whitespace-nowrap cursor-pointer select-none hover:text-[var(--color-ocean-deep)]" onClick={() => toggleSort("time")}>時間{arrow("time")}</th>
+                    <th className="px-3 py-2 font-medium cursor-pointer select-none hover:text-[var(--color-ocean-deep)]" onClick={() => toggleSort("member")}>會員{arrow("member")}</th>
                     <th className="px-3 py-2 font-medium">類別</th>
                     <th className="px-3 py-2 font-medium">名義</th>
-                    <th className="px-3 py-2 font-medium text-right">金額</th>
-                    <th className="px-3 py-2 font-medium text-right">餘額</th>
-                    <th className="px-3 py-2 font-medium">到期</th>
+                    <th className="px-3 py-2 font-medium text-right cursor-pointer select-none hover:text-[var(--color-ocean-deep)]" onClick={() => toggleSort("amount")}>金額{arrow("amount")}</th>
+                    <th className="px-3 py-2 font-medium text-right cursor-pointer select-none hover:text-[var(--color-ocean-deep)]" onClick={() => toggleSort("balance")}>餘額{arrow("balance")}</th>
+                    <th className="px-3 py-2 font-medium cursor-pointer select-none hover:text-[var(--color-ocean-deep)]" onClick={() => toggleSort("expiry")}>到期{arrow("expiry")}</th>
                     <th className="px-3 py-2 font-medium">經辦人</th>
                     <th className="px-3 py-2 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {txs.map((t, i) => {
+                  {displayedTxs.map((t, i) => {
                     const exp = expiryStatus(t);
                     return (
                       <tr key={t.id} className="border-t" style={{
