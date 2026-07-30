@@ -38,7 +38,8 @@ interface Stats {
   totalGranted: number;
   totalUsed: number;
   circulating: number;
-  expiringSoon: number;
+  expiring7: number;   // v959：7 天內到期
+  expiringSoon: number; // 30 天內到期
   expired: number;
 }
 
@@ -73,6 +74,8 @@ export default function CreditsPage() {
   const [reasonFilter, setReasonFilter] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [expiryFilter, setExpiryFilter] = useState<"" | "7d" | "30d" | "expired">(""); // v959：到期篩選
+  const [remindBusy, setRemindBusy] = useState(false); // v959：一鍵提醒
 
   // ── 新增 dialog ─────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false);
@@ -190,6 +193,7 @@ export default function CreditsPage() {
     if (reasonFilter !== "all") qs.set("reason", reasonFilter);
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
+    if (expiryFilter) qs.set("expiry", expiryFilter);
     qs.set("limit", "500");
     const url = `/api/admin/credits?${qs.toString()}`;
     // v399：有快取就先秀、不轉圈；背景重新驗證
@@ -206,7 +210,27 @@ export default function CreditsPage() {
     } finally {
       setLoading(false);
     }
-  }, [reasonFilter, from, to]);
+  }, [reasonFilter, from, to, expiryFilter]);
+
+  // v959：一鍵發送到期提醒（window 天內即將到期、仍有餘額的會員）
+  async function sendExpiringReminder(window: 7 | 30) {
+    if (!notify.line && !notify.email && !notify.inapp) { alert("請先在上方「抵用金異動通知」勾選至少一個發送通道"); return; }
+    const ch = [notify.inapp && "站內", notify.line && "LINE", notify.email && "Email"].filter(Boolean).join(" + ");
+    if (!confirm(`確定對「${window} 天內到期且仍有餘額」的會員發送到期提醒？\n通道：${ch}`)) return;
+    setRemindBusy(true);
+    try {
+      const r = await adminFetch<{ targets: number; inapp: number; email: number; line: number; note?: string }>("/api/admin/credits/remind", {
+        method: "POST",
+        body: JSON.stringify({ window, channels: notify }),
+      });
+      if (r.targets === 0) alert(r.note ?? "沒有符合條件的會員");
+      else alert(`✓ 已對 ${r.targets} 位會員發送提醒\n站內 ${r.inapp}、Email ${r.email}、LINE ${r.line}`);
+    } catch (e) {
+      alert("發送失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRemindBusy(false);
+    }
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -324,15 +348,38 @@ export default function CreditsPage() {
           <span className="text-[10px] text-[var(--muted-foreground)]">（預設 Email + 站內；變更即時生效）</span>
         </div>
 
-        {/* 統計卡 */}
+        {/* 統計卡（到期三張可點篩選） */}
         {stats && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <StatCard title="總發放" value={stats.totalGranted} color="#16a34a" />
-            <StatCard title="總使用" value={stats.totalUsed} color="#0891b2" />
-            <StatCard title="目前流通" value={stats.circulating} color="#0a2342" />
-            <StatCard title="30 天內到期" value={stats.expiringSoon} color="#d97706" unit="筆" />
-            <StatCard title="已過期" value={stats.expired} color="#dc2626" unit="筆" />
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+              <StatCard title="總發放" value={stats.totalGranted} color="#16a34a" />
+              <StatCard title="總使用" value={stats.totalUsed} color="#0891b2" />
+              <StatCard title="目前流通" value={stats.circulating} color="#0a2342" />
+              <StatCard title="7 天內到期" value={stats.expiring7} color="#ea580c" unit="筆" active={expiryFilter === "7d"} onClick={() => setExpiryFilter(expiryFilter === "7d" ? "" : "7d")} />
+              <StatCard title="30 天內到期" value={stats.expiringSoon} color="#d97706" unit="筆" active={expiryFilter === "30d"} onClick={() => setExpiryFilter(expiryFilter === "30d" ? "" : "30d")} />
+              <StatCard title="已過期" value={stats.expired} color="#dc2626" unit="筆" active={expiryFilter === "expired"} onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")} />
+            </div>
+            {/* 篩選狀態 + 一鍵發送提醒 */}
+            <div className="flex flex-wrap items-center gap-2">
+              {expiryFilter && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                  已篩選：{expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已過期"}
+                  <button type="button" onClick={() => setExpiryFilter("")} className="rounded-full px-1 text-amber-500 hover:bg-amber-100">✕</button>
+                </span>
+              )}
+              <span className="text-[11px] text-[var(--muted-foreground)]">點上方卡片可篩選清單 →</span>
+              <div className="ml-auto flex gap-2">
+                <button type="button" onClick={() => sendExpiringReminder(7)} disabled={remindBusy}
+                  className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100 disabled:opacity-50">
+                  🔔 提醒 7 天內到期
+                </button>
+                <button type="button" onClick={() => sendExpiringReminder(30)} disabled={remindBusy}
+                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50">
+                  🔔 提醒 30 天內到期
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Filters + 新增 */}
@@ -671,10 +718,17 @@ function BackfillRow({
   );
 }
 
-function StatCard({ title, value, color, unit = "" }: { title: string; value: number; color: string; unit?: string }) {
+function StatCard({ title, value, color, unit = "", onClick, active }: { title: string; value: number; color: string; unit?: string; onClick?: () => void; active?: boolean }) {
   return (
-    <div className="rounded-xl border bg-white p-3" style={{ borderColor: "var(--border)" }}>
-      <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#64748b" }}>{title}</div>
+    <div
+      onClick={onClick}
+      className={`rounded-xl border bg-white p-3 transition ${onClick ? "cursor-pointer hover:shadow-sm" : ""}`}
+      style={{ borderColor: active ? color : "var(--border)", borderWidth: active ? 2 : 1, boxShadow: active ? `0 0 0 2px ${color}33` : undefined }}
+    >
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#64748b" }}>
+        {title}
+        {onClick && <span style={{ color: active ? color : "#cbd5e1" }}>{active ? "●" : "○"}</span>}
+      </div>
       <div className="text-xl font-bold tabular-nums" style={{ color }}>
         {unit ? value : value.toLocaleString()}
         {unit && <span className="ml-1 text-xs">{unit}</span>}

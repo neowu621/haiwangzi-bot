@@ -212,6 +212,13 @@ export function OrderDetail({ id, onActed }: { id: string; onActed?: () => void 
         </div>
       )}
 
+      {/* v959：客戶下單時選的付款方式 */}
+      {b.paymentMethod && (
+        <div className="rounded-lg px-3 py-2 text-[11px] font-semibold" style={{ background: "rgba(10,143,134,0.08)", color: "#0a7d4f", border: "1px solid rgba(10,143,134,0.25)" }}>
+          💳 客戶選擇付款方式：{({ bank: "🏦 銀行轉帳", linepay: "💚 LINE Pay", cash: "💵 現場付款", other: "📝 其他" } as Record<string, string>)[b.paymentMethod] ?? b.paymentMethod}
+        </div>
+      )}
+
       {b.notes && (
         <div className="rounded-lg px-3 py-2 text-[11px] font-semibold" style={{ background: "rgba(220,38,38,0.09)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.3)" }}>📝 訂單備註：{b.notes}</div>
       )}
