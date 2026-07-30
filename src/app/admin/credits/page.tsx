@@ -232,6 +232,31 @@ export default function CreditsPage() {
     }
   }
 
+  // v961：批次延長到期日（協助延遲）— 套用在目前篩選(類別+到期狀態)
+  async function extendExpiry() {
+    if (!expiryFilter) { alert("請先點上方卡片篩選要延長的範圍（7天內 / 30天內 / 已過期）"); return; }
+    const input = window.prompt("要把這些抵用金的到期日，延到「今天 + 幾天」？", "30");
+    if (input === null) return;
+    const days = parseInt(input, 10);
+    if (!Number.isFinite(days) || days < 1 || days > 3650) { alert("請輸入 1 ~ 3650 的天數"); return; }
+    const scope = expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已過期";
+    const reasonLabel = reasonFilter === "all" ? "全部類別" : reasonFilter;
+    if (!confirm(`確定把「${scope}・${reasonLabel}」的抵用金到期日，全部延長到「今天 + ${days} 天」？`)) return;
+    setRemindBusy(true);
+    try {
+      const r = await adminFetch<{ updated: number; newExpiresAt: string }>("/api/admin/credits/extend", {
+        method: "POST",
+        body: JSON.stringify({ days, reason: reasonFilter, expiry: expiryFilter }),
+      });
+      alert(`✓ 已延長 ${r.updated} 筆，新到期日：${r.newExpiresAt}`);
+      load();
+    } catch (e) {
+      alert("延長失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRemindBusy(false);
+    }
+  }
+
   useEffect(() => { load(); }, [load]);
 
   // 開啟新增 dialog 時順便載 user list
@@ -368,7 +393,13 @@ export default function CreditsPage() {
                 </span>
               )}
               <span className="text-[11px] text-[var(--muted-foreground)]">點上方卡片可篩選清單 →</span>
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto flex flex-wrap gap-2">
+                {expiryFilter && (
+                  <button type="button" onClick={extendExpiry} disabled={remindBusy}
+                    className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 hover:bg-sky-100 disabled:opacity-50">
+                    ⏳ 延長到期日…
+                  </button>
+                )}
                 <button type="button" onClick={() => sendExpiringReminder(7)} disabled={remindBusy}
                   className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100 disabled:opacity-50">
                   🔔 提醒 7 天內到期
@@ -393,6 +424,8 @@ export default function CreditsPage() {
                 className="ml-2 rounded-md border border-[var(--border)] px-2 py-1 text-sm"
               >
                 <option value="all">全部</option>
+                <option value="first_order_reward">首單獎勵</option>
+                <option value="signup_reward">註冊禮金</option>
                 <option value="birthday">生日抵用金</option>
                 <option value="vip_upgrade">VIP 升等</option>
                 <option value="admin_adjust">管理員調整</option>
