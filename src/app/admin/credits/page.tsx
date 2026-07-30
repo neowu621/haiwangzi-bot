@@ -453,8 +453,8 @@ export default function CreditsPage() {
             </label>
           ))}
           <span className="text-[10px] text-[var(--muted-foreground)]">（預設 Email + 站內；變更即時生效）</span>
-          {/* v969：一鍵發送到期提醒移到此行 */}
-          <div className="ml-auto flex flex-wrap gap-2">
+          {/* v969：一鍵發送到期提醒；v970：新增抵用金移到此行 */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => sendExpiringReminder(7)} disabled={remindBusy}
               className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100 disabled:opacity-50">
               🔔 提醒 7 天內到期
@@ -463,6 +463,9 @@ export default function CreditsPage() {
               className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50">
               🔔 提醒 30 天內到期
             </button>
+            <Button size="sm" onClick={openAdd}>
+              <Plus className="mr-1 h-4 w-4" /> 新增抵用金
+            </Button>
           </div>
         </div>
 
@@ -533,9 +536,6 @@ export default function CreditsPage() {
             </span>
             <Button size="sm" variant="outline" className="ml-auto" onClick={openBackfill}>
               <Gift className="mr-1 h-4 w-4" /> 一鍵補發
-            </Button>
-            <Button size="sm" onClick={openAdd}>
-              <Plus className="mr-1 h-4 w-4" /> 新增抵用金
             </Button>
           </div>
         </div>
