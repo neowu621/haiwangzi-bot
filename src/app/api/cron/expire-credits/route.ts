@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
-import { reconcileExpiredCredits } from "@/lib/credit-fifo";
+import { reconcileAllExpiredCredits } from "@/lib/credit-fifo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,16 +45,6 @@ async function run(req: NextRequest) {
     return NextResponse.json({ ok: true, dryRun: true, usersAffected: byUser.size, totalToForfeit: total, users: users.slice(0, 100) });
   }
 
-  let usersDone = 0, totalForfeited = 0;
-  const errors: string[] = [];
-  for (const userId of byUser.keys()) {
-    try {
-      const f = await reconcileExpiredCredits(userId, now.getTime());
-      if (f > 0) { usersDone++; totalForfeited += f; }
-    } catch (e) {
-      errors.push(`${userId.slice(0, 6)}: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }
-
-  return NextResponse.json({ ok: true, usersAffected: byUser.size, usersForfeited: usersDone, totalForfeited, errors: errors.slice(0, 20) });
+  const res = await reconcileAllExpiredCredits(now.getTime());
+  return NextResponse.json({ ok: true, ...res });
 }

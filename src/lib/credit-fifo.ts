@@ -39,6 +39,26 @@ export async function reconcileExpiredCredits(userId: string, nowMs: number = Da
   });
 }
 
+// v965：全站作廢——找出所有「過期且仍有剩餘」的會員，逐一 reconcile。回傳處理人數與作廢總額。
+//   給每日 cron / 主排程呼叫;冪等(已作廢的不會再算)。
+export async function reconcileAllExpiredCredits(nowMs: number = Date.now()): Promise<{ usersAffected: number; usersForfeited: number; totalForfeited: number }> {
+  const rows = await prisma.creditTx.findMany({
+    where: { amount: { gt: 0 }, expiresAt: { lt: new Date(nowMs) }, consumedAmount: { lt: prisma.creditTx.fields.amount } },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+  let usersForfeited = 0, totalForfeited = 0;
+  for (const { userId } of rows) {
+    try {
+      const f = await reconcileExpiredCredits(userId, nowMs);
+      if (f > 0) { usersForfeited++; totalForfeited += f; }
+    } catch (e) {
+      console.error("[reconcileAllExpiredCredits]", userId.slice(0, 6), e);
+    }
+  }
+  return { usersAffected: rows.length, usersForfeited, totalForfeited };
+}
+
 // 批次扣抵:先用最近到期。不足會 throw。回傳實扣金額。
 export async function spendCreditFIFO(args: {
   userId: string;

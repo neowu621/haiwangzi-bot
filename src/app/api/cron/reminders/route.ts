@@ -303,11 +303,21 @@ async function handle(req: NextRequest) {
     }
   }
 
+  // v965：順帶作廢過期未用抵用金（掛主排程，免另設 cron；冪等）
+  let creditExpiry: { usersAffected: number; usersForfeited: number; totalForfeited: number } | null = null;
+  try {
+    const { reconcileAllExpiredCredits } = await import("@/lib/credit-fifo");
+    creditExpiry = await reconcileAllExpiredCredits();
+  } catch (e) {
+    console.error("[reminders: reconcileAllExpiredCredits]", e);
+  }
+
   return NextResponse.json({
     ok: true,
     pollWindowMinutes,
     sent,
     counts: { sent: sent.length },
+    creditExpiry,
     note: "各通道發送結果見 MessageLog（後台發送紀錄）",
     tookMs: Date.now() - startedAt.getTime(),
   });
