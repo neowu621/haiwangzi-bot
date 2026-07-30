@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const in7 = new Date(now.getTime() + 7 * 86400000);
   const in30 = new Date(now.getTime() + 30 * 86400000);
 
-  const where: Prisma.CreditTxWhereInput = { amount: { gt: 0 } };
+  const where: Prisma.CreditTxWhereInput = { amount: { gt: 0 }, consumedAmount: { lt: prisma.creditTx.fields.amount } }; // v963：只延長仍有剩餘的批次
   if (data.reason && data.reason !== "all") where.reason = data.reason as Prisma.CreditTxWhereInput["reason"];
   if (data.expiry === "expired") where.expiresAt = { lt: now };
   else if (data.expiry === "7d") where.expiresAt = { gte: now, lte: in7 };

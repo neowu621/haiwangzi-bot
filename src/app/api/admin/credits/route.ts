@@ -64,11 +64,12 @@ export async function GET(req: NextRequest) {
     if (from) (where.createdAt as Record<string, Date>).gte = new Date(from + "T00:00:00+08:00");
     if (to) (where.createdAt as Record<string, Date>).lte = new Date(to + "T23:59:59+08:00");
   }
-  // v959：到期篩選只套在「清單」(listWhere)，統計數字維持全站
+  // v959/v963：到期篩選只套在「清單」(listWhere)，且只算「仍有剩餘(未用完)」的發放
+  const hasRemaining: Prisma.CreditTxWhereInput = { consumedAmount: { lt: prisma.creditTx.fields.amount } };
   const listWhere: Prisma.CreditTxWhereInput = { ...where };
-  if (expiry === "expired") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { lt: now }; }
-  else if (expiry === "7d") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { gte: now, lte: in7days }; }
-  else if (expiry === "30d") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { gte: now, lte: in30days }; }
+  if (expiry === "expired") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { lt: now }; listWhere.consumedAmount = hasRemaining.consumedAmount; }
+  else if (expiry === "7d") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { gte: now, lte: in7days }; listWhere.consumedAmount = hasRemaining.consumedAmount; }
+  else if (expiry === "30d") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { gte: now, lte: in30days }; listWhere.consumedAmount = hasRemaining.consumedAmount; }
 
   const txs = await prisma.creditTx.findMany({
     where: listWhere,
@@ -100,9 +101,9 @@ export async function GET(req: NextRequest) {
   const [grantedAgg, usedAgg, expiring7, expiringSoon, expired] = await Promise.all([
     prisma.creditTx.aggregate({ where: { ...where, amount: { gt: 0 } }, _sum: { amount: true } }),
     prisma.creditTx.aggregate({ where: { ...where, amount: { lt: 0 } }, _sum: { amount: true } }),
-    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: in7days } } }),
-    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: in30days } } }),
-    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { lt: now } } }),
+    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: in7days }, consumedAmount: { lt: prisma.creditTx.fields.amount } } }),
+    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: in30days }, consumedAmount: { lt: prisma.creditTx.fields.amount } } }),
+    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { lt: now }, consumedAmount: { lt: prisma.creditTx.fields.amount } } }),
   ]);
 
   return NextResponse.json({

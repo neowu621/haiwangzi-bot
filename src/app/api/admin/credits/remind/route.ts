@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   // 找 window 內即將到期的發放，取每位會員「最近到期日」
   const grants = await prisma.creditTx.findMany({
-    where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: end } },
+    where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: end }, consumedAmount: { lt: prisma.creditTx.fields.amount } }, // v963：只算仍有剩餘的批次
     select: { userId: true, expiresAt: true },
   });
   const earliestByUser = new Map<string, Date>();

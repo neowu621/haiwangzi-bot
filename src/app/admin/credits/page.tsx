@@ -394,6 +394,9 @@ export default function CreditsPage() {
 
   function expiryStatus(tx: CreditTx): { label: string; color: string } | null {
     if (tx.amount <= 0) return null;
+    // v963：發放筆已用完/作廢(剩餘 0) → 不是「過期」，顯示「已用完」
+    const remaining = tx.amount - (tx.consumedAmount ?? 0);
+    if (remaining <= 0) return { label: "已用完", color: "#94a3b8" };
     if (!tx.expiresAt) return { label: "永不過期", color: "#64748b" };
     const days = Math.floor((new Date(tx.expiresAt).getTime() - Date.now()) / 86400000);
     if (days < 0) return { label: `已過期 ${-days} 天`, color: "#dc2626" };
