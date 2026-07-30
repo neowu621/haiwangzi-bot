@@ -80,6 +80,7 @@ export default function CreditsPage() {
   const [sortKey, setSortKey] = useState<"time" | "member" | "amount" | "balance" | "expiry">("time");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [keyword, setKeyword] = useState("");
+  const [latestOnly, setLatestOnly] = useState(true); // v967：每人只留最新一筆(預設)
 
   // ── 新增 dialog ─────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false);
@@ -285,6 +286,13 @@ export default function CreditsPage() {
         (t.code ?? "").toLowerCase().includes(kw) ||
         (t.note ?? "").toLowerCase().includes(kw));
     }
+    // v967：每人只留最新一筆（依時間，不受目前排序影響）
+    if (latestOnly) {
+      const seen = new Set<string>();
+      arr = [...arr]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .filter((t) => { if (seen.has(t.userId)) return false; seen.add(t.userId); return true; });
+    }
     const dir = sortDir === "asc" ? 1 : -1;
     const num = (t: CreditTx): number => {
       switch (sortKey) {
@@ -304,7 +312,7 @@ export default function CreditsPage() {
       const na = num(a), nb = num(b);
       return (na < nb ? -1 : na > nb ? 1 : 0) * dir;
     });
-  }, [txs, keyword, sortKey, sortDir]);
+  }, [txs, keyword, sortKey, sortDir, latestOnly]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -505,8 +513,13 @@ export default function CreditsPage() {
             </div>
             {/* v962：會員/編碼/備註 關鍵字搜尋（前端即時） */}
             <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="🔍 搜尋會員 / 編碼 / 備註" className="w-52" />
+            {/* v967：每人只留最新一筆 */}
+            <label className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] whitespace-nowrap cursor-pointer">
+              <input type="checkbox" checked={latestOnly} onChange={(e) => setLatestOnly(e.target.checked)} />
+              每人只顯示最新一筆
+            </label>
             <span className="text-xs text-[var(--muted-foreground)]">
-              {keyword.trim() ? `${displayedTxs.length} / ${txs.length} 筆` : `共 ${txs.length} 筆`}
+              {latestOnly ? `${displayedTxs.length} 人（每人最新）／全部 ${txs.length} 筆` : (keyword.trim() ? `${displayedTxs.length} / ${txs.length} 筆` : `共 ${txs.length} 筆`)}
             </span>
             <Button size="sm" variant="outline" className="ml-auto" onClick={openBackfill}>
               <Gift className="mr-1 h-4 w-4" /> 一鍵補發
