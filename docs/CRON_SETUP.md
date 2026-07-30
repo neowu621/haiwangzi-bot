@@ -339,3 +339,19 @@ curl -X POST \
 ## 跨專案參考
 
 - its-17-time（團購）— 採用 GitHub Actions 備援 + Zeabur Cron，可參考其 `docs/CRON_SETUP.md`（位於 `D:\00AI Project\20260418_Group Buying\app\docs\CRON_SETUP.md`）的設計思路（Bearer auth + pollWindowMinutes）。本專案的 API design 與其對齊。
+
+---
+
+## Endpoint：`/api/cron/expire-credits`（每日作廢過期抵用金，v965）
+
+| 項目 | 說明 |
+|---|---|
+| 目的 | 主動作廢「已過期、未用完」的抵用金 → 補 consumedAmount、寫一筆負向 `expired`、扣 `creditBalance`。解決「已過期但餘額沒變」（原本只在客戶用抵用金/開 App 時才 lazy 觸發）。 |
+| 認證 | `Authorization: Bearer $HAIWANGZI_CRON_SECRET` |
+| 排程建議 | 每天 03:00（台灣）— Cronicle 用 UTC：`0 19 * * *` |
+| dryRun | `?dryRun=1` 只列將作廢的人數/金額，不修改 |
+
+```bash
+curl -fsS -X POST -H "Authorization: Bearer $HAIWANGZI_CRON_SECRET" \
+  "$HAIWANGZI_BASE_URL/api/cron/expire-credits"
+```
