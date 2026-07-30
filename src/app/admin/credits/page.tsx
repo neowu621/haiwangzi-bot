@@ -22,6 +22,7 @@ interface CreditTx {
   userId: string;
   amount: number;
   consumedAmount?: number; // v605：發放筆已被折抵/作廢的金額（防呆刪除判斷用）
+  forfeitedAmount?: number; // v968：consumedAmount 中屬於「到期作廢」的金額
   reason: string;
   refType: string | null;
   refId: string | null;
@@ -59,6 +60,8 @@ const REASON_LABEL: Record<string, string> = {
   first_order_reward: "🎉 首單獎勵",
   signup_reward: "🎁 註冊禮金",
   vip_overflow: "🏆 VIP 滿級回饋",
+  early_bird: "🐦 早鳥回饋",
+  expired: "⌛ 到期作廢",
 };
 
 const ADJUST_NOTE_QUICK = [
@@ -417,9 +420,13 @@ export default function CreditsPage() {
 
   function expiryStatus(tx: CreditTx): { label: string; color: string } | null {
     if (tx.amount <= 0) return null;
-    // v963：發放筆已用完/作廢(剩餘 0) → 不是「過期」，顯示「已用完」
+    // v963/v968：剩餘 0 → 分辨「已作廢(到期收回)」與「已用完(實際使用)」
     const remaining = tx.amount - (tx.consumedAmount ?? 0);
-    if (remaining <= 0) return { label: "已用完", color: "#94a3b8" };
+    if (remaining <= 0) {
+      return (tx.forfeitedAmount ?? 0) > 0
+        ? { label: "已作廢", color: "#dc2626" }
+        : { label: "已用完", color: "#94a3b8" };
+    }
     if (!tx.expiresAt) return { label: "永不過期", color: "#64748b" };
     const days = Math.floor((new Date(tx.expiresAt).getTime() - Date.now()) / 86400000);
     if (days < 0) return { label: `已過期 ${-days} 天`, color: "#dc2626" };

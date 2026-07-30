@@ -18,21 +18,25 @@ export async function reconcileExpiredCredits(userId: string, nowMs: number = Da
   return prisma.$transaction(async (tx) => {
     const expired = await tx.creditTx.findMany({
       where: { userId, amount: { gt: 0 }, expiresAt: { lt: new Date(nowMs) } },
-      select: { id: true, amount: true, consumedAmount: true },
+      select: { id: true, code: true, amount: true, consumedAmount: true, forfeitedAmount: true },
     });
     let forfeited = 0;
+    const codes: string[] = []; // v968：被作廢的批次編碼（寫進作廢紀錄名義）
     for (const lot of expired) {
       const remain = lot.amount - lot.consumedAmount;
       if (remain > 0) {
         forfeited += remain;
-        await tx.creditTx.update({ where: { id: lot.id }, data: { consumedAmount: lot.amount } });
+        if (lot.code) codes.push(`$${lot.code}`);
+        // v968：consumedAmount 補滿 + 記錄此次作廢金額(累加，防重跑)
+        await tx.creditTx.update({ where: { id: lot.id }, data: { consumedAmount: lot.amount, forfeitedAmount: lot.forfeitedAmount + remain } });
       }
     }
     if (forfeited > 0) {
       const u = await tx.user.findUnique({ where: { lineUserId: userId }, select: { creditBalance: true } });
       const newBal = Math.max(0, (u?.creditBalance ?? 0) - forfeited);
       const code = await genCreditCode();
-      await tx.creditTx.create({ data: { code, userId, amount: -forfeited, reason: "expired", balanceAfter: newBal, note: "抵用金到期作廢" } });
+      const note = codes.length > 0 ? `抵用金到期作廢（${codes.join("、")}）` : "抵用金到期作廢";
+      await tx.creditTx.create({ data: { code, userId, amount: -forfeited, reason: "expired", balanceAfter: newBal, note } });
       await tx.user.update({ where: { lineUserId: userId }, data: { creditBalance: newBal } });
     }
     return forfeited;
