@@ -453,6 +453,17 @@ export default function CreditsPage() {
             </label>
           ))}
           <span className="text-[10px] text-[var(--muted-foreground)]">（預設 Email + 站內；變更即時生效）</span>
+          {/* v969：一鍵發送到期提醒移到此行 */}
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button type="button" onClick={() => sendExpiringReminder(7)} disabled={remindBusy}
+              className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100 disabled:opacity-50">
+              🔔 提醒 7 天內到期
+            </button>
+            <button type="button" onClick={() => sendExpiringReminder(30)} disabled={remindBusy}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50">
+              🔔 提醒 30 天內到期
+            </button>
+          </div>
         </div>
 
         {/* 統計卡（到期三張可點篩選） */}
@@ -466,32 +477,19 @@ export default function CreditsPage() {
               <StatCard title="30 天內到期" value={stats.expiringSoon} color="#d97706" unit="筆" active={expiryFilter === "30d"} onClick={() => setExpiryFilter(expiryFilter === "30d" ? "" : "30d")} />
               <StatCard title="已作廢" value={stats.voided} color="#dc2626" unit="筆" active={expiryFilter === "voided"} onClick={() => setExpiryFilter(expiryFilter === "voided" ? "" : "voided")} />
             </div>
-            {/* 篩選狀態 + 一鍵發送提醒 */}
-            <div className="flex flex-wrap items-center gap-2">
-              {expiryFilter && (
+            {/* 篩選狀態 + 延長/復原（僅在有篩選時顯示） */}
+            {expiryFilter && (
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                   已篩選：{expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已作廢"}
                   <button type="button" onClick={() => setExpiryFilter("")} className="rounded-full px-1 text-amber-500 hover:bg-amber-100">✕</button>
                 </span>
-              )}
-              <span className="text-[11px] text-[var(--muted-foreground)]">點上方卡片可篩選清單 →</span>
-              <div className="ml-auto flex flex-wrap gap-2">
-                {expiryFilter && (
-                  <button type="button" onClick={extendExpiry} disabled={remindBusy}
-                    className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 hover:bg-sky-100 disabled:opacity-50">
-                    {expiryFilter === "voided" ? "♻️ 復原並延長到期日…" : "⏳ 延長到期日…"}
-                  </button>
-                )}
-                <button type="button" onClick={() => sendExpiringReminder(7)} disabled={remindBusy}
-                  className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-100 disabled:opacity-50">
-                  🔔 提醒 7 天內到期
-                </button>
-                <button type="button" onClick={() => sendExpiringReminder(30)} disabled={remindBusy}
-                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50">
-                  🔔 提醒 30 天內到期
+                <button type="button" onClick={extendExpiry} disabled={remindBusy}
+                  className="ml-auto rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 hover:bg-sky-100 disabled:opacity-50">
+                  {expiryFilter === "voided" ? "♻️ 復原並延長到期日…" : "⏳ 延長到期日…"}
                 </button>
               </div>
-            </div>
+            )}
           </>
         )}
 
