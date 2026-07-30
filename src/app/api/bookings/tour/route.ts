@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
-import { grantCredit } from "@/lib/credit";
+import { spendCreditFIFO } from "@/lib/credit-fifo"; // v969：改用 FIFO 扣抵(記錄用了哪幾筆批次)
 import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
 import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
 import { genBookingCode } from "@/lib/code-gen";
@@ -210,12 +210,12 @@ export async function POST(req: NextRequest) {
 
   if (creditUsed > 0) {
     try {
-      await grantCredit({
+      await spendCreditFIFO({
         userId: auth.user.lineUserId,
-        amount: -creditUsed,
-        reason: "used",
+        amount: creditUsed,
         refType: "booking",
         refId: booking.id,
+        refCode: booking.code ?? undefined, // v969：訂單編號記進名義
         note: `潛水團預約折抵`,
       });
     } catch (e) {

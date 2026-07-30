@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const in7days = new Date(now.getTime() + 7 * 86400000);
   const in30days = new Date(now.getTime() + 30 * 86400000);
-  const expiry = url.searchParams.get("expiry"); // v959：7d | 30d | expired
+  const expiry = url.searchParams.get("expiry"); // v959/v969：7d | 30d | voided(已作廢)
 
   const where: Prisma.CreditTxWhereInput = {};
   if (reason) where.reason = reason as Prisma.CreditTxWhereInput["reason"];
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
   // v959/v963：到期篩選只套在「清單」(listWhere)，且只算「仍有剩餘(未用完)」的發放
   const hasRemaining: Prisma.CreditTxWhereInput = { consumedAmount: { lt: prisma.creditTx.fields.amount } };
   const listWhere: Prisma.CreditTxWhereInput = { ...where };
-  if (expiry === "expired") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { lt: now }; listWhere.consumedAmount = hasRemaining.consumedAmount; }
+  if (expiry === "voided") { listWhere.amount = { gt: 0 }; listWhere.forfeitedAmount = { gt: 0 }; } // v969：已作廢(到期收回)的發放批次
   else if (expiry === "7d") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { gte: now, lte: in7days }; listWhere.consumedAmount = hasRemaining.consumedAmount; }
   else if (expiry === "30d") { listWhere.amount = { gt: 0 }; listWhere.expiresAt = { gte: now, lte: in30days }; listWhere.consumedAmount = hasRemaining.consumedAmount; }
 
@@ -97,13 +97,13 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // 統計：總發放 / 總使用 / 7天內、30天內到期 / 已過期（到期數為全站，不受篩選影響）
-  const [grantedAgg, usedAgg, expiring7, expiringSoon, expired] = await Promise.all([
+  // 統計：總發放 / 總使用 / 7天內、30天內到期 / 已作廢（到期數為全站，不受篩選影響）
+  const [grantedAgg, usedAgg, expiring7, expiringSoon, voided] = await Promise.all([
     prisma.creditTx.aggregate({ where: { ...where, amount: { gt: 0 } }, _sum: { amount: true } }),
     prisma.creditTx.aggregate({ where: { ...where, amount: { lt: 0 } }, _sum: { amount: true } }),
     prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: in7days }, consumedAmount: { lt: prisma.creditTx.fields.amount } } }),
     prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { gte: now, lte: in30days }, consumedAmount: { lt: prisma.creditTx.fields.amount } } }),
-    prisma.creditTx.count({ where: { amount: { gt: 0 }, expiresAt: { lt: now }, consumedAmount: { lt: prisma.creditTx.fields.amount } } }),
+    prisma.creditTx.count({ where: { amount: { gt: 0 }, forfeitedAmount: { gt: 0 } } }), // v969：已作廢批次數
   ]);
 
   return NextResponse.json({
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       circulating: (grantedAgg._sum.amount ?? 0) + (usedAgg._sum.amount ?? 0),
       expiring7,
       expiringSoon,
-      expired,
+      voided,
     },
   });
 }

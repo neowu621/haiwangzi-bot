@@ -452,6 +452,7 @@ export async function POST(req: NextRequest) {
         amount: creditUsed,
         refType: "booking",
         refId: booking.id,
+        refCode: booking.code ?? undefined, // v969：訂單編號記進名義
         note: `日潛預約折抵`,
       });
     } catch (e) {

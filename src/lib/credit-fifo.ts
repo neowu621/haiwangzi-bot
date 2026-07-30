@@ -69,6 +69,7 @@ export async function spendCreditFIFO(args: {
   amount: number;
   refType?: string | null;
   refId?: string | null;
+  refCode?: string | null; // v969：訂單編號(顯示用) —— 記進使用名義 + 被扣批次備註
   note?: string | null;
 }): Promise<number> {
   const amount = Math.floor(args.amount);
@@ -79,24 +80,32 @@ export async function spendCreditFIFO(args: {
     const lots = await tx.creditTx.findMany({
       where: { userId: args.userId, amount: { gt: 0 }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
       orderBy: [{ expiresAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
-      select: { id: true, amount: true, consumedAmount: true },
+      select: { id: true, code: true, note: true, amount: true, consumedAmount: true },
     });
     const avail = lots.reduce((s, l) => s + (l.amount - l.consumedAmount), 0);
     if (amount > avail) throw new Error(`抵用金不足（可用 ${avail}，需 ${amount}）`);
+    const orderRef = args.refCode ? args.refCode : (args.refId ? args.refId.slice(0, 8) : "");
     let need = amount;
+    const usedLots: string[] = []; // v969：這次折抵用掉哪幾筆批次
     for (const lot of lots) {
       if (need <= 0) break;
       const remain = lot.amount - lot.consumedAmount;
       if (remain <= 0) continue;
       const take = Math.min(remain, need);
-      await tx.creditTx.update({ where: { id: lot.id }, data: { consumedAmount: lot.consumedAmount + take } });
+      // v969：被扣的批次備註也註記「折抵於哪張訂單」（避免重複附加同一張）
+      const mark = orderRef ? ` · 折抵${orderRef}` : "";
+      const noteData = mark && !(lot.note ?? "").includes(`折抵${orderRef}`) ? { note: (lot.note ?? "") + mark } : {};
+      await tx.creditTx.update({ where: { id: lot.id }, data: { consumedAmount: lot.consumedAmount + take, ...noteData } });
+      if (lot.code) usedLots.push(`$${lot.code}${take < lot.amount ? `(-${take})` : ""}`);
       need -= take;
     }
     const u = await tx.user.findUnique({ where: { lineUserId: args.userId }, select: { creditBalance: true } });
     const newBal = Math.max(0, (u?.creditBalance ?? 0) - amount);
     const code = await genCreditCode();
+    // v969：使用名義 = 原因 + 訂單編號 +（用了哪幾筆批次）
+    const usedNote = `${args.note ?? "訂單折抵"}${orderRef ? ` ${orderRef}` : ""}${usedLots.length ? `（折抵 ${usedLots.join("、")}）` : ""}`;
     await tx.creditTx.create({
-      data: { code, userId: args.userId, amount: -amount, reason: "used", refType: args.refType ?? null, refId: args.refId ?? null, note: args.note ?? "訂單折抵", balanceAfter: newBal },
+      data: { code, userId: args.userId, amount: -amount, reason: "used", refType: args.refType ?? null, refId: args.refId ?? null, note: usedNote, balanceAfter: newBal },
     });
     await tx.user.update({ where: { lineUserId: args.userId }, data: { creditBalance: newBal } });
     return amount;

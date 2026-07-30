@@ -41,7 +41,7 @@ interface Stats {
   circulating: number;
   expiring7: number;   // v959：7 天內到期
   expiringSoon: number; // 30 天內到期
-  expired: number;
+  voided: number; // v969：已作廢(到期收回)批次數
 }
 
 interface AdminUser {
@@ -77,7 +77,7 @@ export default function CreditsPage() {
   const [reasonFilter, setReasonFilter] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [expiryFilter, setExpiryFilter] = useState<"" | "7d" | "30d" | "expired">(""); // v959：到期篩選
+  const [expiryFilter, setExpiryFilter] = useState<"" | "7d" | "30d" | "voided">(""); // v959/v969：到期/已作廢篩選
   const [remindBusy, setRemindBusy] = useState(false); // v959：一鍵提醒
   // v962：前端排序 + 會員關鍵字
   const [sortKey, setSortKey] = useState<"time" | "member" | "amount" | "balance" | "expiry">("time");
@@ -247,21 +247,26 @@ export default function CreditsPage() {
 
   // v961：批次延長到期日（協助延遲）— 套用在目前篩選(類別+到期狀態)
   async function extendExpiry() {
-    if (!expiryFilter) { alert("請先點上方卡片篩選要延長的範圍（7天內 / 30天內 / 已過期）"); return; }
-    const input = window.prompt("要把這些抵用金的到期日，延到「今天 + 幾天」？", "30");
+    if (!expiryFilter) { alert("請先點上方卡片篩選要延長的範圍（7天內 / 30天內 / 已作廢）"); return; }
+    const recover = expiryFilter === "voided"; // v969：已作廢 → 復原(補回餘額)
+    const input = window.prompt(recover ? "要復原這些「已作廢」抵用金，並把到期日設為「今天 + 幾天」？（會補回餘額）" : "要把這些抵用金的到期日，延到「今天 + 幾天」？", "30");
     if (input === null) return;
     const days = parseInt(input, 10);
     if (!Number.isFinite(days) || days < 1 || days > 3650) { alert("請輸入 1 ~ 3650 的天數"); return; }
-    const scope = expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已過期";
+    const scope = expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已作廢";
     const reasonLabel = reasonFilter === "all" ? "全部類別" : reasonFilter;
-    if (!confirm(`確定把「${scope}・${reasonLabel}」的抵用金到期日，全部延長到「今天 + ${days} 天」？`)) return;
+    if (!confirm(recover
+      ? `確定復原「${scope}・${reasonLabel}」的抵用金？會補回餘額，並把到期日設為「今天 + ${days} 天」。`
+      : `確定把「${scope}・${reasonLabel}」的抵用金到期日，全部延長到「今天 + ${days} 天」？`)) return;
     setRemindBusy(true);
     try {
-      const r = await adminFetch<{ updated: number; newExpiresAt: string }>("/api/admin/credits/extend", {
+      const r = await adminFetch<{ updated: number; newExpiresAt: string; restoredTotal?: number; recovered?: boolean }>("/api/admin/credits/extend", {
         method: "POST",
         body: JSON.stringify({ days, reason: reasonFilter, expiry: expiryFilter }),
       });
-      alert(`✓ 已延長 ${r.updated} 筆，新到期日：${r.newExpiresAt}`);
+      alert(r.recovered
+        ? `✓ 已復原 ${r.updated} 筆（補回 ${r.restoredTotal} 元），新到期日：${r.newExpiresAt}`
+        : `✓ 已延長 ${r.updated} 筆，新到期日：${r.newExpiresAt}`);
       load();
     } catch (e) {
       alert("延長失敗：" + (e instanceof Error ? e.message : String(e)));
@@ -459,13 +464,13 @@ export default function CreditsPage() {
               <StatCard title="目前流通" value={stats.circulating} color="#0a2342" />
               <StatCard title="7 天內到期" value={stats.expiring7} color="#ea580c" unit="筆" active={expiryFilter === "7d"} onClick={() => setExpiryFilter(expiryFilter === "7d" ? "" : "7d")} />
               <StatCard title="30 天內到期" value={stats.expiringSoon} color="#d97706" unit="筆" active={expiryFilter === "30d"} onClick={() => setExpiryFilter(expiryFilter === "30d" ? "" : "30d")} />
-              <StatCard title="已過期" value={stats.expired} color="#dc2626" unit="筆" active={expiryFilter === "expired"} onClick={() => setExpiryFilter(expiryFilter === "expired" ? "" : "expired")} />
+              <StatCard title="已作廢" value={stats.voided} color="#dc2626" unit="筆" active={expiryFilter === "voided"} onClick={() => setExpiryFilter(expiryFilter === "voided" ? "" : "voided")} />
             </div>
             {/* 篩選狀態 + 一鍵發送提醒 */}
             <div className="flex flex-wrap items-center gap-2">
               {expiryFilter && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                  已篩選：{expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已過期"}
+                  已篩選：{expiryFilter === "7d" ? "7 天內到期" : expiryFilter === "30d" ? "30 天內到期" : "已作廢"}
                   <button type="button" onClick={() => setExpiryFilter("")} className="rounded-full px-1 text-amber-500 hover:bg-amber-100">✕</button>
                 </span>
               )}
@@ -474,7 +479,7 @@ export default function CreditsPage() {
                 {expiryFilter && (
                   <button type="button" onClick={extendExpiry} disabled={remindBusy}
                     className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 hover:bg-sky-100 disabled:opacity-50">
-                    ⏳ 延長到期日…
+                    {expiryFilter === "voided" ? "♻️ 復原並延長到期日…" : "⏳ 延長到期日…"}
                   </button>
                 )}
                 <button type="button" onClick={() => sendExpiringReminder(7)} disabled={remindBusy}
