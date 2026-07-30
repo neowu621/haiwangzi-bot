@@ -96,6 +96,11 @@ export default function CreditsPage() {
   const [editNote, setEditNote] = useState("");
   const [editExpiresAt, setEditExpiresAt] = useState("");
   const [editBusy, setEditBusy] = useState(false);
+  // v964：點會員名 → 該會員抵用金完整紀錄彈窗
+  const [histUser, setHistUser] = useState<{ userId: string; name: string } | null>(null);
+  const [histTxs, setHistTxs] = useState<CreditTx[]>([]);
+  const [histBal, setHistBal] = useState(0);
+  const [histLoading, setHistLoading] = useState(false);
 
   // ── 一鍵補發 dialog（v390）─────────────────────────
   type BackfillPreview = {
@@ -302,6 +307,16 @@ export default function CreditsPage() {
   }, [txs, keyword, sortKey, sortDir]);
 
   useEffect(() => { load(); }, [load]);
+
+  // v964：載入某會員的完整抵用金紀錄（依時間，API 已 desc 排序）
+  useEffect(() => {
+    if (!histUser) return;
+    setHistLoading(true);
+    adminFetch<{ balance: number; txs: CreditTx[] }>(`/api/admin/credits?userId=${encodeURIComponent(histUser.userId)}`)
+      .then((r) => { setHistTxs(r.txs ?? []); setHistBal(r.balance ?? 0); })
+      .catch(() => { setHistTxs([]); setHistBal(0); })
+      .finally(() => setHistLoading(false));
+  }, [histUser]);
 
   // 開啟新增 dialog 時順便載 user list
   async function openAdd() {
@@ -545,7 +560,10 @@ export default function CreditsPage() {
                           {new Date(t.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
                         </td>
                         <td className="px-3 py-1.5 whitespace-nowrap text-xs">
-                          <span className="font-semibold">{t.user?.realName ?? t.user?.displayName ?? "—"}</span>
+                          <button type="button" onClick={() => setHistUser({ userId: t.userId, name: t.user?.realName ?? t.user?.displayName ?? "會員" })}
+                            className="font-semibold text-[var(--color-ocean-deep)] hover:underline">
+                            {t.user?.realName ?? t.user?.displayName ?? "—"}
+                          </button>
                           {t.user?.code && <span className="ml-1 text-[10px] text-[var(--muted-foreground)] font-mono">{t.user.code}</span>}
                         </td>
                         <td className="px-3 py-1.5 whitespace-nowrap text-xs">
@@ -745,6 +763,50 @@ export default function CreditsPage() {
                   {editBusy ? "儲存中..." : "✓ 儲存"}
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* v964：會員抵用金完整紀錄 */}
+      <Dialog open={histUser !== null} onOpenChange={(o) => !o && setHistUser(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>💳 {histUser?.name} 的抵用金紀錄</DialogTitle>
+          </DialogHeader>
+          <div className="mb-1 text-sm">
+            目前餘額：<b className="text-[var(--color-ocean-deep)]">NT$ {histBal.toLocaleString()}</b>
+            <span className="ml-2 text-xs text-[var(--muted-foreground)]">共 {histTxs.length} 筆（新 → 舊）</span>
+          </div>
+          {histLoading ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">載入中…</div>
+          ) : histTxs.length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">尚無抵用金紀錄</div>
+          ) : (
+            <div className="max-h-[62vh] space-y-1.5 overflow-y-auto pr-1">
+              {histTxs.map((t) => {
+                const exp = expiryStatus(t);
+                return (
+                  <div key={t.id} className="rounded-lg border p-2.5" style={{ borderColor: "var(--border)" }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-[var(--muted-foreground)]">
+                        {new Date(t.createdAt).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                      </span>
+                      <span className="tabular-nums text-sm font-bold" style={{ color: t.amount > 0 ? "#16a34a" : "#dc2626" }}>
+                        {t.amount > 0 ? "+" : ""}{t.amount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="min-w-0 text-xs">
+                        <Badge variant="muted" className="mr-1 text-[10px]">{REASON_LABEL[t.reason] ?? t.reason}</Badge>
+                        <span className="text-[var(--muted-foreground)]">{t.note ?? "—"}</span>
+                      </span>
+                      <span className="whitespace-nowrap text-[11px] text-[var(--muted-foreground)]">餘 {t.balanceAfter.toLocaleString()}</span>
+                    </div>
+                    {exp && <div className="mt-0.5 text-[10px]" style={{ color: exp.color }}>{exp.label}{t.expiresAt ? `（${new Date(t.expiresAt).toLocaleDateString("zh-TW", { timeZone: "Asia/Taipei" })}）` : ""}</div>}
+                  </div>
+                );
+              })}
             </div>
           )}
         </DialogContent>
