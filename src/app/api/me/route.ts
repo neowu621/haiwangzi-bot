@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
 }
 
 const CompanionSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(), // v984：新增的潛伴沒有 id → 伺服器端自動補，避免整包存檔失敗
   name: z.string().min(1),
   phone: z.string().optional().default(""),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
@@ -243,6 +243,14 @@ export async function PATCH(req: NextRequest) {
   // v311：完成 onboarding → 寫 onboardingCompletedAt
   if (body.markOnboardingComplete === true) {
     data.onboardingCompletedAt = new Date();
+  }
+  // v984：潛伴自動補 id + 正規化配重（新增的潛伴沒 id → 補 UUID，避免存檔失敗）
+  if (Array.isArray(data.companions)) {
+    data.companions = (data.companions as Array<{ id?: string; weightBelt?: number | null }>).map((c) => ({
+      ...c,
+      id: c.id ?? crypto.randomUUID(),
+      weightBelt: c.weightBelt ?? null,
+    }));
   }
   try {
     const updated = await prisma.user.update({
