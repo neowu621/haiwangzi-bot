@@ -463,6 +463,19 @@ export default function TripBookingPage({
     return parts.length > 0 ? `🤿 裝備尺寸：${parts.join(" ")}` : "🤿 有裝備租用，無特別需求";
   })();
 
+  // v982：配重也組進備註（本人 + 各潛伴），與裝備一樣到處看得到；結構化欄位仍照存/寫回
+  const weightNote = (() => {
+    const toWb = (v?: string) => { const n = Number(String(v ?? "").trim()); return Number.isFinite(n) && n > 0 ? Math.round(n) : null; };
+    const parts: string[] = [];
+    const self = toWb(weightBelt);
+    if (self) parts.push(`本人 ${self}kg`);
+    companionSlots.forEach((c) => {
+      const w = toWb(c.weightBelt);
+      if (w && c.name.trim()) parts.push(`${c.name.trim()} ${w}kg`);
+    });
+    return parts.length > 0 ? `🏋️ 配重：${parts.join("、")}` : "";
+  })();
+
   const canSubmit =
     trip &&
     !submitting &&
@@ -537,7 +550,7 @@ export default function TripBookingPage({
       ];
 
       // v974/v978：租裝備尺寸組進備註（教練備裝用）—— 與畫面顯示同一份 gearNote
-      const finalNotes = [gearNote, notes.trim()].filter(Boolean).join("\n") || undefined;
+      const finalNotes = [gearNote, weightNote, notes.trim()].filter(Boolean).join("\n") || undefined;
 
       const body = {
         tripId: trip.id,
@@ -944,21 +957,24 @@ export default function TripBookingPage({
         {/* v957：備註改預設收合（選填）；v978：租裝備尺寸即時同步顯示在備註 */}
         <CollapsibleCard
           title="📝 備註 / 特殊需求"
-          complete={notes.trim().length > 0 || gearNote.length > 0}
+          complete={notes.trim().length > 0 || gearNote.length > 0 || weightNote.length > 0}
           open={notesOpen}
           onToggle={() => setNotesOpen(!notesOpen)}
           summary={
-            gearNote
-              ? `${gearNote}${notes.trim() ? `｜${notes.trim()}` : ""}`.slice(0, 30)
+            (gearNote || weightNote)
+              ? `${[gearNote, weightNote].filter(Boolean).join("｜")}${notes.trim() ? `｜${notes.trim()}` : ""}`.slice(0, 30)
               : notes.trim()
                 ? notes.trim().slice(0, 24)
                 : "選填 · 耳壓不適 / 過敏 / 用藥…"
           }
         >
-          {gearNote && (
+          {(gearNote || weightNote) && (
             <div className="mb-2 rounded-md bg-[var(--color-phosphor)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--color-ocean-deep)]">
-              <span className="font-bold">自動帶入備註：</span>{gearNote}
-              <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">送出時會自動加到備註最前面（改上方裝備尺寸即同步）。下方可再補充其他需求。</div>
+              <span className="font-bold">自動帶入備註：</span>
+              {[gearNote, weightNote].filter(Boolean).map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+              <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">送出時會自動加到備註最前面（改上方裝備尺寸／配重即同步）。下方可再補充其他需求。</div>
             </div>
           )}
           <textarea
