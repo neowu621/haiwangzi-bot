@@ -33,6 +33,7 @@ interface ParticipantDetail {
   cert: string | null;
   certNumber: string;
   logCount: number;
+  weightBelt?: number | null; // v980：配重(kg)
   relationship: string;
   isSelf?: boolean;
 }
@@ -247,6 +248,7 @@ export default function CoachTodayPage() {
                   const companions = (b.participantDetails ?? []).filter(
                     (p) => !p.isSelf,
                   );
+                  const selfWb = (b.participantDetails ?? []).find((p) => p.isSelf)?.weightBelt; // v980：本人配重
                   const isDone = b.status === "completed";
                   const isNoShow = b.status === "no_show";
                   return (
@@ -297,6 +299,7 @@ export default function CoachTodayPage() {
                           </div>
                           <div className="tabular text-xs opacity-70">
                             {b.phone ?? "—"} · {b.logCount} logs
+                            {selfWb ? <span className="ml-1 font-semibold text-[var(--color-ocean-deep)]">· 🏋️ 配重 {selfWb}kg</span> : null}
                           </div>
                           {b.notes && (
                             <div className="mt-1 flex items-start gap-1 rounded bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[11px] text-[var(--color-coral)]">
@@ -353,6 +356,11 @@ export default function CoachTodayPage() {
                                   · {c.phone}
                                 </span>
                               )}
+                              {c.weightBelt ? (
+                                <span className="ml-1 text-[10px] font-semibold text-[var(--color-ocean-deep)]">
+                                  · 🏋️ 配重{c.weightBelt}kg
+                                </span>
+                              ) : null}
                             </div>
                           ))}
                         </div>

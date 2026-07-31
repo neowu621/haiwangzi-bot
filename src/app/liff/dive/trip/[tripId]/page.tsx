@@ -108,6 +108,7 @@ interface Companion {
   certNumber: string;
   logCount: number;
   relationship: string;
+  weightBelt?: string; // v980：配重(kg)，字串好輸入；送出轉數字
 }
 
 function emptyCompanion(): Companion {
@@ -118,6 +119,7 @@ function emptyCompanion(): Companion {
     certNumber: "",
     logCount: 0,
     relationship: "",
+    weightBelt: "",
   };
 }
 
@@ -143,6 +145,7 @@ export default function TripBookingPage({
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
   const [certNumber, setCertNumber] = useState(""); // v655：下單必填證照號碼
   const [logCount, setLogCount] = useState("");
+  const [weightBelt, setWeightBelt] = useState(""); // v980：本人配重(kg)
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
@@ -271,6 +274,7 @@ export default function TripBookingPage({
         cert: typeof CERTS[number] | null;
         certNumber: string | null;
         logCount: number;
+        weightBelt?: number | null; // v980：本人配重(kg)
         creditBalance: number;
         vipLevel: number;
         gearDiscountPct?: number;
@@ -291,6 +295,7 @@ export default function TripBookingPage({
         if (me.cert) setCert(me.cert);
         if (me.certNumber) setCertNumber(me.certNumber);
         if (me.logCount) setLogCount(String(me.logCount));
+        if (me.weightBelt != null) setWeightBelt(String(me.weightBelt)); // v980：帶入本人配重
         if (me.emergencyContact) {
           setEmergencyName(me.emergencyContact.name);
           setEmergencyPhone(formatPhoneTW(me.emergencyContact.phone));
@@ -503,6 +508,10 @@ export default function TripBookingPage({
     setSubmitting(true);
     setError(null);
     try {
+      const parseWb = (v: string | undefined) => {
+        const n = Number(String(v ?? "").trim());
+        return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+      };
       const participantDetails = [
         {
           name: realName,
@@ -510,6 +519,7 @@ export default function TripBookingPage({
           cert: cert || null,
           certNumber: certNumber.trim(),
           logCount: logCount ? Number(logCount) : 0,
+          weightBelt: parseWb(weightBelt), // v980：本人配重
           relationship: "",
           isSelf: true,
         },
@@ -520,6 +530,7 @@ export default function TripBookingPage({
           cert: c.cert,
           certNumber: c.certNumber,
           logCount: c.logCount,
+          weightBelt: parseWb(c.weightBelt), // v980：潛伴配重
           relationship: c.relationship,
           isSelf: false,
         })),
@@ -552,6 +563,7 @@ export default function TripBookingPage({
         cert: cert || undefined,
         certNumber: certNumber.trim() || undefined,
         logCount: logCount ? Number(logCount) : undefined,
+        weightBelt: parseWb(weightBelt) ?? undefined, // v980：本人配重寫回會員
         emergencyContact: {
           name: emergencyName,
           phone: emergencyPhone,
@@ -873,6 +885,18 @@ export default function TripBookingPage({
                     setLogCount(e.target.value.replace(/\D/g, ""))
                   }
                   placeholder="例: 25（新手填 0）"
+                  className="text-center"
+                />
+              </div>
+              {/* v980：配重(kg) — 選填，教練備重用，會記住 */}
+              <div>
+                <Label htmlFor="weightBelt">配重 (kg)</Label>
+                <Input
+                  id="weightBelt"
+                  inputMode="numeric"
+                  value={weightBelt}
+                  onChange={(e) => setWeightBelt(e.target.value.replace(/\D/g, ""))}
+                  placeholder="例: 5（不確定留空）"
                   className="text-center"
                 />
               </div>
@@ -1804,6 +1828,18 @@ function CompanionSlotEditor({
             })
           }
           placeholder="累計潛水支數"
+          className="text-center"
+        />
+      </div>
+      {/* v980：潛伴配重(kg) — 選填，會記住 */}
+      <div className="mt-2">
+        <Input
+          inputMode="numeric"
+          value={slot.weightBelt ?? ""}
+          onChange={(e) =>
+            onChange({ ...slot, weightBelt: e.target.value.replace(/\D/g, "") })
+          }
+          placeholder="配重 kg（選填）"
           className="text-center"
         />
       </div>

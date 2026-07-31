@@ -137,6 +137,8 @@ model User {
   emergencyContact          Json?      @map("emergency_contact")
   cert                      CertLevel?
   certNumber                String?    @map("cert_number") @db.VarChar(64)
+  // v980：慣用配重(kg)。下單時自動帶入/寫回（最新為準），教練備重用。
+  weightBelt                Int?       @map("weight_belt")
   // 「總經驗」潛水次數：使用者自填（含其他單位累積，不可驗證）
   logCount                  Int        @default(0) @map("log_count")
   // 「海王子累積」潛水次數：在本系統有 booking 完成（到場勾選）才會 +1

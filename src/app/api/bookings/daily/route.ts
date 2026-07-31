@@ -58,6 +58,7 @@ const BodySchema = z.object({
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).optional(),
   certNumber: z.string().optional(),
   logCount: z.number().int().min(0).optional(),
+  weightBelt: z.number().int().min(0).max(50).nullable().optional(), // v980：本人配重(kg)
   emergencyContact: z
     .object({
       name: z.string(),
@@ -78,6 +79,7 @@ const BodySchema = z.object({
           .optional(),
         certNumber: z.string().optional().default(""),
         logCount: z.number().int().min(0).optional().default(0),
+        weightBelt: z.number().int().min(0).max(50).nullable().optional(), // v980：配重(kg)
         relationship: z.string().optional().default(""),
         isSelf: z.boolean().optional().default(false),
       }),
@@ -297,6 +299,8 @@ export async function POST(req: NextRequest) {
   if (data.cert) userPatch.cert = data.cert;
   if (data.certNumber) userPatch.certNumber = data.certNumber;
   if (data.logCount !== undefined) userPatch.logCount = data.logCount;
+  // v980：本人配重「最新為準」寫回會員（有填才更新）
+  if (data.weightBelt != null) (userPatch as { weightBelt?: number }).weightBelt = data.weightBelt;
   if (data.emergencyContact) userPatch.emergencyContact = data.emergencyContact;
 
   // 同伴 merge：把這次預約裡 isSelf=false 的人加進 user.companions（按 name+phone 去重）
@@ -308,6 +312,7 @@ export async function POST(req: NextRequest) {
       id: string;
       name: string;
       phone: string;
+      weightBelt?: number | null;
     }> | null | undefined) ?? [];
     const merged = [...existing];
     for (const c of incomingCompanions) {
@@ -323,8 +328,12 @@ export async function POST(req: NextRequest) {
           cert: c.cert ?? null,
           certNumber: c.certNumber ?? "",
           logCount: c.logCount ?? 0,
+          weightBelt: c.weightBelt ?? null, // v980：新潛伴配重
           relationship: c.relationship ?? "",
         } as never);
+      } else if (c.weightBelt != null) {
+        // v980：既有潛伴「最新為準」更新配重
+        (dup as { weightBelt?: number | null }).weightBelt = c.weightBelt;
       }
     }
     userPatch.companions = merged as never;

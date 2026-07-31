@@ -116,6 +116,7 @@ export async function GET(req: NextRequest) {
     cert: u.cert,
     certNumber: u.certNumber,
     logCount: u.logCount,
+    weightBelt: (u as { weightBelt?: number | null }).weightBelt ?? null, // v980：慣用配重(kg)
     haiwangziLogCount: u.haiwangziLogCount ?? 0,
     role: u.role,
     // 新版多重身分；空陣列 fallback 為 [role]
