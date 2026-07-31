@@ -1295,13 +1295,15 @@ export default function AdminBookingsPage() {
                                 createdAt: b.createdAt,
                                 activityDate: b.ref?.date ?? b.ref?.dateStart ?? null,
                               });
+                              // v984：現場付款且尚未付清（建立/等待付款）→ 顯示「現場付款結清」，不催繳
+                              const cashOnsite = b.paymentMethod === "cash" && (d.key === "created" || d.key === "awaiting_pay");
                               return (
                                 <>
                                   <Badge variant={d.variant} className="text-[10px] whitespace-nowrap">
-                                    {d.label}
+                                    {cashOnsite ? "💵 現場付款結清" : d.label}
                                   </Badge>
-                                  {/* v663：等待付款 → 已超過 1 天未付，提示催繳 */}
-                                  {d.key === "awaiting_pay" && (
+                                  {/* v663：等待付款 → 已超過 1 天未付，提示催繳。v984：現場付款不催繳（當天現場收） */}
+                                  {d.key === "awaiting_pay" && b.paymentMethod !== "cash" && (
                                     <span className="inline-flex rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700 whitespace-nowrap">
                                       ⏰ 已超過 1 天·待催繳
                                     </span>
