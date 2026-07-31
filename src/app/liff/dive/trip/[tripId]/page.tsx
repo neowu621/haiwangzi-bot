@@ -147,6 +147,12 @@ export default function TripBookingPage({
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRel, setEmergencyRel] = useState("");
   const [notes, setNotes] = useState("");
+  // v974：租裝備時的尺寸資訊（送出時組進 notes 備註）
+  const [gearHeight, setGearHeight] = useState("");
+  const [gearWeight, setGearWeight] = useState("");
+  const [gearShoe, setGearShoe] = useState("");
+  const [gearWetsuit, setGearWetsuit] = useState("");
+  const [gearNoSpecial, setGearNoSpecial] = useState(false);
   // v289：付款方式移到「我的預約 → 付款方式選擇」頁，這裡不再選
   // v259：從 /api/config 拉政策內容，給 [查看 ›] modal 顯示用
   const [cancellationPolicy, setCancellationPolicy] = useState("");
@@ -435,6 +441,12 @@ export default function TripBookingPage({
   // v341：場次開始前 2 小時截止預約
   const bookingClosed = trip ? isBookingClosed(trip.date, trip.startTime) : false;
 
+  // v974：有租裝備 → 需填身高+體重，或勾「無特別需求」
+  const gearSizingComplete =
+    selectedGearList.length === 0 ||
+    gearNoSpecial ||
+    (gearHeight.trim().length > 0 && gearWeight.trim().length > 0);
+
   const canSubmit =
     trip &&
     !submitting &&
@@ -449,6 +461,7 @@ export default function TripBookingPage({
     cert !== "" &&
     logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
     companionsValid &&
+    gearSizingComplete &&            // v974：租裝備須填尺寸或註明無特別需求
     paymentMethod !== "";            // v955：付款方式必選
 
   // v703：按鈕變灰時，列出「還差什麼」讓使用者知道要補哪些（按鈕不再無聲 disabled）
@@ -463,6 +476,7 @@ export default function TripBookingPage({
   if (cert === "") missing.push("證照等級");
   if (logCount.trim().length < 1) missing.push("潛水次數");
   if (!companionsValid) missing.push("同行者資料");
+  if (!gearSizingComplete) missing.push("裝備尺寸（身高體重）或勾「無特別需求」");
   if (paymentMethod === "") missing.push("選擇付款方式");
 
   async function submit() {
@@ -500,6 +514,18 @@ export default function TripBookingPage({
         })),
       ];
 
+      // v974：租裝備尺寸組進備註（教練備裝用）
+      let gearNote = "";
+      if (selectedGearList.length > 0) {
+        const parts: string[] = [];
+        if (gearHeight.trim()) parts.push(`身高${gearHeight.trim()}`);
+        if (gearWeight.trim()) parts.push(`體重${gearWeight.trim()}`);
+        if (gearShoe.trim()) parts.push(`鞋碼${gearShoe.trim()}`);
+        if (gearWetsuit.trim()) parts.push(`防寒衣${gearWetsuit.trim()}`);
+        gearNote = parts.length > 0 ? `🤿 裝備尺寸：${parts.join(" ")}` : "🤿 有裝備租用，無特別需求";
+      }
+      const finalNotes = [gearNote, notes.trim()].filter(Boolean).join("\n") || undefined;
+
       const body = {
         tripId: trip.id,
         participants,
@@ -509,7 +535,7 @@ export default function TripBookingPage({
           price: g.price,
           qty: g.qty,
         })),
-        notes: notes || undefined,
+        notes: finalNotes,
         paymentMethod, // v955：下單時已選付款方式（bank/linepay/cash/other）
         creditUsed: Math.min(creditUsed, creditBalance, finalTotal),
         // v592：節慶優惠代碼(後端二次驗證 + 取其優)
@@ -714,6 +740,51 @@ export default function TripBookingPage({
               ) : (
                 <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
                   未選 — 自備裝備不需要點
+                </div>
+              )}
+              {/* v974：有租裝備 → 必填尺寸（教練備裝用），或按「無特別需求」 */}
+              {selectedGearList.length > 0 && (
+                <div className="mt-3 rounded-lg border border-[var(--color-phosphor)]/40 bg-[var(--color-phosphor)]/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[var(--color-ocean-deep)]">
+                      🤿 裝備尺寸 <span className="text-[var(--color-coral)]">必填</span>
+                    </span>
+                    <span className="text-[10px] text-[var(--muted-foreground)]">讓教練先幫你備好裝備</span>
+                  </div>
+                  <div className={cn("mt-2 grid grid-cols-2 gap-2", gearNoSpecial && "pointer-events-none opacity-40")}>
+                    <input
+                      inputMode="numeric" value={gearHeight}
+                      onChange={(e) => setGearHeight(e.target.value)}
+                      placeholder="身高 cm"
+                      className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40"
+                    />
+                    <input
+                      inputMode="numeric" value={gearWeight}
+                      onChange={(e) => setGearWeight(e.target.value)}
+                      placeholder="體重 kg"
+                      className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40"
+                    />
+                    <input
+                      inputMode="numeric" value={gearShoe}
+                      onChange={(e) => setGearShoe(e.target.value)}
+                      placeholder="鞋碼（選填）"
+                      className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40"
+                    />
+                    <input
+                      value={gearWetsuit}
+                      onChange={(e) => setGearWetsuit(e.target.value)}
+                      placeholder="防寒衣 S/M/L（選填）"
+                      className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40"
+                    />
+                  </div>
+                  <label className="mt-2 flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] cursor-pointer">
+                    <input
+                      type="checkbox" checked={gearNoSpecial}
+                      onChange={(e) => setGearNoSpecial(e.target.checked)}
+                      className="h-3.5 w-3.5"
+                    />
+                    無特別需求（現場再量）
+                  </label>
                 </div>
               )}
             </div>
