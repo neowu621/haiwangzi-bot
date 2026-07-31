@@ -783,7 +783,7 @@ export default function TripBookingPage({
                       onChange={(e) => setGearNoSpecial(e.target.checked)}
                       className="h-3.5 w-3.5"
                     />
-                    無特別需求（現場再量）
+                    無特別需求（一般尺寸即可）
                   </label>
                 </div>
               )}
