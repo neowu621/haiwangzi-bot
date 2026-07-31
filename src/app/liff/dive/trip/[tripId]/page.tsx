@@ -447,6 +447,17 @@ export default function TripBookingPage({
     gearNoSpecial ||
     (gearHeight.trim().length > 0 && gearWeight.trim().length > 0);
 
+  // v978：租裝備尺寸即時組成備註字串（畫面同步顯示 + 送出共用）
+  const gearNote = (() => {
+    if (selectedGearList.length === 0) return "";
+    const parts: string[] = [];
+    if (gearHeight.trim()) parts.push(`身高${gearHeight.trim()}`);
+    if (gearWeight.trim()) parts.push(`體重${gearWeight.trim()}`);
+    if (gearShoe.trim()) parts.push(`鞋碼${gearShoe.trim()}`);
+    if (gearWetsuit.trim()) parts.push(`防寒衣${gearWetsuit.trim()}`);
+    return parts.length > 0 ? `🤿 裝備尺寸：${parts.join(" ")}` : "🤿 有裝備租用，無特別需求";
+  })();
+
   const canSubmit =
     trip &&
     !submitting &&
@@ -514,16 +525,7 @@ export default function TripBookingPage({
         })),
       ];
 
-      // v974：租裝備尺寸組進備註（教練備裝用）
-      let gearNote = "";
-      if (selectedGearList.length > 0) {
-        const parts: string[] = [];
-        if (gearHeight.trim()) parts.push(`身高${gearHeight.trim()}`);
-        if (gearWeight.trim()) parts.push(`體重${gearWeight.trim()}`);
-        if (gearShoe.trim()) parts.push(`鞋碼${gearShoe.trim()}`);
-        if (gearWetsuit.trim()) parts.push(`防寒衣${gearWetsuit.trim()}`);
-        gearNote = parts.length > 0 ? `🤿 裝備尺寸：${parts.join(" ")}` : "🤿 有裝備租用，無特別需求";
-      }
+      // v974/v978：租裝備尺寸組進備註（教練備裝用）—— 與畫面顯示同一份 gearNote
       const finalNotes = [gearNote, notes.trim()].filter(Boolean).join("\n") || undefined;
 
       const body = {
@@ -915,14 +917,26 @@ export default function TripBookingPage({
           </div>
         </CollapsibleCard>
 
-        {/* v957：備註改預設收合（選填）*/}
+        {/* v957：備註改預設收合（選填）；v978：租裝備尺寸即時同步顯示在備註 */}
         <CollapsibleCard
           title="📝 備註 / 特殊需求"
-          complete={notes.trim().length > 0}
+          complete={notes.trim().length > 0 || gearNote.length > 0}
           open={notesOpen}
           onToggle={() => setNotesOpen(!notesOpen)}
-          summary={notes.trim() ? notes.trim().slice(0, 24) : "選填 · 耳壓不適 / 過敏 / 用藥…"}
+          summary={
+            gearNote
+              ? `${gearNote}${notes.trim() ? `｜${notes.trim()}` : ""}`.slice(0, 30)
+              : notes.trim()
+                ? notes.trim().slice(0, 24)
+                : "選填 · 耳壓不適 / 過敏 / 用藥…"
+          }
         >
+          {gearNote && (
+            <div className="mb-2 rounded-md bg-[var(--color-phosphor)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--color-ocean-deep)]">
+              <span className="font-bold">自動帶入備註：</span>{gearNote}
+              <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">送出時會自動加到備註最前面（改上方裝備尺寸即同步）。下方可再補充其他需求。</div>
+            </div>
+          )}
           <textarea
             id="notes"
             value={notes}
