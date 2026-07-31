@@ -49,6 +49,7 @@ interface BookingRow {
   paidAmount?: number;
   creditUsed?: number;
   paymentStatus?: string;
+  paymentMethod?: string | null; // v981：客戶選的付款方式（cash/other 顯示，不寫待匯款）
   status: string;
   notes?: string | null; // v843：客戶訂單備註（老闆結帳列表一起顯示）
   priceBreakdown?: BossAdjPb | null; // v868：老闆帳務調整（共乘等）
@@ -175,7 +176,14 @@ export default function MobileTonightPage() {
               <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
                 {b.ref?.title ? "✈️" : "🔱"} {refLabel(b) || "—"}・{b.participants ?? 1} 位
                 {(b.creditUsed ?? 0) > 0 ? `・已折 NT$ ${(b.creditUsed ?? 0).toLocaleString()}` : ""}
-                <span className="ml-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">待匯款</span>
+                {/* v981：現場付款/其他 → 顯示付款方式，不誤寫「待匯款」 */}
+                {b.paymentMethod === "cash" ? (
+                  <span className="ml-1 rounded-full bg-teal-100 px-1.5 py-0.5 text-[9px] font-semibold text-teal-700">💵 現場付款</span>
+                ) : b.paymentMethod === "other" ? (
+                  <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">📝 其他付款</span>
+                ) : (
+                  <span className="ml-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">待匯款</span>
+                )}
               </div>
               {b.notes && b.notes.trim() && (
                 <div className="mt-1 rounded-md px-2.5 py-1.5 text-[14px] font-bold" style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>📝 訂單備註：{b.notes}</div>
