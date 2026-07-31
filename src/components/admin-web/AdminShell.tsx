@@ -23,7 +23,6 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   HelpCircle,
-  Newspaper,
   ChevronRight,
   Mail,
   Ticket,
@@ -61,6 +60,7 @@ const NAV_GROUPS = [
       { href: "/admin/dive-wishes", icon: BookOpen, label: "📝 願望單" },
       { href: "/admin/users", icon: Users, label: "會員管理" },
       { href: "/admin/credits", icon: Star, label: "抵用金管理" },
+      { href: "/admin/promo-codes", icon: Ticket, label: "🎏 節慶優惠" }, // v975：由「行銷」搬來
     ],
   },
   {
@@ -80,14 +80,6 @@ const NAV_GROUPS = [
       { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
       { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
       { href: "/admin/message-log", icon: BookOpen, label: "📋 通訊紀錄" },
-    ],
-  },
-  {
-    label: "行銷",
-    roles: ["admin", "boss", "it"],
-    items: [
-      { href: "/admin/promo-codes", icon: Ticket, label: "🎏 節慶優惠" },
-      { href: "/admin/media-posts", icon: Newspaper, label: "最新動態" },
     ],
   },
   {

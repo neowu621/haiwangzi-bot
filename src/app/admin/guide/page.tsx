@@ -326,7 +326,6 @@ export default function AdminGuidePage() {
           <PageRef items={[
             ["/liff/profile", "個人中心：VIP 等級、抵用金餘額、Email 驗證、個資"],
             ["/liff/faq", "常見問題 / 關於海王子 / 退款 / 安全政策"],
-            ["/liff/media", "最新動態（活動 / 影片）"],
           ]} />
           <ul className="list-disc space-y-1 pl-5 text-xs">
             <li><b>兩個潛水次數要分清楚：</b>
@@ -442,7 +441,7 @@ export default function AdminGuidePage() {
 
         <Section title="後⑥ 行銷與通知">
           <PageRef items={[
-            ["/admin/media-posts", "最新動態：手動發活動 / 影片到前台"],
+            ["/admin/promo-codes", "節慶優惠（在「訂單 / 客戶」目錄）"],
             ["/admin/templates", "訊息模板：各種通知的預設文字"],
             ["/admin/broadcast", "群發通知：選對象 + 管道（LINE / Email）一次送"],
           ]} />

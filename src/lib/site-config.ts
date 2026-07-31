@@ -101,18 +101,6 @@ export const DEFAULT_CARDS: SiteCard[] = [
     order: 2,
   },
   {
-    id: "community",
-    label: "最新動態",
-    enLabel: "NEWS & UPDATES",
-    desc: "精彩內容不錯過",
-    href: "/liff/community",
-    external: false,
-    icon: "Newspaper",
-    accent: "gold",
-    enabled: true,
-    order: 3,
-  },
-  {
     id: "wishes",
     label: "📝 客製願望",
     enLabel: "CUSTOM WISH",
