@@ -1,13 +1,15 @@
 "use client";
-// v927：首頁「最新動態」影片卡 —— 橫向自動跑馬燈(一直往左跑、右邊接著出來、無縫循環)。
-//   點卡片直接開 YouTube；縮圖 hqdefault + lazy(facade)；hover 暫停；只在捲到畫面內才跑；尊重 reduced-motion。
-import { useEffect, useRef, useState } from "react";
+// v927：首頁「最新動態」影片卡 —— 橫向自動輪播(一直往左跑、無縫循環)。
+//   v979：改用「原生捲動 + rAF 自動遞增」——手指可自由左右滑、點卡片後自動接著跑(不再卡住)。
+//   點卡片直接開 YouTube；縮圖 hqdefault + lazy；碰到就暫停、放開續跑；尊重 reduced-motion。
+import { useEffect, useState } from "react";
 import { DEFAULT_DIVE_VIDEOS, ytThumb, ytWatchUrl, type DiveVideo } from "@/lib/dive-videos";
 import { YT_CHANNEL } from "./data";
+import { useAutoScroll } from "./useAutoScroll";
 
 export default function FeaturedVideos() {
   const [vids, setVids] = useState<DiveVideo[]>(DEFAULT_DIVE_VIDEOS);
-  const trackWrapRef = useRef<HTMLDivElement>(null);
+  const trackRef = useAutoScroll<HTMLDivElement>(vids.length > 0);
 
   useEffect(() => {
     let off = false;
@@ -18,23 +20,10 @@ export default function FeaturedVideos() {
     return () => { off = true; };
   }, []);
 
-  // 只在捲到畫面內才跑動畫（省資源、不影響首屏）
-  useEffect(() => {
-    const el = trackWrapRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (es) => es.forEach((e) => el.classList.toggle("run", e.isIntersecting)),
-      { rootMargin: "120px 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [vids.length]);
-
   if (vids.length === 0) return null;
-  // 至少 6 張才夠長，不足就重複補滿讓循環順
+  // 至少 4 張才夠長，不足就重複補滿讓循環順
   const base = vids.length >= 4 ? vids : [...vids, ...vids, ...vids].slice(0, Math.max(4, vids.length));
   const loop = [...base, ...base]; // 複製兩份做無縫循環
-  const dur = Math.max(24, base.length * 6); // 秒數隨數量增加、速度一致
 
   return (
     <div className="fv-wrap">
@@ -42,8 +31,8 @@ export default function FeaturedVideos() {
         <p className="fv-sub">海裡每天都在上演精彩——汪汪帶你直擊東北角海底世界，<b>想不想一起下水看看？</b> <a className="fv-yt-link" href={YT_CHANNEL} target="_blank" rel="noopener noreferrer">更多影片 →</a></p>
       </div>
 
-      <div className="fv-marquee" ref={trackWrapRef}>
-        <div className="fv-track" style={{ animationDuration: `${dur}s` }}>
+      <div className="fv-marquee">
+        <div className="fv-track" ref={trackRef}>
           {loop.map((v, i) => (
             <a
               key={`${v.id}-${i}`}
@@ -80,13 +69,10 @@ export default function FeaturedVideos() {
         @media(max-height:820px){.fv-card{width:172px;} .fv-ttl{padding:6px 9px 8px;font-size:11.5px;} .fv-head{margin-bottom:8px;} .fv-sub{font-size:14px;}}
         @media(max-height:700px){.fv-card{width:150px;} .fv-ttl{font-size:11px;} .fv-sub{font-size:13px;}}
 
-        /* 跑馬燈：一直往左跑，右邊接著出來，無縫循環 */
-        .fv-marquee{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
-        .fv-track{display:flex;gap:14px;width:max-content;padding:4px 14px;animation-name:fvscroll;animation-timing-function:linear;animation-iteration-count:infinite;animation-play-state:paused;}
-        .fv-marquee.run .fv-track{animation-play-state:running;}
-        .fv-marquee:hover .fv-track{animation-play-state:paused;}
-        @keyframes fvscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-        @media(prefers-reduced-motion:reduce){.fv-marquee{overflow-x:auto;} .fv-track{animation:none;}}
+        /* v979：手指可滑的橫向捲動 + rAF 自動輪播；邊緣遮罩淡出 */
+        .fv-marquee{-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
+        .fv-track{display:flex;gap:14px;padding:4px 14px;overflow-x:auto;overflow-y:hidden;scroll-behavior:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;}
+        .fv-track::-webkit-scrollbar{display:none;}
 
         .fv-card{flex:none;width:200px;display:flex;flex-direction:column;border-radius:13px;overflow:hidden;text-decoration:none;
           background:#0c2033;border:1px solid rgba(255,255,255,.09);color:#eaf4fb;transition:transform .18s,border-color .18s;}
