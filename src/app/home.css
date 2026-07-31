@@ -9,6 +9,8 @@
   --serif:var(--font-noto-tc),'Noto Sans TC',sans-serif;--sans:var(--font-noto-tc),'Noto Sans TC',sans-serif;--en:var(--font-outfit),'Outfit',sans-serif;
 }
 .hw *{margin:0;padding:0;box-sizing:border-box}
+/* v986：頁內錨點捲動時預留固定導覽列高度，避免內容(如最新動態影片列)被壓到 nav 底下裁切 */
+.hw [id]{scroll-margin-top:92px}
 .hw{font-family:var(--sans);color:var(--foam);background:var(--abyss);line-height:1.75;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 .hw a{color:inherit;text-decoration:none}
 .hw img{max-width:100%;display:block}
