@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { notifyCustomer } from "@/lib/notify-template";
+import { getTripMarine, DEFAULT_MARINE_POINTS, type MarinePoint } from "@/lib/marine"; // v975：D-1 帶即時海況
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,6 +119,18 @@ async function handle(req: NextRequest) {
     const dateStr = trip.date.toISOString().slice(0, 10);
     const liffUrl = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
+    // v975：依潛點自動對應浮標，抓即時海況（每場次抓一次；抓不到就不帶、提醒照發）
+    const marinePoints: MarinePoint[] = (() => {
+      const raw = (cfg as unknown as { weatherMarinePoints?: MarinePoint[] })?.weatherMarinePoints;
+      return Array.isArray(raw) && raw.length > 0 ? raw : DEFAULT_MARINE_POINTS;
+    })();
+    let marine = null as Awaited<ReturnType<typeof getTripMarine>>;
+    try {
+      marine = await getTripMarine(sites.map((s) => s.name).concat(siteName), marinePoints, process.env.CWA_API_KEY);
+    } catch (e) {
+      console.error("[reminders] getTripMarine failed", e);
+    }
+
     for (const b of bookings) {
       if (await alreadySent(b.id, "d1_reminder")) continue;
       notifyCustomer({
@@ -128,6 +141,13 @@ async function handle(req: NextRequest) {
           time: trip.startTime,
           site: siteName,
           gather: [trip.meetingPoint, trip.startTime].filter(Boolean).join(" ") || `集合時間：${trip.startTime}`,
+          // v975：即時海況（浮標）——有抓到才帶，buildDynamicBody 會組成海況行
+          wave: marine?.waveHeight != null ? `${marine.waveHeight.toFixed(1)} m` : undefined,
+          water: marine?.seaTemp != null ? `${marine.seaTemp.toFixed(1)}°C` : undefined,
+          waveLight: marine?.waveLight ?? undefined,
+          waveText: marine?.waveText ?? undefined,
+          wetsuit: marine?.wetsuit ?? undefined,
+          buoyLabel: marine?.point?.label ?? undefined,
           // v973：帶入集合地點 Google Map URL + 潛點參考影片連結（有填才顯示）
           mapUrl: trip.meetingPointUrl ?? undefined,
           videoUrl: trip.referenceVideoUrl ?? undefined,

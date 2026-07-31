@@ -105,7 +105,7 @@ interface Config {
   weatherReportContent?: { wind: boolean; temp: boolean; sessions: boolean; wave: boolean; forecast?: boolean };
   // v411：海象（浮標+潮位）整合
   weatherMarineEnabled?: boolean;
-  weatherMarinePoints?: Array<{ label: string; buoyId: string; tideId: string }>;
+  weatherMarinePoints?: Array<{ label: string; buoyId: string; tideId: string; keywords?: string }>;
   weatherMarineFields?: { waveHeight: boolean; waveDir: boolean; wavePeriod: boolean; seaTemp: boolean; current: boolean; tide: boolean };
   // v315：訂單日報
   dailyBriefingEnabled?: boolean;
@@ -1663,7 +1663,7 @@ function AutoSendSection({
     { label: "萊萊鶯歌石", buoyId: "46694A", tideId: "C4A05" },
   ];
   const marineFields = cfg.weatherMarineFields ?? { waveHeight: true, waveDir: true, wavePeriod: true, seaTemp: true, current: true, tide: true };
-  function updateMarinePoint(i: number, key: "label" | "buoyId" | "tideId", val: string) {
+  function updateMarinePoint(i: number, key: "label" | "buoyId" | "tideId" | "keywords", val: string) {
     setCfg((c) => (c ? { ...c, weatherMarinePoints: marinePoints.map((p, idx) => (idx === i ? { ...p, [key]: val } : p)) } : c));
   }
   // v446：海象回報點可新增/刪除（最多 5 區）
@@ -2098,6 +2098,10 @@ function AutoSendSection({
                     {TIDE_OPTS.map((o) => <option key={o.id} value={o.id}>潮位：{o.name}</option>)}
                   </select>
                 </div>
+                {/* v975：對應潛點關鍵字 → 行前提醒依潛點自動挑這顆浮標 */}
+                <input className="mt-1.5 w-full rounded-md border px-2 py-1 text-[12px]" style={{ borderColor: "var(--border)" }}
+                  value={p.keywords ?? ""} placeholder="對應潛點關鍵字（逗號分隔，例：深澳,潮境,象鼻岩）— 留空用區域名比對"
+                  onChange={(e) => updateMarinePoint(i, "keywords", e.target.value)} />
                 {marinePoints.length > 1 && (
                   <button type="button" onClick={() => removeMarinePoint(i)} className="mt-1.5 text-[11px] text-[var(--color-coral)]">✕ 移除此區</button>
                 )}

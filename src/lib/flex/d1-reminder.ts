@@ -28,12 +28,16 @@ export function d1Reminder(
       spacing: "sm",
       paddingAll: "16px",
       contents: [
-        { type: "text", text: "明日海況", color: COLORS.mute, size: "xs" },
-        kv("天氣", asString(params.weather, "晴")),
-        kv("浪高", asString(params.wave, "1m")),
-        kv("水溫", asString(params.water, "24°C")),
-        kv("能見度", asString(params.vis, "8-12m")),
-        { type: "separator", margin: "md" },
+        // v975：即時海況（浮標）——有資料才顯示，無資料整區略過
+        ...(params.wave || params.water
+          ? [
+              { type: "text" as const, text: `即時海況${params.buoyLabel ? `（${asString(params.buoyLabel)}浮標）` : ""}`, color: COLORS.mute, size: "xs" as const },
+              ...(params.wave ? [kv("浪高", `${asString(params.wave)}${params.waveText ? `　${asString(params.waveLight)} ${asString(params.waveText)}` : ""}`)] : []),
+              ...(params.water ? [kv("水溫", asString(params.water))] : []),
+              ...(params.wetsuit ? [kv("防寒衣", asString(params.wetsuit))] : []),
+              { type: "separator" as const, margin: "md" as const },
+            ]
+          : []),
         { type: "text", text: "集合地點 / 時間", color: COLORS.mute, size: "xs", margin: "md" },
         { type: "text", text: asString(params.gather, "—"), weight: "bold", wrap: true },
       ],

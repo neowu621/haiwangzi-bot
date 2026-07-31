@@ -14,6 +14,8 @@ export interface MarinePoint {
   label: string;   // 顯示名稱，如「龍洞區」
   buoyId: string;  // 浮標站 StationID，如 46694A
   tideId: string;  // 潮位站 StationID，如 C4A02
+  // v975：對應潛點關鍵字（逗號/頓號分隔），給 D-1 行前提醒「潛點→浮標」自動比對用。留空則以 label 比對。
+  keywords?: string;
 }
 
 /** 預設兩個回報點：龍洞區（龍洞、萊萊）/ 基隆區（潮境、望海巷、基隆嶼、深澳、象鼻岩） */
@@ -233,4 +235,59 @@ export async function buildMarineSection(
   if (formatted.length === 0) return null;
   const light = worst(formatted.map((x) => x.light));
   return { text: formatted.map((x) => x.text).join("\n\n"), light };
+}
+
+// v975：D-1 行前提醒用 —— 依「場次潛點名稱」比對出該用哪顆浮標，抓一次即時海況。
+//   比對規則：逐一看每個回報點的 keywords（沒填就用 label）拆成關鍵字，
+//   只要任一關鍵字與潛點名互相包含即命中；都對不到 → 用第一個點(通常龍洞)當代表。
+export function pickMarinePoint(siteNames: string[], points: MarinePoint[]): MarinePoint | null {
+  if (points.length === 0) return null;
+  const hay = siteNames.filter(Boolean);
+  for (const p of points) {
+    const kws = (p.keywords && p.keywords.trim() ? p.keywords : p.label)
+      .split(/[,，、\s/]+/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    for (const k of kws) {
+      if (hay.some((s) => s.includes(k) || k.includes(s))) return p;
+    }
+  }
+  return points[0]; // fallback：第一個點（預設龍洞）
+}
+
+export interface TripMarine {
+  point: MarinePoint;
+  waveHeight: number | null;
+  seaTemp: number | null;
+  waveLight: Light | null;
+  waveText: string | null;
+  wetsuit: string | null;
+}
+
+/** 依潛點抓即時海況（給 D-1 提醒）。無 apiKey / 無點 / 抓不到 → 回 null（提醒照發、只是不帶海況）。 */
+export async function getTripMarine(
+  siteNames: string[],
+  points: MarinePoint[],
+  apiKey: string | undefined,
+): Promise<TripMarine | null> {
+  const point = pickMarinePoint(siteNames, points);
+  if (!apiKey || !point) return null;
+  let stationMap: Map<string, ObsTime[]>;
+  try {
+    stationMap = await fetchAllStations(apiKey);
+  } catch (e) {
+    console.error("[marine] getTripMarine fetch failed", e);
+    return null;
+  }
+  const r = buildMarineReading(point, stationMap);
+  if (!r) return { point, waveHeight: null, seaTemp: null, waveLight: null, waveText: null, wetsuit: null };
+  const wj = judgeWave(r.waveHeight);
+  return {
+    point,
+    waveHeight: r.waveHeight,
+    seaTemp: r.seaTemp,
+    waveLight: wj?.light ?? null,
+    waveText: wj?.text ?? null,
+    wetsuit: recommendWetsuit(r.seaTemp),
+  };
 }
