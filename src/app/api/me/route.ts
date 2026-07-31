@@ -147,6 +147,7 @@ const CompanionSchema = z.object({
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
   certNumber: z.string().optional().default(""),
   logCount: z.number().int().min(0).optional().default(0),
+  weightBelt: z.number().int().min(0).max(50).nullable().optional(), // v983：潛伴配重(kg)
   relationship: z.string().optional().default(""),
 });
 
@@ -167,6 +168,7 @@ const PatchSchema = z.object({
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
   certNumber: z.string().nullable().optional(),
   logCount: z.number().int().min(0).optional(),
+  weightBelt: z.number().int().min(0).max(50).nullable().optional(), // v983：本人配重(kg)
   notes: z.string().nullable().optional(),
   emergencyContact: z
     .object({

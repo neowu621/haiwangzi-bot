@@ -15,10 +15,10 @@ import { VipTierIcon } from "@/components/VipTierIcon";
 
 const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
 type Cert = (typeof CERTS)[number];
-interface Companion { id?: string; name: string; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string }
+interface Companion { id?: string; name: string; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string; weightBelt?: number | null }
 interface Me {
   displayName: string; realName: string | null; phone: string | null; email: string | null; emailVerifiedAt?: string | null;
-  notifyByLine: boolean; notifyByEmail: boolean; cert: Cert | null; certNumber: string | null; logCount: number;
+  notifyByLine: boolean; notifyByEmail: boolean; cert: Cert | null; certNumber: string | null; logCount: number; weightBelt?: number | null;
   haiwangziLogCount: number; roles?: string[]; role?: string; vipLevel: number; birthday: string | null;
   creditBalance: number; emergencyContact: { name: string; phone: string; relationship: string } | null;
   companions: Companion[]; stats: { totalBookings: number; completed: number };
@@ -55,6 +55,7 @@ export default function ProfilePage() {
   const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | null>(null);
   const [notifyByLine, setNotifyByLine] = useState(true); const [notifyByEmail, setNotifyByEmail] = useState(true);
   const [cert, setCert] = useState<Cert | "">(""); const [certNumber, setCertNumber] = useState(""); const [logCount, setLogCount] = useState("");
+  const [weightBelt, setWeightBelt] = useState(""); // v983：慣用配重(kg)
   const [birthday, setBirthday] = useState(""); const [birthdayLocked, setBirthdayLocked] = useState(false);
   const [eName, setEName] = useState(""); const [ePhone, setEPhone] = useState(""); const [eRel, setERel] = useState("");
   const [companions, setCompanions] = useState<Companion[]>([]);
@@ -85,6 +86,7 @@ export default function ProfilePage() {
     setEmailVerifiedAt(u.emailVerifiedAt ? String(u.emailVerifiedAt) : null);
     setNotifyByLine(u.notifyByLine ?? true); setNotifyByEmail(u.notifyByEmail ?? true);
     setCert(u.cert ?? ""); setCertNumber(u.certNumber ?? ""); setLogCount(String(u.logCount ?? 0));
+    setWeightBelt(u.weightBelt != null ? String(u.weightBelt) : ""); // v983：帶入配重
     setBirthday(u.birthday ? String(u.birthday).slice(0, 10) : ""); setBirthdayLocked(!!u.birthday);
     setEName(u.emergencyContact?.name ?? ""); setEPhone(formatPhoneTW(u.emergencyContact?.phone ?? "")); setERel(u.emergencyContact?.relationship ?? "");
     setCompanions(u.companions ?? []);
@@ -104,7 +106,8 @@ export default function ProfilePage() {
         body: JSON.stringify({
           realName: realName || null, phone: phone || null, email: email.trim() || null,
           notifyByLine, notifyByEmail, cert: cert || null, certNumber: certNumber || null,
-          logCount: Number(logCount) || 0, birthday: birthday || null,
+          logCount: Number(logCount) || 0, weightBelt: weightBelt.trim() ? Number(weightBelt) : null, // v983：配重
+          birthday: birthday || null,
           emergencyContact: eName && ePhone ? { name: eName, phone: ePhone, relationship: eRel || "其他" } : null,
           ...(extra?.companions ? { companions: extra.companions.filter((c) => c.name.trim().length >= 1) } : {}),
         }),
@@ -159,6 +162,8 @@ export default function ProfilePage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <div><Lab>證照等級</Lab><select value={cert} onChange={(e) => setCert(e.target.value as Cert | "")} style={SELP}><option value="">未填</option>{CERTS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><Lab>累計潛水支數</Lab><input value={logCount} onChange={(e) => setLogCount(e.target.value.replace(/\D/g, ""))} inputMode="numeric" style={{ ...INP, textAlign: "center" }} /></div>
+          {/* v983：慣用配重(kg)——下單自動帶入 */}
+          <div><Lab>慣用配重 (kg)</Lab><input value={weightBelt} onChange={(e) => setWeightBelt(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="例: 5" style={{ ...INP, textAlign: "center" }} /></div>
         </div>
       </BCard>
       <BCard title={`常用潛伴（${companions.length}）`} sub="下單時可一鍵帶入">
@@ -170,6 +175,8 @@ export default function ProfilePage() {
               <input value={c.phone} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, phone: formatPhoneTW(e.target.value) } : x))} inputMode="numeric" maxLength={11} placeholder="手機" style={INP} />
               <select value={c.cert ?? ""} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, cert: (e.target.value || null) as Cert | null } : x))} style={SELP}><option value="">證照</option>{CERTS.map((cc) => <option key={cc} value={cc}>{cc}</option>)}</select>
               <input value={c.relationship} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, relationship: e.target.value } : x))} placeholder="關係" style={INP} />
+              {/* v983：潛伴配重(kg) */}
+              <input value={c.weightBelt != null ? String(c.weightBelt) : ""} onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setCompanions((a) => a.map((x, j) => j === i ? { ...x, weightBelt: v ? Number(v) : null } : x)); }} inputMode="numeric" placeholder="配重 kg" style={{ ...INP, textAlign: "center" }} />
             </div>
           </div>
         ))}
