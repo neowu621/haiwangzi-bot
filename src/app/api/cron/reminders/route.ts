@@ -128,6 +128,9 @@ async function handle(req: NextRequest) {
           time: trip.startTime,
           site: siteName,
           gather: [trip.meetingPoint, trip.startTime].filter(Boolean).join(" ") || `集合時間：${trip.startTime}`,
+          // v973：帶入集合地點 Google Map URL + 潛點參考影片連結（有填才顯示）
+          mapUrl: trip.meetingPointUrl ?? undefined,
+          videoUrl: trip.referenceVideoUrl ?? undefined,
           // v869：原本導 LIFF 首頁；客戶要確認的是「我明天那筆」的細節 → 改導我的預約
           liffUrl: `${liffUrl}/my`,
         },

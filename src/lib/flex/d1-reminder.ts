@@ -39,23 +39,39 @@ export function d1Reminder(
       ],
     },
     // v480：有連結時加按鈕（buttonLabel 接後台欄位）
-    ...(params.url || params.liffUrl
+    //   v973：另加「集合地圖」「潛點介紹影片」連結按鈕（有填才顯示）
+    ...(params.url || params.liffUrl || params.mapUrl || params.videoUrl
       ? {
           footer: {
             type: "box",
             layout: "vertical",
+            spacing: "sm",
             paddingAll: "12px",
             contents: [
-              {
-                type: "button",
-                style: "primary",
-                color: COLORS.phosphor,
-                action: {
-                  type: "uri",
-                  label: ovr(override, "buttonLabel", "查看詳情"),
-                  uri: asString(params.url ?? params.liffUrl),
-                },
-              },
+              ...(params.url || params.liffUrl
+                ? [{
+                    type: "button" as const,
+                    style: "primary" as const,
+                    color: COLORS.phosphor,
+                    action: { type: "uri" as const, label: ovr(override, "buttonLabel", "查看詳情"), uri: asString(params.url ?? params.liffUrl) },
+                  }]
+                : []),
+              ...(params.mapUrl
+                ? [{
+                    type: "button" as const,
+                    style: "secondary" as const,
+                    height: "sm" as const,
+                    action: { type: "uri" as const, label: "📍 集合地圖", uri: asString(params.mapUrl) },
+                  }]
+                : []),
+              ...(params.videoUrl
+                ? [{
+                    type: "button" as const,
+                    style: "secondary" as const,
+                    height: "sm" as const,
+                    action: { type: "uri" as const, label: "🎬 潛點介紹影片", uri: asString(params.videoUrl) },
+                  }]
+                : []),
             ],
           },
         }
