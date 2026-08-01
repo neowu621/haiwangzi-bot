@@ -886,6 +886,7 @@ function LinePreview({ cur, val, sending, onTest }: {
   const body = val("bodyText");
   const hint = val("footerHint");
   const btn = val("buttonLabel");
+  const btn2 = val("button2Label"); // v988：第二顆按鈕（到場確認的「有需要改善?告訴我們」）預覽要顯示
   const push = val("altText");
   return (
     <div style={{ margin: "8px 8px 22px", opacity: cur.lineEnabled ? 1 : 0.4, filter: cur.lineEnabled ? undefined : "grayscale(.55)" }}>
@@ -989,7 +990,7 @@ function LinePreview({ cur, val, sending, onTest }: {
 
           {/* BUTTON：phosphor 漸層滿版按鈕 */}
           {btn && (
-            <div style={{ padding: "0 16px 16px" }}>
+            <div style={{ padding: btn2 ? "0 16px 8px" : "0 16px 16px" }}>
               <div style={{
                 background: FLEX_COLORS.phosphor,
                 color: FLEX_COLORS.oceanDeep,
@@ -1000,6 +1001,22 @@ function LinePreview({ cur, val, sending, onTest }: {
                 fontWeight: 800,
               }}>
                 {btn}
+              </div>
+            </div>
+          )}
+          {/* v988：第二顆按鈕（secondary 樣式，對齊實際 flex） */}
+          {btn2 && (
+            <div style={{ padding: "0 16px 16px" }}>
+              <div style={{
+                background: "#e8edf0",
+                color: FLEX_COLORS.oceanDeep,
+                textAlign: "center",
+                padding: "9px 8px",
+                borderRadius: 10,
+                fontSize: 12.5,
+                fontWeight: 700,
+              }}>
+                {btn2}
               </div>
             </div>
           )}
