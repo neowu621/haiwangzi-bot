@@ -81,7 +81,8 @@ export function attendanceConfirmed(
           margin: "sm",
           contents: [
             { type: "text", text: "目前 VIP", color: COLORS.mute, size: "xs", flex: 0 },
-            { type: "text", text: `LV${vipLevel}`, size: "sm", weight: "bold", align: "end" },
+            // v989：vipLevel 可能是純數字(2)或已含等級名(LV2 小丑魚)；純數字才補「LV」，避免出現「LVLV2」
+            { type: "text", text: /^\d+$/.test(vipLevel) ? `LV${vipLevel}` : vipLevel, size: "sm", weight: "bold", align: "end" },
           ],
         },
         {
@@ -149,8 +150,9 @@ export function attendanceConfirmed(
           action: {
             type: "uri",
             // v834：按鈕文字後台可編輯（/admin/templates → 到場確認）
+            // v989：改用與 /my、/profile 同款純路徑深連結(不加 query，LIFF 深連結對 path+query 會出錯)
             label: ovr(override, "button2Label", "💬 有需要改善?告訴我們"),
-            uri: `${asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm")}/messages?feedback=1`,
+            uri: `${asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm")}/messages`,
           },
         },
       ],
