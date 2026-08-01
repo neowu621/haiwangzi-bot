@@ -141,16 +141,16 @@ export function attendanceConfirmed(
           },
         },
         {
-          // v833：第二顆「私訊反映」分流 —— message action 直接把訊息貼回對話，
-          //   讓不滿意/有建議的客人私下告訴小編與教練（合規：兩個選項都給、不擋評）。
+          // v833：第二顆「私訊反映」分流 —— 讓不滿意/有建議的客人私下告訴小編與教練。
+          //   v987：改開「站內 → 訊息‧客服」頁(?feedback=1 自動帶入回饋起手訊息)，直接發給客服。
           type: "button",
           style: "secondary",
           height: "sm",
           action: {
-            type: "message",
-            // v834：按鈕文字後台可編輯（/admin/templates → 到場確認）；貼回對話的訊息固定
+            type: "uri",
+            // v834：按鈕文字後台可編輯（/admin/templates → 到場確認）
             label: ovr(override, "button2Label", "💬 有需要改善?告訴我們"),
-            text: "我想回饋這次潛水的體驗與建議 🙏",
+            uri: `${asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm")}/messages?feedback=1`,
           },
         },
       ],

@@ -75,7 +75,8 @@ export default function SiteNav() {
 
       {/* v460：圓點順序 = NAV（已對齊頁面 section 順序），尾端補 #book 預約區 */}
       <div className="dotnav">
-        {[{ id: "top", l: "首頁" }, ...NAV.map((n) => ({ id: n.href.slice(1), l: n.label })), { id: "book", l: "立即預約" }].map((d) => (
+        {/* v987：首頁與最新動態整合 → 移除獨立「首頁」點，NAV 首項(最新動態)已指向 #top */}
+        {[...NAV.map((n) => ({ id: n.href.slice(1), l: n.label })), { id: "book", l: "立即預約" }].map((d) => (
           <a key={d.id} href={`#${d.id}`} className={activeSec === d.id ? "active" : ""}><span className="lbl">{d.l}</span><span className="dot" /></a>
         ))}
       </div>

@@ -46,7 +46,9 @@ export const IgIcon = ({ s = 42, uid = "ig" }: { s?: number; uid?: string }) => 
 
 // v460/v463：順序 = 頁面 section 實際出現順序（上排捷徑、右側圓點都吃這份，必須與內容對齊）
 export const NAV = [
-  { href: "#news", label: "最新動態" },   // v928：最新動態移到最上面 → 導覽/圓點對齊
+  // v987：首頁與最新動態整合成同一個 index —— 影片就在 hero(#top)一屏內，指向 hero 頂，
+  //   點了看整屏(不再跳 hero 中間讓透明 nav 壓住影片)。dotnav 的獨立「首頁」點一併移除。
+  { href: "#top", label: "最新動態" },
   { href: "#reviews", label: "學員怎麼說" },
   { href: "#about", label: "關於汪汪" },
   { href: "#start", label: "新手上路" },

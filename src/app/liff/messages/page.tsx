@@ -41,6 +41,14 @@ export default function LiffMessagesPage() {
     loadConvo();
   }, [liff.ready, loadConvo]);
 
+  // v987：從「到場確認」的『有需要改善?告訴我們』進來 → 自動帶入回饋起手訊息，客人按送出即可
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("feedback") === "1") {
+      setMsg((m) => m || "我想回饋這次潛水的體驗與建議 🙏");
+    }
+  }, []);
+
   async function send() {
     if (!msg.trim() || sending) return;
     setSending(true);
