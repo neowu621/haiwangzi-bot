@@ -274,15 +274,11 @@ export default function AdminTripsPage() {
 
   // v336：Dump 一週場次（給 LINE 筆記本用）
   const [dumpOpen, setDumpOpen] = useState(false);
-  const [dumpStartDate, setDumpStartDate] = useState<string>(() => {
-    // 預設下週一
-    const d = new Date();
-    const day = d.getDay(); // 0=Sun, 1=Mon ... 6=Sat
-    const daysUntilNextMonday = day === 1 ? 7 : (8 - day) % 7;
-    d.setDate(d.getDate() + daysUntilNextMonday);
-    return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
-  });
-  const [dumpDays, setDumpDays] = useState(7); // v558：一次抓幾天(手動,預設 7)
+  const [dumpStartDate, setDumpStartDate] = useState<string>(() =>
+    // v990：預設今天起（含當日全部），日潛＋潛旅一次抓齊
+    new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }),
+  );
+  const [dumpDays, setDumpDays] = useState(365); // v990：預設 365 天(全部);可手動改小
   const [dumpMode, setDumpMode] = useState<"line" | "fb">("line"); // v892：LINE 筆記本版 / FB 貼文版
   const [dumpText, setDumpText] = useState(""); // v559：可手動編輯的預覽內容
   const [dumpCopied, setDumpCopied] = useState(false);
@@ -1289,9 +1285,9 @@ export default function AdminTripsPage() {
             )}
           </div>
           {/* v336：Dump 一週場次 — 給 LINE 筆記本貼 */}
-          <Button size="sm" variant="outline" onClick={() => setDumpOpen(true)} title="dump 一週場次成可貼 LINE 的文字">
+          <Button size="sm" variant="outline" onClick={() => setDumpOpen(true)} title="dump 全部場次(日潛＋潛旅)成可貼 LINE 的文字">
             <FileText className="mr-1.5 h-4 w-4" />
-            Dump 一週
+            Dump 全部
           </Button>
           <Button onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />
@@ -2252,7 +2248,7 @@ export default function AdminTripsPage() {
       <Dialog open={dumpOpen} onOpenChange={(o) => setDumpOpen(o)}>
         <DialogContent className="max-w-[min(95vw,560px)]">
           <DialogHeader>
-            <DialogTitle>📋 Dump 一週場次（LINE 筆記本／FB 貼文）</DialogTitle>
+            <DialogTitle>📋 Dump 場次（LINE 筆記本／FB 貼文）</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-[80px_1fr] items-center gap-2">
@@ -2266,15 +2262,15 @@ export default function AdminTripsPage() {
                 <Input
                   type="number"
                   min={1}
-                  max={31}
+                  max={365}
                   value={dumpDays}
-                  onChange={(e) => setDumpDays(Math.max(1, Math.min(31, parseInt(e.target.value, 10) || 7)))}
+                  onChange={(e) => setDumpDays(Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 365)))}
                   className="w-16"
                 />
               </div>
             </div>
             <div className="text-[11px] text-[var(--muted-foreground)] pl-[80px]">
-              範圍：起始日起算 {dumpDays} 天（含當日，預設下週一×7天）；潛旅依「起始日」落在此區間自動納入
+              範圍：起始日起算 {dumpDays} 天（含當日，預設今天起 365 天＝全部）；日潛＋潛旅（依「起始日」落在此區間）自動納入
             </div>
             {activePromos.length > 0 && (
               <div>
