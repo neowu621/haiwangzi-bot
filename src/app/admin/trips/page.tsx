@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight, FileText, Check, Search, X } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
+import { liffAppUrl } from "@/lib/liff-url"; // v997：站內訊息深連結
 import ExcelJS from "exceljs";
 
 interface Pricing {
@@ -1090,15 +1091,11 @@ export default function AdminTripsPage() {
     const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? id;
     const baseUrl =
       typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
-    // v383：小編 LINE 群組連結（如需更換改這裡）
-    const supportLine = "https://line.me/R/ti/p/@894bpmew";
 
     // ── v892：FB 貼文版 ──────────────────────────────
     //   與 LINE 版差異：開頭鉤子標題、段落間留空行(FB 好讀)、只放一個主連結(/d)、
     //   不列多個資訊網址(FB 多裸網址壓觸及)、結尾加 hashtag 助擴散。
     if (mode === "fb") {
-      const startLabelFb = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
-      const endLabelFb = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
       const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
       const toursFb = tours
         .filter((t) => {
@@ -1108,17 +1105,23 @@ export default function AdminTripsPage() {
         })
         .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
       const fb: string[] = [];
-      fb.push("🌊 東北角海王子・本週日潛開放預約 🤿");
+      fb.push("🌊 東北角海王子・日潛開放預約 🤿");
       // 開頭優惠當鉤子（沿用後台「開頭優惠」設定）
       if (dumpPromo.enabled && dumpPromo.text.trim()) {
         fb.push("");
         fb.push(...dumpPromo.text.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
       }
       fb.push("");
-      fb.push(`📅 本週場次 ${startLabelFb} ~ ${endLabelFb}`);
+      // v997：標題用實際第一場~最後一場日潛日期(非 365 天視窗)
       if (inRange.length === 0) {
-        fb.push("・本週場次陸續安排中，先追蹤粉專不錯過！");
+        fb.push("📅 日潛場次");
+        fb.push("・場次陸續安排中，先追蹤粉專不錯過！");
       } else {
+        const dts = inRange
+          .map((t) => new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`))
+          .sort((a, b) => a.getTime() - b.getTime());
+        const f = dts[0], l = dts[dts.length - 1];
+        fb.push(`📅 日潛場次 ${fmtMD(f)}(週${weekdayMap[f.getDay()]}) ~ ${fmtMD(l)}(週${weekdayMap[l.getDay()]})`);
         for (const t of inRange) {
           const d = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
           const wd = weekdayMap[d.getDay()];
@@ -1126,10 +1129,12 @@ export default function AdminTripsPage() {
           const moon = t.isNightDive ? "🌙" : "";
           fb.push(`・${fmtMD(d)}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount}支`);
         }
+        // v997：日潛 3 支時段說明
+        fb.push("💡 日潛 3 支：第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
       }
       if (toursFb.length > 0) {
         fb.push("");
-        fb.push("⛴️ 本週出發潛旅");
+        fb.push("⛴️ 國內外潛水旅行團 歡迎報名參加");
         for (const t of toursFb) {
           const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
             ? fmtMDs(t.dateStart)
@@ -1186,6 +1191,8 @@ export default function AdminTripsPage() {
         const moon = t.isNightDive ? "🌙" : ""; // v383：夜潛圖示放潛點前
         lines.push(`${dateStr}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount} 支`);
       }
+      // v997：日潛 3 支時段說明
+      lines.push("💡 日潛 3 支：第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
     }
     // v545：潛旅 — 依「起始日 dateStart」落在本週區間才納入
     const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
@@ -1214,7 +1221,7 @@ export default function AdminTripsPage() {
     // v891：結尾聯繫／資訊（區塊 3）由後台 Dump 設定控制；留空 → 用程式預設
     const DEFAULT_FOOTER = [
       "🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫",
-      `LINE  ${supportLine}`,
+      `站內訊息  ${liffAppUrl("/messages")}`, // v997：改用站內客服訊息(原 LINE 群組連結)
       `會員優惠 ${baseUrl}/rewards`,
       `常見問題 ${baseUrl}/faq`,
       `費用價目 ${baseUrl}/pricing`,
