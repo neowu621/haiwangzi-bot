@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { linkify } from "@/lib/linkify";
 import {
   MSG_SAMPLE_PARAMS,
   buildDynamicBody,
@@ -1175,7 +1176,7 @@ function InAppPreview({ cur, val, sending, onTest }: {
         </div>
         <div style={{ padding: "14px 15px 6px", color: "#0a2027" }}>
           {sub && <div style={{ fontSize: 12.5, color: "#0a8f86", fontWeight: 600, lineHeight: 1.7, marginBottom: 8 }}>{sub}</div>}
-          {body && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 11, whiteSpace: "pre-wrap" }}>{body}</div>}
+          {body && <div style={{ fontSize: 12.5, color: "#516268", lineHeight: 1.7, marginBottom: 11, whiteSpace: "pre-wrap" }}>{linkify(body)}</div>}
           {EXTRA_LINES[cur.key] && (
             <ul style={{ marginBottom: 11, paddingLeft: 18, fontSize: 12, color: "#516268", lineHeight: 1.7 }}>
               {EXTRA_LINES[cur.key].map((line, i) => <li key={i}>{line}</li>)}
@@ -1191,9 +1192,9 @@ function InAppPreview({ cur, val, sending, onTest }: {
             </div>
           )}
           {hint && <div style={{ textAlign: "center", fontSize: 12, color: "#0a8f86", fontWeight: 600, marginBottom: 12 }}>{hint}</div>}
-          {/* v480：站內通知詳情視窗底部固定按鈕 — 有連結顯示「前往查看」、無連結顯示「關閉通知」（非按鈕文字欄位） */}
+          {/* v480/v991：站內按鈕文字＝模板「按鈕文字」(與 LINE/Email 一致)；沒填按鈕欄位才退回「前往查看」 */}
           <span style={{ display: "inline-block", background: "var(--color-coral, #FF7B5A)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
-            前往查看 →
+            {val("buttonLabel") ? `${val("buttonLabel")} →` : "前往查看 →"}
           </span>
           <span style={{ fontSize: 10.5, color: "#9aabae", marginLeft: 8 }}>無連結時顯示「關閉通知」</span>
         </div>

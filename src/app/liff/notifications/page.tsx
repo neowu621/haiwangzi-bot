@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { linkify } from "@/lib/linkify";
 import { Card } from "@/components/ui/card";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
@@ -219,7 +220,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
           <button onClick={onClose} aria-label="關閉" className="flex-shrink-0 text-[var(--muted-foreground)] text-xl leading-none px-1">✕</button>
         </div>
         <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap text-[var(--foreground)]">
-          {n.body}
+          {linkify(n.body)}
         </div>
         {/* v471：底部按鈕。v862：有連結→用模板設定的按鈕文字(與 LINE/Email 一致) + 旁邊一律附「關閉訊息」 */}
         <div className="p-4 pt-1">

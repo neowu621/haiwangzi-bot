@@ -7,8 +7,9 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { C } from "@/components/liff/mobileShared";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { CsTree } from "@/components/liff/CsTree";
+import { linkify } from "@/lib/linkify";
 
-interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean }
+interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean; linkUrl?: string | null; buttonLabel?: string | null }
 interface Convo { who: "me" | "cs"; body: string; createdAt: string }
 
 export default function LiffMessagesPage() {
@@ -76,7 +77,14 @@ export default function LiffMessagesPage() {
             {notifs?.map((n) => (
               <div key={n.id} style={{ border: `0.5px solid ${C.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, background: n.isRead ? C.card : "#f0fbfa" }}>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
-                <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.6, marginTop: 3, whiteSpace: "pre-wrap" }}>{n.body}</div>
+                <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.6, marginTop: 3, whiteSpace: "pre-wrap" }}>{linkify(n.body)}</div>
+                {/* v991：與 LINE/Email 一致 —— 有連結就顯示模板按鈕文字(如「給予我們 ⭐⭐⭐⭐⭐ 評價」) */}
+                {n.linkUrl && (
+                  <a href={n.linkUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "inline-block", marginTop: 8, background: C.navy, color: "#fff", padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                    {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
+                  </a>
+                )}
                 <div style={{ fontSize: 11, color: C.mute, marginTop: 5 }}>{new Date(n.createdAt).toLocaleString("zh-TW")}</div>
               </div>
             ))}
