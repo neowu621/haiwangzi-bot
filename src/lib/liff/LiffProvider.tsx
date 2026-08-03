@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { loadLiffClient } from "@/lib/liff/client";
+import { APP_VERSION } from "@/lib/version"; // v1003：舊版頁面自動 reload 用
 
 export interface LiffProfile {
   userId: string;
@@ -213,6 +214,64 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [isMock]);
+
+  // v1003：修「回到 LINE 後載入卡超過 10 秒、要關 App 重開才會好」——
+  //   根因：LINE WebView 把舊版頁面凍結常駐，期間我們已部署新版 → 舊頁引用的 JS chunk
+  //   在伺服器上已不存在，切頁動態載入 404/卡死。關 App 重開＝拿到新 bundle 所以會好。
+  //   對策（把「關 App 重開」自動化）：
+  //   1. 回到前景（visibilitychange/pageshow）→ 打輕量 /api/healthz 比對版本，不一致就整頁 reload。
+  //   2. chunk 載入失敗（ChunkLoadError 類錯誤）→ 自動 reload 一次（60 秒防迴圈）。
+  useEffect(() => {
+    let lastCheck = 0;
+    let hiddenAt = 0; // v1003：記錄進背景的時間 —— 離開超過 5 分鐘才檢查，避免「填表單中短暫切走」被 reload 洗掉
+    const checkVersion = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt === 0 || Date.now() - hiddenAt < 5 * 60_000) return; // 短暫切走不檢查
+      hiddenAt = 0;
+      const now = Date.now();
+      if (now - lastCheck < 30_000) return; // 節流：30 秒內不重複打
+      lastCheck = now;
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 5_000);
+      fetch("/api/healthz", { cache: "no-store", signal: ac.signal })
+        .then((r) => r.json())
+        .then((j: { version?: string }) => {
+          if (j?.version && j.version !== APP_VERSION) {
+            window.location.reload(); // 伺服器已是新版 → 換新 bundle（等同關 App 重開）
+          }
+        })
+        .catch(() => { /* 離線/逾時就算了，下次回前景再檢查 */ })
+        .finally(() => clearTimeout(timer));
+    };
+    const reloadOnceOnChunkError = (msg: string) => {
+      if (!/ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script failed/i.test(msg)) return;
+      try {
+        const k = "chunk_reload_at";
+        const last = Number(sessionStorage.getItem(k) ?? "0");
+        if (Date.now() - last < 60_000) return; // 60 秒內只 reload 一次，防迴圈
+        sessionStorage.setItem(k, String(Date.now()));
+      } catch { /* sessionStorage 不可用照樣 reload */ }
+      window.location.reload();
+    };
+    const onError = (e: ErrorEvent) => reloadOnceOnChunkError(e?.message ?? "");
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const r = e?.reason as { message?: string } | string | undefined;
+      reloadOnceOnChunkError(typeof r === "string" ? r : (r?.message ?? ""));
+    };
+    document.addEventListener("visibilitychange", checkVersion);
+    window.addEventListener("pageshow", checkVersion);
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      document.removeEventListener("visibilitychange", checkVersion);
+      window.removeEventListener("pageshow", checkVersion);
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
 
   const value = useMemo<LiffContextValue>(() => {
     return {
