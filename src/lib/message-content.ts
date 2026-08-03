@@ -404,6 +404,11 @@ export function composeEmail(
   const btnHtml = buttonUrl && buttonLabel
     ? `<div style="text-align:center;margin-top:20px;"><a href="${buttonUrl}" style="display:inline-block;background-color:#00D9CB;color:#0A2342;padding:13px 34px;border-radius:10px;font-weight:800;text-decoration:none;font-size:14px;">${esc(buttonLabel)} →</a></div>`
     : "";
+  // v994：第二顆按鈕（到場確認「有需要改善?告訴我們」）—— Email 導小編 LINE OA(email 外部無法直接進站內客服)
+  const btn2Label = msgField(key, "button2Label", override);
+  const btn2Html = btn2Label
+    ? `<div style="text-align:center;margin-top:10px;"><a href="${EMAIL_BUTTON_URL}" style="display:inline-block;background-color:#ffffff;color:#0A2342;border:1.5px solid #cfdbe0;padding:11px 28px;border-radius:10px;font-weight:700;text-decoration:none;font-size:13.5px;">${esc(btn2Label)}</a></div>`
+    : "";
 
   const html = `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -433,6 +438,7 @@ export function composeEmail(
           ${hintHtml}
           ${footerHtml}
           ${btnHtml}
+          ${btn2Html}
         </td></tr>
         <tr><td bgcolor="#f5f7fa" style="background-color:#f5f7fa;padding:14px 26px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;text-align:center;">
           ${footnote}<br>

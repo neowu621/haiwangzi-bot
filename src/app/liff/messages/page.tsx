@@ -9,7 +9,7 @@ import { LiffLoading } from "@/components/shell/LiffLoading";
 import { CsTree } from "@/components/liff/CsTree";
 import { linkify } from "@/lib/linkify";
 
-interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean; linkUrl?: string | null; buttonLabel?: string | null }
+interface Notif { id: string; title: string; body: string; createdAt: string; isRead: boolean; linkUrl?: string | null; buttonLabel?: string | null; linkUrl2?: string | null; buttonLabel2?: string | null }
 interface Convo { who: "me" | "cs"; body: string; createdAt: string }
 
 export default function LiffMessagesPage() {
@@ -95,8 +95,15 @@ export default function LiffMessagesPage() {
                 {/* v991：與 LINE/Email 一致 —— 有連結就顯示模板按鈕文字(如「給予我們 ⭐⭐⭐⭐⭐ 評價」) */}
                 {n.linkUrl && (
                   <a href={n.linkUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ display: "inline-block", marginTop: 8, background: C.navy, color: "#fff", padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                    style={{ display: "inline-block", marginTop: 8, marginRight: 8, background: C.navy, color: "#fff", padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
                     {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
+                  </a>
+                )}
+                {/* v994：第二顆按鈕（有需要改善?告訴我們 → 站內客服，內部導頁） */}
+                {n.linkUrl2 && (
+                  <a href={n.linkUrl2}
+                    style={{ display: "inline-block", marginTop: 8, border: `1px solid ${C.line}`, color: C.navy, padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                    {n.buttonLabel2 || "💬 聯繫客服"}
                   </a>
                 )}
                 <div style={{ fontSize: 11, color: C.mute, marginTop: 5 }}>{new Date(n.createdAt).toLocaleString("zh-TW")}</div>

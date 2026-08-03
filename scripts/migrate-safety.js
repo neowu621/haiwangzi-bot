@@ -559,6 +559,9 @@ const PATCHES = [
   `ALTER TABLE notifications ALTER COLUMN icon TYPE VARCHAR(255)`,
   // v862：站內通知按鈕文字（發送當下從模板複製；null → 前端用預設「前往查看 →」）
   `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS button_label VARCHAR(64)`,
+  // v994：站內通知第二顆按鈕（到場確認的「有需要改善?告訴我們」）
+  `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url2 TEXT`,
+  `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS button_label2 VARCHAR(64)`,
 
   // ── v521/v522：客服信箱 Console（email console）─────────────────────
   //   prisma db push 因既有 drift 一直失敗（data-loss），新表/enum 一律靠 migrate-safety 建。

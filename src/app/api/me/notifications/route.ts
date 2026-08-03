@@ -36,6 +36,8 @@ export async function GET(req: NextRequest) {
       body: true,
       linkUrl: true,
       buttonLabel: true, // v862：站內按鈕文字（來自模板設定）
+      linkUrl2: true, // v994：第二顆按鈕（有需要改善→客服）
+      buttonLabel2: true,
       icon: true,
       isRead: true,
       createdAt: true,

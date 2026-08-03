@@ -115,6 +115,16 @@ export function notifyCustomer(opts: {
           const rawBtn = hasBtnField ? msgField(key, "buttonLabel", tpl).trim() : "";
           const suppressBtn = hasBtnField && rawBtn === "";
           const inAppLink = suppressBtn ? null : linkUrl;
+          // v994：第二顆按鈕（目前僅到場確認：「有需要改善?告訴我們」→ 站內客服，帶場次自動起手）
+          let link2: string | null = null;
+          let btn2: string | null = null;
+          const rawBtn2 = msgField(key, "button2Label", tpl).trim();
+          if (key === "attendance_confirmed" && rawBtn2) {
+            const sess = typeof opts.params?.bookingTitle === "string" ? opts.params.bookingTitle : "";
+            // 站內：客人已在 App 內 → 用內部路徑導頁(非 liff.line.me 深連結)，帶場次自動起手
+            link2 = `/liff/messages?fb=1&s=${encodeURIComponent(sess)}`;
+            btn2 = rawBtn2;
+          }
           await prisma.notification.create({
             data: {
               userId: opts.userId,
@@ -123,6 +133,8 @@ export function notifyCustomer(opts: {
               body,
               linkUrl: inAppLink,
               buttonLabel: inAppLink ? rawBtn || null : null,
+              linkUrl2: link2,
+              buttonLabel2: btn2,
               icon,
             },
           });

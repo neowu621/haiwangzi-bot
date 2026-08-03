@@ -16,6 +16,8 @@ interface NotificationItem {
   body: string;
   linkUrl: string | null;
   buttonLabel: string | null; // v862：按鈕文字（來自後台模板設定）
+  linkUrl2?: string | null; // v994：第二顆按鈕（有需要改善→客服）
+  buttonLabel2?: string | null;
   icon: string | null;
   isRead: boolean;
   createdAt: string;
@@ -223,23 +225,33 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
           {linkify(n.body)}
         </div>
         {/* v471：底部按鈕。v862：有連結→用模板設定的按鈕文字(與 LINE/Email 一致) + 旁邊一律附「關閉訊息」 */}
-        <div className="p-4 pt-1">
+        <div className="p-4 pt-1 space-y-2">
+          {n.linkUrl && (
+            <a
+              href={n.linkUrl}
+              className="block rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
+            >
+              {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
+            </a>
+          )}
+          {/* v994：第二顆按鈕（到場確認的「有需要改善?告訴我們」→ 站內客服） */}
+          {n.linkUrl2 && (
+            <a
+              href={n.linkUrl2}
+              className="block rounded-xl border py-3 text-center text-sm font-bold text-[var(--color-ocean-deep)]"
+              style={{ borderColor: "var(--border)" }}
+            >
+              {n.buttonLabel2 || "💬 聯繫客服"}
+            </a>
+          )}
           {n.linkUrl ? (
-            <div className="flex gap-2">
-              <a
-                href={n.linkUrl}
-                className="flex-1 rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
-              >
-                {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
-              </a>
-              <button
-                onClick={onClose}
-                className="shrink-0 rounded-xl border px-4 py-3 text-center text-sm font-bold text-[var(--muted-foreground)]"
-                style={{ borderColor: "var(--border)" }}
-              >
-                關閉訊息
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="block w-full rounded-xl border py-3 text-center text-sm font-bold text-[var(--muted-foreground)]"
+              style={{ borderColor: "var(--border)" }}
+            >
+              關閉訊息
+            </button>
           ) : (
             <button
               onClick={onClose}

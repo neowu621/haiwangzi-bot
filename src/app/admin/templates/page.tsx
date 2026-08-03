@@ -1121,6 +1121,17 @@ function EmailPreview({ cur, val, sending, onTest }: {
               {btn} →
             </span>
           )}
+          {/* v994：第二顆按鈕（到場確認「有需要改善?告訴我們」）*/}
+          {val("button2Label") && (
+            <div>
+              <span style={{
+                display: "inline-block", background: "#fff", border: "1.5px solid #cfdbe0", color: "#0A2342",
+                padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, marginBottom: 14,
+              }}>
+                {val("button2Label")}
+              </span>
+            </div>
+          )}
         </div>
         <div style={{ padding: "12px 17px", borderTop: "1px solid #eef2f2", fontSize: 10.5, color: "#9aabae", textAlign: "center", lineHeight: 1.6 }}>
           系統自動通知信 · 動態欄位寄送時自動帶入<br />
@@ -1196,6 +1207,12 @@ function InAppPreview({ cur, val, sending, onTest }: {
           <span style={{ display: "inline-block", background: "var(--color-coral, #FF7B5A)", color: "#fff", padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
             {val("buttonLabel") ? `${val("buttonLabel")} →` : "前往查看 →"}
           </span>
+          {/* v994：第二顆按鈕（到場確認「有需要改善?告訴我們」→ 站內客服） */}
+          {val("button2Label") && (
+            <span style={{ display: "block", marginTop: 8, marginBottom: 12, background: "#fff", border: "1px solid #cfdbe0", color: "#0a2027", padding: "8px 20px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textAlign: "center", maxWidth: 240 }}>
+              {val("button2Label")}
+            </span>
+          )}
           <span style={{ fontSize: 10.5, color: "#9aabae", marginLeft: 8 }}>無連結時顯示「關閉通知」</span>
         </div>
         <div style={{ padding: "10px 15px", borderTop: "1px solid #eef2f2", fontSize: 10, color: "#9aabae" }}>
