@@ -1,6 +1,6 @@
 "use client";
 // v697：LIFF 訊息通知 = 完整複製 m2 MsgTab(通知 + 客服對話),唯一差異:改用 liff.fetchWithAuth(LINE Bearer)
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { useLiff } from "@/lib/liff/LiffProvider";
@@ -42,19 +42,27 @@ export default function LiffMessagesPage() {
     loadConvo();
   }, [liff.ready, loadConvo]);
 
-  // v987/v992：從「到場確認」的『有需要改善?告訴我們』進來(fb=1) → 自動帶入場次 + 回饋起手訊息，
-  //   客人接著補充內容再按送出即可。
+  // v987/v992：從「到場確認」的『有需要改善?告訴我們』進來(fb=1) → 自動「先送出」一句起手訊息給客服，
+  //   通知客服客人要回饋這次潛水；客人接著補充內容即可。送完清掉 query 避免重整重送。
+  const fbSentRef = useRef(false);
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!liff.ready || fbSentRef.current || typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
-    if (q.get("fb") === "1" || q.get("feedback") === "1") {
-      const sess = (q.get("s") || "").trim();
-      const opener = sess
-        ? `關於「${sess}」這次潛水，我想回饋：\n`
-        : "我想回饋這次潛水的體驗與建議：\n";
-      setMsg((m) => m || opener);
-    }
-  }, []);
+    if (q.get("fb") !== "1" && q.get("feedback") !== "1") return;
+    fbSentRef.current = true;
+    const sess = (q.get("s") || "").trim();
+    const opener = sess
+      ? `我想回饋這次「${sess}」潛水的體驗與建議 🙏`
+      : "我想回饋這次潛水的體驗與建議 🙏";
+    liff.fetchWithAuth("/api/me/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: opener }),
+    })
+      .then(() => { loadConvo(); })
+      .catch(() => {})
+      .finally(() => { window.history.replaceState({}, "", window.location.pathname); });
+  }, [liff.ready, loadConvo]);
 
   async function send() {
     if (!msg.trim() || sending) return;
