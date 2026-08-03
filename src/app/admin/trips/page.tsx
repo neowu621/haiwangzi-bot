@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Edit3, Trash2, Moon, Sun, Anchor, Ban, Copy, Upload, Download, FileSpreadsheet, ChevronDown, ChevronRight, FileText, Check, Search, X } from "lucide-react";
 import { cn, taipeiToday } from "@/lib/utils";
-import { liffAppUrl } from "@/lib/liff-url"; // v997：站內訊息深連結
+import { buildDumpText } from "@/lib/dump-text"; // v1001：Dump 文字產生器(桌機/手機共用)
 import ExcelJS from "exceljs";
 
 interface Pricing {
@@ -1070,177 +1070,20 @@ export default function AdminTripsPage() {
   });
 
   // v336：Dump 一週場次（給 LINE 筆記本貼）。v892：支援 FB 貼文版
+  // v336/v1001：Dump 潛水資訊 —— 產字邏輯抽到 @/lib/dump-text，桌機/手機後台共用
   function computeDumpText(mode: "line" | "fb" = dumpMode): string {
-    const start = new Date(`${dumpStartDate}T00:00:00+08:00`);
-    const end = new Date(start);
-    end.setDate(end.getDate() + Math.max(1, dumpDays) - 1); // v558：天數手動(含當日)
-    // v383：日期改斜線 MM/DD
-    const fmtMD = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
-    const weekdayMap = ["日", "一", "二", "三", "四", "五", "六"];
-    // 過濾出落在 [start, end] 區間、且非取消的場次
-    const inRange = trips.filter((t) => {
-      const td = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
-      return td >= start && td <= end && t.status !== "cancelled";
+    return buildDumpText({
+      mode,
+      startDate: dumpStartDate,
+      days: dumpDays,
+      trips,
+      tours,
+      sites,
+      baseUrl: typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz",
+      promo: dumpPromo,
+      footer: dumpFooter,
+      fbTags: dumpFbTags,
     });
-    inRange.sort((a, b) => {
-      const da = a.date.slice(0, 10);
-      const db = b.date.slice(0, 10);
-      if (da !== db) return da < db ? -1 : 1;
-      return a.startTime.localeCompare(b.startTime);
-    });
-    const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? id;
-    const baseUrl =
-      typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
-    // v383：小編 LINE 群組連結（如需更換改這裡）
-    const supportLine = "https://line.me/R/ti/p/@894bpmew";
-
-    // ── v892：FB 貼文版 ──────────────────────────────
-    //   與 LINE 版差異：開頭鉤子標題、段落間留空行(FB 好讀)、只放一個主連結(/d)、
-    //   不列多個資訊網址(FB 多裸網址壓觸及)、結尾加 hashtag 助擴散。
-    if (mode === "fb") {
-      const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
-      const toursFb = tours
-        .filter((t) => {
-          if (t.status === "cancelled") return false;
-          const sd = new Date(`${t.dateStart.slice(0, 10)}T00:00:00+08:00`);
-          return sd >= start && sd <= end;
-        })
-        .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
-      const fb: string[] = [];
-      fb.push("🌊 東北角海王子・日潛開放預約 🤿");
-      // 開頭優惠當鉤子（沿用後台「開頭優惠」設定）
-      if (dumpPromo.enabled && dumpPromo.text.trim()) {
-        fb.push("");
-        fb.push(...dumpPromo.text.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
-      }
-      fb.push("");
-      // v997：標題用實際第一場~最後一場日潛日期(非 365 天視窗)
-      if (inRange.length === 0) {
-        fb.push("📅 日潛場次");
-        fb.push("・場次陸續安排中，先追蹤粉專不錯過！");
-      } else {
-        const dts = inRange
-          .map((t) => new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`))
-          .sort((a, b) => a.getTime() - b.getTime());
-        const f = dts[0], l = dts[dts.length - 1];
-        fb.push(`📅 日潛場次 ${fmtMD(f)}(週${weekdayMap[f.getDay()]}) ~ ${fmtMD(l)}(週${weekdayMap[l.getDay()]})`);
-        for (const t of inRange) {
-          const d = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
-          const wd = weekdayMap[d.getDay()];
-          const sitesStr = t.diveSiteIds.map(siteName).join("·") || "未設潛點";
-          const moon = t.isNightDive ? "🌙" : "";
-          fb.push(`・${fmtMD(d)}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount}支`);
-        }
-        // v997：日潛 3 支時段說明
-        fb.push("💡 日潛 3 支：");
-        fb.push("岸潛 第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
-        fb.push("船潛依據地點、時間不同 請與教練確認");
-      }
-      if (toursFb.length > 0) {
-        fb.push("");
-        fb.push("⛴️ 國內外潛水旅行團 歡迎報名參加");
-        for (const t of toursFb) {
-          const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
-            ? fmtMDs(t.dateStart)
-            : `${fmtMDs(t.dateStart)}–${fmtMDs(t.dateEnd)}`;
-          const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
-          fb.push(`・${range} ${t.title}${dur}`); // v1000：不放剩餘數量
-        }
-      }
-      fb.push("");
-      fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
-      fb.push(`👉 ${baseUrl}/d`);
-      // v998：聯繫方式 —— 站內訊息 + LINE
-      fb.push("");
-      fb.push("🔗 有潛水問題歡迎聯繫汪汪：");
-      fb.push(`站內訊息 ${liffAppUrl("/messages")}`);
-      fb.push(`LINE ${supportLine}`);
-      // v895：hashtag 由後台 Dump 設定控制（清空 = 不放）
-      if (dumpFbTags.trim()) {
-        fb.push("");
-        fb.push(dumpFbTags.trim());
-      }
-      return fb.join("\n");
-    }
-
-    const lines: string[] = [];
-    // v886：壓縮排版 — 全篇不用空行，改用 ━ 分隔線分段（LINE 上更緊湊好讀）
-    const HR = "━━━━━━━━━━━━━━";
-    // v554：品牌三叉戟 emoji(純文字無法嵌真圖)。v886：標題與網址同行
-    lines.push(`🔱 東北角海王子官網 ${baseUrl}`);
-    // v391：開啟「Dump 優惠開頭」時，先帶出系統設定的優惠文案 + 分隔線
-    if (dumpPromo.enabled && dumpPromo.text.trim()) {
-      // 後台文案本身可能含空行 → 一併壓掉，避免整份被撐開
-      lines.push(...dumpPromo.text.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
-    }
-    lines.push(HR);
-    // v888：先出「手機開啟連結」+ 網址，再接場次標題與清單
-    lines.push("📱 請用手機開啟連結 可以累積潛水並贈送抵用金");
-    lines.push(`${baseUrl}/d`);
-    // v996：標題用「實際第一場 ~ 最後一場」日潛日期(而非 365 天視窗)
-    if (inRange.length === 0) {
-      lines.push("🌊 日潛場次");
-      lines.push("（目前尚無場次）");
-    } else {
-      const dts = inRange
-        .map((t) => new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`))
-        .sort((a, b) => a.getTime() - b.getTime());
-      const first = dts[0], last = dts[dts.length - 1];
-      const sLbl = `${fmtMD(first)}(週${weekdayMap[first.getDay()]})`;
-      const eLbl = `${fmtMD(last)}(週${weekdayMap[last.getDay()]})`;
-      lines.push(`🌊 日潛場次 ${sLbl} ~ ${eLbl}`);
-      for (const t of inRange) {
-        const d = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
-        const dateStr = fmtMD(d);
-        const wd = weekdayMap[d.getDay()];
-        const sitesStr = t.diveSiteIds.map(siteName).join("·") || "未設潛點";
-        const moon = t.isNightDive ? "🌙" : ""; // v383：夜潛圖示放潛點前
-        lines.push(`${dateStr}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount} 支`);
-      }
-      // v997：日潛 3 支時段說明
-      lines.push("💡 日潛 3 支：");
-      lines.push("岸潛 第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
-      lines.push("船潛依據地點、時間不同 請與教練確認");
-    }
-    // v545：潛旅 — 依「起始日 dateStart」落在本週區間才納入
-    const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
-    const toursInRange = tours
-      .filter((t) => {
-        if (t.status === "cancelled") return false;
-        const sd = new Date(`${t.dateStart.slice(0, 10)}T00:00:00+08:00`);
-        return sd >= start && sd <= end;
-      })
-      .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
-    if (toursInRange.length > 0) {
-      lines.push(HR);
-      lines.push("⛴️ 國內外潛水旅行團 歡迎報名參加");
-      for (const t of toursInRange) {
-        const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
-          ? fmtMDs(t.dateStart)
-          : `${fmtMDs(t.dateStart)}–${fmtMDs(t.dateEnd)}`;
-        const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
-        // v887/v1000：不列訂金/團費/剩餘數量（客戶點進潛旅頁看即可，dump 只留日期/名稱）
-        lines.push(`${range} ${t.title}${dur}`);
-      }
-    }
-    // v891：結尾聯繫／資訊（區塊 3）由後台 Dump 設定控制；留空 → 用程式預設
-    const DEFAULT_FOOTER = [
-      "🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫",
-      `站內訊息  ${liffAppUrl("/messages")}`, // v997：站內客服訊息
-      `LINE  ${supportLine}`, // v998：LINE 群組保留(站內＋LINE 兩種都給)
-      `會員優惠 ${baseUrl}/rewards`,
-      `常見問題 ${baseUrl}/faq`,
-      `費用價目 ${baseUrl}/pricing`,
-    ].join("\n");
-    if (dumpFooter.enabled) {
-      const footerLines = (dumpFooter.text.trim() || DEFAULT_FOOTER)
-        .split("\n").map((s) => s.trimEnd()).filter((s) => s !== "");
-      if (footerLines.length) {
-        lines.push(HR);
-        lines.push(...footerLines);
-      }
-    }
-    return lines.join("\n");
   }
   async function copyDumpText() {
     const text = dumpText || computeDumpText(); // v559：複製手動編輯後的內容
