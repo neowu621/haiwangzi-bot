@@ -67,19 +67,27 @@ interface CoachTrip {
   bookings: CoachTripBooking[];
 }
 
-// v1002/v1007：今天±2天日期標籤（前天/昨天/今天/明天/後天）—— 用 UTC 午夜比對避免時區偏移
+// v1002/v1007/v1008：日期標籤一律帶「日期＋星期」（例：今天 8/4（週二））—— 用 UTC 午夜比對避免時區偏移
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
-function dayLabel(dateStr: string): string {
+function dayDiff(dateStr: string): number {
   const ds = dateStr.slice(0, 10);
   const twToday = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
-  const diff = Math.round((new Date(twToday + "T00:00:00Z").getTime() - new Date(ds + "T00:00:00Z").getTime()) / 86400000);
-  if (diff === 0) return "今天";
-  if (diff === 1) return "昨天";
-  if (diff === 2) return "前天";
-  if (diff === -1) return "明天";
-  if (diff === -2) return "後天";
+  // 正 = 未來(明天+1)、負 = 過去(昨天-1)
+  return Math.round((new Date(ds + "T00:00:00Z").getTime() - new Date(twToday + "T00:00:00Z").getTime()) / 86400000);
+}
+function dayLabel(dateStr: string): string {
+  const ds = dateStr.slice(0, 10);
+  const diff = dayDiff(ds);
   const d = new Date(ds + "T00:00:00Z");
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}（週${WD[d.getUTCDay()]}）`;
+  const md = `${d.getUTCMonth() + 1}/${d.getUTCDate()}（週${WD[d.getUTCDay()]}）`;
+  const rel =
+    diff === 0 ? "今天" : diff === 1 ? "明天" : diff === 2 ? "後天" : diff === -1 ? "昨天" : diff === -2 ? "前天" : "";
+  return rel ? `${rel} ${md}` : md;
+}
+// v1008：顯示順序 = 今天 → 明天 → 後天 → 昨天(最後)；同日依開始時間
+function sortOrder(dateStr: string): number {
+  const diff = dayDiff(dateStr);
+  return diff >= 0 ? diff : 100 - diff; // 0,1,2…未來在前；過去(負)排最後
 }
 
 export default function CoachTodayPage() {
@@ -97,7 +105,12 @@ export default function CoachTodayPage() {
       const d = await liff.fetchWithAuth<{ trips: CoachTrip[]; viewerRoles?: string[] }>(
         "/api/coach/today",
       );
-      setTrips(d.trips);
+      // v1008：今天 → 明天 → 後天 → 昨天(最後)；同日依開始時間
+      setTrips([...d.trips].sort((a, b) => {
+        const oa = sortOrder(a.date), ob = sortOrder(b.date);
+        if (oa !== ob) return oa - ob;
+        return a.startTime.localeCompare(b.startTime);
+      }));
       setCanRecordPayment(
         (d.viewerRoles ?? []).some((r) => r === "boss" || r === "admin" || r === "it"),
       );
