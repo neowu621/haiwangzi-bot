@@ -1163,15 +1163,21 @@ export default function AdminTripsPage() {
       lines.push(...dumpPromo.text.trim().split("\n").map((s) => s.trimEnd()).filter((s) => s !== ""));
     }
     lines.push(HR);
-    const startLabel = `${fmtMD(start)}(週${weekdayMap[start.getDay()]})`;
-    const endLabel = `${fmtMD(end)}(週${weekdayMap[end.getDay()]})`;
     // v888：先出「手機開啟連結」+ 網址，再接場次標題與清單
     lines.push("📱 請用手機開啟連結 可以累積潛水並贈送抵用金");
     lines.push(`${baseUrl}/d`);
-    lines.push(`🌊 日潛場次 ${startLabel} ~ ${endLabel}`);
+    // v996：標題用「實際第一場 ~ 最後一場」日潛日期(而非 365 天視窗)
     if (inRange.length === 0) {
-      lines.push("（此週尚無場次）");
+      lines.push("🌊 日潛場次");
+      lines.push("（目前尚無場次）");
     } else {
+      const dts = inRange
+        .map((t) => new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`))
+        .sort((a, b) => a.getTime() - b.getTime());
+      const first = dts[0], last = dts[dts.length - 1];
+      const sLbl = `${fmtMD(first)}(週${weekdayMap[first.getDay()]})`;
+      const eLbl = `${fmtMD(last)}(週${weekdayMap[last.getDay()]})`;
+      lines.push(`🌊 日潛場次 ${sLbl} ~ ${eLbl}`);
       for (const t of inRange) {
         const d = new Date(`${t.date.slice(0, 10)}T00:00:00+08:00`);
         const dateStr = fmtMD(d);
@@ -1192,7 +1198,7 @@ export default function AdminTripsPage() {
       .sort((a, b) => (a.dateStart.slice(0, 10) < b.dateStart.slice(0, 10) ? -1 : 1));
     if (toursInRange.length > 0) {
       lines.push(HR);
-      lines.push("⛴️ 本週出發潛旅");
+      lines.push("⛴️ 國內外潛水旅行團 歡迎報名參加");
       for (const t of toursInRange) {
         const range = t.dateStart.slice(0, 10) === t.dateEnd.slice(0, 10)
           ? fmtMDs(t.dateStart)
