@@ -67,7 +67,7 @@ interface CoachTrip {
   bookings: CoachTripBooking[];
 }
 
-// v1002：近 3 日日期標籤（今天/昨天/前天／M/D（週X））—— 用 UTC 午夜比對避免時區偏移
+// v1002/v1007：今天±2天日期標籤（前天/昨天/今天/明天/後天）—— 用 UTC 午夜比對避免時區偏移
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
 function dayLabel(dateStr: string): string {
   const ds = dateStr.slice(0, 10);
@@ -76,6 +76,8 @@ function dayLabel(dateStr: string): string {
   if (diff === 0) return "今天";
   if (diff === 1) return "昨天";
   if (diff === 2) return "前天";
+  if (diff === -1) return "明天";
+  if (diff === -2) return "後天";
   const d = new Date(ds + "T00:00:00Z");
   return `${d.getUTCMonth() + 1}/${d.getUTCDate()}（週${WD[d.getUTCDay()]}）`;
 }
@@ -168,7 +170,7 @@ export default function CoachTodayPage() {
   );
 
   return (
-    <LiffShell title="現場報到 · 點名（近3日）" backHref="/liff/welcome">
+    <LiffShell title="現場報到 · 點名（昨天～後天）" backHref="/liff/welcome">
       <div className="px-4 pt-4">
         {err && (
           <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">
@@ -183,7 +185,7 @@ export default function CoachTodayPage() {
           <Card className="mb-3 bg-[var(--color-ocean-deep)] text-white">
             <CardContent className="flex items-center justify-between p-4">
               <div>
-                <div className="text-xs opacity-70">近3日總計</div>
+                <div className="text-xs opacity-70">昨天～後天總計</div>
                 <div className="text-2xl font-bold tabular">
                   {trips.length} 場次 ·{" "}
                   {trips.reduce((s, t) => s + t.bookings.length, 0)} 人
@@ -216,7 +218,7 @@ export default function CoachTodayPage() {
           )}
           {!loading && trips.length === 0 && !err && (
             <Card className="p-8 text-center text-sm text-[var(--muted-foreground)]">
-              近 3 日沒有場次
+              昨天～後天沒有場次
             </Card>
           )}
           {trips.map((t) => (
