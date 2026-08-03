@@ -29,6 +29,7 @@ import Link from "next/link";
 interface ParticipantDetail {
   id?: string;
   name: string;
+  nickname?: string | null; // v1006：暱稱(現場好稱呼)
   phone: string;
   cert: string | null;
   certNumber: string;
@@ -265,7 +266,9 @@ export default function CoachTodayPage() {
                   const companions = (b.participantDetails ?? []).filter(
                     (p) => !p.isSelf,
                   );
-                  const selfWb = (b.participantDetails ?? []).find((p) => p.isSelf)?.weightBelt; // v980：本人配重
+                  const selfP = (b.participantDetails ?? []).find((p) => p.isSelf);
+                  const selfWb = selfP?.weightBelt; // v980：本人配重
+                  const selfNick = selfP?.nickname; // v1006：本人暱稱(好稱呼)
                   const isDone = b.status === "completed";
                   const isNoShow = b.status === "no_show";
                   return (
@@ -291,6 +294,9 @@ export default function CoachTodayPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1 text-sm font-bold flex-wrap">
                             {b.name}
+                            {selfNick && (
+                              <span className="text-xs font-semibold text-[var(--color-phosphor)]">「{selfNick}」</span>
+                            )}
                             {b.cert && (
                               <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--foreground)]">
                                 <Award className="h-2.5 w-2.5" />
@@ -358,6 +364,9 @@ export default function CoachTodayPage() {
                               )}
                             >
                               <span className="font-semibold">{c.name}</span>
+                              {c.nickname && (
+                                <span className="ml-1 text-[10px] font-semibold text-[var(--color-phosphor)]">「{c.nickname}」</span>
+                              )}
                               {c.cert && (
                                 <span className="ml-1 text-[10px] opacity-70">
                                   ({c.cert})

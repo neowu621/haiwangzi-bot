@@ -103,6 +103,7 @@ const SignaturePad = dynamic<SignaturePadProps>(
 interface Companion {
   id?: string;
   name: string;
+  nickname?: string; // v1006：暱稱(教練好稱呼)
   phone: string;
   cert: (typeof CERTS)[number] | null;
   certNumber: string;
@@ -114,6 +115,7 @@ interface Companion {
 function emptyCompanion(): Companion {
   return {
     name: "",
+    nickname: "",
     phone: "",
     cert: null,
     certNumber: "",
@@ -141,6 +143,7 @@ export default function TripBookingPage({
   const [gearQty, setGearQty] = useState<Record<string, number>>({});
   const [gearOpen, setGearOpen] = useState(false);
   const [realName, setRealName] = useState("");
+  const [nickname, setNickname] = useState(""); // v1006：本人暱稱(教練好稱呼)
   const [phone, setPhone] = useState("");
   const [cert, setCert] = useState<(typeof CERTS)[number] | "">("");
   const [certNumber, setCertNumber] = useState(""); // v655：下單必填證照號碼
@@ -269,6 +272,7 @@ export default function TripBookingPage({
     liff
       .fetchWithAuth<{
         realName: string | null;
+        nickname?: string | null; // v1006
         phone: string | null;
         email: string | null;
         cert: typeof CERTS[number] | null;
@@ -289,6 +293,7 @@ export default function TripBookingPage({
       }>("/api/me")
       .then((me) => {
         if (me.realName) setRealName(me.realName);
+        if (me.nickname) setNickname(me.nickname); // v1006：帶入暱稱
         if (me.phone) setPhone(formatPhoneTW(me.phone));
         setMeEmail(me.email ?? null);
         setMePhone(me.phone ?? null);
@@ -528,6 +533,7 @@ export default function TripBookingPage({
       const participantDetails = [
         {
           name: realName,
+          nickname: nickname.trim() || null, // v1006：本人暱稱
           phone,
           cert: cert || null,
           certNumber: certNumber.trim(),
@@ -539,6 +545,7 @@ export default function TripBookingPage({
         ...companionSlots.map((c) => ({
           id: c.id,
           name: c.name,
+          nickname: (c.nickname ?? "").trim() || null, // v1006：潛伴暱稱
           phone: c.phone,
           cert: c.cert,
           certNumber: c.certNumber,
@@ -572,6 +579,7 @@ export default function TripBookingPage({
         // v260：手寫簽名 PNG data URL（後端解 base64 → 上 R2）
         signatureDataUrl: signatureDataUrl ?? undefined,
         realName,
+        nickname: nickname.trim() || undefined, // v1006：本人暱稱寫回會員
         phone,
         cert: cert || undefined,
         certNumber: certNumber.trim() || undefined,
@@ -832,7 +840,7 @@ export default function TripBookingPage({
           }
         >
           <div className="space-y-3">
-            {/* 姓名 + 手機 同排 */}
+            {/* 姓名 + 暱稱 同排（v1006：暱稱讓教練現場好稱呼，會記住） */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="realName">姓名 *</Label>
@@ -844,17 +852,26 @@ export default function TripBookingPage({
                 />
               </div>
               <div>
-                <Label htmlFor="phone">手機 *</Label>
+                <Label htmlFor="nickname">暱稱</Label>
                 <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  value={phone}
-                  onChange={(e) => setPhone(formatPhoneTW(e.target.value))}
-                  maxLength={11}
-                  placeholder="0912-345678"
+                  id="nickname"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="教練好稱呼，例：阿明"
                 />
               </div>
+            </div>
+            <div>
+              <Label htmlFor="phone">手機 *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                inputMode="numeric"
+                value={phone}
+                onChange={(e) => setPhone(formatPhoneTW(e.target.value))}
+                maxLength={11}
+                placeholder="0912-345678"
+              />
             </div>
             {/* 證照 (下拉) + 累計潛水支數 同排 */}
             <div className="grid grid-cols-2 gap-2">
@@ -1794,6 +1811,14 @@ function CompanionSlotEditor({
           onChange={(e) => onChange({ ...slot, name: e.target.value })}
           placeholder="姓名 *"
         />
+        {/* v1006：潛伴暱稱(教練好稱呼) */}
+        <Input
+          value={slot.nickname ?? ""}
+          onChange={(e) => onChange({ ...slot, nickname: e.target.value })}
+          placeholder="暱稱（好稱呼）"
+        />
+      </div>
+      <div className="mt-2">
         <Input
           type="tel"
           inputMode="numeric"

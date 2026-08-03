@@ -54,6 +54,7 @@ const BodySchema = z.object({
   signatureDataUrl: z.string().optional(),
   // 客戶資料補完
   realName: z.string().optional(),
+  nickname: z.string().max(64).optional(), // v1006：本人暱稱
   phone: z.string().optional(),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).optional(),
   certNumber: z.string().optional(),
@@ -72,6 +73,7 @@ const BodySchema = z.object({
       z.object({
         id: z.string().optional(),
         name: z.string(),
+        nickname: z.string().max(64).nullable().optional(), // v1006：暱稱
         phone: z.string().optional().default(""),
         cert: z
           .enum(["OW", "AOW", "Rescue", "DM", "Instructor"])
@@ -295,6 +297,8 @@ export async function POST(req: NextRequest) {
   // 更新 user 個資 (如有提供)
   const userPatch: Parameters<typeof prisma.user.update>[0]["data"] = {};
   if (data.realName) userPatch.realName = data.realName;
+  // v1006：暱稱「最新為準」寫回會員
+  if (data.nickname) (userPatch as { nickname?: string }).nickname = data.nickname;
   if (data.phone) userPatch.phone = data.phone;
   if (data.cert) userPatch.cert = data.cert;
   if (data.certNumber) userPatch.certNumber = data.certNumber;
@@ -324,6 +328,7 @@ export async function POST(req: NextRequest) {
         merged.push({
           id: c.id ?? crypto.randomUUID(),
           name: c.name,
+          nickname: c.nickname ?? null, // v1006：新潛伴暱稱
           phone: c.phone ?? "",
           cert: c.cert ?? null,
           certNumber: c.certNumber ?? "",
@@ -331,9 +336,10 @@ export async function POST(req: NextRequest) {
           weightBelt: c.weightBelt ?? null, // v980：新潛伴配重
           relationship: c.relationship ?? "",
         } as never);
-      } else if (c.weightBelt != null) {
-        // v980：既有潛伴「最新為準」更新配重
-        (dup as { weightBelt?: number | null }).weightBelt = c.weightBelt;
+      } else {
+        // v980/v1006：既有潛伴「最新為準」更新配重/暱稱
+        if (c.weightBelt != null) (dup as { weightBelt?: number | null }).weightBelt = c.weightBelt;
+        if (c.nickname) (dup as { nickname?: string | null }).nickname = c.nickname;
       }
     }
     userPatch.companions = merged as never;

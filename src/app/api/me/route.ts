@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
     lineUserId: u.lineUserId,
     displayName: u.displayName,
     realName: u.realName,
+    nickname: (u as { nickname?: string | null }).nickname ?? null, // v1006：暱稱
     phone: u.phone,
     email: u.email,
     emailVerifiedAt: u.emailVerifiedAt, // v258：給 profile 頁顯示「已驗證 ✓」徽章用
@@ -143,6 +144,7 @@ export async function GET(req: NextRequest) {
 const CompanionSchema = z.object({
   id: z.string().optional(), // v984：新增的潛伴沒有 id → 伺服器端自動補，避免整包存檔失敗
   name: z.string().min(1),
+  nickname: z.string().max(64).nullable().optional(), // v1006：潛伴暱稱
   phone: z.string().optional().default(""),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
   certNumber: z.string().optional().default(""),
@@ -153,6 +155,7 @@ const CompanionSchema = z.object({
 
 const PatchSchema = z.object({
   realName: z.string().optional(),
+  nickname: z.string().max(64).nullable().optional(), // v1006：暱稱
   phone: z.string().optional(),
   email: z
     .string()

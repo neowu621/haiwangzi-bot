@@ -12,12 +12,13 @@ import { setAdminToken, setAdminUser, type AdminWebUser } from "@/lib/admin-web-
 import { formatPhoneTW } from "@/lib/phone";
 import { C, Sect } from "@/components/liff/mobileShared";
 import { VipTierIcon } from "@/components/VipTierIcon";
+import { VIP_TIERS } from "@/lib/vip-tier"; // v1006：等級名稱(龍蝦…)顯示用
 
 const CERTS = ["OW", "AOW", "DM", "Instructor"] as const;
 type Cert = (typeof CERTS)[number];
-interface Companion { id?: string; name: string; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string; weightBelt?: number | null }
+interface Companion { id?: string; name: string; nickname?: string | null; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string; weightBelt?: number | null }
 interface Me {
-  displayName: string; realName: string | null; phone: string | null; email: string | null; emailVerifiedAt?: string | null;
+  displayName: string; realName: string | null; nickname?: string | null; phone: string | null; email: string | null; emailVerifiedAt?: string | null;
   notifyByLine: boolean; notifyByEmail: boolean; cert: Cert | null; certNumber: string | null; logCount: number; weightBelt?: number | null;
   haiwangziLogCount: number; roles?: string[]; role?: string; vipLevel: number; birthday: string | null;
   creditBalance: number; emergencyContact: { name: string; phone: string; relationship: string } | null;
@@ -52,6 +53,7 @@ export default function ProfilePage() {
 
   // 表單狀態(由 me 帶入,子頁共用、儲存一次 PATCH)
   const [realName, setRealName] = useState(""); const [phone, setPhone] = useState(""); const [email, setEmail] = useState("");
+  const [nickname, setNickname] = useState(""); // v1006：暱稱
   const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | null>(null);
   const [notifyByLine, setNotifyByLine] = useState(true); const [notifyByEmail, setNotifyByEmail] = useState(true);
   const [cert, setCert] = useState<Cert | "">(""); const [certNumber, setCertNumber] = useState(""); const [logCount, setLogCount] = useState("");
@@ -83,6 +85,7 @@ export default function ProfilePage() {
   function fill(u: Me) {
     setMe(u);
     setRealName(u.realName ?? ""); setPhone(formatPhoneTW(u.phone ?? "")); setEmail(u.email ?? "");
+    setNickname(u.nickname ?? ""); // v1006
     setEmailVerifiedAt(u.emailVerifiedAt ? String(u.emailVerifiedAt) : null);
     setNotifyByLine(u.notifyByLine ?? true); setNotifyByEmail(u.notifyByEmail ?? true);
     setCert(u.cert ?? ""); setCertNumber(u.certNumber ?? ""); setLogCount(String(u.logCount ?? 0));
@@ -104,7 +107,7 @@ export default function ProfilePage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          realName: realName || null, phone: phone || null, email: email.trim() || null,
+          realName: realName || null, nickname: nickname.trim() || null, phone: phone || null, email: email.trim() || null,
           notifyByLine, notifyByEmail, cert: cert || null, certNumber: certNumber || null,
           logCount: Number(logCount) || 0, weightBelt: weightBelt.trim() ? Number(weightBelt) : null, // v983：配重
           birthday: birthday || null,
@@ -140,6 +143,8 @@ export default function ProfilePage() {
       <SubHeader title="個人資訊" onBack={() => setView(null)} />
       <BCard>
         <Lab>姓名</Lab><input value={realName} onChange={(e) => setRealName(e.target.value)} placeholder="本名" style={INP} />
+        {/* v1006：暱稱——教練現場好稱呼 */}
+        <div style={{ marginTop: 10 }}><Lab>暱稱（教練好稱呼你，例：阿明、Amy）</Lab><input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="選填" style={INP} /></div>
         <div style={{ marginTop: 10 }}><Lab>手機</Lab><input value={phone} onChange={(e) => setPhone(formatPhoneTW(e.target.value))} inputMode="numeric" maxLength={11} placeholder="0912-345678" style={INP} /></div>
         <div style={{ marginTop: 10 }}><Lab>Email（收預約確認 / 行前通知 / 發票）</Lab><input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" placeholder="you@example.com" style={INP} />
           <div style={{ marginTop: 6 }}>{emailVerifiedAt ? <span style={{ fontSize: 11.5, color: C.okFg }}>✓ Email 已驗證</span> : <button onClick={sendVerify} style={{ fontSize: 11.5, border: `1px solid ${C.accFg}`, color: C.accFg, background: "none", borderRadius: 999, padding: "4px 12px" }}>發送驗證信 🎁 完成首潛得 100 元</button>}{verifyMsg && <div style={{ fontSize: 11.5, color: C.okFg, marginTop: 5 }}>{verifyMsg}</div>}</div>
@@ -172,6 +177,8 @@ export default function ProfilePage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 12, fontWeight: 600 }}>潛伴 #{i + 1}</span><button onClick={() => { if (window.confirm("確定刪除這位潛伴？")) setCompanions((a) => a.filter((_, j) => j !== i)); }} style={{ fontSize: 11, color: C.coral, background: "none", border: "none" }}>刪除</button></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <input value={c.name} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="姓名 *" style={INP} />
+              {/* v1006：潛伴暱稱 */}
+              <input value={c.nickname ?? ""} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, nickname: e.target.value || null } : x))} placeholder="暱稱（好稱呼）" style={INP} />
               <input value={c.phone} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, phone: formatPhoneTW(e.target.value) } : x))} inputMode="numeric" maxLength={11} placeholder="手機" style={INP} />
               <select value={c.cert ?? ""} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, cert: (e.target.value || null) as Cert | null } : x))} style={SELP}><option value="">證照</option>{CERTS.map((cc) => <option key={cc} value={cc}>{cc}</option>)}</select>
               <input value={c.relationship} onChange={(e) => setCompanions((a) => a.map((x, j) => j === i ? { ...x, relationship: e.target.value } : x))} placeholder="關係" style={INP} />
@@ -241,20 +248,26 @@ export default function ProfilePage() {
   ];
   return frame(
     <>
-      <div style={{ textAlign: "center", padding: "6px 0 12px" }}>
-        {/* v919：會員(有潛級)顯示 VIP 徽章；其餘顯示一般頭像 */}
-        {me.vipLevel >= 1 && me.vipLevel <= 5 ? (
-          <div style={{ margin: "0 auto", width: 68, height: 68 }}><VipTierIcon level={me.vipLevel} size={68} /></div>
-        ) : (
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center", margin: "0 auto" }}><User size={30} /></div>
-        )}
-        <div style={{ fontSize: 16, fontWeight: 500, marginTop: 8 }}>{name}</div>
-        <div style={{ fontSize: 12, color: C.mute }}>{me.email ?? ""}</div>
-        {roleLabel && (
-          <span style={{ display: "inline-block", marginTop: 6, fontSize: 11.5, fontWeight: 700, color: C.accFg, background: C.accBg, borderRadius: 999, padding: "2px 11px" }}>
-            {roleLabel}
+      {/* v1006：頭區改一行 —— [LVn 等級名] [圖樣置中] [名字/暱稱 (角色)]；Email 不顯示 */}
+      <div style={{ display: "flex", alignItems: "center", padding: "8px 2px 12px" }}>
+        <div style={{ flex: 1, textAlign: "right", paddingRight: 12 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 800, color: C.accFg }}>
+            {me.vipLevel >= 1 ? `LV${me.vipLevel} ${VIP_TIERS.find((t) => t.level === me.vipLevel)?.name ?? ""}`.trim() : "會員"}
           </span>
-        )}
+        </div>
+        <div style={{ flex: "none" }}>
+          {me.vipLevel >= 1 && me.vipLevel <= 5 ? (
+            <div style={{ width: 56, height: 56 }}><VipTierIcon level={me.vipLevel} size={56} /></div>
+          ) : (
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: C.accBg, color: C.accFg, display: "grid", placeItems: "center" }}><User size={26} /></div>
+          )}
+        </div>
+        <div style={{ flex: 1, paddingLeft: 12, minWidth: 0 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, overflowWrap: "anywhere" }}>
+            {me.nickname?.trim() || name}
+            {roleLabel && <span style={{ fontSize: 12, fontWeight: 700, color: C.accFg }}>（{roleLabel}）</span>}
+          </span>
+        </div>
       </div>
       <div style={{ display: "flex", background: C.page, borderRadius: 12, padding: "12px 0", textAlign: "center", marginBottom: 6 }}>
         {stats.map(([a, b]) => <div key={b} style={{ flex: 1 }}><div style={{ fontSize: 18, fontWeight: 500 }}>{a}</div><div style={{ fontSize: 11, color: C.mute }}>{b}</div></div>)}

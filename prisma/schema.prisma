@@ -118,6 +118,8 @@ model User {
   lineUserId                String     @id @map("line_user_id") @db.VarChar(64)
   displayName               String     @map("display_name")
   realName                  String?    @map("real_name")
+  // v1006：暱稱——教練現場好稱呼。個人中心/下單時可填，潛伴清單也各自有暱稱(存 companions JSON)
+  nickname                  String?    @db.VarChar(64)
   phone                     String?    @db.VarChar(32)
   // 註冊 email — 用於通知信、發票、e-card；比 SMS 便宜，首次登入強制要填
   email                     String?    @db.VarChar(254)

@@ -17,6 +17,8 @@ const PATCHES = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS code VARCHAR(12)`,
   // v980：慣用配重(kg)
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_belt INT`,
+  // v1006：暱稱（教練現場好稱呼）
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname VARCHAR(64)`,
   // v648：登入紀錄原子搶位欄位
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_log_at TIMESTAMPTZ`,
   // v112: 軟刪除欄位
