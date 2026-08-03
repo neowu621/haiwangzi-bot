@@ -1091,6 +1091,8 @@ export default function AdminTripsPage() {
     const siteName = (id: string) => sites.find((s) => s.id === id)?.name ?? id;
     const baseUrl =
       typeof window !== "undefined" ? window.location.origin : "https://haiwangzi.xyz";
+    // v383：小編 LINE 群組連結（如需更換改這裡）
+    const supportLine = "https://line.me/R/ti/p/@894bpmew";
 
     // ── v892：FB 貼文版 ──────────────────────────────
     //   與 LINE 版差異：開頭鉤子標題、段落間留空行(FB 好讀)、只放一個主連結(/d)、
@@ -1221,7 +1223,8 @@ export default function AdminTripsPage() {
     // v891：結尾聯繫／資訊（區塊 3）由後台 Dump 設定控制；留空 → 用程式預設
     const DEFAULT_FOOTER = [
       "🔗 如果有潛水任何問題可以透過以下方式汪汪聯繫",
-      `站內訊息  ${liffAppUrl("/messages")}`, // v997：改用站內客服訊息(原 LINE 群組連結)
+      `站內訊息  ${liffAppUrl("/messages")}`, // v997：站內客服訊息
+      `LINE  ${supportLine}`, // v998：LINE 群組保留(站內＋LINE 兩種都給)
       `會員優惠 ${baseUrl}/rewards`,
       `常見問題 ${baseUrl}/faq`,
       `費用價目 ${baseUrl}/pricing`,
