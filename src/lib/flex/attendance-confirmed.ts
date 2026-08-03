@@ -1,5 +1,6 @@
 import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
+import { liffAppUrl } from "../liff-url"; // v992：用 App 本身的 LIFF ID 產生站內深連結
 
 /**
  * v270：到場確認通知
@@ -150,9 +151,9 @@ export function attendanceConfirmed(
           action: {
             type: "uri",
             // v834：按鈕文字後台可編輯（/admin/templates → 到場確認）
-            // v989：改用與 /my、/profile 同款純路徑深連結(不加 query，LIFF 深連結對 path+query 會出錯)
+            // v992：用 App 本身 LIFF ID 開站內「訊息‧客服」頁 + 帶場次(fb=1&s=…)給對話框自動起手
             label: ovr(override, "button2Label", "💬 有需要改善?告訴我們"),
-            uri: `${asString(params.liffUrl, "https://liff.line.me/2010219428-E5frY7tm")}/messages`,
+            uri: liffAppUrl(`/messages?fb=1&s=${encodeURIComponent(bookingTitle || "")}`),
           },
         },
       ],

@@ -42,11 +42,17 @@ export default function LiffMessagesPage() {
     loadConvo();
   }, [liff.ready, loadConvo]);
 
-  // v987：從「到場確認」的『有需要改善?告訴我們』進來 → 自動帶入回饋起手訊息，客人按送出即可
+  // v987/v992：從「到場確認」的『有需要改善?告訴我們』進來(fb=1) → 自動帶入場次 + 回饋起手訊息，
+  //   客人接著補充內容再按送出即可。
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (new URLSearchParams(window.location.search).get("feedback") === "1") {
-      setMsg((m) => m || "我想回饋這次潛水的體驗與建議 🙏");
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("fb") === "1" || q.get("feedback") === "1") {
+      const sess = (q.get("s") || "").trim();
+      const opener = sess
+        ? `關於「${sess}」這次潛水，我想回饋：\n`
+        : "我想回饋這次潛水的體驗與建議：\n";
+      setMsg((m) => m || opener);
     }
   }, []);
 
