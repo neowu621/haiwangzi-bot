@@ -1132,7 +1132,9 @@ export default function AdminTripsPage() {
           fb.push(`・${fmtMD(d)}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount}支`);
         }
         // v997：日潛 3 支時段說明
-        fb.push("💡 日潛 3 支：第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
+        fb.push("💡 日潛 3 支：");
+        fb.push("岸潛 第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
+        fb.push("船潛依據地點、時間不同 請與教練確認");
       }
       if (toursFb.length > 0) {
         fb.push("");
@@ -1142,10 +1144,7 @@ export default function AdminTripsPage() {
             ? fmtMDs(t.dateStart)
             : `${fmtMDs(t.dateStart)}–${fmtMDs(t.dateEnd)}`;
           const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
-          const remain = t.capacity == null
-            ? ""
-            : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
-          fb.push(`・${range} ${t.title}${dur}${remain}`);
+          fb.push(`・${range} ${t.title}${dur}`); // v1000：不放剩餘數量
         }
       }
       fb.push("");
@@ -1199,7 +1198,9 @@ export default function AdminTripsPage() {
         lines.push(`${dateStr}(週${wd}) ${t.startTime} ${moon}${sitesStr} ${t.tankCount} 支`);
       }
       // v997：日潛 3 支時段說明
-      lines.push("💡 日潛 3 支：第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
+      lines.push("💡 日潛 3 支：");
+      lines.push("岸潛 第一支 08:00 / 第二支 09:30 / 第三支 13:00，可依體能與時段需求選擇參加");
+      lines.push("船潛依據地點、時間不同 請與教練確認");
     }
     // v545：潛旅 — 依「起始日 dateStart」落在本週區間才納入
     const fmtMDs = (s: string) => { const p = s.slice(0, 10).split("-"); return `${p[1]}/${p[2]}`; };
@@ -1218,11 +1219,8 @@ export default function AdminTripsPage() {
           ? fmtMDs(t.dateStart)
           : `${fmtMDs(t.dateStart)}–${fmtMDs(t.dateEnd)}`;
         const dur = t.durationLabel ? `（${t.durationLabel}）` : "";
-        const remain = t.capacity == null
-          ? ""
-          : (Math.max(0, t.capacity - (t.booked ?? 0)) > 0 ? `　餘 ${t.capacity - (t.booked ?? 0)}` : "　額滿");
-        // v887：不列訂金/團費（客戶點進潛旅頁看即可，dump 只留日期/名稱/餘額）
-        lines.push(`${range} ${t.title}${dur}${remain}`);
+        // v887/v1000：不列訂金/團費/剩餘數量（客戶點進潛旅頁看即可，dump 只留日期/名稱）
+        lines.push(`${range} ${t.title}${dur}`);
       }
     }
     // v891：結尾聯繫／資訊（區塊 3）由後台 Dump 設定控制；留空 → 用程式預設
@@ -1246,15 +1244,29 @@ export default function AdminTripsPage() {
   }
   async function copyDumpText() {
     const text = dumpText || computeDumpText(); // v559：複製手動編輯後的內容
+    const done = () => { setDumpCopied(true); setTimeout(() => setDumpCopied(false), 2000); };
+    // v1000：先試 navigator.clipboard；失敗一律退回「自建臨時 textarea + execCommand」(不依賴頁面既有元素)
     try {
-      await navigator.clipboard.writeText(text);
-      setDumpCopied(true);
-      setTimeout(() => setDumpCopied(false), 2000);
-    } catch {
-      // fallback：選取 textarea
-      const ta = document.getElementById("dump-textarea") as HTMLTextAreaElement | null;
-      if (ta) { ta.select(); document.execCommand("copy"); setDumpCopied(true); setTimeout(() => setDumpCopied(false), 2000); }
-    }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        done();
+        return;
+      }
+    } catch { /* fall through */ }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      done();
+    } catch { /* ignore：至少不影響關閉視窗 */ }
   }
 
   const totalPages = Math.max(1, Math.ceil(sortedTrips.length / PAGE_SIZE));
@@ -2412,7 +2424,7 @@ export default function AdminTripsPage() {
 
             <div className="flex items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: "var(--border)" }}>
               <span className="text-[11px] text-[var(--muted-foreground)]">確認無誤後即可複製貼出</span>
-              <Button type="button" size="sm" onClick={() => { setDumpStylePreview(false); void copyDumpText(); }}>
+              <Button type="button" size="sm" onClick={() => { void copyDumpText(); setDumpStylePreview(false); }}>
                 <Copy className="mr-1.5 h-3.5 w-3.5" />複製並關閉
               </Button>
             </div>
