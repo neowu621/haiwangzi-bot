@@ -218,6 +218,8 @@ export default function TripBookingPage({
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   // v955：下單時就選付款方式（必選、收合卡）
   const [paymentMethod, setPaymentMethod] = useState<PayMethodSel>("");
+  // v1009：付款方式選「其他」→ 必填說明，送出時併入訂單備註
+  const [otherPayNote, setOtherPayNote] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false); // v957：備註預設收合
 
@@ -481,6 +483,9 @@ export default function TripBookingPage({
     return parts.length > 0 ? `🏋️ 配重：${parts.join("、")}` : "";
   })();
 
+  // v1009：其他付款說明即時組成備註字串（畫面同步顯示；送出時同樣組進 notes）
+  const payNotePreview = paymentMethod === "other" && otherPayNote.trim() ? `💳 其他付款說明：${otherPayNote.trim()}` : "";
+
   const canSubmit =
     trip &&
     !submitting &&
@@ -489,6 +494,7 @@ export default function TripBookingPage({
     safetyRead &&
     signedHasInk &&
     realName.trim().length >= 2 &&
+    nickname.trim().length >= 1 &&   // v1009：暱稱必填（教練現場好稱呼）
     phone.trim().length >= 8 &&
     emergencyName.trim().length >= 2 &&
     emergencyPhone.trim().length >= 8 &&
@@ -496,7 +502,8 @@ export default function TripBookingPage({
     logCount.trim().length >= 1 &&   // v655：潛水次數必填（新手填 0 也可）
     companionsValid &&
     gearSizingComplete &&            // v974：租裝備須填尺寸或註明無特別需求
-    paymentMethod !== "";            // v955：付款方式必選
+    paymentMethod !== "" &&          // v955：付款方式必選
+    (paymentMethod !== "other" || otherPayNote.trim().length > 0); // v1009：其他付款須填說明
 
   // v703：按鈕變灰時，列出「還差什麼」讓使用者知道要補哪些（按鈕不再無聲 disabled）
   const missing: string[] = [];
@@ -504,6 +511,7 @@ export default function TripBookingPage({
   if (!safetyRead) missing.push("勾選安全須知");
   if (!signedHasInk) missing.push("手寫簽名");
   if (realName.trim().length < 2) missing.push("真實姓名");
+  if (nickname.trim().length < 1) missing.push("暱稱");
   if (phone.trim().length < 8) missing.push("聯絡電話");
   if (emergencyName.trim().length < 2) missing.push("緊急聯絡人");
   if (emergencyPhone.trim().length < 8) missing.push("緊急聯絡人電話");
@@ -512,6 +520,7 @@ export default function TripBookingPage({
   if (!companionsValid) missing.push("同行者資料");
   if (!gearSizingComplete) missing.push("裝備尺寸（身高體重）或勾「無特別需求」");
   if (paymentMethod === "") missing.push("選擇付款方式");
+  if (paymentMethod === "other" && otherPayNote.trim().length < 1) missing.push("其他付款方式說明");
 
   async function submit() {
     if (!trip || !canSubmit) return;
@@ -557,7 +566,8 @@ export default function TripBookingPage({
       ];
 
       // v974/v978：租裝備尺寸組進備註（教練備裝用）—— 與畫面顯示同一份 gearNote
-      const finalNotes = [gearNote, weightNote, notes.trim()].filter(Boolean).join("\n") || undefined;
+      // v1009：其他付款方式說明也併入備註（與預覽同一份 payNotePreview）
+      const finalNotes = [gearNote, weightNote, payNotePreview, notes.trim()].filter(Boolean).join("\n") || undefined;
 
       const body = {
         tripId: trip.id,
@@ -852,7 +862,7 @@ export default function TripBookingPage({
                 />
               </div>
               <div>
-                <Label htmlFor="nickname">暱稱</Label>
+                <Label htmlFor="nickname">暱稱 *</Label>
                 <Input
                   id="nickname"
                   value={nickname}
@@ -974,21 +984,21 @@ export default function TripBookingPage({
         {/* v957：備註改預設收合（選填）；v978：租裝備尺寸即時同步顯示在備註 */}
         <CollapsibleCard
           title="📝 備註 / 特殊需求"
-          complete={notes.trim().length > 0 || gearNote.length > 0 || weightNote.length > 0}
+          complete={notes.trim().length > 0 || gearNote.length > 0 || weightNote.length > 0 || payNotePreview.length > 0}
           open={notesOpen}
           onToggle={() => setNotesOpen(!notesOpen)}
           summary={
-            (gearNote || weightNote)
-              ? `${[gearNote, weightNote].filter(Boolean).join("｜")}${notes.trim() ? `｜${notes.trim()}` : ""}`.slice(0, 30)
+            (gearNote || weightNote || payNotePreview)
+              ? `${[gearNote, weightNote, payNotePreview].filter(Boolean).join("｜")}${notes.trim() ? `｜${notes.trim()}` : ""}`.slice(0, 30)
               : notes.trim()
                 ? notes.trim().slice(0, 24)
                 : "選填 · 耳壓不適 / 過敏 / 用藥…"
           }
         >
-          {(gearNote || weightNote) && (
+          {(gearNote || weightNote || payNotePreview) && (
             <div className="mb-2 rounded-md bg-[var(--color-phosphor)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--color-ocean-deep)]">
               <span className="font-bold">自動帶入備註：</span>
-              {[gearNote, weightNote].filter(Boolean).map((line, i) => (
+              {[gearNote, weightNote, payNotePreview].filter(Boolean).map((line, i) => (
                 <div key={i}>{line}</div>
               ))}
               <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">送出時會自動加到備註最前面（改上方裝備尺寸／配重即同步）。下方可再補充其他需求。</div>
@@ -1039,17 +1049,23 @@ export default function TripBookingPage({
         <CollapsibleCard
           title="付款方式"
           required
-          complete={paymentMethod !== ""}
+          complete={paymentMethod !== "" && (paymentMethod !== "other" || otherPayNote.trim().length > 0)}
           open={paymentOpen}
           onToggle={() => setPaymentOpen(!paymentOpen)}
-          summary={paymentMethod !== "" ? PAY_LABEL[paymentMethod] : "尚未選擇（必選）"}
+          summary={
+            paymentMethod === ""
+              ? "尚未選擇（必選）"
+              : paymentMethod === "other"
+                ? `${PAY_LABEL[paymentMethod]}${otherPayNote.trim() ? `：${otherPayNote.trim().slice(0, 16)}` : "（請填說明）"}`
+                : PAY_LABEL[paymentMethod]
+          }
         >
           <div className="space-y-2">
             {PAY_OPTIONS.map((o) => (
               <button
                 key={o.k}
                 type="button"
-                onClick={() => { setPaymentMethod(o.k); setPaymentOpen(false); }}
+                onClick={() => { setPaymentMethod(o.k); if (o.k !== "other") setPaymentOpen(false); }}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition-colors",
                   paymentMethod === o.k ? "border-[var(--color-phosphor)] bg-[var(--color-phosphor)]/10" : "border-[var(--border)]",
@@ -1064,6 +1080,22 @@ export default function TripBookingPage({
               </button>
             ))}
           </div>
+          {/* v1009：選「其他」→ 必填說明（會寫進訂單備註給教練/老闆看） */}
+          {paymentMethod === "other" && (
+            <div className="mt-2 rounded-lg border border-[var(--color-coral)]/50 bg-[var(--color-coral)]/5 p-3">
+              <Label htmlFor="otherPayNote" className="text-xs font-bold text-[var(--color-coral)]">
+                請說明付款方式 *
+              </Label>
+              <textarea
+                id="otherPayNote"
+                value={otherPayNote}
+                onChange={(e) => setOtherPayNote(e.target.value)}
+                placeholder="例：抵用券折抵、朋友代付、預付訂金…（會記在訂單備註）"
+                rows={2}
+                className="mt-1 w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40 resize-y"
+              />
+            </div>
+          )}
           <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
             🏦 轉帳 / 💚 LINE Pay → 下單後到「我的預約」上傳付款證明；💵 現場支付 → 當天付給教練、免上傳。
           </p>
