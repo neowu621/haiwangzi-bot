@@ -232,6 +232,7 @@ export default function ProfilePage() {
     { emoji: "👥", label: "會員管理", path: "/admin/m/users" },
     { emoji: "⛴️", label: "潛水旅行", path: "/admin/m/tours" },
     { emoji: "⭐", label: "抵用金管理", path: "/admin/m/credits" },
+    { emoji: "📋", label: "Dump 潛水資訊", path: "/admin/m/dump" }, // v1002：產生 LINE/FB 貼文
     { emoji: "🛠️", label: "完整後台", path: "/admin/m" },
   ];
   const stats: Array<[string, string]> = [

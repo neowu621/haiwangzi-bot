@@ -15,7 +15,6 @@ import {
   Ship,
   Star,
   Eye,
-  FileText,
   ChevronRight,
 } from "lucide-react";
 
@@ -92,7 +91,6 @@ export default function MobileAdminHome() {
         { href: "/admin/m/users", icon: Users, emoji: "👥", title: "會員管理", badge: undefined, sub: "輸入姓名 / 電話查詢", accent: false },
         { href: "/admin/m/tours", icon: Ship, emoji: "⛴️", title: "潛水旅行", badge: undefined, sub: "團況", accent: false },
         { href: "/admin/m/credits", icon: Star, emoji: "⭐", title: "抵用金管理", badge: undefined, sub: "查 / 發抵用金", accent: false },
-        { href: "/admin/m/dump", icon: FileText, emoji: "📋", title: "Dump 潛水資訊", badge: undefined, sub: "產生 LINE/FB 貼文", accent: false }, // v1001
       ],
     },
   ];

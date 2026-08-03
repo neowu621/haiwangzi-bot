@@ -40,12 +40,10 @@ export async function GET(req: NextRequest) {
     const tomorrowStr = tw(tmr);
     // DivingTrip.date 是 @db.Date（無時區），用 UTC 午夜邊界查最穩
     const todayDate = new Date(todayStr + "T00:00:00.000Z");
-    const dayAfterDate = new Date(todayDate);
-    dayAfterDate.setUTCDate(dayAfterDate.getUTCDate() + 2);
 
-    // 今明兩天場次（只取必要欄位）
+    // v1002：改列「今天起所有」日潛場次（原本只今明兩天）
     const trips = await prisma.divingTrip.findMany({
-      where: { date: { gte: todayDate, lt: dayAfterDate }, status: { not: "cancelled" } },
+      where: { date: { gte: todayDate }, status: { not: "cancelled" } },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
       select: { id: true, date: true, startTime: true, diveSiteIds: true, coachIds: true },
     });

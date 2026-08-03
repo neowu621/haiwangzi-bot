@@ -16,10 +16,13 @@ export async function GET(req: NextRequest) {
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  // v1002：現場點名改列「近 3 日含今天」，方便補點名（原本只今天）
+  const rangeStart = new Date(today);
+  rangeStart.setDate(rangeStart.getDate() - 2);
 
   const trips = await prisma.divingTrip.findMany({
-    where: { date: { gte: today, lt: tomorrow } },
-    orderBy: { startTime: "asc" },
+    where: { date: { gte: rangeStart, lt: tomorrow } },
+    orderBy: [{ date: "desc" }, { startTime: "asc" }],
   });
 
   const tripIds = trips.map((t) => t.id);

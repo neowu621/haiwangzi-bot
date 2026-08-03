@@ -65,11 +65,24 @@ export default function MobileTripsPage() {
     });
   }
 
+  // v1002：改列「今天起所有」場次 —— 依日期分組（今天/明天/其餘顯示 M/D（週X））
   const groups: Array<{ label: string; key: string; trips: MTrip[] }> = data
-    ? [
-        { label: "今天", key: data.today, trips: data.trips.filter((t) => t.date === data.today) },
-        { label: "明天", key: data.tomorrow, trips: data.trips.filter((t) => t.date === data.tomorrow) },
-      ]
+    ? (() => {
+        const wd = ["日", "一", "二", "三", "四", "五", "六"];
+        const byDate = new Map<string, MTrip[]>();
+        for (const t of data.trips) {
+          const arr = byDate.get(t.date) ?? [];
+          arr.push(t);
+          byDate.set(t.date, arr);
+        }
+        return Array.from(byDate.keys()).sort().map((key) => {
+          const label = key === data.today ? "今天" : key === data.tomorrow ? "明天" : (() => {
+            const d = new Date(`${key}T00:00:00+08:00`);
+            return `${d.getMonth() + 1}/${d.getDate()}（週${wd[d.getDay()]}）`;
+          })();
+          return { label, key, trips: byDate.get(key)! };
+        });
+      })()
     : [];
 
   return (
@@ -86,6 +99,12 @@ export default function MobileTripsPage() {
 
       {loading && !data && (
         <div className="flex justify-center py-10"><DiverLoader label="載入中…" size={90} /></div>
+      )}
+
+      {data && groups.length === 0 && (
+        <div className="rounded-xl border px-3 py-6 text-center text-xs" style={{ borderColor: "rgba(0,0,0,0.08)", color: "var(--muted-foreground)" }}>
+          目前沒有排定的日潛場次
+        </div>
       )}
 
       {data && (
