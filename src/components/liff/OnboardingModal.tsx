@@ -14,6 +14,7 @@ interface OnboardingModalProps {
   /** 完成後呼叫，父元件可重新 fetch /api/me 確認狀態 */
   onComplete: () => void;
   defaultRealName?: string;
+  defaultNickname?: string; // v1010：暱稱(必填,教練好稱呼)
   defaultPhone?: string;
   defaultEmail?: string;
 }
@@ -22,11 +23,13 @@ export function OnboardingModal({
   open,
   onComplete,
   defaultRealName,
+  defaultNickname,
   defaultPhone,
   defaultEmail,
 }: OnboardingModalProps) {
   const liff = useLiff();
   const [realName, setRealName] = useState(defaultRealName ?? "");
+  const [nickname, setNickname] = useState(defaultNickname ?? ""); // v1010
   const [phone, setPhone] = useState(defaultPhone ?? "");
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [submitting, setSubmitting] = useState(false);
@@ -34,6 +37,7 @@ export function OnboardingModal({
 
   const isValid =
     realName.trim().length >= 2 &&
+    nickname.trim().length >= 1 && // v1010：暱稱必填
     /^[0-9+\-\s]{8,}$/.test(phone.trim()) &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -47,6 +51,7 @@ export function OnboardingModal({
         method: "PATCH",
         body: JSON.stringify({
           realName: realName.trim(),
+          nickname: nickname.trim(), // v1010
           phone: phone.trim(),
           email: email.trim(),
           markOnboardingComplete: true,
@@ -101,6 +106,20 @@ export function OnboardingModal({
               onChange={(e) => setRealName(e.target.value)}
               placeholder="王小明"
               maxLength={50}
+            />
+          </div>
+
+          {/* v1010：暱稱必填——教練現場好稱呼、比較親切 */}
+          <div>
+            <Label htmlFor="ob-nickname">
+              <span className="text-rose-600">＊</span>暱稱（教練好稱呼你，例：阿明、Amy）
+            </Label>
+            <Input
+              id="ob-nickname"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="阿明"
+              maxLength={64}
             />
           </div>
 

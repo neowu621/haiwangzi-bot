@@ -98,6 +98,26 @@ export default function CoachTodayPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   // v776：老闆(boss/admin/it)才可現場收現結清；教練/助教只標到場
   const [canRecordPayment, setCanRecordPayment] = useState(false);
+  // v1010：LINE 推播中（防重複點）
+  const [pushingLine, setPushingLine] = useState<string | null>(null);
+
+  // v1010：透過官方帳號推播 LINE 訊息給客人
+  async function pushLine(b: CoachTripBooking) {
+    const msg = window.prompt(`傳 LINE 給 ${b.name}（官方帳號發送，客人回覆會進客服信箱）：`, "");
+    if (!msg || !msg.trim()) return;
+    setPushingLine(b.id);
+    try {
+      await liff.fetchWithAuth(`/api/coach/bookings/${b.id}/push-line`, {
+        method: "POST",
+        body: JSON.stringify({ message: msg.trim() }),
+      });
+      alert("✓ 已透過官方帳號發送");
+    } catch (e) {
+      alert("發送失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setPushingLine(null);
+    }
+  }
 
   async function reload() {
     setLoading(true);
@@ -354,14 +374,25 @@ export default function CoachTodayPage() {
                           ) : (
                             <Badge variant="default">已收</Badge>
                           )}
-                          {b.phone && (
-                            <a
-                              href={`tel:${b.phone}`}
-                              className="mt-1 inline-flex items-center gap-1 text-[10px] underline"
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            {b.phone && (
+                              <a
+                                href={`tel:${b.phone}`}
+                                className="inline-flex items-center gap-1 text-[10px] underline"
+                              >
+                                <Phone className="h-3 w-3" /> 打給
+                              </a>
+                            )}
+                            {/* v1010：官方帳號推播 LINE 訊息給客人（個人 LINE 無法用 userId 開聊，走 OA；回覆進客服信箱） */}
+                            <button
+                              type="button"
+                              onClick={() => pushLine(b)}
+                              disabled={pushingLine === b.id}
+                              className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#06C755] underline disabled:opacity-50"
                             >
-                              <Phone className="h-3 w-3" /> 打給
-                            </a>
-                          )}
+                              💬 {pushingLine === b.id ? "…" : "LINE"}
+                            </button>
+                          </div>
                         </div>
                       </div>
 

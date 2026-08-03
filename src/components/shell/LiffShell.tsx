@@ -170,6 +170,7 @@ export function LiffShell({
   // v311：onboarding gate — 未完成 onboarding → 強制顯示 OnboardingModal
   type MeShape = {
     realName: string | null;
+    nickname?: string | null; // v1010
     phone: string | null;
     email: string | null;
     onboardingCompletedAt: string | null;
@@ -314,6 +315,7 @@ export function LiffShell({
         <OnboardingModal
           open
           defaultRealName={me?.realName ?? undefined}
+          defaultNickname={me?.nickname ?? undefined}
           defaultPhone={me?.phone ?? undefined}
           defaultEmail={me?.email ?? undefined}
           onComplete={() => {
