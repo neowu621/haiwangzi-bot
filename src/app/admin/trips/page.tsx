@@ -1151,6 +1151,11 @@ export default function AdminTripsPage() {
       fb.push("");
       fb.push("📱 手機點連結，用 LINE 直接預約（可累積潛水送抵用金）");
       fb.push(`👉 ${baseUrl}/d`);
+      // v998：聯繫方式 —— 站內訊息 + LINE
+      fb.push("");
+      fb.push("🔗 有潛水問題歡迎聯繫汪汪：");
+      fb.push(`站內訊息 ${liffAppUrl("/messages")}`);
+      fb.push(`LINE ${supportLine}`);
       // v895：hashtag 由後台 Dump 設定控制（清空 = 不放）
       if (dumpFbTags.trim()) {
         fb.push("");
