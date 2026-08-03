@@ -8,6 +8,7 @@ import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { logMessage } from "@/lib/message-log"; // v474：試送也記入發送紀錄
 import {
   MSG_SAMPLE_PARAMS,
+  MSG_EDITABLE_FIELDS,
   composeFullBody,
   composeEmail,
   msgField,
@@ -84,9 +85,26 @@ export async function POST(req: NextRequest) {
         ? (typeof params.reviewUrl === "string" && params.reviewUrl ? params.reviewUrl : "https://maps.app.goo.gl/L58ukZuJroo5vbjv5")
         : resolveLinkUrl(params));
     const icon = FLEX_TEMPLATE_META[key as keyof typeof FLEX_TEMPLATE_META]?.icon ?? null;
+    // v994：與正式發送一致 —— 按鈕文字用模板「按鈕文字」+ 第二顆按鈕（到場確認「有需要改善?告訴我們」）
+    const hasBtnField = (MSG_EDITABLE_FIELDS[key] ?? []).some((f) => f.key === "buttonLabel");
+    const rawBtn = hasBtnField ? msgField(key, "buttonLabel", override).trim() : "";
+    const suppressBtn = hasBtnField && rawBtn === "";
+    const inAppLink = suppressBtn ? null : linkUrl;
+    let link2: string | null = null;
+    let btn2: string | null = null;
+    const rawBtn2 = msgField(key, "button2Label", override).trim();
+    if (key === "attendance_confirmed" && rawBtn2) {
+      const sess = typeof params.bookingTitle === "string" ? params.bookingTitle : "";
+      link2 = `/liff/messages?fb=1&s=${encodeURIComponent(sess)}`;
+      btn2 = rawBtn2;
+    }
     try {
       await prisma.notification.create({
-        data: { userId: auth.user.lineUserId, templateKey: key, title: `（測試）${title}`, body, linkUrl, icon },
+        data: {
+          userId: auth.user.lineUserId, templateKey: key, title: `（測試）${title}`, body,
+          linkUrl: inAppLink, buttonLabel: inAppLink ? rawBtn || null : null,
+          linkUrl2: link2, buttonLabel2: btn2, icon,
+        },
       });
       logMessage({ channel: "inapp", templateKey: key, recipientId: auth.user.lineUserId, recipient: "（試送到我）", title: `（測試）${title}`, status: "sent", source: "test" });
       return NextResponse.json({ ok: true, channel: "inApp", sentTo: auth.user.lineUserId });
