@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 // v700：個人中心改 m2 風格 — 主清單只載入一次 /api/me;子頁點進去才呈現(個人資訊/證照/通知用已載資料即時開啟,
 //   抵用金明細才另外即時讀 /api/me/credits)→ 減少讀取次數。移除「預約紀錄/潛水紀錄」。
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User, School, Bell, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { User, School, SlidersHorizontal, LifeBuoy, ArrowLeft, ChevronRight, MessageCircle } from "lucide-react";
 import { LiffShell } from "@/components/shell/LiffShell";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { BottomNav } from "@/components/shell/BottomNav";
@@ -19,7 +19,7 @@ type Cert = (typeof CERTS)[number];
 interface Companion { id?: string; name: string; nickname?: string | null; phone: string; cert: Cert | null; certNumber: string; logCount: number; relationship: string; weightBelt?: number | null }
 interface Me {
   displayName: string; realName: string | null; nickname?: string | null; phone: string | null; email: string | null; emailVerifiedAt?: string | null;
-  notifyByLine: boolean; notifyByEmail: boolean; cert: Cert | null; certNumber: string | null; logCount: number; weightBelt?: number | null;
+  cert: Cert | null; certNumber: string | null; logCount: number; weightBelt?: number | null;
   haiwangziLogCount: number; roles?: string[]; role?: string; vipLevel: number; birthday: string | null;
   creditBalance: number; emergencyContact: { name: string; phone: string; relationship: string } | null;
   companions: Companion[]; stats: { totalBookings: number; completed: number };
@@ -43,7 +43,7 @@ function SubHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, fontWeight: 600, border: "none", background: "none", color: C.ink, padding: "0 0 12px" }}><ArrowLeft size={17} color={C.accFg} />{title}</button>;
 }
 
-type View = null | "info" | "certs" | "notif" | "credits";
+type View = null | "info" | "certs" | "credits";
 
 export default function ProfilePage() {
   const liff = useLiff();
@@ -55,7 +55,6 @@ export default function ProfilePage() {
   const [realName, setRealName] = useState(""); const [phone, setPhone] = useState(""); const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState(""); // v1006：暱稱
   const [emailVerifiedAt, setEmailVerifiedAt] = useState<string | null>(null);
-  const [notifyByLine, setNotifyByLine] = useState(true); const [notifyByEmail, setNotifyByEmail] = useState(true);
   const [cert, setCert] = useState<Cert | "">(""); const [certNumber, setCertNumber] = useState(""); const [logCount, setLogCount] = useState("");
   const [weightBelt, setWeightBelt] = useState(""); // v983：慣用配重(kg)
   const [birthday, setBirthday] = useState(""); const [birthdayLocked, setBirthdayLocked] = useState(false);
@@ -87,7 +86,6 @@ export default function ProfilePage() {
     setRealName(u.realName ?? ""); setPhone(formatPhoneTW(u.phone ?? "")); setEmail(u.email ?? "");
     setNickname(u.nickname ?? ""); // v1006
     setEmailVerifiedAt(u.emailVerifiedAt ? String(u.emailVerifiedAt) : null);
-    setNotifyByLine(u.notifyByLine ?? true); setNotifyByEmail(u.notifyByEmail ?? true);
     setCert(u.cert ?? ""); setCertNumber(u.certNumber ?? ""); setLogCount(String(u.logCount ?? 0));
     setWeightBelt(u.weightBelt != null ? String(u.weightBelt) : ""); // v983：帶入配重
     setBirthday(u.birthday ? String(u.birthday).slice(0, 10) : ""); setBirthdayLocked(!!u.birthday);
@@ -108,7 +106,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           realName: realName || null, nickname: nickname.trim() || null, phone: phone || null, email: email.trim() || null,
-          notifyByLine, notifyByEmail, cert: cert || null, certNumber: certNumber || null,
+          cert: cert || null, certNumber: certNumber || null,
           logCount: Number(logCount) || 0, weightBelt: weightBelt.trim() ? Number(weightBelt) : null, // v983：配重
           birthday: birthday || null,
           emergencyContact: eName && ePhone ? { name: eName, phone: ePhone, relationship: eRel || "其他" } : null,
@@ -192,20 +190,7 @@ export default function ProfilePage() {
       {saveBtn({ companions })}
     </>
   );
-  if (view === "notif") return frame(
-    <>
-      <SubHeader title="通知偏好" onBack={() => setView(null)} />
-      <BCard title="通知偏好" sub="選擇用哪些管道接收預約確認、行前提醒與重要通知">
-        {([["line", "LINE 通知", "透過官方帳號推播（最即時）", notifyByLine, setNotifyByLine], ["email", "Email 通知", "寄到你的信箱（需先驗證 Email）", notifyByEmail, setNotifyByEmail]] as const).map(([k, t, s, on, setOn]) => (
-          <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderBottom: `0.5px solid ${C.line}` }}>
-            <span style={{ flex: 1 }}><span style={{ fontSize: 14, display: "block" }}>{t}</span><span style={{ fontSize: 11.5, color: C.mute }}>{s}</span></span>
-            <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} style={{ width: 20, height: 20 }} />
-          </label>
-        ))}
-      </BCard>
-      {saveBtn()}
-    </>
-  );
+  // v1018：移除「通知偏好」——通知管道(LINE/Email/站內)一律開放，不再讓客戶關閉
   if (view === "credits") return frame(<CreditsView onBack={() => setView(null)} liff={liff} balance={me.creditBalance ?? 0} />);
 
   // ===== 主清單 =====
@@ -274,7 +259,6 @@ export default function ProfilePage() {
       <Sect t="帳戶" />
       <LRow Icon={User} label="個人資訊" right={me.phone ?? ""} onClick={() => setView("info")} />
       <LRow Icon={School} label="證照 / 潛伴" right={me.cert ?? "未填"} onClick={() => setView("certs")} />
-      <LRow Icon={Bell} label="通知偏好" onClick={() => setView("notif")} />
       <Sect t="訊息" />
       {/* v709：站內訊息已移到底部分頁；這裡第一層只留「聯絡客服」 */}
       <Link href="/liff/messages" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>

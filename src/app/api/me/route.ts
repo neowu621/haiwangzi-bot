@@ -164,8 +164,7 @@ const PatchSchema = z.object({
     .nullable()
     .optional()
     .or(z.literal("")),
-  notifyByLine: z.boolean().optional(),
-  notifyByEmail: z.boolean().optional(),
+  // v1018：通知管道(LINE/Email/站內)一律開放，不再接受客戶端關閉
   // 生日 — YYYY-MM-DD 字串；空字串 = 清空
   birthday: z.string().nullable().optional(),
   cert: z.enum(["OW", "AOW", "Rescue", "DM", "Instructor"]).nullable().optional(),
