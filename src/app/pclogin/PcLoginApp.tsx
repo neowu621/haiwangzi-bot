@@ -523,7 +523,8 @@ function PcDisabledScreen() {
       background: `radial-gradient(120% 90% at 28% 18%, #1d5a6b 0%, #103a4d 42%, #0a2733 100%)`,
       fontFamily: "'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif",
     }}>
-      <div style={{ width: "100%", maxWidth: 560, background: "#fff", borderRadius: 26, padding: "clamp(28px,5vw,46px)", boxShadow: "0 30px 80px rgba(0,0,0,.35)", textAlign: "center" }}>
+      {/* v1011：加寬讓步驟文字一行放得下 */}
+      <div style={{ width: "100%", maxWidth: 700, background: "#fff", borderRadius: 26, padding: "clamp(28px,5vw,46px)", boxShadow: "0 30px 80px rgba(0,0,0,.35)", textAlign: "center" }}>
         {/* 品牌 */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 22 }}>
           <BrandMark size={54} badge radius={15} style={{ boxShadow: "0 6px 16px rgba(10,35,66,.18)" }} />
@@ -555,7 +556,8 @@ function PcDisabledScreen() {
               <div style={{ fontSize: 11.5, color: C.mute, marginTop: 8, fontWeight: 700 }}>掃描加入 LINE</div>
             </div>
           )}
-          <ol style={{ textAlign: "left", margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12, maxWidth: 280 }}>
+          {/* v1011：放寬(280→420)讓每個步驟文字維持一行 */}
+          <ol style={{ textAlign: "left", margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12, maxWidth: 420 }}>
             {steps.map((s, i) => (
               <li key={i} style={{ display: "flex", gap: 11, alignItems: "flex-start", fontSize: 13.5, color: C.ink, lineHeight: 1.6 }}>
                 <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.deep, color: "#fff", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 900, flex: "none" }}>{i + 1}</span>
