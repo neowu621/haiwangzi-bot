@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機簡版後台「抵用金管理」（/admin/m/credits）
 //   v674：改「打開不查、輸入關鍵字才查」—— 走伺服器端搜尋 /api/admin/users?q=（只回符合的、限 60 筆），
 //         省流量/加速，避免一打開就抓全部會員。找到會員後展開卡片發放/調整抵用金。
@@ -125,7 +125,7 @@ export default function MobileCreditsPage() {
   );
 
   return (
-    <MobileAdminShell title="抵用金管理" back="/admin/m">
+    <MobileAdminShell title="抵用金管理" back="/liff/profile">
       {/* 搜尋框 */}
       <div
         className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2"

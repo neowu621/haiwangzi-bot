@@ -232,7 +232,7 @@ export default function AdminGuidePage() {
           ]} />
           <div className="mt-2 text-xs font-bold" style={{ color: "#60a5fa" }}>📱 後台手機 /admin/m（8 大卡）</div>
           <PageRef items={[
-            ["/admin/m", "手機後台首頁(8 卡 + 訪客數)"],
+            ["/liff/profile", "手機管理入口（個人中心 → 管理）"],
             ["/admin/m/tonight", "老闆結帳"],
             ["/admin/m/bookings", "訂單"],
             ["/admin/m/dive-wishes", "願望單"],

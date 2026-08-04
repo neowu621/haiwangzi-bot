@@ -132,7 +132,7 @@ export default function MobileTonightPage() {
   };
 
   return (
-    <MobileAdminShell title="老闆結帳" back="/admin/m">
+    <MobileAdminShell title="老闆結帳" back="/liff/profile">
       {error && (
         <div className="mb-3 rounded-lg px-3 py-2 text-xs" style={{ background: "rgba(255,107,107,0.12)", color: "var(--color-coral)" }}>
           載入失敗：{error}

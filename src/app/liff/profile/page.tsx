@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // v700：個人中心改 m2 風格 — 主清單只載入一次 /api/me;子頁點進去才呈現(個人資訊/證照/通知用已載資料即時開啟,
 //   抵用金明細才另外即時讀 /api/me/credits)→ 減少讀取次數。移除「預約紀錄/潛水紀錄」。
 import { useEffect, useState } from "react";
@@ -240,7 +240,6 @@ export default function ProfilePage() {
     { emoji: "⛴️", label: "潛水旅行", path: "/admin/m/tours" },
     { emoji: "⭐", label: "抵用金管理", path: "/admin/m/credits" },
     { emoji: "📋", label: "Dump 潛水資訊", path: "/admin/m/dump" }, // v1002：產生 LINE/FB 貼文
-    { emoji: "🛠️", label: "完整後台", path: "/admin/m" },
   ];
   const stats: Array<[string, string]> = [
     [String(me.haiwangziLogCount ?? 0), "海王子潛次"], [String(me.creditBalance ?? 0), "抵用金"],
@@ -286,7 +285,7 @@ export default function ProfilePage() {
       {isStaff && (<>
         <Sect t="管理" />
         <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
-          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>現場報到 · 教練到場點名</span>
+          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>今明場次資訊</span>
           {adminTodo && adminTodo.attendance > 0 ? (
             <span style={{ background: "#e5484d", color: "#fff", fontSize: 11, fontWeight: 800, minWidth: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{adminTodo.attendance}</span>
           ) : null}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // v678：手機版「到場點名」（/admin/m/attendance）—— 與桌機 /admin/attendance 區隔，手機不導去桌機介面。
 //   走同一支 GET /api/admin/attendance/today；點名沿用 POST /api/coach/bookings/[id]/attendance。
 import { useCallback, useEffect, useState } from "react";
@@ -124,7 +124,7 @@ export default function MobileAttendancePage() {
   );
 
   return (
-    <MobileAdminShell title="到場點名" back="/admin/m">
+    <MobileAdminShell title="到場點名" back="/liff/profile">
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
           今日（{date || "—"}）{totalPending > 0 ? `・還有 ${totalPending} 位待點` : ""}

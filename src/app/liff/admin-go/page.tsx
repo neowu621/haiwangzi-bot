@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // v859：LIFF →後台「可連結」橋接頁 —— /liff/admin-go?to=/admin/m/tonight
 //
 // 為什麼需要：站內通知的「前往查看」是一般連結，直接連 /admin/* 會因為
@@ -15,7 +15,7 @@ import { useLiff } from "@/lib/liff/LiffProvider";
 import { LiffLoading } from "@/components/shell/LiffLoading";
 import { setAdminToken, setAdminUser, type AdminWebUser } from "@/lib/admin-web-auth";
 
-const FALLBACK = "/admin/m";
+const FALLBACK = "/liff/profile"; // v1016：手機後台首頁已移除
 
 // 只允許站內後台路徑（擋開放導向：//evil.com、http://…）
 function safeTarget(raw: string | null): string {

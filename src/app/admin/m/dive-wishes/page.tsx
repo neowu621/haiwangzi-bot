@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機簡版後台「願望單」（/admin/m/dive-wishes）
 //   狀態 chips（待回覆/討論中/已開場次/已取消/全部，預設待回覆）+ 願望單卡片列表。
 //   走桌機同支 /api/admin/dive-wishes?status=xxx（回 wishes + counts），take 200，前端再 cap 50 顯示。
@@ -146,7 +146,7 @@ export default function MobileDiveWishesPage() {
   }
 
   return (
-    <MobileAdminShell title="願望單" back="/admin/m">
+    <MobileAdminShell title="願望單" back="/liff/profile">
       {/* 狀態 chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {STATUS_CHIPS.map((c) => {

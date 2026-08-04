@@ -203,7 +203,7 @@ export default function CoachTodayPage() {
   );
 
   return (
-    <LiffShell title="現場報到 · 點名（昨天～後天）" backHref="/liff/welcome">
+    <LiffShell title="今明場次資訊（昨天～後天）" backHref="/liff/profile">
       <div className="px-4 pt-4">
         {err && (
           <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // v1001：手機版後台「Dump 潛水資訊」—— 產生 LINE 筆記本 / FB 貼文，可編輯 + 一鍵複製。
 //   文字邏輯與桌機共用 @/lib/dump-text。
 import { useEffect, useMemo, useState } from "react";
@@ -73,7 +73,7 @@ export default function MobileDumpPage() {
   }
 
   return (
-    <MobileAdminShell title="Dump 潛水資訊" back="/admin/m">
+    <MobileAdminShell title="Dump 潛水資訊" back="/liff/profile">
       <div className="space-y-3">
         <p className="text-[12px] text-[var(--muted-foreground)] leading-relaxed">
           產生「日潛場次＋潛旅」貼文，可直接編輯後一鍵複製，貼到 LINE 筆記本或 FB。預設今天起 365 天（全部）。

@@ -123,7 +123,7 @@ export default function MobileUsersPage() {
   }
 
   return (
-    <MobileAdminShell title="會員查詢" back="/admin/m">
+    <MobileAdminShell title="會員查詢" back="/liff/profile">
       <div className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2" style={{ borderColor: "rgba(0,0,0,0.1)", background: "var(--card, #fff)" }}>
         <Search className="h-4 w-4 flex-shrink-0" style={{ color: "var(--muted-foreground)" }} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="輸入姓名 / 電話 / 會員編號查詢" className="min-w-0 flex-1 bg-transparent text-sm outline-none" inputMode="search" autoFocus />

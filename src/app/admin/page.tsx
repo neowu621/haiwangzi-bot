@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 /**
  * v197：總覽 Dashboard — 老闆視角重構
  * 上層：需要您處理（pending actions）+ 今/明天場次（含客戶名單）
@@ -125,7 +125,8 @@ export default function AdminDashboard() {
     try {
       const isMobile = window.matchMedia("(max-width: 820px)").matches;
       const forceDesktop = new URLSearchParams(window.location.search).get("desktop") === "1";
-      if (isMobile && !forceDesktop) { setMRedirect(true); router.replace("/admin/m"); }
+      // v1016：手機後台首頁已移除 → 導回個人中心「管理」
+      if (isMobile && !forceDesktop) { setMRedirect(true); router.replace("/liff/profile"); }
     } catch { /* ignore */ }
   }, [router]);
   const [stats, setStats] = useState<Stats | null>(() => getCached<Stats>(STATS_URL) ?? null);

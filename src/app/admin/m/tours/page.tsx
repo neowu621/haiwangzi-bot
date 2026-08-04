@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機簡版後台「潛水旅行」（/admin/m/tours）—— 快速看「團況」用。
 //   清單輕量載入 /api/admin/tours（只用清單欄位，不上來就抓每團報名）。
 //   每張卡：團名・日期區間・狀態徽章・已報/可接受人數。預設「即將出發」優先(依出發日 asc)。
@@ -159,7 +159,7 @@ export default function MobileToursPage() {
   }
 
   return (
-    <MobileAdminShell title="潛水旅行" back="/admin/m">
+    <MobileAdminShell title="潛水旅行" back="/liff/profile">
       {/* 狀態 chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {CHIPS.map((c) => {

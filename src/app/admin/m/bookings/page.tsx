@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機簡版後台「訂單快查」（/admin/m/bookings）
 //   頂部搜尋框 + 狀態 chips + 列表（滑到底載更多，一次 20）。
 //   走輕量 /api/admin/m/bookings（q/status/limit/cursor），每筆只回必要欄位。
@@ -116,7 +116,7 @@ export default function MobileBookingsPage() {
   }, [loadMore]);
 
   return (
-    <MobileAdminShell title="訂單管理" back="/admin/m">
+    <MobileAdminShell title="訂單管理" back="/liff/profile">
       {/* 搜尋框 */}
       <div
         className="mb-2 flex items-center gap-2 rounded-xl border px-3 py-2"

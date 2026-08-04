@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機簡版後台「今明場次」（/admin/m/trips）
 //   只載今明兩天日潛場次（輕量 /api/admin/m/trips），依今天/明天分組。
 //   每場一列：時間・潛點・X 人・教練；點列展開客戶姓名清單（預設收合）。
@@ -86,7 +86,7 @@ export default function MobileTripsPage() {
     : [];
 
   return (
-    <MobileAdminShell title="日潛場次" back="/admin/m">
+    <MobileAdminShell title="日潛場次" back="/liff/profile">
 
       {error && (
         <div

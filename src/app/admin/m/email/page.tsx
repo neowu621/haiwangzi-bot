@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機簡版後台「客服信箱」（/admin/m/email）— Email + LINE 統一收件匣。
 //   兩段式（手機把桌機三欄折成兩段）：
 //     ① 列表：對話卡（來源 chip ✉️/💬、姓名/主旨、最後一句摘要、時間、狀態）。
@@ -210,7 +210,7 @@ export default function MobileEmailPage() {
   if (openId) {
     const isLine = detail?.channel === "line";
     return (
-      <MobileAdminShell title="客服信箱" back="/admin/m">
+      <MobileAdminShell title="客服信箱" back="/liff/profile">
         <div className="flex flex-col" style={{ minHeight: "calc(100vh - 120px)" }}>
           {/* 回列表（in-page，與外殼的『首頁』分開） */}
           <button
@@ -385,7 +385,7 @@ export default function MobileEmailPage() {
 
   // ───────── 列表視圖 ─────────
   return (
-    <MobileAdminShell title="客服信箱" back="/admin/m">
+    <MobileAdminShell title="客服信箱" back="/liff/profile">
       {/* 狀態 chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {STATUS_CHIPS.map((c) => {
