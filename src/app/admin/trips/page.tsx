@@ -139,12 +139,13 @@ interface AdminBookingMini {
   status: string;
   paymentStatus: string;
   paymentMethod?: string;
-  user: { displayName: string; realName: string | null; phone: string | null };
+  user: { displayName: string; realName: string | null; nickname?: string | null; phone: string | null };
 }
 interface TripBookingRow {
   id: string;
   code?: string | null;
   userName: string;
+  userNick: string | null; // v1015：暱稱（無 → 顯示 ?）
   phone: string | null;
   participants: number;
   tankCount: number | null; // v708：客戶實際選的潛次（每人）；舊單 null → fallback 場次預設
@@ -314,6 +315,7 @@ export default function AdminTripsPage() {
         id: b.id,
         code: b.code,
         userName: b.user.realName ?? b.user.displayName,
+        userNick: b.user.nickname ?? null, // v1015
         phone: b.user.phone,
         participants: b.participants,
         tankCount: b.tankCount ?? null, // v708：帶出訂單實際潛次
@@ -1463,7 +1465,7 @@ export default function AdminTripsPage() {
                                   <thead>
                                     <tr className="text-left" style={{ color: "#2a5580" }}>
                                       <th className="px-2 py-1.5 font-semibold">訂單編號</th>
-                                      <th className="px-2 py-1.5 font-semibold">姓名</th>
+                                      <th className="px-2 py-1.5 font-semibold">暱稱（姓名）</th>
                                       <th className="px-2 py-1.5 font-semibold">電話</th>
                                       <th className="px-2 py-1.5 font-semibold text-right">人數</th>
                                       <th className="px-2 py-1.5 font-semibold text-right">氣瓶</th>
@@ -1493,7 +1495,11 @@ export default function AdminTripsPage() {
                                             <span className="inline-block rounded bg-teal-50 px-1 py-0.5 font-mono text-[10px] text-teal-800">{b.code}</span>
                                           ) : "—"}
                                         </td>
-                                        <td className="px-2 py-1 font-semibold whitespace-nowrap" style={{ color: "#1a4a70" }}>{b.userName}</td>
+                                        {/* v1015：暱稱在前(紫色,無→?)、姓名在後 */}
+                                        <td className="px-2 py-1 font-semibold whitespace-nowrap" style={{ color: "#1a4a70" }}>
+                                          <span style={{ color: "#7c3aed", fontWeight: 800 }}>{b.userNick ?? "?"}</span>
+                                          <span className="ml-0.5">（{b.userName}）</span>
+                                        </td>
                                         <td className="px-2 py-1 tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">{b.phone ?? "—"}</td>
                                         <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">×{b.participants}</td>
                                         <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap text-[var(--muted-foreground)]">

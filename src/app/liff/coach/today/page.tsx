@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import {
   Clock,
@@ -328,10 +328,8 @@ export default function CoachTodayPage() {
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1 text-sm font-bold flex-wrap">
-                            {b.name}
-                            {selfNick && (
-                              <span className="text-xs font-semibold text-[var(--color-phosphor)]">「{selfNick}」</span>
-                            )}
+                            <span style={{ color: "#7c3aed", fontWeight: 800 }}>{selfNick?.trim() || "?"}</span>
+                            <span className="text-xs">（{b.name}）</span>
                             {b.cert && (
                               <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--foreground)]">
                                 <Award className="h-2.5 w-2.5" />
@@ -410,9 +408,7 @@ export default function CoachTodayPage() {
                               )}
                             >
                               <span className="font-semibold">{c.name}</span>
-                              {c.nickname && (
-                                <span className="ml-1 text-[10px] font-semibold text-[var(--color-phosphor)]">「{c.nickname}」</span>
-                              )}
+                              <span className="ml-1 text-[10px] font-bold" style={{ color: "#7c3aed" }}>（{c.nickname?.trim() || "?"}）</span>
                               {c.cert && (
                                 <span className="ml-1 text-[10px] opacity-70">
                                   ({c.cert})

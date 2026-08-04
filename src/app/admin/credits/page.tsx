@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 /**
  * v225：抵用金管理頁 — 完整 CRUD + 編碼 + 經辦人
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { memberName } from "@/lib/member-name"; // v1015
 import { getCached, cachedFetch } from "@/lib/admin-cache";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ interface CreditTx {
   actorName: string | null;
   expiresAt: string | null;
   createdAt: string;
-  user?: { displayName: string; realName: string | null; code: string | null };
+  user?: { displayName: string; realName: string | null; nickname?: string | null; code: string | null };
 }
 
 interface Stats {
@@ -585,7 +586,7 @@ export default function CreditsPage() {
                         <td className="px-3 py-1.5 whitespace-nowrap text-xs">
                           <button type="button" onClick={() => setHistUser({ userId: t.userId, name: t.user?.realName ?? t.user?.displayName ?? "會員" })}
                             className="font-semibold text-[var(--color-ocean-deep)] hover:underline">
-                            {t.user?.realName ?? t.user?.displayName ?? "—"}
+                            {memberName(t.user?.nickname, t.user?.realName ?? t.user?.displayName ?? "—")}
                           </button>
                           {t.user?.code && <span className="ml-1 text-[10px] text-[var(--muted-foreground)] font-mono">{t.user.code}</span>}
                         </td>

@@ -84,7 +84,7 @@ interface AdminBooking {
     note: string | null;
     createdAt: string;
   }>;
-  user: { displayName: string; realName: string | null; phone: string | null; email?: string | null; lineUserId: string; notes?: string | null };
+  user: { displayName: string; realName: string | null; nickname?: string | null; phone: string | null; email?: string | null; lineUserId: string; notes?: string | null };
   ref: {
     date?: string;
     startTime?: string;
@@ -1184,7 +1184,9 @@ export default function AdminBookingsPage() {
                               onClick={(e) => { e.stopPropagation(); setOpenCustomerId(b.user.lineUserId); }}
                               className="text-left text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
                             >
-                              {b.user.realName ?? b.user.displayName}
+                              {/* v1015：暱稱（姓名）—— 無暱稱顯示 ? */}
+                              <span style={{ color: "#7c3aed", fontWeight: 800 }}>{b.user.nickname?.trim() || "?"}</span>
+                              <span className="ml-0.5">（{b.user.realName ?? b.user.displayName}）</span>
                             </button>
                             {/* v837：客戶下單備註標記 — 一眼看出有特別需求（內容在「地點/行程」欄下方） */}
                             {b.notes && b.notes.trim() && (

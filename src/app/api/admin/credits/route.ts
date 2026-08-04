@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     take: limit,
     include: {
-      user: { select: { displayName: true, realName: true, code: true } },
+      user: { select: { displayName: true, realName: true, nickname: true, code: true } }, // v1015：+暱稱
     },
   });
 

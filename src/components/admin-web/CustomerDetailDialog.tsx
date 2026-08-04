@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 /**
  * v320：全站客戶名點擊 → 彈出此 modal
  *
@@ -25,6 +25,7 @@ interface CustomerData {
     lineUserId: string;
     displayName: string;
     realName: string | null;
+    nickname?: string | null; // v1015
     phone: string | null;
     email: string | null;
     emailVerifiedAt: string | null;
@@ -195,7 +196,7 @@ export function CustomerDetailDialog({
                   {(data.user.realName ?? data.user.displayName).slice(0, 1)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-base font-bold">{data.user.realName ?? data.user.displayName}</div>
+                  <div className="text-base font-bold"><span style={{ color: "#7c3aed", fontWeight: 800 }}>{data.user.nickname?.trim() || "?"}</span>（{data.user.realName ?? data.user.displayName}）</div>
                   <div className="text-[11px] text-[var(--muted-foreground)]">{data.user.displayName}</div>
                 </div>
                 <Badge variant="default" className="text-[10px]">{VIP_LABEL[data.user.vipLevel] ?? `LV${data.user.vipLevel}`}</Badge>

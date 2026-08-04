@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機後台「會員查詢」（/admin/m/users）— v736
 //   輸入關鍵字才查（/api/admin/users?q=）。點一筆 → 底部彈窗：聯繫方式(電話直撥 / LINE 傳訊息)
 //   + 進行中訂單(未結束/未取消，含已下訂未匯款)。訂單再點 → 訂單詳細彈窗(<OrderDetail>)。
@@ -7,6 +7,7 @@ import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
 import { getVipTier } from "@/lib/vip-tier";
+import { memberName } from "@/lib/member-name"; // v1015：暱稱（姓名）
 import { toTaipeiDateString } from "@/lib/utils";
 import { OrderDetail } from "@/components/admin-web/OrderDetail";
 import { Search, Phone, MessageCircle, X, ChevronRight } from "lucide-react";
@@ -147,7 +148,7 @@ export default function MobileUsersPage() {
 
       <div className="space-y-2">
         {users.map((u) => {
-          const name = u.realName ?? u.displayName;
+          const name = memberName((u as { nickname?: string | null }).nickname, u.realName ?? u.displayName); // v1015
           const tier = getVipTier(u.vipLevel);
           return (
             <button type="button" key={u.lineUserId} onClick={() => openMember(u.lineUserId)} className="block w-full rounded-xl border px-3 py-2.5 text-left active:scale-[0.99]" style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}>

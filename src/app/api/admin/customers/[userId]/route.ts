@@ -21,6 +21,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ userId: str
       lineUserId: true,
       displayName: true,
       realName: true,
+      nickname: true, // v1015
       phone: true,
       email: true,
       emailVerifiedAt: true,

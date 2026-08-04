@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 // 手機「老闆結帳」（/admin/m/tonight）— v734：老闆「現在要及時處理 / 知道」的四區待辦。
 //   1) 💰 已匯款·待你確認（payment_proof status=pending）— 要核可
 //   2) 🧾 已下訂·尚未付款（status=pending，未上傳證明）— 等客戶匯款，可催繳
@@ -10,6 +10,7 @@ import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
+import { memberName } from "@/lib/member-name"; // v1015：暱稱（姓名）
 import { OrderDetail } from "@/components/admin-web/OrderDetail";
 import { X } from "lucide-react";
 
@@ -26,7 +27,7 @@ interface ProofRow {
     activitySite?: string;
     notes?: string | null; // v843：客戶訂單備註
     priceBreakdown?: BossAdjPb | null; // v868：老闆帳務調整（共乘等）
-    user: { displayName: string; realName: string | null };
+    user: { displayName: string; realName: string | null; nickname?: string | null };
   };
 }
 
@@ -54,7 +55,7 @@ interface BookingRow {
   notes?: string | null; // v843：客戶訂單備註（老闆結帳列表一起顯示）
   priceBreakdown?: BossAdjPb | null; // v868：老闆帳務調整（共乘等）
   ref?: { date?: string; dateStart?: string; startTime?: string; sites?: string[]; title?: string };
-  user?: { displayName: string; realName: string | null };
+  user?: { displayName: string; realName: string | null; nickname?: string | null };
 }
 interface BookingsResp { bookings: BookingRow[] }
 
@@ -64,7 +65,7 @@ interface WishRow {
   preferredDate: string;
   participants: number;
   customerNote: string | null;
-  user: { displayName: string; realName: string | null };
+  user: { displayName: string; realName: string | null; nickname?: string | null };
 }
 interface WishesResp { wishes: WishRow[] }
 
@@ -146,7 +147,7 @@ export default function MobileTonightPage() {
           proofs.map((p) => (
             <Card key={p.id} onClick={() => setOpenId(p.bookingId)}>
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-bold">{p.booking.user.realName ?? p.booking.user.displayName}</span>
+                <span className="truncate text-sm font-bold">{memberName(p.booking.user.nickname, p.booking.user.realName ?? p.booking.user.displayName)}</span>
                 <span className="flex-shrink-0 font-mono text-sm font-bold tabular-nums" style={{ color: "var(--color-coral)" }}>${p.amount.toLocaleString()}</span>
               </div>
               <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
@@ -170,7 +171,7 @@ export default function MobileTonightPage() {
           {pendingUnpaid.map((b) => (
             <Card key={b.id} onClick={() => setOpenId(b.id)}>
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-bold">{b.user?.realName ?? b.user?.displayName ?? "客戶"}</span>
+                <span className="truncate text-sm font-bold">{memberName(b.user?.nickname, b.user?.realName ?? b.user?.displayName ?? "客戶")}</span>
                 <span className="flex-shrink-0 font-mono text-sm font-bold tabular-nums" style={{ color: "var(--color-coral)" }}>${payable(b).toLocaleString()}</span>
               </div>
               <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
@@ -202,7 +203,7 @@ export default function MobileTonightPage() {
           {paidUpcoming.map((b) => (
             <Card key={b.id} onClick={() => setOpenId(b.id)}>
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-bold">{b.user?.realName ?? b.user?.displayName ?? "客戶"}</span>
+                <span className="truncate text-sm font-bold">{memberName(b.user?.nickname, b.user?.realName ?? b.user?.displayName ?? "客戶")}</span>
                 <span className="flex-shrink-0 font-mono text-sm tabular-nums" style={{ color: "var(--muted-foreground)" }}>${(b.totalAmount ?? 0).toLocaleString()}</span>
               </div>
               <div className="mt-0.5 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>

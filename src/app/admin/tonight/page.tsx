@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch } from "@/lib/admin-web-auth";
+import { memberName } from "@/lib/member-name"; // v1015：暱稱（姓名）
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun, Moon, ImageIcon, ImageOff } from "lucide-react";
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog"; // v320
@@ -53,7 +54,7 @@ interface ProofRow {
     rentalGear?: GearItem[];
     tankCount?: number | null;
     tripExtraTank?: number; tripBaseTrip?: number; tripIsBoat?: boolean; // v716
-    user: { displayName: string; realName: string | null; phone: string | null };
+    user: { displayName: string; realName: string | null; nickname?: string | null; phone: string | null };
   };
 }
 
@@ -73,7 +74,7 @@ interface BookingRow {
   creditUsed?: number;
   rentalGear?: GearItem[];
   tankCount?: number | null;
-  user: { displayName: string; realName: string | null; phone: string | null };
+  user: { displayName: string; realName: string | null; nickname?: string | null; phone: string | null };
   ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; tankCount?: number | null; extraTank?: number; baseTrip?: number; isBoat?: boolean };
   signatureImageUrl?: string | null;
 }
@@ -296,7 +297,7 @@ export default function TonightPage() {
               onClick={() => setOpenCustomerId(b.userId)}
               className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
             >
-              {b.user.realName ?? b.user.displayName}
+              {memberName(b.user.nickname, b.user.realName ?? b.user.displayName)}
             </button>
             <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
               {b.code ?? b.id.slice(0, 8)}
@@ -419,7 +420,7 @@ export default function TonightPage() {
                         onClick={() => setOpenCustomerId(b.userId)}
                         className="font-semibold underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
                       >
-                        {b.user.realName ?? b.user.displayName}
+                        {memberName(b.user.nickname, b.user.realName ?? b.user.displayName)}
                       </button>
                       {b.user.phone && <span className="text-[10px] text-[var(--muted-foreground)] tabular">📞 {b.user.phone}</span>}
                       <span className="text-[var(--muted-foreground)]">{refLabel}</span>
