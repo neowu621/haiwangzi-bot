@@ -51,6 +51,7 @@ interface AdminUser {
   code?: string | null;
   displayName: string;
   realName: string | null;
+  nickname?: string | null; // v1012：暱稱(教練好稱呼)
   phone: string | null;
   email: string | null;
   role: Role;
@@ -224,6 +225,7 @@ export default function AdminUsersPage() {
         const hay = [
           u.displayName,
           u.realName ?? "",
+          u.nickname ?? "", // v1012：暱稱可搜
           u.phone ?? "",
           u.email ?? "",
           u.certNumber ?? "",
@@ -384,6 +386,7 @@ export default function AdminUsersPage() {
             // v624：多重身分 — 傳完整 roles 陣列（boss/it 後端會擋 UI 變更）
             roles: editing.effectiveRoles ?? [editing.role],
             realName: editing.realName,
+            nickname: editing.nickname ?? null, // v1012
             phone: editing.phone,
             email: editing.email,
             cert: editing.cert,
@@ -743,6 +746,10 @@ export default function AdminUsersPage() {
                             className="text-left underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
                           >
                             {u.realName ?? u.displayName}
+                            {/* v1012：暱稱(教練好稱呼) */}
+                            {u.nickname && (
+                              <span className="ml-1 text-[11px] font-semibold text-[var(--color-phosphor)]">「{u.nickname}」</span>
+                            )}
                           </button>
                         </div>
                         {u.realName && (
@@ -953,6 +960,18 @@ export default function AdminUsersPage() {
                     setEditing({ ...editing, realName: e.target.value || null })
                   }
                   placeholder="例：王小明"
+                />
+              </div>
+
+              {/* v1012：暱稱(教練好稱呼) */}
+              <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                <Label className="text-xs">暱稱</Label>
+                <Input
+                  value={editing.nickname ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, nickname: e.target.value || null })
+                  }
+                  placeholder="例：阿明（教練好稱呼）"
                 />
               </div>
 

@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
   const searchCond = {
     OR: [
       { realName: { contains: q, mode: "insensitive" as const } },
+      { nickname: { contains: q, mode: "insensitive" as const } }, // v1012：暱稱可搜
       { displayName: { contains: q, mode: "insensitive" as const } },
       { phone: { contains: q } },
       { code: { contains: q, mode: "insensitive" as const } },
@@ -150,6 +151,7 @@ const PatchSchema = z.object({
   // 多重身分（推薦）；若帶這個會同步把 role 設為第一個元素以保持向後相容
   roles: z.array(z.enum(["customer", "coach", "boss", "admin", "assistant", "it"])).optional(),
   realName: z.string().nullable().optional(),
+  nickname: z.string().max(64).nullable().optional(), // v1012：暱稱
   phone: z.string().nullable().optional(),
   email: z
     .string()
@@ -242,6 +244,8 @@ export async function POST(req: NextRequest) {
   }
   if (data.realName !== undefined)
     patch.realName = data.realName === "" ? null : data.realName;
+  if (data.nickname !== undefined)
+    patch.nickname = data.nickname === "" ? null : data.nickname; // v1012
   if (data.phone !== undefined)
     patch.phone = data.phone === "" ? null : data.phone;
   if (data.email !== undefined)
