@@ -12,6 +12,23 @@ import { ChevronDown, ChevronRight, Users, MapPin } from "lucide-react";
 
 const URL = "/api/admin/m/trips";
 
+// v1017：參與者帶暱稱 + 該筆訂單內容（點名字開視窗）
+interface MParticipant {
+  name: string;
+  nickname: string | null;
+  bookingId: string;
+  bookingCode: string | null;
+  ordererName: string;
+  ordererNick: string | null;
+  phone: string | null;
+  people: number;
+  tankCount: number | null;
+  notes: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  paymentStatus: string;
+  status: string;
+}
 interface MTrip {
   id: string;
   date: string;
@@ -19,7 +36,7 @@ interface MTrip {
   sites: string[];
   people: number;
   coachName: string | null;
-  participants: string[];
+  participants: MParticipant[];
 }
 interface Resp {
   today: string;
@@ -33,6 +50,7 @@ export default function MobileTripsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [openP, setOpenP] = useState<MParticipant | null>(null); // v1017：訂單內容彈窗
 
   useEffect(() => {
     if (!ready) return;
@@ -170,14 +188,18 @@ export default function MobileTripsPage() {
                               </div>
                             ) : (
                               <div className="flex flex-wrap gap-1.5">
-                                {t.participants.map((name, i) => (
-                                  <span
+                                {/* v1017：暱稱（姓名）；點一下看該筆訂單內容 */}
+                                {t.participants.map((p, i) => (
+                                  <button
                                     key={i}
+                                    type="button"
+                                    onClick={() => setOpenP(p)}
                                     className="rounded-full px-2 py-0.5 text-[11px]"
                                     style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
                                   >
-                                    {name}
-                                  </span>
+                                    <span className="font-extrabold">{p.nickname?.trim() || "?"}</span>
+                                    <span>（{p.name}）</span>
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -190,6 +212,60 @@ export default function MobileTripsPage() {
               )}
             </section>
           ))}
+        </div>
+      )}
+
+      {/* v1017：點參與者 → 顯示該筆訂單內容（幾支 / 備註 / 金額 / 電話） */}
+      {openP && (
+        <div
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50"
+          onClick={(e) => { if (e.target === e.currentTarget) setOpenP(null); }}
+        >
+          <div className="w-full max-w-md rounded-t-2xl bg-white p-4 pb-6">
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-base font-bold">
+                  <span className="text-[#7c3aed]">{openP.nickname?.trim() || "?"}</span>
+                  <span>（{openP.name}）</span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
+                  訂單 {openP.bookingCode ?? openP.bookingId.slice(0, 8)}
+                  {openP.name !== openP.ordererName && `・訂購人 ${openP.ordererNick?.trim() || "?"}（${openP.ordererName}）`}
+                </div>
+              </div>
+              <button type="button" onClick={() => setOpenP(null)} className="px-1 text-xl leading-none text-[var(--muted-foreground)]">✕</button>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="rounded-lg bg-[var(--color-phosphor)]/15 px-3 py-2 font-bold text-[var(--color-ocean-deep)]">
+                🤿 潛水 {openP.tankCount ?? "—"} 支/人
+                {openP.people > 1 && `・共 ${openP.people} 人（${(openP.tankCount ?? 0) * openP.people} 支）`}
+              </div>
+
+              <div>
+                <div className="mb-1 text-[11px] font-bold text-[var(--muted-foreground)]">📝 備註</div>
+                <div className="whitespace-pre-wrap rounded-lg border px-3 py-2 text-[13px] leading-relaxed" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+                  {openP.notes?.trim() || "（無備註）"}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border px-3 py-2 text-[13px]" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+                <span className="text-[var(--muted-foreground)]">金額</span>
+                <span className="font-mono font-bold tabular-nums">
+                  已付 {openP.paidAmount.toLocaleString()} / {openP.totalAmount.toLocaleString()}
+                  {openP.totalAmount > openP.paidAmount && (
+                    <span className="ml-1 text-[var(--color-coral)]">未收 {(openP.totalAmount - openP.paidAmount).toLocaleString()}</span>
+                  )}
+                </span>
+              </div>
+
+              {openP.phone && (
+                <a href={`tel:${openP.phone}`} className="block rounded-lg bg-[var(--color-ocean-deep)] py-2.5 text-center font-bold text-white">
+                  📞 打給 {openP.phone}
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </MobileAdminShell>

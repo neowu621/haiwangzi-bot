@@ -12,6 +12,23 @@ export const dynamic = "force-dynamic";
 //   { id, date, startTime, sites:[名稱], people, coachName, participants:[姓名] }
 // participants 只給「展開看名單」用 → 只回姓名字串陣列（不回電話 / 證照 / 金額）。
 // 台北時區算今明（比照 stats/lite）。完整編輯請走 /admin/trips。
+// v1017：participants 改帶「暱稱（姓名）+ 訂單內容」，點名字可看該筆訂單
+type MParticipant = {
+  name: string;
+  nickname: string | null;
+  bookingId: string;
+  bookingCode: string | null;
+  ordererName: string; // 訂購人（本人）
+  ordererNick: string | null;
+  phone: string | null;
+  people: number; // 該訂單人數
+  tankCount: number | null; // 每人幾支
+  notes: string | null; // 訂單備註（含裝備尺寸/配重/付款說明）
+  totalAmount: number;
+  paidAmount: number;
+  paymentStatus: string;
+  status: string;
+};
 type MTrip = {
   id: string;
   date: string; // YYYY-MM-DD
@@ -19,7 +36,7 @@ type MTrip = {
   sites: string[];
   people: number;
   coachName: string | null;
-  participants: string[]; // 姓名清單
+  participants: MParticipant[];
 };
 
 const NOT_CANCELLED = ["cancelled_by_user", "cancelled_by_weather", "no_show"] as const;
@@ -58,10 +75,18 @@ export async function GET(req: NextRequest) {
     const bookings = await prisma.booking.findMany({
       where: { type: "daily", refId: { in: tripIds }, status: { notIn: [...NOT_CANCELLED] } },
       select: {
+        id: true,
+        code: true,
         refId: true,
         participants: true,
         participantDetails: true,
-        user: { select: { realName: true, displayName: true } },
+        tankCount: true,
+        notes: true,
+        totalAmount: true,
+        paidAmount: true,
+        paymentStatus: true,
+        status: true,
+        user: { select: { realName: true, displayName: true, nickname: true, phone: true } },
       },
     });
 
@@ -93,18 +118,42 @@ export async function GET(req: NextRequest) {
     const result: MTrip[] = trips.map((t) => {
       const bs = byTrip.get(t.id) ?? [];
       let people = 0;
-      const participants: string[] = [];
+      const participants: MParticipant[] = [];
       for (const b of bs) {
         people += b.participants ?? 0;
-        // participantDetails: [{ name, ... }]；缺名單就退回訂購者本人姓名
+        const ordererName = b.user.realName ?? b.user.displayName;
+        const base = {
+          bookingId: b.id,
+          bookingCode: b.code ?? null,
+          ordererName,
+          ordererNick: b.user.nickname ?? null,
+          phone: b.user.phone ?? null,
+          people: b.participants ?? 0,
+          tankCount: b.tankCount ?? null,
+          notes: b.notes ?? null,
+          totalAmount: b.totalAmount ?? 0,
+          paidAmount: b.paidAmount ?? 0,
+          paymentStatus: b.paymentStatus ?? "",
+          status: b.status ?? "",
+        };
+        // participantDetails: [{ name, nickname, isSelf... }]；缺名單就退回訂購者本人
         const details = Array.isArray(b.participantDetails) ? b.participantDetails : [];
-        const names = details
-          .map((d) => (d && typeof d === "object" ? (d as { name?: unknown }).name : null))
-          .filter((n): n is string => typeof n === "string" && n.trim().length > 0);
-        if (names.length > 0) {
-          participants.push(...names);
+        const rows = (details as unknown[])
+          .map((raw) => {
+            const d = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+            return {
+              name: typeof d.name === "string" ? d.name.trim() : "",
+              // 本人的暱稱以會員資料為準；潛伴用訂單當下填的
+              nickname: d.isSelf === true
+                ? (b.user.nickname ?? (typeof d.nickname === "string" ? d.nickname : null))
+                : (typeof d.nickname === "string" ? d.nickname : null),
+            };
+          })
+          .filter((r) => r.name.length > 0);
+        if (rows.length > 0) {
+          participants.push(...rows.map((r) => ({ ...base, name: r.name, nickname: r.nickname })));
         } else {
-          participants.push(b.user.realName ?? b.user.displayName);
+          participants.push({ ...base, name: ordererName, nickname: b.user.nickname ?? null });
         }
       }
       return {

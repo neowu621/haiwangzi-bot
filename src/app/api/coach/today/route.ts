@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
         select: {
           displayName: true,
           realName: true,
+          nickname: true, // v1017：暱稱（姓名）
           phone: true,
           cert: true,
           logCount: true,
@@ -73,9 +74,11 @@ export async function GET(req: NextRequest) {
         .map((b) => ({
           id: b.id,
           name: b.user.realName ?? b.user.displayName,
+          nickname: b.user.nickname, // v1017：暱稱
           phone: b.user.phone,
           cert: b.user.cert,
           logCount: b.user.logCount,
+          tankCount: b.tankCount, // v1017：這筆訂單要潛幾支（每人）
           rentalGear: b.rentalGear,
           totalAmount: b.totalAmount,
           paidAmount: b.paidAmount,

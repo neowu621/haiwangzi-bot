@@ -42,9 +42,11 @@ interface ParticipantDetail {
 interface CoachTripBooking {
   id: string;
   name: string;
+  nickname?: string | null; // v1017：暱稱（姓名）
   phone: string | null;
   cert: string | null;
   logCount: number;
+  tankCount?: number | null; // v1017：這筆訂單要潛幾支（每人）
   rentalGear: Array<{ itemType: string; price: number }>;
   totalAmount: number;
   paidAmount: number;
@@ -192,15 +194,6 @@ export default function CoachTodayPage() {
     }
   }
 
-  const totalUnpaid = trips.reduce(
-    (s, t) =>
-      s +
-      t.bookings.reduce(
-        (ss, b) => ss + Math.max(0, b.totalAmount - b.paidAmount),
-        0,
-      ),
-    0,
-  );
 
   return (
     <LiffShell title="今明場次資訊（昨天～後天）" backHref="/liff/profile">
@@ -214,24 +207,7 @@ export default function CoachTodayPage() {
           </Card>
         )}
 
-        {!err && (
-          <Card className="mb-3 bg-[var(--color-ocean-deep)] text-white">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <div className="text-xs opacity-70">昨天～後天總計</div>
-                <div className="text-2xl font-bold tabular">
-                  {trips.length} 場次 ·{" "}
-                  {trips.reduce((s, t) => s + t.bookings.length, 0)} 人
-                </div>
-              </div>
-              {totalUnpaid > 0 && (
-                <Badge variant="gold" className="tabular">
-                  未收 NT$ {totalUnpaid.toLocaleString()}
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {/* v1017：依老闆指示移除上方總計卡（場次/人數/未收） */}
 
         {/* v779：老闆專用 — 進「老闆結帳・待收款」處理過期/現場付款/已到場未付清（不限今天）*/}
         {!err && canRecordPayment && (
@@ -328,7 +304,8 @@ export default function CoachTodayPage() {
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1 text-sm font-bold flex-wrap">
-                            <span style={{ color: "#7c3aed", fontWeight: 800 }}>{selfNick?.trim() || "?"}</span>
+                            {/* v1017：暱稱優先取會員資料，其次訂單當下填的；都沒有顯示 ? */}
+                            <span style={{ color: "#7c3aed", fontWeight: 800 }}>{b.nickname?.trim() || selfNick?.trim() || "?"}</span>
                             <span className="text-xs">（{b.name}）</span>
                             {b.cert && (
                               <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--foreground)]">
@@ -357,6 +334,13 @@ export default function CoachTodayPage() {
                             {b.phone ?? "—"} · {b.logCount} logs
                             {selfWb ? <span className="ml-1 font-semibold text-[var(--color-ocean-deep)]">· 🏋️ 配重 {selfWb}kg</span> : null}
                           </div>
+                          {/* v1017：這筆要潛幾支（每人 × 人數） */}
+                          {(b.tankCount ?? t.tankCount) ? (
+                            <div className="mt-1 inline-flex items-center rounded-md bg-[var(--color-phosphor)]/20 px-2 py-0.5 text-[12px] font-bold text-[var(--color-ocean-deep)]">
+                              🤿 {b.tankCount ?? t.tankCount} 支/人
+                              {b.participants > 1 && `（共 ${(b.tankCount ?? t.tankCount ?? 0) * b.participants} 支）`}
+                            </div>
+                          ) : null}
                           {b.notes && (
                             <div className="mt-1 flex items-start gap-1 rounded bg-[var(--color-coral)]/15 px-1.5 py-0.5 text-[11px] text-[var(--color-coral)]">
                               <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" />
