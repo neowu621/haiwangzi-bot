@@ -671,7 +671,7 @@ export default function AdminUsersPage() {
                       className="cursor-pointer pl-2 pr-3 py-3 font-medium hover:text-[var(--foreground)]"
                       onClick={() => toggleSort("displayName")}
                     >
-                      姓名
+                      姓名（暱稱）
                       <SortIcon k="displayName" />
                     </th>
                     <th className="px-2 py-3 font-medium" style={{ width: "1%" }}>角色</th>
@@ -746,9 +746,9 @@ export default function AdminUsersPage() {
                             className="text-left underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
                           >
                             {u.realName ?? u.displayName}
-                            {/* v1012：暱稱(教練好稱呼) */}
+                            {/* v1012/v1013：暱稱(教練好稱呼)——紫色較清楚 */}
                             {u.nickname && (
-                              <span className="ml-1 text-[11px] font-semibold text-[var(--color-phosphor)]">「{u.nickname}」</span>
+                              <span className="ml-1 text-[11px] font-bold text-[#7c3aed]">（{u.nickname}）</span>
                             )}
                           </button>
                         </div>
