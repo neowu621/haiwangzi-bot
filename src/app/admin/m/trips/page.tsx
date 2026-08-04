@@ -9,6 +9,7 @@ import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth } from "@/lib/admin-web-auth";
 import { getCached, cachedFetch } from "@/lib/admin-cache";
 import { ChevronDown, ChevronRight, Users, MapPin } from "lucide-react";
+import { PAY_LABEL } from "@/lib/payment-methods"; // v1019：付款方式中文
 
 const URL = "/api/admin/m/trips";
 
@@ -27,6 +28,7 @@ interface MParticipant {
   totalAmount: number;
   paidAmount: number;
   paymentStatus: string;
+  paymentMethod: string | null; // v1019
   status: string;
 }
 interface MTrip {
@@ -256,6 +258,16 @@ export default function MobileTripsPage() {
                   {openP.totalAmount > openP.paidAmount && (
                     <span className="ml-1 text-[var(--color-coral)]">未收 {(openP.totalAmount - openP.paidAmount).toLocaleString()}</span>
                   )}
+                </span>
+              </div>
+
+              {/* v1019：客戶選的付款方式 */}
+              <div className="flex items-center justify-between rounded-lg border px-3 py-2 text-[13px]" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+                <span className="text-[var(--muted-foreground)]">付款方式</span>
+                <span className="font-bold">
+                  {openP.paymentMethod && PAY_LABEL[openP.paymentMethod as keyof typeof PAY_LABEL]
+                    ? PAY_LABEL[openP.paymentMethod as keyof typeof PAY_LABEL]
+                    : "—"}
                 </span>
               </div>
 

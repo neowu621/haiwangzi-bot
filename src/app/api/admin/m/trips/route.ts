@@ -27,6 +27,7 @@ type MParticipant = {
   totalAmount: number;
   paidAmount: number;
   paymentStatus: string;
+  paymentMethod: string | null; // v1019：客戶選的付款方式
   status: string;
 };
 type MTrip = {
@@ -85,6 +86,7 @@ export async function GET(req: NextRequest) {
         totalAmount: true,
         paidAmount: true,
         paymentStatus: true,
+        paymentMethod: true,
         status: true,
         user: { select: { realName: true, displayName: true, nickname: true, phone: true } },
       },
@@ -134,6 +136,7 @@ export async function GET(req: NextRequest) {
           totalAmount: b.totalAmount ?? 0,
           paidAmount: b.paidAmount ?? 0,
           paymentStatus: b.paymentStatus ?? "",
+          paymentMethod: b.paymentMethod ?? null, // v1019
           status: b.status ?? "",
         };
         // participantDetails: [{ name, nickname, isSelf... }]；缺名單就退回訂購者本人
