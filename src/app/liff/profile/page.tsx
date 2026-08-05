@@ -291,10 +291,7 @@ export default function ProfilePage() {
           </button>
         ))}
       </>)}
-      <Sect t="其他" />
-      <button onClick={() => liff.logout()} style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", border: "none", background: "none", textAlign: "left", color: C.dangFg }}>
-        <ArrowLeft size={19} /><span style={{ flex: 1, fontSize: 14 }}>登出</span>
-      </button>
+      {/* v1020：依老闆指示移除「其他 → 登出」（LINE 內不需要登出） */}
     </>
   );
 }
