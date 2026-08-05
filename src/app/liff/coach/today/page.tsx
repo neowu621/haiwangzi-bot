@@ -127,8 +127,10 @@ export default function CoachTodayPage() {
       const d = await liff.fetchWithAuth<{ trips: CoachTrip[]; viewerRoles?: string[] }>(
         "/api/coach/today",
       );
+      // v1024：過去的場次若沒人報名 → 不顯示（沒有可點名的對象，只是雜訊）
+      const visible = d.trips.filter((t) => dayDiff(t.date) >= 0 || t.bookings.length > 0);
       // v1008：今天 → 明天 → 後天 → 昨天(最後)；同日依開始時間
-      setTrips([...d.trips].sort((a, b) => {
+      setTrips([...visible].sort((a, b) => {
         const oa = sortOrder(a.date), ob = sortOrder(b.date);
         if (oa !== ob) return oa - ob;
         return a.startTime.localeCompare(b.startTime);
