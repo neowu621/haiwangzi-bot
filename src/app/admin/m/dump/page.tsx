@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { buildDumpText } from "@/lib/dump-text";
+import { DiverLoader } from "@/components/ui/DiverLoader"; // v1021：載入動畫
 
 interface Trip { date: string; startTime: string; diveSiteIds: string[]; tankCount: number; isNightDive?: boolean; status: string }
 interface Tour { dateStart: string; dateEnd: string; title: string; durationLabel?: string | null; status: string }
@@ -72,6 +73,17 @@ export default function MobileDumpPage() {
     } catch { /* ignore */ }
   }
 
+  // v1021：資料還沒到齊 → 顯示潛水員動畫，避免先閃出「空的 Dump 內容」
+  if (!loaded) {
+    return (
+      <MobileAdminShell title="Dump 潛水資訊" back="/liff/profile">
+        <div className="flex justify-center py-16">
+          <DiverLoader label="讀取場次與潛旅…" size={96} />
+        </div>
+      </MobileAdminShell>
+    );
+  }
+
   return (
     <MobileAdminShell title="Dump 潛水資訊" back="/liff/profile">
       <div className="space-y-3">
@@ -111,7 +123,6 @@ export default function MobileDumpPage() {
           onChange={(e) => setOverride(e.target.value)}
           rows={18}
           className="w-full rounded-lg border border-[var(--border)] bg-transparent p-3 text-[12.5px] leading-relaxed font-mono outline-none focus:ring-2 focus:ring-[var(--color-phosphor)]/40"
-          placeholder={loaded ? "" : "載入中…"}
         />
 
         <div className="flex items-center gap-2">
