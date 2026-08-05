@@ -6,6 +6,7 @@ import { buildFlexByKeyAsync, FLEX_TEMPLATES, FLEX_TEMPLATE_LABELS, FLEX_TEMPLAT
 import { getLineClient } from "@/lib/line";
 import { sendEmail, emailConfigured } from "@/lib/email/send";
 import { logMessage } from "@/lib/message-log"; // v474：試送也記入發送紀錄
+import { normalizeVipTiers, vipUpgradeSampleParams } from "@/lib/vip-tier"; // v1027：升等範例抓系統級距
 import {
   MSG_SAMPLE_PARAMS,
   MSG_EDITABLE_FIELDS,
@@ -39,7 +40,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unknown template key" }, { status: 400 });
   }
 
-  const params = MSG_SAMPLE_PARAMS[key] ?? {};
+  // v1027：VIP 升等的範例參數改抓「系統設定的 VIP 級距」，讓試送＝客戶實際收到的內容
+  let params = MSG_SAMPLE_PARAMS[key] ?? {};
+  if (key === "vip_upgrade") {
+    const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" }, select: { vipTiers: true } }).catch(() => null);
+    params = { ...params, ...vipUpgradeSampleParams(cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined) };
+  }
   const label = FLEX_TEMPLATE_LABELS[key as keyof typeof FLEX_TEMPLATE_LABELS] ?? key;
   const override = await prisma.messageTemplate.findUnique({ where: { key } });
 

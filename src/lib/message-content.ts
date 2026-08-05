@@ -229,8 +229,9 @@ export const MSG_SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
   payment_reject: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "轉帳金額與應繳不符（少 200 元），請確認後重新上傳", liffUrl: "https://liff.line.me" },
   booking_cancel: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "因人數不足取消，造成不便敬請見諒", liffUrl: "https://liff.line.me" },
   refund_complete: { bookingTitle: "6/14 龍洞灣 體驗潛水", amount: 2640, method: "credit", liffUrl: "https://liff.line.me" },
-  // v1026：改用真實的 VIP 等級資料（LV3 海龜的實際權益＋升等禮金），原本是假的範例造成預覽誤導
-  vip_upgrade: { tierName: "LV3 海龜", tierEmoji: "", benefits: "潛水裝備租借 85 折\n免費高氧氣瓶升級（每月限次）\n每年免費基礎裝備健檢服務", upgradeCredit: 500, liffUrl: "https://liff.line.me" },
+  // v1026/v1027：升等的 tierName/benefits/upgradeCredit 由「系統設定的 VIP 級距」即時帶入
+  //   （vipUpgradeSampleParams），這裡只留非級距欄位；下面數值僅為 fallback。
+  vip_upgrade: { tierName: "LV3 海龜", tierEmoji: "", benefits: "", upgradeCredit: 0, liffUrl: "https://liff.line.me" },
   birthday_credit: { amount: 200, expiryDays: 90, liffUrl: "https://liff.line.me" },
   credit_expiry: { amount: 300, expireDate: "2026/06/30", liffUrl: "https://liff.line.me" },
 };

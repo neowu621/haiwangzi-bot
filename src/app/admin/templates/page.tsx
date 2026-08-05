@@ -9,6 +9,7 @@ import { AdminShell } from "@/components/admin-web/AdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch } from "@/lib/admin-web-auth";
 import { linkify } from "@/lib/linkify";
+import { normalizeVipTiers, vipUpgradeSampleParams } from "@/lib/vip-tier"; // v1027：升等範例抓系統級距
 import {
   MSG_SAMPLE_PARAMS,
   buildDynamicBody,
@@ -115,9 +116,13 @@ const SCOPE_NOTE: Record<string, string> = {
   final_reminder:  "僅旅潛（潛水團）有尾款流程，日潛不適用。",
 };
 
+// v1027：VIP 升等範例（從 /api/admin/site-config 載入後填入，讓預覽＝實際發送）
+let VIP_SAMPLE: Record<string, unknown> = {};
+
 // v480：每模板「動態主體」樣本 — 與試送/正式發送同一函式產生（單一來源）
 function sampleBody(key: string): string {
-  return buildDynamicBody(key, MSG_SAMPLE_PARAMS[key] ?? {});
+  const base = MSG_SAMPLE_PARAMS[key] ?? {};
+  return buildDynamicBody(key, key === "vip_upgrade" ? { ...base, ...VIP_SAMPLE } : base);
 }
 // 把「label：value」行渲染成 k/v 列；非 k/v 行原樣顯示
 function bodyLines(key: string): Array<{ k: string; v: string } | string> {
@@ -226,8 +231,10 @@ export default function AdminTemplatesPage() {
   }, []);
 
   // v470：載入目前 Email 發送路徑設定；v519：一併載入「提前幾天通知」設定
+  // v1027：VIP 升等的預覽範例改抓「系統設定的 VIP 級距」→ 預覽＝客戶實際收到
+  const [vipReady, setVipReady] = useState(0);
   useEffect(() => {
-    adminFetch<{ config: { emailProvider?: string; d1ReminderLeadDays?: number; finalEarlyLeadDays?: number; depositRemindBeforeDays?: number; creditExpiryLeadDays?: number } }>("/api/admin/site-config")
+    adminFetch<{ config: { emailProvider?: string; d1ReminderLeadDays?: number; finalEarlyLeadDays?: number; depositRemindBeforeDays?: number; creditExpiryLeadDays?: number; vipTiers?: unknown } }>("/api/admin/site-config")
       .then((d) => {
         setEmailProvider(d.config?.emailProvider ?? "gmail");
         setLeadDays({
@@ -236,9 +243,14 @@ export default function AdminTemplatesPage() {
           depositRemindBeforeDays: d.config?.depositRemindBeforeDays ?? 2,
           creditExpiryLeadDays: d.config?.creditExpiryLeadDays ?? 7,
         });
+        VIP_SAMPLE = vipUpgradeSampleParams(
+          d.config?.vipTiers ? normalizeVipTiers(d.config.vipTiers) : undefined,
+        );
+        setVipReady((n) => n + 1); // 觸發重繪，讓預覽用到真實級距
       })
       .catch(() => {});
   }, []);
+  void vipReady;
 
   // v519：把目前輸入的提前天數存回 site-config（onBlur 時呼叫）
   async function commitLeadDay(field: string) {

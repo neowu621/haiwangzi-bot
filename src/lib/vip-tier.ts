@@ -179,3 +179,20 @@ export function getGearDiscountPct(level: number, tiers: VipTier[] = VIP_TIERS):
   const p = t?.gearDiscountPct;
   return typeof p === "number" && p > 0 && p <= 100 ? p : 100;
 }
+
+/**
+ * v1027：VIP 升等通知的「範例參數」——直接取系統設定的 VIP 級距，
+ *   讓後台預覽／試送 與 客戶實際收到的內容一致（原本是寫死假資料）。
+ *   預設拿 LV3 當示範（沒有就取最高一級）。
+ */
+export function vipUpgradeSampleParams(tiers: VipTier[] = VIP_TIERS): {
+  tierName: string; tierEmoji: string; benefits: string; upgradeCredit: number;
+} {
+  const t = tiers.find((x) => x.level === 3) ?? tiers[tiers.length - 1] ?? VIP_TIERS[0];
+  return {
+    tierName: `LV${t.level} ${t.name}`,
+    tierEmoji: t.emoji ?? "",
+    benefits: (t.benefits ?? []).join("\n"),
+    upgradeCredit: t.upgradeCredit ?? 0,
+  };
+}
