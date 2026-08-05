@@ -38,6 +38,12 @@ type MTrip = {
   people: number;
   coachName: string | null;
   participants: MParticipant[];
+  // v1023：手機端編輯用
+  capacity: number | null;
+  coachIds: string[];
+  status: string;
+  notes: string | null;
+  tankCount: number;
 };
 
 const NOT_CANCELLED = ["cancelled_by_user", "cancelled_by_weather", "no_show"] as const;
@@ -63,7 +69,10 @@ export async function GET(req: NextRequest) {
     const trips = await prisma.divingTrip.findMany({
       where: { date: { gte: todayDate }, status: { not: "cancelled" } },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
-      select: { id: true, date: true, startTime: true, diveSiteIds: true, coachIds: true },
+      select: {
+        id: true, date: true, startTime: true, diveSiteIds: true, coachIds: true,
+        capacity: true, status: true, notes: true, tankCount: true, // v1023：手機端編輯用
+      },
     });
 
     if (trips.length === 0) {
@@ -167,6 +176,12 @@ export async function GET(req: NextRequest) {
         people,
         coachName: t.coachIds.map((id) => coachMap.get(id)).filter(Boolean).join("、") || null,
         participants,
+        // v1023：手機端編輯用
+        capacity: t.capacity,
+        coachIds: t.coachIds,
+        status: t.status,
+        notes: t.notes,
+        tankCount: t.tankCount,
       };
     });
 
