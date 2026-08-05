@@ -229,7 +229,8 @@ export const MSG_SAMPLE_PARAMS: Record<string, Record<string, unknown>> = {
   payment_reject: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "轉帳金額與應繳不符（少 200 元），請確認後重新上傳", liffUrl: "https://liff.line.me" },
   booking_cancel: { bookingTitle: "6/14 龍洞灣 體驗潛水", reason: "因人數不足取消，造成不便敬請見諒", liffUrl: "https://liff.line.me" },
   refund_complete: { bookingTitle: "6/14 龍洞灣 體驗潛水", amount: 2640, method: "credit", liffUrl: "https://liff.line.me" },
-  vip_upgrade: { tierName: "LV3 海龜", tierEmoji: "", benefits: "每筆訂單 95 折・生日禮金 200・優先候補", liffUrl: "https://liff.line.me" },
+  // v1026：改用真實的 VIP 等級資料（LV3 海龜的實際權益＋升等禮金），原本是假的範例造成預覽誤導
+  vip_upgrade: { tierName: "LV3 海龜", tierEmoji: "", benefits: "潛水裝備租借 85 折\n免費高氧氣瓶升級（每月限次）\n每年免費基礎裝備健檢服務", upgradeCredit: 500, liffUrl: "https://liff.line.me" },
   birthday_credit: { amount: 200, expiryDays: 90, liffUrl: "https://liff.line.me" },
   credit_expiry: { amount: 300, expireDate: "2026/06/30", liffUrl: "https://liff.line.me" },
 };
@@ -309,8 +310,17 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
     // ── 會員權益 ──
     case "first_order_reward_grant":
       return `首單訂單：${s(p.bookingTitle)}\n獲得抵用金 NT$ ${m(p.amount)}\n目前餘額：NT$ ${m(p.balance)}\n有效期限：${s(p.expiresAt) || "永久"}`;
-    case "vip_upgrade":
-      return `新等級：${s(p.tierEmoji)} ${s(p.tierName)}${p.benefits ? `\n專屬權益：${s(p.benefits)}` : ""}`;
+    case "vip_upgrade": {
+      // v1026：emoji 可能為空 → 不留多餘空格；權益多行時逐行縮排；有升等禮金一併告知
+      const em = s(p.tierEmoji).trim();
+      const lines = [`新等級：${em ? `${em} ` : ""}${s(p.tierName)}`];
+      if (p.benefits) {
+        const bs = s(p.benefits).split("\n").map((x) => x.trim()).filter(Boolean);
+        lines.push(bs.length > 1 ? `專屬權益：\n${bs.map((b) => `・${b}`).join("\n")}` : `專屬權益：${bs[0]}`);
+      }
+      if (Number(p.upgradeCredit) > 0) lines.push(`升等禮金：NT$ ${m(p.upgradeCredit)}（已存入帳戶）`);
+      return lines.join("\n");
+    }
     case "birthday_credit":
       return `生日禮金：NT$ ${m(p.amount)}\n${Number(p.expiryDays) > 0 ? `有效 ${s(p.expiryDays)} 天` : "永久有效"}`;
     case "credit_expiry":

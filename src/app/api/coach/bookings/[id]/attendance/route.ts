@@ -127,7 +127,14 @@ export async function POST(
               notifyCustomer({
                 userId: booking.userId,
                 templateKey: "vip_upgrade",
-                params: { tierName: tier.name, tierEmoji: tier.emoji, benefits, liffUrl: `${liffUrl}/profile` },
+                // v1026：等級名補上 LVn（原本只傳「海龜」）＋帶升等禮金金額
+                params: {
+                  tierName: `LV${tier.level} ${tier.name}`,
+                  tierEmoji: tier.emoji,
+                  benefits,
+                  upgradeCredit: tier.upgradeCredit ?? 0,
+                  liffUrl: `${liffUrl}/profile`,
+                },
               });
             }
           }
