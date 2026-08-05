@@ -217,14 +217,15 @@ export default function ProfilePage() {
   };
   // v842：老闆後台工具 — 每項一行直接進入（只有 admin 級看得到）
   const ADMIN_TOOLS: Array<{ emoji: string; label: string; path: string; badge?: number }> = [
+    // v1030：最常用的兩項移到最上面
+    { emoji: "📋", label: "Dump 潛水資訊", path: "/admin/m/dump" },
+    { emoji: "🌊", label: "日潛場次", path: "/admin/m/trips" },
     { emoji: "🧾", label: "老闆結帳", path: "/admin/m/tonight", badge: adminTodo?.settle },
     { emoji: "📧", label: "客服信箱", path: "/admin/m/email", badge: adminTodo?.inbox },
     { emoji: "📝", label: "願望單", path: "/admin/m/dive-wishes", badge: adminTodo?.wishes },
-    { emoji: "🌊", label: "日潛場次", path: "/admin/m/trips" },
     { emoji: "👥", label: "會員管理", path: "/admin/m/users" },
     { emoji: "⛴️", label: "潛水旅行", path: "/admin/m/tours" },
     { emoji: "⭐", label: "抵用金管理", path: "/admin/m/credits" },
-    { emoji: "📋", label: "Dump 潛水資訊", path: "/admin/m/dump" }, // v1002：產生 LINE/FB 貼文
   ];
   const stats: Array<[string, string]> = [
     [String(me.haiwangziLogCount ?? 0), "海王子潛次"], [String(me.creditBalance ?? 0), "抵用金"],
@@ -268,13 +269,7 @@ export default function ProfilePage() {
       <LRow Icon={SlidersHorizontal} label="抵用金明細" right={ntd(me.creditBalance ?? 0)} onClick={() => setView("credits")} />
       {isStaff && (<>
         <Sect t="管理" />
-        <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
-          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>今明資訊</span>
-          {adminTodo && adminTodo.attendance > 0 ? (
-            <span style={{ background: "#e5484d", color: "#fff", fontSize: 11, fontWeight: 800, minWidth: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{adminTodo.attendance}</span>
-          ) : null}
-          <ChevronRight size={16} color={C.mute} />
-        </Link>
+        {/* v1030：Dump / 日潛場次 等工具移到管理最上面（今明資訊接在後面） */}
         {isAdminLevel && ADMIN_TOOLS.map((it) => (
           // v842：老闆後台各工具一行直接進入（LINE 身分免帳密換 session）
           <button
@@ -290,6 +285,13 @@ export default function ProfilePage() {
             <ChevronRight size={16} color={C.mute} />
           </button>
         ))}
+        <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
+          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>今明資訊</span>
+          {adminTodo && adminTodo.attendance > 0 ? (
+            <span style={{ background: "#e5484d", color: "#fff", fontSize: 11, fontWeight: 800, minWidth: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{adminTodo.attendance}</span>
+          ) : null}
+          <ChevronRight size={16} color={C.mute} />
+        </Link>
       </>)}
       {/* v1020：依老闆指示移除「其他 → 登出」（LINE 內不需要登出） */}
     </>
