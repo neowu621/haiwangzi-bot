@@ -269,7 +269,7 @@ export default function ProfilePage() {
       {isStaff && (<>
         <Sect t="管理" />
         <Link href="/liff/coach/today" style={{ display: "flex", width: "100%", alignItems: "center", gap: 11, padding: "12px 2px", borderBottom: `0.5px solid ${C.line}`, textDecoration: "none", color: C.ink }}>
-          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>今明場次資訊</span>
+          <LifeBuoy size={19} color={C.okFg} /><span style={{ flex: 1, fontSize: 14 }}>今明資訊</span>
           {adminTodo && adminTodo.attendance > 0 ? (
             <span style={{ background: "#e5484d", color: "#fff", fontSize: 11, fontWeight: 800, minWidth: 20, height: 20, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{adminTodo.attendance}</span>
           ) : null}

@@ -255,10 +255,16 @@ export default function MobileTripsPage() {
                               <span className="truncate">{t.sites.join("、") || "—"}</span>
                             </div>
                             <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                              {/* v1025：顯示 人數/上限；超額不擋但標紅提醒老闆 */}
                               <span className="inline-flex items-center gap-0.5">
                                 <Users className="h-3 w-3" />
-                                {t.people} 人
+                                {t.people}{t.capacity != null ? ` / ${t.capacity}` : ""} 人
                               </span>
+                              {t.capacity != null && t.people > t.capacity && (
+                                <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold" style={{ background: "#ffe1d9", color: "#b3462c" }}>
+                                  ⚠️ 超額 {t.people - t.capacity} 人
+                                </span>
+                              )}
                               {t.coachName && <span>教練：{t.coachName}</span>}
                               {/* v1023：非開放狀態標記 */}
                               {t.status !== "open" && (
@@ -344,11 +350,20 @@ export default function MobileTripsPage() {
                 className="block w-full rounded-xl border py-3 text-center text-[14px] font-bold disabled:opacity-50" style={{ borderColor: "var(--border)" }}>
                 {actTrip.status === "open" ? "🚫 關閉報名" : "✅ 重新開放報名"}
               </button>
-              <button type="button" disabled={busy} onClick={() => removeTrip(actTrip)}
-                className="block w-full rounded-xl border py-3 text-center text-[14px] font-bold disabled:opacity-50"
-                style={{ borderColor: "var(--color-coral)", color: "var(--color-coral)" }}>
-                🗑️ 刪除場次{actTrip.people > 0 ? "（已有報名，不可刪）" : ""}
-              </button>
+              {/* v1025：有人報名 → 不提供刪除，只能「關閉報名」 */}
+              {actTrip.people > 0 ? (
+                <div className="rounded-xl border px-3 py-2.5 text-center text-[12px] leading-relaxed"
+                  style={{ borderColor: "var(--border)", color: "var(--muted-foreground)", background: "var(--muted)" }}>
+                  已有 {actTrip.people} 人報名，<b>無法刪除</b>，請用上方「關閉報名」。
+                  <br />若真要刪除，需先於電腦版取消所有訂單。
+                </div>
+              ) : (
+                <button type="button" disabled={busy} onClick={() => removeTrip(actTrip)}
+                  className="block w-full rounded-xl border py-3 text-center text-[14px] font-bold disabled:opacity-50"
+                  style={{ borderColor: "var(--color-coral)", color: "var(--color-coral)" }}>
+                  🗑️ 刪除場次
+                </button>
+              )}
               <button type="button" onClick={() => setActTrip(null)}
                 className="block w-full py-2 text-center text-[13px] text-[var(--muted-foreground)]">取消</button>
             </div>

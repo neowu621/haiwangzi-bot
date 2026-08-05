@@ -198,7 +198,7 @@ export default function CoachTodayPage() {
 
 
   return (
-    <LiffShell title="今明場次資訊（昨天～後天）" backHref="/liff/profile">
+    <LiffShell title="今明資訊（昨天～後天）" backHref="/liff/profile">
       <div className="px-4 pt-4">
         {err && (
           <Card className="bg-[var(--color-coral)]/15 p-4 text-sm">
@@ -259,9 +259,23 @@ export default function CoachTodayPage() {
                       </Badge>
                     )}
                   </div>
-                  <div className="tabular text-sm">
-                    {t.bookings.reduce((s, b) => s + 1, 0)}/{t.capacity}
-                  </div>
+                  {/* v1025：實際人數(含同行者)/上限；超額不擋但標紅提醒 */}
+                  {(() => {
+                    const ppl = t.bookings.reduce((s, b) => s + (b.participants ?? 1), 0);
+                    const over = t.capacity != null && ppl > t.capacity;
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <span className="tabular text-sm" style={over ? { color: "var(--color-coral)", fontWeight: 800 } : undefined}>
+                          {ppl}/{t.capacity ?? "∞"}
+                        </span>
+                        {over && (
+                          <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold" style={{ background: "#ffe1d9", color: "#b3462c" }}>
+                            ⚠️ 超額 {ppl - (t.capacity ?? 0)} 人
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div
                   className={cn(
