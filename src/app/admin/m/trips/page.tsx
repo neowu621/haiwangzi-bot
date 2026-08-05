@@ -4,6 +4,7 @@
 //   每場一列：時間・潛點・X 人・教練；點列展開客戶姓名清單（預設收合）。
 //   複雜編輯引導回 /admin/trips。
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth } from "@/lib/admin-web-auth";
@@ -215,6 +216,17 @@ export default function MobileTripsPage() {
             </section>
           ))}
         </div>
+      )}
+
+      {/* v1022：快速新增場次（複製既有場次 + 多選日期） */}
+      {data && (
+        <Link
+          href="/admin/m/trips/new"
+          className="mt-4 block rounded-full py-3 text-center text-[14px] font-extrabold"
+          style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)", boxShadow: "0 6px 16px rgba(0,217,203,.35)" }}
+        >
+          ＋ 新增場次
+        </Link>
       )}
 
       {/* v1017：點參與者 → 顯示該筆訂單內容（幾支 / 備註 / 金額 / 電話） */}
