@@ -118,6 +118,13 @@ const SCOPE_NOTE: Record<string, string> = {
 
 // v1027：VIP 升等範例（從 /api/admin/site-config 載入後填入，讓預覽＝實際發送）
 let VIP_SAMPLE: Record<string, unknown> = {};
+// v1028：未指定預覽等級時，實際被選中的是哪一級（與 vipUpgradeSampleParams 的挑選規則一致）
+function VIP_SAMPLE_LEVEL_FALLBACK(tiers: Array<{ level: number; benefits?: string[] }>): number {
+  const lv3 = tiers.find((x) => x.level === 3);
+  if (lv3 && (lv3.benefits ?? []).length > 0) return 3;
+  const withB = [...tiers].reverse().find((x) => (x.benefits ?? []).length > 0);
+  return withB?.level ?? lv3?.level ?? tiers[tiers.length - 1]?.level ?? 1;
+}
 
 // v480：每模板「動態主體」樣本 — 與試送/正式發送同一函式產生（單一來源）
 function sampleBody(key: string): string {
@@ -232,6 +239,9 @@ export default function AdminTemplatesPage() {
 
   // v470：載入目前 Email 發送路徑設定；v519：一併載入「提前幾天通知」設定
   // v1027：VIP 升等的預覽範例改抓「系統設定的 VIP 級距」→ 預覽＝客戶實際收到
+  // v1028：可切換要預覽哪一級（LV1~LV5）
+  const [vipTiers, setVipTiers] = useState<ReturnType<typeof normalizeVipTiers>>([]);
+  const [vipLevel, setVipLevel] = useState<number | null>(null);
   const [vipReady, setVipReady] = useState(0);
   useEffect(() => {
     adminFetch<{ config: { emailProvider?: string; d1ReminderLeadDays?: number; finalEarlyLeadDays?: number; depositRemindBeforeDays?: number; creditExpiryLeadDays?: number; vipTiers?: unknown } }>("/api/admin/site-config")
@@ -243,13 +253,19 @@ export default function AdminTemplatesPage() {
           depositRemindBeforeDays: d.config?.depositRemindBeforeDays ?? 2,
           creditExpiryLeadDays: d.config?.creditExpiryLeadDays ?? 7,
         });
-        VIP_SAMPLE = vipUpgradeSampleParams(
-          d.config?.vipTiers ? normalizeVipTiers(d.config.vipTiers) : undefined,
-        );
+        const tiers = d.config?.vipTiers ? normalizeVipTiers(d.config.vipTiers) : normalizeVipTiers(undefined);
+        setVipTiers(tiers);
+        VIP_SAMPLE = vipUpgradeSampleParams(tiers);
         setVipReady((n) => n + 1); // 觸發重繪，讓預覽用到真實級距
       })
       .catch(() => {});
   }, []);
+  // v1028：切換預覽等級 → 重算範例
+  useEffect(() => {
+    if (vipTiers.length === 0) return;
+    VIP_SAMPLE = vipUpgradeSampleParams(vipTiers, vipLevel ?? undefined);
+    setVipReady((n) => n + 1);
+  }, [vipLevel, vipTiers]);
   void vipReady;
 
   // v519：把目前輸入的提前天數存回 site-config（onBlur 時呼叫）
@@ -373,7 +389,8 @@ export default function AdminTemplatesPage() {
     try {
       await adminFetch("/api/admin/templates/test-send", {
         method: "POST",
-        body: JSON.stringify({ key: cur.key, channel: ch }),
+        // v1028：VIP 升等帶上目前預覽的等級，讓試送＝畫面預覽
+        body: JSON.stringify({ key: cur.key, channel: ch, ...(cur.key === "vip_upgrade" && vipLevel ? { vipLevel } : {}) }),
       });
       const chLabel = ch === "line" ? "LINE" : ch === "email" ? "Email" : "站內通知";
       showToast(`已將「${cur.label}」${chLabel} 試送到您自己 ✓${ch === "inApp" ? "（到 LIFF 個人中心查看）" : ""}`);
@@ -770,6 +787,30 @@ export default function AdminTemplatesPage() {
                             系統自動帶入真實資料，此處為模擬範例（不可編輯）
                           </span>
                         </label>
+                        {/* v1028：VIP 升等 → 可切換預覽等級（資料來自系統設定的 VIP 級距） */}
+                        {cur.key === "vip_upgrade" && vipTiers.length > 0 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 7 }}>
+                            <span style={{ fontSize: 11, color: "#7a8f93" }}>預覽等級：</span>
+                            {vipTiers.map((t) => {
+                              const on = (vipLevel ?? VIP_SAMPLE_LEVEL_FALLBACK(vipTiers)) === t.level;
+                              return (
+                                <button
+                                  key={t.level}
+                                  type="button"
+                                  onClick={() => setVipLevel(t.level)}
+                                  style={{
+                                    border: on ? "1.5px solid #13b5a6" : "1px solid #dbe6e6",
+                                    background: on ? "rgba(19,181,166,.12)" : "#fff",
+                                    color: on ? "#0a5f57" : "#7a8f93",
+                                    borderRadius: 8, padding: "3px 9px", fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                                  }}
+                                >
+                                  LV{t.level} {t.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div style={{
                           border: "1.5px dashed #cfe0e0", borderRadius: 10, padding: "10px 12px",
                           background: "#f7fbfa", fontSize: 12.5, lineHeight: 1.8,

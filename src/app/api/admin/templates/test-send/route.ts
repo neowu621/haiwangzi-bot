@@ -22,6 +22,7 @@ export const dynamic = "force-dynamic";
 const BodySchema = z.object({
   key: z.string(),
   channel: z.enum(["line", "email", "inApp"]).default("line"),
+  vipLevel: z.number().int().min(1).max(10).optional(), // v1028：VIP 升等試送指定等級
 });
 
 // POST /api/admin/templates/test-send - 預覽（推給 admin 自己）
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   if (!role.ok)
     return NextResponse.json({ error: role.message }, { status: role.status });
 
-  const { key, channel } = BodySchema.parse(await req.json());
+  const { key, channel, vipLevel } = BodySchema.parse(await req.json());
   if (!(key in FLEX_TEMPLATES)) {
     return NextResponse.json({ error: "unknown template key" }, { status: 400 });
   }
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   let params = MSG_SAMPLE_PARAMS[key] ?? {};
   if (key === "vip_upgrade") {
     const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" }, select: { vipTiers: true } }).catch(() => null);
-    params = { ...params, ...vipUpgradeSampleParams(cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined) };
+    params = { ...params, ...vipUpgradeSampleParams(cfg?.vipTiers ? normalizeVipTiers(cfg.vipTiers) : undefined, vipLevel) };
   }
   const label = FLEX_TEMPLATE_LABELS[key as keyof typeof FLEX_TEMPLATE_LABELS] ?? key;
   const override = await prisma.messageTemplate.findUnique({ where: { key } });

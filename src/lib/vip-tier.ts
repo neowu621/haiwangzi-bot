@@ -185,10 +185,20 @@ export function getGearDiscountPct(level: number, tiers: VipTier[] = VIP_TIERS):
  *   讓後台預覽／試送 與 客戶實際收到的內容一致（原本是寫死假資料）。
  *   預設拿 LV3 當示範（沒有就取最高一級）。
  */
-export function vipUpgradeSampleParams(tiers: VipTier[] = VIP_TIERS): {
+export function vipUpgradeSampleParams(
+  tiers: VipTier[] = VIP_TIERS,
+  level?: number, // v1028：指定要預覽哪一級（後台可切 LV1~LV5）
+): {
   tierName: string; tierEmoji: string; benefits: string; upgradeCredit: number;
 } {
-  const t = tiers.find((x) => x.level === 3) ?? tiers[tiers.length - 1] ?? VIP_TIERS[0];
+  // 指定等級優先；沒指定 → 挑「有填會員福利」的等級當示範（才看得出權益排版）；
+  //   都沒填就退回 LV3 / 最高一級 —— 一律是系統設定的真實資料。
+  const picked = level != null ? tiers.find((x) => x.level === level) : undefined;
+  const lv3 = tiers.find((x) => x.level === 3);
+  const withBenefits = [...tiers].reverse().find((x) => (x.benefits ?? []).length > 0);
+  const t = picked
+    ?? (lv3 && (lv3.benefits ?? []).length > 0 ? lv3 : withBenefits)
+    ?? lv3 ?? tiers[tiers.length - 1] ?? VIP_TIERS[0];
   return {
     tierName: `LV${t.level} ${t.name}`,
     tierEmoji: t.emoji ?? "",

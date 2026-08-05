@@ -250,6 +250,8 @@ export async function GET(req: NextRequest) {
   }
   return NextResponse.json({
     config: {
+      // v1028：VIP 級距（訊息模板預覽要用真實設定，原本沒回傳導致退回程式預設值）
+      vipTiers: row.vipTiers,
       heroTitle: row.heroTitle,
       heroSubtitle: row.heroSubtitle,
       heroGreeting: row.heroGreeting,
