@@ -261,20 +261,29 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
         + (p.notes ? `\n📝 您的備註：${s(p.notes)}` : "");
     }
     case "d1_reminder": {
-      const head = `明日場次：${s(p.date)} ${s(p.time)}・${s(p.site)}`;
+      // v1033：分段呈現（場次 / 海況 / 集合 / 連結），段落間空一行，好讀
+      const sec: string[][] = [];
+      sec.push([`🔱 明日場次：${s(p.date)} ${s(p.time)}`, `📍 潛點：${s(p.site)}`]);
+
       // v975：即時海況（浮標）。有 wave/water 就組海況行；否則退回舊的天氣欄位（若有）。
-      let sea = "";
       if (p.wave || p.water) {
         const bits = [p.wave && `浪高 ${s(p.wave)}`, p.water && `水溫 ${s(p.water)}`].filter(Boolean).join("・");
         const light = p.waveLight ? `${s(p.waveLight)}${p.waveText ? ` ${s(p.waveText)}` : ""}` : "";
-        sea = `\n🌊 即時海況${p.buoyLabel ? `（${s(p.buoyLabel)}浮標）` : ""}：${bits}${light ? `　${light}` : ""}`;
-        if (p.wetsuit) sea += `\n👕 防寒衣建議：${s(p.wetsuit)}`;
+        const sea = [`🌊 即時海況${p.buoyLabel ? `（${s(p.buoyLabel)}浮標）` : ""}：${bits}${light ? `　${light}` : ""}`];
+        if (p.wetsuit) sea.push(`👕 防寒衣建議：${s(p.wetsuit)}`);
+        sec.push(sea);
       } else if (p.weather) {
-        sea = `\n天氣 ${s(p.weather)}・浪高 ${s(p.wave)}・水溫 ${s(p.water)}・能見度 ${s(p.vis)}`;
+        sec.push([`🌊 天氣 ${s(p.weather)}・浪高 ${s(p.wave)}・水溫 ${s(p.water)}・能見度 ${s(p.vis)}`]);
       }
-      const map = p.mapUrl ? `\n📍 集合地圖：${s(p.mapUrl)}` : "";
-      const video = p.videoUrl ? `\n🎬 潛點介紹影片：${s(p.videoUrl)}` : "";
-      return `${head}${sea}\n集合：${s(p.gather)}${map}${video}`;
+
+      sec.push([`🕗 集合：${s(p.gather)}`]);
+
+      const links: string[] = [];
+      if (p.mapUrl) links.push(`📍 集合地圖：${s(p.mapUrl)}`);
+      if (p.videoUrl) links.push(`🎬 潛點介紹影片：${s(p.videoUrl)}`);
+      if (links.length) sec.push(links);
+
+      return sec.map((g) => g.join("\n")).join("\n\n"); // 段落間空一行
     }
     case "attendance_confirmed": {
       const lv = s(p.vipLevel);
@@ -406,8 +415,27 @@ export function composeEmail(
         .map((l) => `<div style="font-size:13px;line-height:1.6;color:#1A2330;margin:4px 0">${esc(l)}</div>`)
         .join("")}</div>`
     : "";
+  // v1033：Email 內文改逐行 <div>（Outlook 不支援 white-space:pre-wrap → 原本擠成一團），
+  //   並把長網址轉成「請點擊這裡 →」超連結（畫面乾淨、可讀性佳）。
+  const attr = (u: string) => u.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const LINK_STYLE = "display:inline-block;background:#eef9f8;border:1px solid #bde5e0;border-radius:6px;padding:2px 10px;color:#0a8f86;font-weight:700;text-decoration:none;font-size:12.5px;";
+  const htmlLine = (line: string) =>
+    line
+      .split(/(https?:\/\/[^\s]+)/g)
+      .map((p) =>
+        /^https?:\/\//.test(p)
+          ? `<a href="${attr(p)}" style="${LINK_STYLE}">請點擊這裡 →</a>`
+          : esc(p),
+      )
+      .join("");
   const dynHtml = dyn
-    ? `<div style="background:#f4f9f8;border:1px solid #e2efed;border-radius:9px;padding:12px 14px;margin:16px 0;font-size:13px;color:#33464e;line-height:1.8;white-space:pre-wrap">${esc(dyn)}</div>`
+    ? `<div style="background:#f4f9f8;border:1px solid #e2efed;border-radius:9px;padding:12px 14px;margin:16px 0;font-size:13px;color:#33464e;line-height:1.9;">${
+        dyn.split("\n").map((l) =>
+          l.trim() === ""
+            ? `<div style="height:8px;line-height:8px;">&nbsp;</div>`
+            : `<div>${htmlLine(l)}</div>`,
+        ).join("")
+      }</div>`
     : "";
   const hintHtml = footerHint
     ? `<div style="margin-top:14px;text-align:center;font-size:12px;color:#0a8f86;font-weight:600">${esc(footerHint)}</div>`
