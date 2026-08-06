@@ -219,7 +219,8 @@ export async function buildMarineSection(
   points: MarinePoint[],
   fields: MarineFields,
   apiKey: string | undefined,
-): Promise<{ text: string; light: Light } | null> {
+  // v1031：一併回傳「結構化讀數」供 Email 表格排版用（文字版不變）
+): Promise<{ text: string; light: Light; rows: MarineReading[] } | null> {
   if (!apiKey || points.length === 0) return null;
   let stationMap: Map<string, ObsTime[]>;
   try {
@@ -229,12 +230,13 @@ export async function buildMarineSection(
     return null;
   }
   const readings = points.map((p) => buildMarineReading(p, stationMap));
+  const rows = readings.filter((r): r is MarineReading => r !== null);
   const formatted = readings
     .map((r) => (r ? formatMarinePoint(r, fields) : null))
     .filter((x): x is { text: string; light: Light } => x !== null);
   if (formatted.length === 0) return null;
   const light = worst(formatted.map((x) => x.light));
-  return { text: formatted.map((x) => x.text).join("\n\n"), light };
+  return { text: formatted.map((x) => x.text).join("\n\n"), light, rows };
 }
 
 // v975：D-1 行前提醒用 —— 依「場次潛點名稱」比對出該用哪顆浮標，抓一次即時海況。

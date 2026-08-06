@@ -12,8 +12,12 @@ import {
   buildMarineSection,
   DEFAULT_MARINE_POINTS,
   DEFAULT_MARINE_FIELDS,
+  judgeWave,        // v1031：Email 表格用
+  judgeCurrent,
+  recommendWetsuit,
   type MarinePoint,
   type MarineFields,
+  type MarineReading,
 } from "./marine";
 import { buildForecastDays } from "./forecast";
 
@@ -76,20 +80,97 @@ function buildReportMessage(dateStr: string, bodyReport: string, textReport: str
   };
 }
 
-// v856：Email 內文 —— 標題列用真 logo（PNG；Outlook 不吃 WebP、也不支援 flex → 用 table）
-function emailHtml(dateStr: string, bodyReport: string): string {
-  const safe = bodyReport.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  return `<div style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#1A2330;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>
+// v1031：Email 改「表格化」呈現（比純文字好讀）。用 table 排版相容 Outlook / Gmail。
+const esc = (v: unknown) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const TH = "padding:7px 9px;font-size:12px;font-weight:700;color:#5b6b7a;background:#eef3f8;border-bottom:1px solid #dbe3ec;text-align:left;white-space:nowrap;";
+const TD = "padding:7px 9px;font-size:13px;color:#1A2330;border-bottom:1px solid #eef2f7;vertical-align:top;";
+const SEC = "margin:18px 0 7px;font-size:14px;font-weight:800;color:#0A2342;";
+
+export interface ReportTripRow { day: string; time: string; place: string; booked: number; cap: string; extras: string }
+export interface ReportStationRow { name: string; wind: string; temp: string }
+export interface ReportMarineRow {
+  label: string; wave: string; waveJudge: string; waveDir: string; period: string;
+  seaTemp: string; wetsuit: string; current: string; currentJudge: string; tide: string;
+}
+export interface ReportData {
+  trips: ReportTripRow[];
+  forecast: string[];
+  overall: string | null;
+  windStatus: string;
+  stations: ReportStationRow[];
+  marine: ReportMarineRow[];
+  footNote: string;
+}
+
+function emailHtml(dateStr: string, d: ReportData): string {
+  const tbl = (inner: string) =>
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:collapse;border:1px solid #dbe3ec;border-radius:8px;overflow:hidden;">${inner}</table>`;
+
+  // 場次
+  const tripsHtml = d.trips.length
+    ? tbl(
+        `<tr><th style="${TH}">日期</th><th style="${TH}">時間</th><th style="${TH}">潛點</th><th style="${TH}">人數</th></tr>` +
+        d.trips.map((t) => `<tr>
+          <td style="${TD}white-space:nowrap;font-weight:700;">${esc(t.day)}</td>
+          <td style="${TD}white-space:nowrap;font-family:ui-monospace,monospace;">${esc(t.time)}</td>
+          <td style="${TD}">${esc(t.place || "—")}${t.extras ? `<span style="color:#6b7280;font-size:12px;">${esc(t.extras)}</span>` : ""}</td>
+          <td style="${TD}white-space:nowrap;font-family:ui-monospace,monospace;">${esc(t.booked)}/${esc(t.cap)}</td>
+        </tr>`).join(""),
+      )
+    : `<div style="font-size:13px;color:#6b7280;">（今明無場次）</div>`;
+
+  // 測站
+  const stationsHtml = d.stations.length
+    ? tbl(
+        `<tr><th style="${TH}">測站</th><th style="${TH}">風速</th><th style="${TH}">氣溫</th></tr>` +
+        d.stations.map((s) => `<tr>
+          <td style="${TD}white-space:nowrap;font-weight:700;">${esc(s.name)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(s.wind)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(s.temp)}</td>
+        </tr>`).join(""),
+      )
+    : "";
+
+  // 海象（每區一列）
+  const marineHtml = d.marine.length
+    ? tbl(
+        `<tr><th style="${TH}">海域</th><th style="${TH}">浪高</th><th style="${TH}">海溫 / 防寒衣</th><th style="${TH}">海流</th><th style="${TH}">潮位</th></tr>` +
+        d.marine.map((m) => `<tr>
+          <td style="${TD}white-space:nowrap;font-weight:700;">${esc(m.label)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(m.wave)}${m.waveJudge ? `<br><span style="font-size:12px;color:#6b7280;">${esc(m.waveJudge)}</span>` : ""}${m.waveDir || m.period ? `<br><span style="font-size:11.5px;color:#8a97a6;">${esc([m.waveDir, m.period].filter(Boolean).join(" / "))}</span>` : ""}</td>
+          <td style="${TD}white-space:nowrap;">${esc(m.seaTemp)}${m.wetsuit ? `<br><span style="font-size:12px;color:#6b7280;">${esc(m.wetsuit)}</span>` : ""}</td>
+          <td style="${TD}white-space:nowrap;">${esc(m.current)}${m.currentJudge ? `<br><span style="font-size:12px;color:#6b7280;">${esc(m.currentJudge)}</span>` : ""}</td>
+          <td style="${TD}white-space:nowrap;">${esc(m.tide)}</td>
+        </tr>`).join(""),
+      )
+    : "";
+
+  return `<div style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;color:#1A2330;max-width:680px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:6px;"><tr>
     <td width="34" style="padding-right:10px;vertical-align:middle;">
       <img src="${BUSINESS.logoPng}" alt="東北角海王子潛水" width="34" height="34" style="width:34px;height:34px;border-radius:8px;display:block;">
     </td>
     <td style="vertical-align:middle;">
       <h2 style="margin:0;font-size:18px;color:#0A2342;">海王子潛水 每日營運報告</h2>
-      <div style="font-size:12px;color:#6b7280;">${dateStr}</div>
+      <div style="font-size:12px;color:#6b7280;">${esc(dateStr)}</div>
     </td>
   </tr></table>
-  <pre style="font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap;margin:0;">${safe}</pre>
+
+  ${d.overall ? `<div style="margin:12px 0;padding:10px 12px;border-radius:8px;background:#f4f9f8;border:1px solid #dbe9e6;font-size:14px;font-weight:700;">${esc(d.overall)}</div>` : ""}
+
+  <div style="${SEC}">🔱 今明場次</div>
+  ${tripsHtml}
+
+  ${d.forecast.length ? `<div style="${SEC}">🌤 天氣預報</div>
+  <div style="font-size:13px;line-height:1.8;color:#33464e;white-space:pre-wrap;">${esc(d.forecast.join("\n"))}</div>` : ""}
+
+  ${d.windStatus ? `<div style="${SEC}">💨 海況</div>
+  <div style="font-size:13px;margin-bottom:7px;">今日風速：${esc(d.windStatus)}</div>` : ""}
+  ${stationsHtml}
+
+  ${marineHtml ? `<div style="${SEC}">🌊 海象明細</div>${marineHtml}` : ""}
+
+  <div style="margin-top:16px;padding-top:10px;border-top:1px solid #eef2f7;font-size:11.5px;color:#8a97a6;">${esc(d.footNote)}</div>
 </div>`;
 }
 
@@ -174,7 +255,7 @@ export async function runDailyWeatherReport(opts?: {
 
   // ── 1b. 抓海象（CWA O-B0075-001 浮標+潮位）v411 ─────────
   const marineEnabled = (cfg as unknown as { weatherMarineEnabled?: boolean }).weatherMarineEnabled ?? false;
-  let marineBlock: { text: string; light: "🟢" | "🟡" | "🔴" } | null = null;
+  let marineBlock: { text: string; light: "🟢" | "🟡" | "🔴"; rows: MarineReading[] } | null = null;
   if (marineEnabled) {
     const rawPts = (cfg as unknown as { weatherMarinePoints?: unknown }).weatherMarinePoints;
     const points: MarinePoint[] = Array.isArray(rawPts) && rawPts.length > 0
@@ -280,6 +361,17 @@ export async function runDailyWeatherReport(opts?: {
         })
       : [`【${dayLabel}】 （無場次）`];
 
+  // v1031：Email 表格用的結構化場次列
+  const tripRows = (dayLabel: string, trips: typeof todayTrips): ReportTripRow[] =>
+    trips.map((t) => ({
+      day: dayLabel,
+      time: t.startTime,
+      place: tripPlace(t),
+      booked: bookedMap.get(t.id) ?? 0,
+      cap: String(t.capacity ?? "∞"),
+      extras: `${t.isNightDive ? " 夜潛" : ""}${t.isScooter ? " 水推" : ""}`,
+    }));
+
   // v459：依老闆指定編排——標題日期一行 → 場次一行式 → 天氣預報 → 綜合海況 → 海況 → 海象明細
   // v856：🌊 emoji 改 🔱（三叉戟＝logo 本體符號）；LINE/Email 有 logo 圖的地方則直接用圖。
   const reportTitle = `🔱 海王子潛水 每日營運報告 ${dateStr}`;
@@ -324,6 +416,47 @@ export async function runDailyWeatherReport(opts?: {
   // v856：Flex / Email 用 —— 標題已由 logo 頁首呈現，內文不再重複標題行
   const bodyReport = blocks.slice(1).join("\n").replace(/^\n+/, "");
 
+  // v1031：Email 表格用結構化資料（文字版 textReport 給 LINE/站內，維持不變）
+  const fmtNum = (n: number | null, unit: string, digits = 1) => (n === null ? "—" : `${n.toFixed(digits)} ${unit}`);
+  const reportData: ReportData = {
+    trips: content.sessions ? [...tripRows("今日", todayTrips), ...tripRows("明日", tomorrowTrips)] : [],
+    forecast: fcParts,
+    overall: marineBlock
+      ? `綜合海況：${marineBlock.light} ${
+          marineBlock.light === "🔴" ? "部分海域不建議下水"
+            : marineBlock.light === "🟡" ? "尚可，部分海域請留意"
+              : "良好，適合下水"
+        }`
+      : null,
+    windStatus: content.wind ? windStatus : "",
+    stations: (content.wind || content.temp)
+      ? stationReadings.map((s) => ({
+          name: s.name,
+          wind: content.wind ? (s.wind != null ? `${s.wind.toFixed(1)} m/s` : "—") : "—",
+          temp: content.temp ? (s.temp != null ? `${s.temp.toFixed(1)} °C` : "—") : "—",
+        }))
+      : [],
+    marine: (marineBlock?.rows ?? []).map((r) => {
+      const wj = judgeWave(r.waveHeight);
+      const cj = judgeCurrent(r.currentKnots);
+      return {
+        label: r.label,
+        wave: fmtNum(r.waveHeight, "m"),
+        waveJudge: wj ? `${wj.light} ${wj.text}` : "",
+        waveDir: r.waveDirDesc ? `波向 ${r.waveDirDesc}` : "",
+        period: r.wavePeriod != null ? `週期 ${r.wavePeriod.toFixed(1)} 秒` : "",
+        seaTemp: fmtNum(r.seaTemp, "°C"),
+        wetsuit: recommendWetsuit(r.seaTemp) ?? "",
+        current: r.currentKnots != null
+          ? `${r.currentKnots.toFixed(1)} 節${r.currentDirDesc ? `・流向 ${r.currentDirDesc}` : ""}`
+          : "—",
+        currentJudge: cj ? `${cj.light} ${cj.text}` : "",
+        tide: r.tideHeight != null ? `${r.tideHeight.toFixed(2)} m${r.tideLevel ? `（${r.tideLevel}）` : ""}` : "—",
+      };
+    }),
+    footNote: `此訊息由系統${opts?.dryRun ? "（測試模式）" : "每日自動"}發送`,
+  };
+
   // Email 主旨只能純文字（放不了圖）→ 用 🔱（logo 的三叉戟）取代 🌊
   const subject = `🔱 海王子日報 ${dateStr}（風速 ${maxWind?.toFixed(1) ?? "-"} m/s）`;
 
@@ -359,7 +492,7 @@ export async function runDailyWeatherReport(opts?: {
         results.push({ to: r, ok: true });
       } else if (r.startsWith("email:")) {
         const to = r.slice(6);
-        const html = emailHtml(dateStr, bodyReport);
+        const html = emailHtml(dateStr, reportData); // v1031：表格版
         const er = await sendEmail({ to, subject, text: textReport, html });
         results.push({ to: r, ok: er.ok, error: er.error });
       } else if (r.startsWith("inapp:")) {
