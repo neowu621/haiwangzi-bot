@@ -78,6 +78,16 @@ export function notifyCustomer(opts: {
         savedBtnUrl ??
         (key === "attendance_confirmed" ? attendanceDefault : resolveLinkUrl(opts.params));
 
+      // v1032：站內通知 —— 客人已在 App 內，若連結是本站 LIFF 深連結就換成站內路徑
+      //   （原本用 liff.line.me/... 會「重新開一次 App」，會閃爍/重載）
+      const toInAppPath = (u: string | null): string | null => {
+        if (!u) return u;
+        const m = u.match(/^https?:\/\/liff\.line\.me\/[^/]+(\/.*)?$/);
+        if (!m) return u; // 外部連結(如 Google 評論)照舊
+        const path = (m[1] ?? "").replace(/^\/+/, "");
+        return path ? `/liff/${path}` : "/liff/home";
+      };
+
       // ── LINE flex ──
       if (!opts.skipLine && lineOn && (user.notifyByLine ?? true)) {
         const lineClient = getLineClient();
@@ -114,7 +124,7 @@ export function notifyCustomer(opts: {
           const hasBtnField = (MSG_EDITABLE_FIELDS[key] ?? []).some((f) => f.key === "buttonLabel");
           const rawBtn = hasBtnField ? msgField(key, "buttonLabel", tpl).trim() : "";
           const suppressBtn = hasBtnField && rawBtn === "";
-          const inAppLink = suppressBtn ? null : linkUrl;
+          const inAppLink = suppressBtn ? null : toInAppPath(linkUrl); // v1032：站內用站內路徑
           // v994：第二顆按鈕（目前僅到場確認：「有需要改善?告訴我們」→ 站內客服，帶場次自動起手）
           let link2: string | null = null;
           let btn2: string | null = null;

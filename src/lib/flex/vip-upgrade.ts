@@ -1,4 +1,4 @@
-import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
+import { COLORS, asString, flex, ovr, btnUri, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 /**
@@ -93,7 +93,7 @@ export function vipUpgrade(
           action: {
             type: "uri",
             label: ovr(override, "buttonLabel", "查看我的會員"),
-            uri: liffUrl,
+            uri: btnUri(override, liffUrl),
           },
         },
       ],

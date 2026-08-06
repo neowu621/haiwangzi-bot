@@ -1,4 +1,4 @@
-import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
+import { COLORS, asString, flex, ovr, btnUri, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 /**
@@ -89,7 +89,7 @@ export function creditExpiry(
           action: {
             type: "uri",
             label: ovr(override, "buttonLabel", "立即預約使用"),
-            uri: liffUrl,
+            uri: btnUri(override, liffUrl),
           },
         },
       ],

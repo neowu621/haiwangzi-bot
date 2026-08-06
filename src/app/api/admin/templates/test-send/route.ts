@@ -96,7 +96,15 @@ export async function POST(req: NextRequest) {
     const hasBtnField = (MSG_EDITABLE_FIELDS[key] ?? []).some((f) => f.key === "buttonLabel");
     const rawBtn = hasBtnField ? msgField(key, "buttonLabel", override).trim() : "";
     const suppressBtn = hasBtnField && rawBtn === "";
-    const inAppLink = suppressBtn ? null : linkUrl;
+    // v1032：站內用站內路徑（與正式發送一致；本站 LIFF 深連結 → /liff/xxx）
+    const toInAppPath = (u: string | null): string | null => {
+      if (!u) return u;
+      const m = u.match(/^https?:\/\/liff\.line\.me\/[^/]+(\/.*)?$/);
+      if (!m) return u;
+      const p = (m[1] ?? "").replace(/^\/+/, "");
+      return p ? `/liff/${p}` : "/liff/home";
+    };
+    const inAppLink = suppressBtn ? null : toInAppPath(linkUrl);
     let link2: string | null = null;
     let btn2: string | null = null;
     const rawBtn2 = msgField(key, "button2Label", override).trim();

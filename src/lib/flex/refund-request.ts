@@ -1,4 +1,4 @@
-import { COLORS, asString, flex, ovr, type TemplateOverride } from "./_common";
+import { COLORS, asString, flex, ovr, btnUri, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 /**
@@ -106,7 +106,7 @@ export function refundRequest(
           action: {
             type: "uri",
             label: ovr(override, "buttonLabel", "查看詳情並確認"),
-            uri: liffUrl,
+            uri: btnUri(override, liffUrl),
           },
         },
       ],

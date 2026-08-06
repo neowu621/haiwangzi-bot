@@ -1,4 +1,4 @@
-import { COLORS, asString, asNumber, flex, ovr, type TemplateOverride } from "./_common";
+import { COLORS, asString, asNumber, flex, ovr, btnUri, type TemplateOverride } from "./_common";
 import type { FlexMessage } from "./index";
 
 /**
@@ -91,7 +91,7 @@ export function birthdayCredit(
           action: {
             type: "uri",
             label: ovr(override, "buttonLabel", "立即使用禮金"),
-            uri: liffUrl,
+            uri: btnUri(override, liffUrl),
           },
         },
       ],

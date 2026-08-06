@@ -389,7 +389,10 @@ export function composeEmail(
   // v600b：Email 按鈕預設導小編 LINE OA(避開 awstrack 追蹤破壞 LIFF)
   // v794：任一模板若後台填了「按鈕連結」(buttonUrl) 就改用它；留空則維持小編 LINE
   const ovBtnUrl = msgField(key, "buttonUrl", override);
-  const buttonUrl = ovBtnUrl && ovBtnUrl.length > 0 ? ovBtnUrl : EMAIL_BUTTON_URL;
+  // v1032：Email 內的 LIFF 連結會被信件追蹤網址(awstrack)包壞 → 一律改導小編 LINE OA；
+  //   其餘外部連結(如 Google 評論)照後台設定。
+  const isLiffLink = /^https?:\/\/liff\.line\.me\//i.test(ovBtnUrl ?? "");
+  const buttonUrl = ovBtnUrl && ovBtnUrl.length > 0 && !isLiffLink ? ovBtnUrl : EMAIL_BUTTON_URL;
   const heroEmoji = HERO_EMOJI[key] ?? "📩";
   const subject = `${opts?.subjectPrefix ?? ""}${title}`;
   const footnote = opts?.footnote ?? "系統自動通知信 · 動態欄位由系統自動帶入";

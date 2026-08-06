@@ -40,6 +40,15 @@ export function asString(v: unknown, fallback = ""): string {
   return String(v);
 }
 
+/**
+ * v1032：主按鈕連結 —— 後台「按鈕連結」(buttonUrl) 優先，沒填才用程式預設。
+ *   原本各模板直接用 params.liffUrl，導致後台設定對 LINE 完全無效（與 Email/站內 不一致）。
+ */
+export function btnUri(override: TemplateOverride | undefined, defaultUrl: string): string {
+  const u = override?.buttonUrl;
+  return u && u.trim().length > 0 ? u.trim() : defaultUrl;
+}
+
 export function asNumber(v: unknown, fallback = 0): number {
   if (v == null || v === "") return fallback;
   const n = Number(v);
