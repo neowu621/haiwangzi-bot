@@ -231,7 +231,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
               href={n.linkUrl}
               className="block rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
             >
-              {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
+              {n.buttonLabel || "前往查看"}
             </a>
           )}
           {/* v994：第二顆按鈕（到場確認的「有需要改善?告訴我們」→ 站內客服） */}

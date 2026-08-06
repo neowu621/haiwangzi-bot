@@ -96,7 +96,7 @@ export default function LiffMessagesPage() {
                 {n.linkUrl && (
                   <a href={n.linkUrl} target="_blank" rel="noopener noreferrer"
                     style={{ display: "inline-block", marginTop: 8, marginRight: 8, background: C.navy, color: "#fff", padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
-                    {n.buttonLabel ? `${n.buttonLabel} →` : "前往查看 →"}
+                    {n.buttonLabel || "前往查看"}
                   </a>
                 )}
                 {/* v994：第二顆按鈕（有需要改善?告訴我們 → 站內客服，內部導頁） */}

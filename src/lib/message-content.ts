@@ -290,10 +290,19 @@ export function buildDynamicBody(key: string, p: Record<string, unknown>): strin
       // v785：不再把長網址塞進內文；改由各管道的「海王子評論」按鈕/連結點擊
       // v992：不再重複「🎉謝謝你…玩得開心嗎?」——那句已是 bodyText(composeFullBody 會帶)，
       //   這裡只補 stats + 三行導引，與 LINE flex 內容一致(避免站內出現兩次感謝詞)。
-      return `${s(p.bookingTitle)}\n本次 +${s(p.addLogs)} 潛・海王子累積 ${s(p.totalLogs)} 潛\n會員等級：${/^\d+$/.test(lv) ? `LV${lv}` : lv}`
-        + `\n\n喜歡今天的旅程，給我們海王子評論鼓勵一下，`
-        + `\n只要一分鐘就好 🙏 給我們 Google 五星評價`
-        + `\n任何建議或想說的，也超歡迎直接回訊息告訴我們 💙`;
+      // v1034：分段（本次紀錄 / 評價導引），段落間空一行，好讀
+      return [
+        [
+          `🤿 ${s(p.bookingTitle)}`,
+          `本次 +${s(p.addLogs)} 潛・海王子累積 ${s(p.totalLogs)} 潛`,
+          `會員等級：${/^\d+$/.test(lv) ? `LV${lv}` : lv}`,
+        ].join("\n"),
+        [
+          `喜歡今天的旅程嗎？給我們一則 Google 五星評價鼓勵一下，`,
+          `只要一分鐘就好 🙏`,
+          `任何建議或想說的，也超歡迎直接回訊息告訴我們 💙`,
+        ].join("\n"),
+      ].join("\n\n");
     }
     // ── 旅遊潛水（訂金 + 尾款）──
     case "deposit_notice":
@@ -443,8 +452,22 @@ export function composeEmail(
   const footerHtml = footer
     ? `<div style="margin-top:14px;text-align:center;font-size:12px;color:#6B7682;font-style:italic">${esc(footer)}</div>`
     : "";
+  // v1034：CTA 改「明確文字」——移除只有箭頭的寫法（客戶難解讀），按鈕下方加一行說明
+  const CTA_HINT: Record<string, string> = {
+    attendance_confirmed: "點上面按鈕，30 秒完成 Google 五星評價，給教練最大的鼓勵 🙏",
+    d1_reminder: "點上面按鈕可查看這筆預約的完整資訊",
+    first_order_reward_grant: "點上面按鈕查看抵用金餘額與使用期限",
+    credit_expiry: "點上面按鈕立即使用，別讓抵用金過期",
+    vip_upgrade: "點上面按鈕查看你的會員等級與專屬優惠",
+    birthday_credit: "點上面按鈕查看生日禮金",
+    payment_reject: "點上面按鈕重新上傳轉帳證明",
+    refund_request: "點上面按鈕確認退款方式",
+  };
   const btnHtml = buttonUrl && buttonLabel
-    ? `<div style="text-align:center;margin-top:20px;"><a href="${buttonUrl}" style="display:inline-block;background-color:#00D9CB;color:#0A2342;padding:13px 34px;border-radius:10px;font-weight:800;text-decoration:none;font-size:14px;">${esc(buttonLabel)} →</a></div>`
+    ? `<div style="text-align:center;margin-top:22px;">
+        <a href="${buttonUrl}" style="display:inline-block;background-color:#00D9CB;color:#0A2342;padding:14px 36px;border-radius:10px;font-weight:800;text-decoration:none;font-size:15px;line-height:1.3;">${esc(buttonLabel)}</a>
+        ${CTA_HINT[key] ? `<div style="margin-top:9px;font-size:12px;color:#6B7682;line-height:1.6;">${esc(CTA_HINT[key])}</div>` : ""}
+      </div>`
     : "";
   // v994：第二顆按鈕（到場確認「有需要改善?告訴我們」）—— Email 導小編 LINE OA(email 外部無法直接進站內客服)
   const btn2Label = msgField(key, "button2Label", override);
