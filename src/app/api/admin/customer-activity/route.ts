@@ -60,7 +60,8 @@ export async function GET(req: NextRequest) {
     prisma.auditLog.count({ where }),
     prisma.auditLog.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      // v1040：?order=asc 讓「時間」欄位可以反向排（跨頁正確；客戶/動作的排序在前端做，只作用於當頁）
+      orderBy: { createdAt: url.searchParams.get("order") === "asc" ? "asc" : "desc" },
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -101,31 +102,68 @@ export async function GET(req: NextRequest) {
   const sumWhere = { ...where };
   delete (sumWhere as { action?: unknown }).action; // 摘要不受動作篩選影響
   const newSince = new Date(Date.now() - 7 * 86400000);
-  const [activeUsers, loginCount, bookingCount, newMembers] = await Promise.all([
-    prisma.auditLog.findMany({ where: sumWhere, select: { actorId: true }, distinct: ["actorId"] }),
-    prisma.auditLog.count({ where: { ...sumWhere, action: "customer.login" } }),
-    prisma.auditLog.count({ where: { ...sumWhere, action: "customer.booking.create" } }),
+  // v1040：摘要卡改成 groupBy —— 除了數字，還能點開看「到底是哪些人」
+  const [activeGroups, loginGroups, bookingGroups, newUsers] = await Promise.all([
+    prisma.auditLog.groupBy({ by: ["actorId"], where: sumWhere, _count: { _all: true } }),
+    prisma.auditLog.groupBy({ by: ["actorId"], where: { ...sumWhere, action: "customer.login" }, _count: { _all: true } }),
+    prisma.auditLog.groupBy({ by: ["actorId"], where: { ...sumWhere, action: "customer.booking.create" }, _count: { _all: true } }),
     // v1037：一週內註冊的新客戶（排除管理人員）
-    prisma.user.count({
+    prisma.user.findMany({
       where: {
         createdAt: { gte: newSince },
         deletedAt: null,
         ...(staffIds.length > 0 ? { lineUserId: { notIn: staffIds } } : {}),
       },
+      select: { lineUserId: true, displayName: true, realName: true, nickname: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
+
+  // 摘要名單要顯示的人，可能不在本頁 rows 裡 → 補撈名字
+  const sumIds = Array.from(new Set([...activeGroups, ...loginGroups, ...bookingGroups]
+    .map((g) => g.actorId).filter((x): x is string => !!x)))
+    .filter((id) => !userMap.has(id));
+  const sumUsers = sumIds.length > 0
+    ? await prisma.user.findMany({
+        where: { lineUserId: { in: sumIds } },
+        select: { lineUserId: true, displayName: true, realName: true, nickname: true },
+      })
+    : [];
+  const nameOf = (id: string | null) => {
+    if (!id) return "（未知）";
+    const u = userMap.get(id) ?? sumUsers.find((s) => s.lineUserId === id);
+    if (!u) return id.slice(0, 12) + "…";
+    return `${(u.nickname ?? "").trim() || "?"}（${u.realName ?? u.displayName}）`;
+  };
+  const toPeople = (groups: { actorId: string | null; _count: { _all: number } }[]) =>
+    groups
+      .filter((g) => !!g.actorId)
+      .map((g) => ({ userId: g.actorId as string, name: nameOf(g.actorId), count: g._count._all }))
+      .sort((a, b) => b.count - a.count);
 
   return NextResponse.json({
     total,
     page,
     limit,
     summary: {
-      activeUsers: activeUsers.filter((a) => a.actorId).length,
-      loginCount,
-      bookingCount,
-      newMembers, // v1037：一週內新註冊
+      activeUsers: activeGroups.filter((a) => a.actorId).length,
+      loginCount: loginGroups.reduce((s, g) => s + g._count._all, 0),
+      bookingCount: bookingGroups.reduce((s, g) => s + g._count._all, 0),
+      newMembers: newUsers.length, // v1037：一週內新註冊
 
       excludedStaff: !includeStaff && staffIds.length > 0 ? staffIds.length : 0,
+      // v1040：點卡片展開的名單
+      people: {
+        active: toPeople(activeGroups),
+        login: toPeople(loginGroups),
+        booking: toPeople(bookingGroups),
+        newMembers: newUsers.map((u) => ({
+          userId: u.lineUserId,
+          name: `${(u.nickname ?? "").trim() || "?"}（${u.realName ?? u.displayName}）`,
+          count: 0,
+          createdAt: u.createdAt,
+        })),
+      },
     },
     rows: rows.map((r) => ({
       id: r.id,
