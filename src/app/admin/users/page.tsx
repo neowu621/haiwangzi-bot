@@ -108,6 +108,7 @@ interface DiveBookingRef {
   title?: string;
   dateStart?: string;
   dateEnd?: string;
+  tankCount?: number | null; // v1041：場次預設潛次（舊單 booking.tankCount 為 null 時 fallback）
 }
 
 interface DiveBooking {
@@ -115,6 +116,7 @@ interface DiveBooking {
   code?: string | null;
   type: "daily" | "tour";
   participants: number;
+  tankCount?: number | null; // v1041：客戶實際選的潛次（每人）
   totalAmount: number;
   paidAmount: number;
   paymentStatus: string;
@@ -563,6 +565,12 @@ export default function AdminUsersPage() {
   function vipLabel(lv: number) {
     const tier = getVipTier(lv);
     return `${tier.emoji} ${tier.name}`;
+  }
+
+  // v1041：每人潛次 —— 客戶下單時選的優先，舊單 fallback 場次預設。潛旅在當地才決定，不計。
+  function tanksPerPerson(b: DiveBooking): number | null {
+    if (b.type !== "daily") return null;
+    return b.tankCount ?? b.ref.tankCount ?? null;
   }
 
   function diveLabel(b: DiveBooking) {
@@ -1555,7 +1563,8 @@ export default function AdminUsersPage() {
         open={diveHistUser !== null}
         onOpenChange={(o) => !o && setDiveHistUser(null)}
       >
-        <DialogContent className="max-h-[80vh] overflow-y-auto max-w-2xl">
+        {/* v1041：加了氣瓶欄，視窗放寬到 4xl 才不會擠 */}
+        <DialogContent className="max-h-[85vh] overflow-y-auto max-w-4xl">
           <DialogHeader>
             <DialogTitle>
               潛水紀錄 —{" "}
@@ -1578,11 +1587,14 @@ export default function AdminUsersPage() {
                 const active = diveBookings.filter((b) => !b.status.startsWith("cancelled") && b.status !== "no_show");
                 const totalPaid = active.reduce((s, b) => s + b.paidAmount, 0);
                 const totalParticipants = active.reduce((s, b) => s + b.participants, 0);
+                // v1041：累計氣瓶支數 = 每人潛次 × 人數（只算日潛；潛旅在當地才決定支數）
+                const totalTanks = active.reduce((s, b) => s + (tanksPerPerson(b) ?? 0) * b.participants, 0);
                 return (
-                  <div className="mb-3 grid grid-cols-3 gap-2">
+                  <div className="mb-3 grid grid-cols-4 gap-2">
                     {[
                       ["訂單數", `${active.length} 筆`],
                       ["總人次", `${totalParticipants} 人`],
+                      ["氣瓶支數", `${totalTanks} 支`],
                       ["已付款", `NT$${totalPaid.toLocaleString()}`],
                     ].map(([label, value]) => (
                       <div
@@ -1620,6 +1632,8 @@ export default function AdminUsersPage() {
                       <th className="px-3 py-2 font-medium">日期 / 行程</th>
                       <th className="px-3 py-2 font-medium">類型</th>
                       <th className="px-3 py-2 font-medium">人數</th>
+                      {/* v1041：氣瓶＝每人潛次 ×人數 */}
+                      <th className="px-3 py-2 font-medium">氣瓶</th>
                       <th className="px-3 py-2 font-medium">費用</th>
                       <th className="px-3 py-2 font-medium">已付</th>
                       <th className="px-3 py-2 font-medium">狀態</th>
@@ -1662,6 +1676,24 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="px-3 py-2 tabular-nums text-center">
                           {b.participants}
+                        </td>
+                        {/* v1041：氣瓶支數 — 潛旅在當地才決定，不顯示 */}
+                        <td className="px-3 py-2 tabular-nums text-center whitespace-nowrap">
+                          {(() => {
+                            const per = tanksPerPerson(b);
+                            if (per == null) return <span className="text-[var(--muted-foreground)]">—</span>;
+                            return (
+                              <>
+                                <span className="font-bold">{per * b.participants}</span>
+                                <span className="text-[10px] text-[var(--muted-foreground)]"> 支</span>
+                                {b.participants > 1 && (
+                                  <div className="text-[10px] text-[var(--muted-foreground)]">
+                                    每人 {per} 支
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-2 tabular-nums">
                           NT${b.totalAmount.toLocaleString()}
