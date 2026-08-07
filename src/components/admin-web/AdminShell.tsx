@@ -81,6 +81,7 @@ const NAV_GROUPS = [
       { href: "/admin/broadcast", icon: Megaphone, label: "群發通知" },
       { href: "/admin/templates", icon: Megaphone, label: "訊息模板" },
       { href: "/admin/message-log", icon: BookOpen, label: "📋 通訊紀錄" },
+      { href: "/admin/message-stats", icon: BarChart2, label: "📈 訊息成效" }, // v1039
     ],
   },
   {

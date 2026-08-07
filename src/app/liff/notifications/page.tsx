@@ -197,6 +197,11 @@ function NotifIcon({ icon, size }: { icon: string | null; size: number }) {
 }
 
 function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () => void }) {
+  const liff = useLiff();
+  // v1039：按鈕被點 → 記一筆（fire-and-forget，不 await、不擋跳頁）
+  const markClick = () => {
+    liff.fetchWithAuth("/api/me/notifications/click", { method: "POST", body: JSON.stringify({ id: n.id }) }).catch(() => {});
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -229,6 +234,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
           {n.linkUrl && (
             <a
               href={n.linkUrl}
+              onClick={markClick}
               className="block rounded-xl bg-[var(--color-coral)] py-3 text-center text-sm font-bold text-white"
             >
               {n.buttonLabel || "前往查看"}
@@ -238,6 +244,7 @@ function NotificationModal({ n, onClose }: { n: NotificationItem; onClose: () =>
           {n.linkUrl2 && (
             <a
               href={n.linkUrl2}
+              onClick={markClick}
               className="block rounded-xl border py-3 text-center text-sm font-bold text-[var(--color-ocean-deep)]"
               style={{ borderColor: "var(--border)" }}
             >

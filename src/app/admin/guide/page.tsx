@@ -443,6 +443,7 @@ export default function AdminGuidePage() {
           <PageRef items={[
             ["/admin/promo-codes", "節慶優惠（在「訂單 / 客戶」目錄）"],
             ["/admin/templates", "訊息模板：各種通知的預設文字"],
+            ["/admin/message-stats", "訊息成效：各模板發送量 / 失敗 / 站內已讀率 / 點擊率"],
             ["/admin/broadcast", "群發通知：選對象 + 管道（LINE / Email）一次送"],
           ]} />
           <DiagramBox title="💰 自動付款提醒時間軸（系統，每筆每段只發一次）">

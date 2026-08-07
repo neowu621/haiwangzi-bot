@@ -221,6 +221,9 @@ model Notification {
   icon        String?   @db.VarChar(255)
   isRead      Boolean   @default(false) @map("is_read")
   readAt      DateTime? @map("read_at") @db.Timestamptz
+  // v1039：客戶按下通知內按鈕的時間（null = 沒點過）。用來算「訊息成效」的點擊率——
+  //   已讀只代表訊息被打開，有點才代表文案真的推動了行動。
+  clickedAt   DateTime? @map("clicked_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [lineUserId], onDelete: Cascade)

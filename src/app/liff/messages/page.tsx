@@ -20,6 +20,14 @@ export default function LiffMessagesPage() {
   const [sending, setSending] = useState(false);
   const [treeOpen, setTreeOpen] = useState(false);
 
+  // v1039：通知按鈕點擊打點（best-effort，不阻塞跳頁）——後台「訊息成效」的點擊率靠這個
+  const markClick = useCallback((id: string) => {
+    liff.fetchWithAuth("/api/me/notifications/click", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => {});
+  }, [liff]);
+
   // v903：問題樹事件打點（best-effort，不阻塞）
   const logTree = useCallback((action: "category" | "answer" | "resolved" | "escalated", category: string, questionKey?: string) => {
     liff.fetchWithAuth("/api/cs-tree/event", {
@@ -94,14 +102,14 @@ export default function LiffMessagesPage() {
                 <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.6, marginTop: 3, whiteSpace: "pre-wrap" }}>{linkify(n.body)}</div>
                 {/* v991：與 LINE/Email 一致 —— 有連結就顯示模板按鈕文字(如「給予我們 ⭐⭐⭐⭐⭐ 評價」) */}
                 {n.linkUrl && (
-                  <a href={n.linkUrl} target="_blank" rel="noopener noreferrer"
+                  <a href={n.linkUrl} target="_blank" rel="noopener noreferrer" onClick={() => markClick(n.id)}
                     style={{ display: "inline-block", marginTop: 8, marginRight: 8, background: C.navy, color: "#fff", padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
                     {n.buttonLabel || "前往查看"}
                   </a>
                 )}
                 {/* v994：第二顆按鈕（有需要改善?告訴我們 → 站內客服，內部導頁） */}
                 {n.linkUrl2 && (
-                  <a href={n.linkUrl2}
+                  <a href={n.linkUrl2} onClick={() => markClick(n.id)}
                     style={{ display: "inline-block", marginTop: 8, border: `1px solid ${C.line}`, color: C.navy, padding: "7px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
                     {n.buttonLabel2 || "💬 聯繫客服"}
                   </a>
