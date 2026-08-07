@@ -111,6 +111,16 @@ interface DiveBookingRef {
   tankCount?: number | null; // v1041：場次預設潛次（舊單 booking.tankCount 為 null 時 fallback）
 }
 
+// v1042：潛水次數校正 —— 目前值 vs 訂單實際加總
+interface RecountRow {
+  userId: string;
+  name: string;
+  current: number;
+  expected: number;
+  diff: number;
+  vipLevel: number;
+}
+
 interface DiveBooking {
   id: string;
   code?: string | null;
@@ -182,6 +192,43 @@ export default function AdminUsersPage() {
   const [diveHistUser, setDiveHistUser] = useState<AdminUser | null>(null);
   const [diveBookings, setDiveBookings] = useState<DiveBooking[]>([]);
   const [diveHistLoading, setDiveHistLoading] = useState(false);
+
+  // ── v1042：潛水次數校正 popup ────────────────────────────────────────────────
+  const [recountOpen, setRecountOpen] = useState(false);
+  const [recountRows, setRecountRows] = useState<RecountRow[] | null>(null);
+  const [recountLoading, setRecountLoading] = useState(false);
+  const [recountBusy, setRecountBusy] = useState(false);
+
+  async function openRecount() {
+    setRecountOpen(true);
+    setRecountRows(null);
+    setRecountLoading(true);
+    try {
+      const d = await adminFetch<{ rows: RecountRow[] }>("/api/admin/recount-dives");
+      setRecountRows(d.rows);
+    } catch (e) {
+      alert("比對失敗：" + (e instanceof Error ? e.message : String(e)));
+      setRecountOpen(false);
+    } finally {
+      setRecountLoading(false);
+    }
+  }
+
+  async function applyRecount() {
+    if (!recountRows?.length) return;
+    if (!window.confirm(`確定把 ${recountRows.length} 位會員的潛水次數改成訂單實際加總？\n\n這會影響 VIP 判定基準，動作會記在操作紀錄裡。`)) return;
+    setRecountBusy(true);
+    try {
+      const d = await adminFetch<{ updated: number }>("/api/admin/recount-dives", { method: "POST" });
+      alert(`已校正 ${d.updated} 位會員。`);
+      setRecountOpen(false);
+      await load();
+    } catch (e) {
+      alert("校正失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRecountBusy(false);
+    }
+  }
 
   // ── 傳送訊息 popup ──────────────────────────────────────────────────────────
   const [notifyUser, setNotifyUser] = useState<AdminUser | null>(null);
@@ -608,6 +655,10 @@ export default function AdminUsersPage() {
               className="pl-9"
             />
           </div>
+          {/* v1042：潛水次數是「標到場時累加」出來的，會因重複點名而膨脹；這裡可跟訂單重新對帳 */}
+          <Button size="sm" variant="outline" onClick={() => void openRecount()} title="用所有『已完成』訂單重算每位會員的潛水次數，找出對不上的人">
+            🔄 校正潛水次數
+          </Button>
           <div className="flex flex-wrap gap-1.5">
             {(
               [
@@ -1640,12 +1691,16 @@ export default function AdminUsersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {diveBookings.map((b, i) => (
+                    {diveBookings.map((b, i) => {
+                      // v1042：沒有實際下水的單（取消／未到場）＝上方統計沒算進去的那些，
+                      //        用淺灰底 + 刪除線標出來，一眼看得出哪幾筆不算數。
+                      const voided = b.status.startsWith("cancelled") || b.status === "no_show";
+                      return (
                       <tr
                         key={b.id}
                         className={cn(
                           "border-t",
-                          i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
+                          voided ? "bg-[var(--muted)]/60 text-[var(--muted-foreground)] line-through" : i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20",
                         )}
                         style={{ borderColor: "var(--border)" }}
                       >
@@ -1659,8 +1714,9 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium"
                             style={{
+                              textDecoration: "none", // 標籤不畫刪除線
                               background:
                                 b.type === "daily"
                                   ? "rgba(0,67,118,0.1)"
@@ -1701,26 +1757,92 @@ export default function AdminUsersPage() {
                         <td className="px-3 py-2 tabular-nums">
                           NT${b.paidAmount.toLocaleString()}
                         </td>
-                        <td className="px-3 py-2">
+                        {/* 狀態標籤本身不畫刪除線，否則反而看不清是哪種取消 */}
+                        <td className="px-3 py-2 no-underline">
                           <span
                             className={cn(
-                              "rounded px-1.5 py-0.5 text-[10px]",
+                              "inline-block rounded px-1.5 py-0.5 text-[10px] no-underline",
                               b.status === "completed"
                                 ? "bg-green-100 text-green-700"
-                                : b.status.startsWith("cancelled") || b.status === "no_show"
+                                : voided
                                 ? "bg-red-100 text-red-700"
                                 : "bg-yellow-100 text-yellow-700",
                             )}
+                            style={{ textDecoration: "none" }}
                           >
                             {STATUS_LABELS[b.status] ?? b.status}
                           </span>
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── v1042：潛水次數校正 dialog ────────────────────────────────────────── */}
+      <Dialog open={recountOpen} onOpenChange={(o) => !o && setRecountOpen(false)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>校正潛水次數</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+            會員的「潛水次數」是<b>標到場時累加</b>出來的，不是每次即時重算。以前少了防重複的保護，
+            同一筆訂單被重複標到場（例如老闆結帳與到場點名各按一次）就會多加一次，改判未到場也不會扣回。
+            <br />
+            下面用<b>所有「已完成」訂單</b>重新加總（日潛＝每人潛次 × 人數、潛旅＝人數），列出對不上的人。
+          </p>
+          {recountLoading ? (
+            <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">比對中…</div>
+          ) : !recountRows ? null : recountRows.length === 0 ? (
+            <div className="py-8 text-center text-sm" style={{ color: "var(--color-ocean-deep)" }}>
+              ✅ 全部相符，沒有需要校正的會員。
+            </div>
+          ) : (
+            <>
+              <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--border)" }}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
+                      <th className="px-3 py-2 font-medium">會員</th>
+                      <th className="px-3 py-2 font-medium text-center">目前</th>
+                      <th className="px-3 py-2 font-medium text-center">訂單實際</th>
+                      <th className="px-3 py-2 font-medium text-center">差異</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recountRows.map((r, i) => (
+                      <tr key={r.userId} className={cn("border-t", i % 2 === 0 ? "bg-white" : "bg-[var(--muted)]/20")} style={{ borderColor: "var(--border)" }}>
+                        <td className="px-3 py-2 font-medium">
+                          {r.name}
+                          <span className="ml-1.5 text-[10px] text-[var(--muted-foreground)]">LV{r.vipLevel}</span>
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums">{r.current}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-bold" style={{ color: "var(--color-ocean-deep)" }}>{r.expected}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-bold" style={{ color: r.diff < 0 ? "#b3562c" : "#0a8f86" }}>
+                          {r.diff > 0 ? `+${r.diff}` : r.diff}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+              <p className="text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+                ⚠️ 這個欄位後台可以手動調整（例如補登舊資料）。如果某位會員的差異是你自己補的，
+                套用會把它蓋掉——先確認清單再按下去。VIP 等級不會自動調降（已發出的升等禮金不追回），
+                需要時請到「VIP 等級設定」重算。
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setRecountOpen(false)}>取消</Button>
+                <Button onClick={() => void applyRecount()} disabled={recountBusy}>
+                  {recountBusy ? "校正中…" : `校正這 ${recountRows.length} 位`}
+                </Button>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

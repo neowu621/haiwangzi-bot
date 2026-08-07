@@ -46,6 +46,13 @@ export async function POST(
   if (!booking)
     return NextResponse.json({ error: "not found" }, { status: 404 });
 
+  // v1042：冪等保護 —— 已經是這個狀態就直接回，不再重複加潛數／未到次數。
+  //   之前沒有這道防線：同一筆訂單被重複標「到場」(例如老闆結帳與點名各按一次) 就會重複累加
+  //   haiwangziLogCount，造成會員的「潛水次數」比實際氣瓶支數多。
+  if (booking.status === parsed.data.action) {
+    return NextResponse.json({ ok: true, action: parsed.data.action, alreadyDone: true, logsAdded: 0 });
+  }
+
   try {
     if (parsed.data.action === "completed") {
       // 算這筆 booking 加多少 logs (海王子累積，不動使用者自填的 logCount)
@@ -71,7 +78,11 @@ export async function POST(
         prisma.user.update({
           where: { lineUserId: booking.userId },
           // 只加 haiwangziLogCount，不動 logCount (使用者自填的歷史經驗)
-          data: { haiwangziLogCount: { increment: addLogs } },
+          // v1042：從「未到場」改判到場時，把當初記的那筆未到次數收回來
+          data: {
+            haiwangziLogCount: { increment: addLogs },
+            ...(booking.status === "no_show" ? { noShowCount: { decrement: 1 } } : {}),
+          },
         }),
       ]);
 
@@ -232,6 +243,16 @@ export async function POST(
 
       return NextResponse.json({ ok: true, action: "completed", logsAdded: addLogs });
     } else {
+      // v1042：若原本已標到場，改判未到場要把當初加的潛數扣回去（否則次數只進不出）
+      let revertLogs = 0;
+      if (booking.status === "completed") {
+        if (booking.type === "daily") {
+          const trip = await prisma.divingTrip.findUnique({ where: { id: booking.refId } });
+          revertLogs = (booking.tankCount ?? trip?.tankCount ?? 1) * booking.participants;
+        } else {
+          revertLogs = booking.participants;
+        }
+      }
       await prisma.$transaction([
         prisma.booking.update({
           where: { id },
@@ -239,7 +260,10 @@ export async function POST(
         }),
         prisma.user.update({
           where: { lineUserId: booking.userId },
-          data: { noShowCount: { increment: 1 } },
+          data: {
+            noShowCount: { increment: 1 },
+            ...(revertLogs > 0 ? { haiwangziLogCount: { decrement: revertLogs } } : {}),
+          },
         }),
       ]);
       // v278：log
@@ -250,7 +274,7 @@ export async function POST(
           toStatus: "no_show",
           actorId: auth.user.lineUserId,
           actorRole: "admin",
-          note: "勾選未到場",
+          note: revertLogs > 0 ? `勾選未到場（-${revertLogs} 潛數）` : "勾選未到場",
         }),
       );
       return NextResponse.json({ ok: true, action: "no_show" });

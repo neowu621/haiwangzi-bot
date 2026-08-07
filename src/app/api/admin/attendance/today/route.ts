@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       id: true, refId: true, type: true, participants: true, status: true,
       paymentStatus: true, signatureImageKey: true, notes: true, // v850：訂單備註
       totalAmount: true, paidAmount: true, // v755：點名確認框要顯示剩餘款／判斷有無付款
-      user: { select: { displayName: true, realName: true, phone: true } },
+      user: { select: { displayName: true, realName: true, nickname: true, phone: true } }, // v1042：+暱稱（教練現場好稱呼）
     },
     orderBy: { createdAt: "asc" },
   });
@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
   const mapBk = (b: typeof bookings[number]) => ({
     id: b.id,
     name: b.user.realName ?? b.user.displayName,
+    nickname: b.user.nickname ?? null, // v1042：現場點名叫暱稱比叫本名自然
     phone: b.user.phone,
     participants: b.participants,
     status: b.status,

@@ -11,6 +11,7 @@ import { Check, X, RefreshCw, Sun } from "lucide-react";
 interface AttBooking {
   id: string;
   name: string;
+  nickname?: string | null; // v1042：暱稱（現場好稱呼）
   phone: string | null;
   participants: number;
   status: string;
@@ -177,7 +178,11 @@ export default function AttendancePage() {
                       <div key={b.id} className="flex items-center justify-between gap-3 p-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">{b.name}</span>
+                            {/* v1042：暱稱（姓名）—— 現場叫暱稱比叫本名自然 */}
+                            <span className="font-medium">
+                              <span style={{ color: "#7c3aed", fontWeight: 800 }}>{b.nickname?.trim() || "?"}</span>
+                              （{b.name}）
+                            </span>
                             <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px]">{b.participants}人</span>
                             {b.paymentStatus === "fully_paid" ? (
                               <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">付清</span>
