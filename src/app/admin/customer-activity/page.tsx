@@ -16,13 +16,14 @@ import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialo
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // v1036：摘要統計
-interface Summary { activeUsers: number; loginCount: number; bookingCount: number; excludedStaff: number }
+interface Summary { activeUsers: number; loginCount: number; bookingCount: number; excludedStaff: number; newMembers?: number }
 
-function SumCard({ label, value, unit, hint, accent }: { label: string; value: number; unit: string; hint?: string; accent?: boolean }) {
+function SumCard({ label, value, unit, hint, accent, newAccent }: { label: string; value: number; unit: string; hint?: string; accent?: boolean; newAccent?: boolean }) {
+  const hot = newAccent && value > 0;
   return (
-    <div className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: "var(--border)" }}>
+    <div className="rounded-xl border px-3 py-2.5" style={{ borderColor: hot ? "#f0b48c" : "var(--border)", background: hot ? "#fff7f2" : "#fff" }}>
       <div className="text-[11px] text-[var(--muted-foreground)]">{label}</div>
-      <div className="font-mono text-[21px] font-extrabold leading-tight tabular-nums" style={{ color: accent ? "var(--color-ocean-deep)" : undefined }}>
+      <div className="font-mono text-[21px] font-extrabold leading-tight tabular-nums" style={{ color: hot ? "#b3562c" : accent ? "var(--color-ocean-deep)" : undefined }}>
         {value.toLocaleString()}<span className="ml-0.5 text-[11px] font-normal text-[var(--muted-foreground)]">{unit}</span>
       </div>
       {hint && <div className="text-[10px] text-[var(--muted-foreground)]">{hint}</div>}
@@ -35,7 +36,7 @@ interface Row {
   createdAt: string;
   actorId: string | null;
   actorName: string | null;
-  user: { lineUserId: string; displayName: string; realName: string | null; phone: string | null } | null;
+  user: { lineUserId: string; displayName: string; realName: string | null; nickname?: string | null; phone: string | null } | null;
   actorIp: string | null;
   actorUserAgent: string | null;
   action: string;
@@ -43,6 +44,10 @@ interface Row {
   targetId: string | null;
   targetLabel: string | null;
   metadata: unknown;
+  // v1037：客戶登入概況
+  loginTotal?: number;
+  login14d?: number;
+  isNewMember?: boolean;
 }
 
 // 動作 → 中文 + emoji
@@ -147,8 +152,9 @@ export default function CustomerActivityPage() {
     <AdminShell title="前台活動紀錄">
       {/* v1036：摘要——一眼看出這段期間有多少「真實客戶」在動 */}
       {summary && (
-        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <SumCard label="活躍客戶" value={summary.activeUsers} unit="位" hint="這段期間有動作的人" />
+          <SumCard label="🆕 本週新客戶" value={summary.newMembers ?? 0} unit="位" hint="7 天內註冊，記得關心" newAccent />
           <SumCard label="登入次數" value={summary.loginCount} unit="次" />
           <SumCard label="建立預約" value={summary.bookingCount} unit="筆" accent />
           <SumCard label="總活動筆數" value={total} unit="筆" hint={summary.excludedStaff > 0 ? `已排除 ${summary.excludedStaff} 位管理人員` : undefined} />
@@ -249,6 +255,20 @@ export default function CustomerActivityPage() {
                         </button>
                       ) : (
                         <span className="text-xs text-[var(--muted-foreground)]">{r.actorName ?? r.actorId ?? "—"}</span>
+                      )}
+                      {/* v1037：一週內註冊的新客戶 → 醒目提醒 */}
+                      {r.isNewMember && (
+                        <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold" style={{ background: "#ffe8d9", color: "#b3562c" }}>
+                          🆕 新客戶
+                        </span>
+                      )}
+                      {/* v1037：登入概況（累積 / 近兩週） */}
+                      {r.loginTotal !== undefined && r.loginTotal > 0 && (
+                        <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+                          登入 <b className="tabular">{r.loginTotal}</b> 次
+                          <span className="mx-1">·</span>
+                          近2週 <b className="tabular" style={{ color: (r.login14d ?? 0) > 0 ? "#0a8f86" : undefined }}>{r.login14d ?? 0}</b> 次
+                        </div>
                       )}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
