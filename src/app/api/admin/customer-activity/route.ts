@@ -25,8 +25,19 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
 
+  // v1036：預設排除管理人員（老闆/管理者/IT/教練/助教）——他們本來就一直登入，會蓋掉真實客戶行為。
+  //   ?includeStaff=1 可把他們加回來；指定 userId 查單一客戶時不套用排除。
+  const userIdParam = url.searchParams.get("userId");
+  const includeStaff = url.searchParams.get("includeStaff") === "1" || !!userIdParam;
+  const staff = includeStaff ? [] : await prisma.user.findMany({
+    where: { OR: [{ role: { in: ["boss", "admin", "it", "coach", "assistant"] } }, { roles: { hasSome: ["boss", "admin", "it", "coach", "assistant"] } }] },
+    select: { lineUserId: true },
+  });
+  const staffIds = staff.map((s) => s.lineUserId);
+
   const where: Record<string, unknown> = {
     actorRole: "customer",
+    ...(staffIds.length > 0 ? { actorId: { notIn: staffIds } } : {}),
   };
   if (action) {
     if (action.endsWith(".*")) {
@@ -65,10 +76,25 @@ export async function GET(req: NextRequest) {
     : [];
   const userMap = new Map(users.map((u) => [u.lineUserId, u]));
 
+  // v1036：摘要統計（依目前時間範圍與是否含管理人員）——讓這頁一眼看出「有多少人在動」
+  const sumWhere = { ...where };
+  delete (sumWhere as { action?: unknown }).action; // 摘要不受動作篩選影響
+  const [activeUsers, loginCount, bookingCount] = await Promise.all([
+    prisma.auditLog.findMany({ where: sumWhere, select: { actorId: true }, distinct: ["actorId"] }),
+    prisma.auditLog.count({ where: { ...sumWhere, action: "customer.login" } }),
+    prisma.auditLog.count({ where: { ...sumWhere, action: "customer.booking.create" } }),
+  ]);
+
   return NextResponse.json({
     total,
     page,
     limit,
+    summary: {
+      activeUsers: activeUsers.filter((a) => a.actorId).length,
+      loginCount,
+      bookingCount,
+      excludedStaff: !includeStaff && staffIds.length > 0 ? staffIds.length : 0,
+    },
     rows: rows.map((r) => ({
       id: r.id,
       createdAt: r.createdAt,

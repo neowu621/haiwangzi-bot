@@ -15,6 +15,21 @@ import { cn } from "@/lib/utils";
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+// v1036：摘要統計
+interface Summary { activeUsers: number; loginCount: number; bookingCount: number; excludedStaff: number }
+
+function SumCard({ label, value, unit, hint, accent }: { label: string; value: number; unit: string; hint?: string; accent?: boolean }) {
+  return (
+    <div className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: "var(--border)" }}>
+      <div className="text-[11px] text-[var(--muted-foreground)]">{label}</div>
+      <div className="font-mono text-[21px] font-extrabold leading-tight tabular-nums" style={{ color: accent ? "var(--color-ocean-deep)" : undefined }}>
+        {value.toLocaleString()}<span className="ml-0.5 text-[11px] font-normal text-[var(--muted-foreground)]">{unit}</span>
+      </div>
+      {hint && <div className="text-[10px] text-[var(--muted-foreground)]">{hint}</div>}
+    </div>
+  );
+}
+
 interface Row {
   id: string;
   createdAt: string;
@@ -84,6 +99,9 @@ export default function CustomerActivityPage() {
   const [filterDate, setFilterDate] = useState("7days");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  // v1036：預設排除管理人員（老闆/IT/教練…本來就一直登入，會蓋掉真實客戶行為）+ 摘要
+  const [includeStaff, setIncludeStaff] = useState(false);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Row | null>(null);
   const PAGE_SIZE = 50;
@@ -95,6 +113,7 @@ export default function CustomerActivityPage() {
       params.set("page", String(page));
       params.set("limit", String(PAGE_SIZE));
       if (filterGroup !== "all") params.set("action", `customer.${filterGroup}.*`);
+      if (includeStaff) params.set("includeStaff", "1"); // v1036：預設排除管理人員
       if (filterDate !== "all") {
         const days = filterDate === "today" ? 0 : filterDate === "3days" ? 3 : filterDate === "7days" ? 7 : 30;
         const from = new Date();
@@ -102,7 +121,8 @@ export default function CustomerActivityPage() {
         from.setHours(0, 0, 0, 0);
         params.set("from", from.toISOString());
       }
-      const r = await adminFetch<{ total: number; rows: Row[] }>(`/api/admin/customer-activity?${params}`);
+      const r = await adminFetch<{ total: number; rows: Row[]; summary?: Summary }>(`/api/admin/customer-activity?${params}`);
+      setSummary(r.summary ?? null);
       let filtered = r.rows ?? [];
       if (search.trim()) {
         const k = search.trim().toLowerCase();
@@ -121,10 +141,19 @@ export default function CustomerActivityPage() {
       setLoading(false);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filterGroup, filterDate, page]);
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filterGroup, filterDate, page, includeStaff]);
 
   return (
     <AdminShell title="前台活動紀錄">
+      {/* v1036：摘要——一眼看出這段期間有多少「真實客戶」在動 */}
+      {summary && (
+        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SumCard label="活躍客戶" value={summary.activeUsers} unit="位" hint="這段期間有動作的人" />
+          <SumCard label="登入次數" value={summary.loginCount} unit="次" />
+          <SumCard label="建立預約" value={summary.bookingCount} unit="筆" accent />
+          <SumCard label="總活動筆數" value={total} unit="筆" hint={summary.excludedStaff > 0 ? `已排除 ${summary.excludedStaff} 位管理人員` : undefined} />
+        </div>
+      )}
       <div className="space-y-3 mb-4">
         {/* 日期 filter */}
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -176,6 +205,11 @@ export default function CustomerActivityPage() {
           />
           <Button size="sm" variant="outline" onClick={() => void load()}>🔍 搜尋</Button>
           <Button size="sm" variant="outline" onClick={() => { setSearch(""); void load(); }}>清除</Button>
+          {/* v1036：預設只看真實客戶；需要時可把管理人員加回來 */}
+          <label className="ml-2 inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-[var(--muted-foreground)]">
+            <input type="checkbox" checked={includeStaff} onChange={(e) => { setIncludeStaff(e.target.checked); setPage(1); }} className="h-3.5 w-3.5" />
+            包含管理人員（老闆／IT／教練）
+          </label>
         </div>
       </div>
 
