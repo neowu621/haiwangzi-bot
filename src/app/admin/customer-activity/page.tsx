@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { memberName } from "@/lib/member-name"; // v1038：暱稱（姓名）
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -133,6 +134,7 @@ export default function CustomerActivityPage() {
         const k = search.trim().toLowerCase();
         filtered = filtered.filter((row) =>
           (row.user?.realName ?? "").toLowerCase().includes(k) ||
+          (row.user?.nickname ?? "").toLowerCase().includes(k) || // v1038：暱稱也可搜
           (row.user?.displayName ?? "").toLowerCase().includes(k) ||
           (row.user?.phone ?? "").includes(k) ||
           (row.actorId ?? "").includes(k),
@@ -244,32 +246,36 @@ export default function CustomerActivityPage() {
                     <td className="px-3 py-2 whitespace-nowrap text-[11px] tabular text-[var(--muted-foreground)]">
                       {formatTime(r.createdAt)}
                     </td>
+                    {/* v1038：客戶＝暱稱（姓名）＋新客戶標＋登入概況，全部同一行 */}
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {r.user ? (
-                        <button
-                          type="button"
-                          onClick={() => setOpenCustomerId(r.user!.lineUserId)}
-                          className="text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
-                        >
-                          {r.user.realName ?? r.user.displayName}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-[var(--muted-foreground)]">{r.actorName ?? r.actorId ?? "—"}</span>
-                      )}
-                      {/* v1037：一週內註冊的新客戶 → 醒目提醒 */}
-                      {r.isNewMember && (
-                        <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold" style={{ background: "#ffe8d9", color: "#b3562c" }}>
-                          🆕 新客戶
-                        </span>
-                      )}
-                      {/* v1037：登入概況（累積 / 近兩週） */}
-                      {r.loginTotal !== undefined && r.loginTotal > 0 && (
-                        <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
-                          登入 <b className="tabular">{r.loginTotal}</b> 次
-                          <span className="mx-1">·</span>
-                          近2週 <b className="tabular" style={{ color: (r.login14d ?? 0) > 0 ? "#0a8f86" : undefined }}>{r.login14d ?? 0}</b> 次
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                        {r.user ? (
+                          <button
+                            type="button"
+                            onClick={() => setOpenCustomerId(r.user!.lineUserId)}
+                            className="text-sm font-medium underline decoration-dotted underline-offset-2 hover:text-[var(--color-ocean-deep)] hover:no-underline"
+                          >
+                            <span style={{ color: "#7c3aed", fontWeight: 800 }}>{r.user.nickname?.trim() || "?"}</span>
+                            （{r.user.realName ?? r.user.displayName}）
+                          </button>
+                        ) : (
+                          <span className="text-xs text-[var(--muted-foreground)]">{r.actorName ?? r.actorId ?? "—"}</span>
+                        )}
+                        {/* v1037：一週內註冊的新客戶 → 醒目提醒 */}
+                        {r.isNewMember && (
+                          <span className="rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold" style={{ background: "#ffe8d9", color: "#b3562c" }}>
+                            🆕 新客戶
+                          </span>
+                        )}
+                        {/* v1037：登入概況（累積 / 近兩週） */}
+                        {r.loginTotal !== undefined && r.loginTotal > 0 && (
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            登入 <b className="tabular">{r.loginTotal}</b> 次
+                            <span className="mx-1">·</span>
+                            近2週 <b className="tabular" style={{ color: (r.login14d ?? 0) > 0 ? "#0a8f86" : undefined }}>{r.login14d ?? 0}</b> 次
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <Badge variant="muted" className="text-[10px]">
@@ -331,7 +337,7 @@ export default function CustomerActivityPage() {
             <div className="space-y-2 text-xs">
               <Row k="時間" v={new Date(detail.createdAt).toLocaleString("zh-TW")} />
               <Row k="動作" v={`${shortAction(detail.action).emoji} ${shortAction(detail.action).label}（${detail.action}）`} />
-              <Row k="客戶" v={detail.user ? `${detail.user.realName ?? detail.user.displayName} (${detail.user.lineUserId.slice(0, 20)}...)` : detail.actorId ?? "—"} />
+              <Row k="客戶" v={detail.user ? `${memberName(detail.user.nickname, detail.user.realName ?? detail.user.displayName)} (${detail.user.lineUserId.slice(0, 20)}...)` : detail.actorId ?? "—"} />
               <Row k="IP" v={detail.actorIp ?? "—"} />
               <Row k="User Agent" v={detail.actorUserAgent ?? "—"} />
               <Row k="目標" v={`${detail.targetType ?? "—"} ${detail.targetLabel ?? detail.targetId ?? ""}`} />

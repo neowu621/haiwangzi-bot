@@ -475,7 +475,8 @@ export default function AdminGuidePage() {
         <Section title="後⑦ 分析與紀錄">
           <PageRef items={[
             ["/admin/reports", "報表：收入 / 場次 / 訂單 / 會員 + CSV 匯出"],
-            ["/admin/customer-activity", "前台活動：客戶瀏覽 / 操作軌跡（含 IP / UA）"],
+            ["/admin/customer-activity", "前台活動：客戶瀏覽 / 操作軌跡（含 IP / UA、登入次數、新客戶標記）"],
+            ["/admin/customer-insights", "客戶偏好分析：猶豫清單 / 潛點與時段排行 / 沉睡客戶 / 常客偏好卡"],
             ["/admin/audit-logs", "操作紀錄：所有管理動作 + 群發 / 聯絡客戶歷史"],
           ]} />
         </Section>
