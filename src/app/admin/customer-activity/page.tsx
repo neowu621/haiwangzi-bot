@@ -299,7 +299,8 @@ export default function CustomerActivityPage() {
             <span>· 摘要不受「動作」篩選影響</span>
             <span>· 「本週新客戶」固定看 7 天，不隨時間篩選變動</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {/* v1050：裝置分布併進摘要列。7 欄＝5 張數字卡各 1 格＋裝置卡佔 2 格（長條圖需要寬度） */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-7">
             <SumCard label="活躍客戶" value={summary.activeUsers} unit="位" hint="這段期間有動作的人"
               people={summary.people?.active} open={openCard === "active"} onToggle={() => setOpenCard(openCard === "active" ? null : "active")} />
             <SumCard label="🆕 本週新客戶" value={summary.newMembers ?? 0} unit="位" hint="7 天內註冊，記得關心" newAccent
@@ -310,66 +311,77 @@ export default function CustomerActivityPage() {
               people={summary.people?.booking} open={openCard === "booking"} onToggle={() => setOpenCard(openCard === "booking" ? null : "booking")} />
             {/* 這張跟其他四張不同：它是「下方清單的總筆數」，所以會跟著動作篩選一起變 */}
             <SumCard label="總活動筆數" value={total} unit="筆" hint={filterGroup === "all" ? "下方清單的總筆數" : `僅「${FILTER_CHIPS.find((c) => c.key === filterGroup)?.label ?? filterGroup}」`} />
-          </div>
-          {/* v1049：裝置分布——逐列看只能查個案，比例才決定前端要先為誰最佳化 */}
-          {summary.devices && summary.devices.total > 0 && (
-            <div className="mt-2 rounded-xl border bg-white px-3.5 py-3" style={{ borderColor: "var(--border)" }}>
-              <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="text-[11px] text-[var(--muted-foreground)]">裝置分布</span>
-                <span className="text-[11px] text-[var(--muted-foreground)]">
-                  其中 <b className="tabular" style={{ color: "#06C755" }}>{summary.devices.inLinePct}%</b> 是從 LINE 內建瀏覽器進來的
-                </span>
-              </div>
-              <div className="flex h-6 overflow-hidden rounded-lg">
-                {summary.devices.items.map((d) => (
-                  <div
-                    key={d.kind}
-                    className="flex items-center justify-center text-[10.5px] font-extrabold"
-                    style={{ flex: Math.max(d.pct, 1), background: DEV_STYLE[d.kind].bar, color: DEV_STYLE[d.kind].fg }}
-                    title={`${d.label}：${d.events} 次 · ${d.users} 位客戶`}
-                  >
-                    {d.pct >= 12 ? `${d.label} ${d.pct}%` : ""}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-                {summary.devices.items.map((d) => {
-                  const key = d.kind === "ios" ? "devIos" : d.kind === "ipad" ? "devIpad" : d.kind === "android" ? "devAndroid" : d.kind === "desktop" ? "devDesktop" : null;
-                  const people = key ? summary.people?.[key] : undefined;
-                  const inner = (
-                    <>
-                      <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm align-[-1px]" style={{ background: DEV_STYLE[d.kind].bar }} />
-                      {DEV_STYLE[d.kind].icon} {d.label}
-                      <b className="ml-1 tabular">{d.pct}%</b>
-                      <span className="ml-1 tabular text-[var(--muted-foreground)]">({d.users} 位)</span>
-                    </>
-                  );
-                  return people && people.length > 0 ? (
-                    <button key={d.kind} type="button" onClick={() => setOpenDev(openDev === d.kind ? null : d.kind)}
-                      className="text-[11px] hover:underline" style={{ color: openDev === d.kind ? "var(--color-ocean-deep)" : undefined }}>
-                      {inner}
-                    </button>
-                  ) : (
-                    <span key={d.kind} className="text-[11px]">{inner}</span>
-                  );
-                })}
-              </div>
-              {openDev && (() => {
-                const key = openDev === "ios" ? "devIos" : openDev === "ipad" ? "devIpad" : openDev === "android" ? "devAndroid" : "devDesktop";
-                const people = summary.people?.[key] ?? [];
-                return (
-                  <div className="mt-2 flex flex-wrap gap-1.5 border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                    {people.map((p) => (
-                      <button key={p.userId} type="button" onClick={() => setOpenCustomerId(p.userId)}
-                        className="rounded-full px-2.5 py-1 text-[11px] transition-colors hover:bg-[var(--border)]" style={{ background: "var(--muted)" }}>
-                        {p.name}<span className="ml-1 tabular text-[10px] font-bold" style={{ color: "var(--color-ocean-deep)" }}>{p.count}</span>
+
+            {/* v1050：裝置分布——逐列看只能查個案，比例才決定前端要先為誰最佳化 */}
+            {summary.devices && summary.devices.total > 0 && (
+              <div className="col-span-2 rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: "var(--border)" }}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] text-[var(--muted-foreground)]">裝置分布</span>
+                  <span className="whitespace-nowrap text-[10px] text-[var(--muted-foreground)]">
+                    <b className="tabular" style={{ color: "#06C755" }}>{summary.devices.inLinePct}%</b> 來自 LINE
+                  </span>
+                </div>
+                <div className="mt-1 flex h-[26px] overflow-hidden rounded-lg">
+                  {summary.devices.items.map((d) => (
+                    <div
+                      key={d.kind}
+                      className="flex items-center justify-center text-[10.5px] font-extrabold"
+                      style={{ flex: Math.max(d.pct, 1), background: DEV_STYLE[d.kind].bar, color: DEV_STYLE[d.kind].fg }}
+                      title={`${d.label}：${d.events} 次 · ${d.users} 位客戶`}
+                    >
+                      {d.pct >= 18 ? `${d.label} ${d.pct}%` : d.pct >= 10 ? `${d.pct}%` : ""}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5">
+                  {summary.devices.items.map((d) => {
+                    const key = d.kind === "ios" ? "devIos" : d.kind === "ipad" ? "devIpad" : d.kind === "android" ? "devAndroid" : d.kind === "desktop" ? "devDesktop" : null;
+                    const people = key ? summary.people?.[key] : undefined;
+                    const inner = (
+                      <>
+                        <span className="mr-1 inline-block h-2 w-2 rounded-sm align-[-1px]" style={{ background: DEV_STYLE[d.kind].bar }} />
+                        {DEV_STYLE[d.kind].icon} {d.label} <b className="tabular">{d.pct}%</b>
+                        <span className="ml-0.5 tabular text-[var(--muted-foreground)]">({d.users})</span>
+                      </>
+                    );
+                    return people && people.length > 0 ? (
+                      <button key={d.kind} type="button" onClick={() => setOpenDev(openDev === d.kind ? null : d.kind)}
+                        className="whitespace-nowrap text-[10px] hover:underline" style={{ color: openDev === d.kind ? "var(--color-ocean-deep)" : undefined }}>
+                        {inner}
                       </button>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+                    ) : (
+                      <span key={d.kind} className="whitespace-nowrap text-[10px]">{inner}</span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 裝置名單展開在整列下方——卡片內只有 2 格寬，塞名單會擠爆 */}
+          {openDev && summary.people && (() => {
+            const key = openDev === "ios" ? "devIos" : openDev === "ipad" ? "devIpad" : openDev === "android" ? "devAndroid" : "devDesktop";
+            const people = summary.people[key] ?? [];
+            return (
+              <div className="mt-2 rounded-xl border bg-white p-3" style={{ borderColor: "var(--color-ocean-deep)" }}>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-bold">
+                    {DEV_STYLE[openDev].icon} 用 {summary.devices?.items.find((d) => d.kind === openDev)?.label} 的客戶
+                    <span className="ml-1.5 font-normal text-[var(--muted-foreground)]">共 {people.length} 位（數字＝活動筆數）</span>
+                  </span>
+                  <button type="button" onClick={() => setOpenDev(null)} className="text-[11px] text-[var(--muted-foreground)] hover:underline">收起</button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {people.map((p) => (
+                    <button key={p.userId} type="button" onClick={() => setOpenCustomerId(p.userId)}
+                      className="rounded-full px-2.5 py-1 text-[11px] transition-colors hover:bg-[var(--border)]" style={{ background: "var(--muted)" }}>
+                      {p.name}<span className="ml-1 tabular text-[10px] font-bold" style={{ color: "var(--color-ocean-deep)" }}>{p.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* v1040：點卡片 → 在下面列出是哪些人；再點名字可開客戶詳情 */}
           {openCard && summary.people && (
