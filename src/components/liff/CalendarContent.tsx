@@ -122,25 +122,34 @@ export function CalendarContent() {
             const wd = ["日", "一", "二", "三", "四", "五", "六"][new Date(t.date).getDay()];
             return (
               <Link key={t.id} href={`/liff/dive/trip/${t.id}`}>
-                <Card className="flex items-center gap-3 p-3">
+                {/* v1044：夜潛整張卡上 mist 底（沿用全站 muted 底色，不另引進新的灰） */}
+                <Card
+                  className="flex items-center gap-3 p-3"
+                  style={t.isNightDive ? { background: "var(--color-mist)", borderColor: "rgba(10,35,66,0.16)" } : undefined}
+                >
                   <div className="flex w-14 flex-col items-center leading-tight">
                     <div className="text-lg font-bold tabular">{t.date.slice(8)}</div>
                     <div className="text-[11px] font-semibold text-[var(--color-ocean-deep)]">週 {wd}</div>
                     <div className="text-[10px] text-[var(--muted-foreground)]">{t.date.slice(5, 7)} 月</div>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                  <div className="min-w-0 flex-1">
+                    {/* v1044：第一行＝時間＋類型標籤（客戶挑場次先問「幾點」）；潛點獨立第二行才不會被標籤擠到換行 */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="text-sm font-bold tabular">{t.startTime}</span>
                       <Badge variant="muted" className={`text-[10px] ${t.isBoat ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"} border-transparent`}>{t.isBoat ? "🚤 船潛" : "🏖 岸潛"}</Badge>
-                      <span>{t.sites.filter((s) => s).map((s) => s!.name).join(" · ") || "東北角"}</span>
-                      <Badge variant="muted" className="text-[10px]">{t.tankCount} 潛</Badge>
+                      <Badge variant="muted" className={`text-[10px] ${t.isNightDive ? "bg-[#d3dce7]" : ""}`}>{t.tankCount} 潛</Badge>
                       {t.isNightDive && <Badge className="gap-0.5 text-[10px] border-transparent bg-indigo-500 text-white">🌙 夜潛</Badge>}
                       {t.isScooter && <Badge variant="gold" className="text-[10px]">水推</Badge>}
                     </div>
-                    <div className="text-xs text-[var(--muted-foreground)] tabular">
-                      {t.startTime} · {t.capacity == null ? `已報 ${t.booked} 人` : t.available === 0 ? "已滿" : `剩 ${t.available}/${t.capacity}`}
+                    <div className="mt-0.5 text-sm font-semibold">
+                      {t.sites.filter((s) => s).map((s) => s!.name).join(" · ") || "東北角"}
                     </div>
                   </div>
-                  <Badge variant={t.available != null && t.available <= 2 ? "coral" : "muted"} className="tabular whitespace-nowrap">
+                  {/* v1044：報名/剩餘人數不再顯示；只留「可預約 / 即將額滿 / 已滿」狀態，避免客戶白點進已滿場次 */}
+                  <Badge
+                    variant={t.available != null && t.available <= 2 ? "coral" : "muted"}
+                    className={`tabular whitespace-nowrap ${t.isNightDive && !(t.available != null && t.available <= 2) ? "bg-[#d3dce7]" : ""}`}
+                  >
                     {t.available === 0 ? "已滿" : t.available != null && t.available <= 2 ? "即將額滿" : "可預約"}
                   </Badge>
                 </Card>
@@ -148,6 +157,21 @@ export function CalendarContent() {
             );
           })}
         </div>
+
+        {/* v1044：列表末尾的時段說明。卡片上已經看不到人數，客戶最常問的就是「3 支各幾點」「船潛幾點集合」，
+            所以固定放在清單最後當補充；沒有場次時不顯示（沒東西可對照，只會擋住空狀態）。 */}
+        {!loading && openTrips.length > 0 && (
+          <div
+            className="mt-3 rounded-[var(--radius-card)] border px-3.5 py-3 text-[12.5px] leading-relaxed"
+            style={{ borderColor: "var(--border)", background: "var(--muted)", color: "var(--muted-foreground)" }}
+          >
+            <div className="font-semibold text-[var(--color-ocean-deep)]">💡 日潛 3 支：</div>
+            <div className="tabular">岸潛 第一支 08:00 / 第二支 09:30 / 第三支 13:00</div>
+            <div>可依體能與時段需求選擇參加</div>
+            <div className="mt-2 font-semibold text-[var(--color-ocean-deep)]">💡 船潛說明：</div>
+            <div>船潛依據地點、集合時間不同 請與教練確認</div>
+          </div>
+        )}
       </section>
     </>
   );
