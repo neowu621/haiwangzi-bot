@@ -154,14 +154,20 @@ export function CalendarContent() {
                       4 人以上＝即將額滿、8 人以上＝已滿。兩者都只是提示，不擋預約
                       （下單 API 本來就不擋，超額只標 overCapacity 通知教練）。 */}
                   {(() => {
-                    const label = t.booked >= FULL_AT ? "已滿" : t.booked >= ALMOST_FULL_AT ? "即將額滿" : "可預約";
-                    const hot = label !== "可預約";
+                    if (t.booked >= FULL_AT) {
+                      return <Badge variant="coral" className="tabular whitespace-nowrap">已滿</Badge>;
+                    }
+                    if (t.booked >= ALMOST_FULL_AT) {
+                      // v1046：即將額滿＝淺紫。與「已滿」的珊瑚紅分開，才看得出是兩種不同的急迫度
+                      return (
+                        <Badge className="tabular whitespace-nowrap border-transparent bg-[#ede9fe] text-[#6d28d9]">
+                          即將額滿
+                        </Badge>
+                      );
+                    }
                     return (
-                      <Badge
-                        variant={hot ? "coral" : "muted"}
-                        className={`tabular whitespace-nowrap ${t.isNightDive && !hot ? "bg-[#d3dce7]" : ""}`}
-                      >
-                        {label}
+                      <Badge variant="muted" className={`tabular whitespace-nowrap ${t.isNightDive ? "bg-[#d3dce7]" : ""}`}>
+                        可預約
                       </Badge>
                     );
                   })()}
