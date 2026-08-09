@@ -20,6 +20,11 @@ function fmtISODate(d: Date) {
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function startOfWeek(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
 
+// v1045：列表右側熱度標籤的門檻（看「已報人數」，與場次上限無關）。
+//   兩者都只是給客戶的提示——標「已滿」仍然可以下單，超額由教練那邊收警示。
+const ALMOST_FULL_AT = 4; // 已報 ≥ 4 → 即將額滿
+const FULL_AT = 8;        // 已報 ≥ 8 → 已滿
+
 export function CalendarContent() {
   const today = useMemo(() => new Date(), []);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -145,13 +150,21 @@ export function CalendarContent() {
                       {t.sites.filter((s) => s).map((s) => s!.name).join(" · ") || "東北角"}
                     </div>
                   </div>
-                  {/* v1044：報名/剩餘人數不再顯示；只留「可預約 / 即將額滿 / 已滿」狀態，避免客戶白點進已滿場次 */}
-                  <Badge
-                    variant={t.available != null && t.available <= 2 ? "coral" : "muted"}
-                    className={`tabular whitespace-nowrap ${t.isNightDive && !(t.available != null && t.available <= 2) ? "bg-[#d3dce7]" : ""}`}
-                  >
-                    {t.available === 0 ? "已滿" : t.available != null && t.available <= 2 ? "即將額滿" : "可預約"}
-                  </Badge>
+                  {/* v1045：報名/剩餘人數不顯示，只留熱度狀態。門檻改看「已報人數」：
+                      4 人以上＝即將額滿、8 人以上＝已滿。兩者都只是提示，不擋預約
+                      （下單 API 本來就不擋，超額只標 overCapacity 通知教練）。 */}
+                  {(() => {
+                    const label = t.booked >= FULL_AT ? "已滿" : t.booked >= ALMOST_FULL_AT ? "即將額滿" : "可預約";
+                    const hot = label !== "可預約";
+                    return (
+                      <Badge
+                        variant={hot ? "coral" : "muted"}
+                        className={`tabular whitespace-nowrap ${t.isNightDive && !hot ? "bg-[#d3dce7]" : ""}`}
+                      >
+                        {label}
+                      </Badge>
+                    );
+                  })()}
                 </Card>
               </Link>
             );
@@ -170,6 +183,8 @@ export function CalendarContent() {
             <div>可依體能與時段需求選擇參加</div>
             <div className="mt-2 font-semibold text-[var(--color-ocean-deep)]">💡 船潛說明：</div>
             <div>船潛依據地點、集合時間不同 請與教練確認</div>
+            {/* v1045：標「已滿」仍可下單，不講清楚客戶會直接略過那些場次 */}
+            <div className="mt-2">標示「即將額滿」「已滿」的場次<b className="text-[var(--color-ocean-deep)]">仍然可以報名</b>，教練會再與你確認人數安排。</div>
           </div>
         )}
       </section>
