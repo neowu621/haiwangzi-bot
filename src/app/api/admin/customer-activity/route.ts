@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { parseDevice } from "@/lib/ua"; // v1049：裝置欄
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,7 +118,7 @@ export async function GET(req: NextRequest) {
   delete (sumWhere as { action?: unknown }).action; // 摘要不受動作篩選影響
   const newSince = new Date(Date.now() - 7 * 86400000);
   // v1040：摘要卡改成 groupBy —— 除了數字，還能點開看「到底是哪些人」
-  const [activeGroups, loginGroups, bookingGroups, newUsers] = await Promise.all([
+  const [activeGroups, loginGroups, bookingGroups, newUsers, uaGroups] = await Promise.all([
     prisma.auditLog.groupBy({ by: ["actorId"], where: sumWhere, _count: { _all: true } }),
     prisma.auditLog.groupBy({ by: ["actorId"], where: { ...sumWhere, action: "customer.login" }, _count: { _all: true } }),
     prisma.auditLog.groupBy({ by: ["actorId"], where: { ...sumWhere, action: "customer.booking.create" }, _count: { _all: true } }),
@@ -131,12 +132,36 @@ export async function GET(req: NextRequest) {
       select: { lineUserId: true, displayName: true, realName: true, nickname: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     }),
+    // v1049：裝置分布。groupBy 到「UA 字串 × 客戶」——不同 UA 字串數量有限，回來再解析成四類。
+    prisma.auditLog.groupBy({
+      by: ["actorUserAgent", "actorId"],
+      where: sumWhere,
+      _count: { _all: true },
+    }),
   ]);
 
+  // v1049：把 UA 收斂成 iPhone / iPad / Android / 電腦，並算出「有多少比例是從 LINE 內建瀏覽器進來」
+  type DevKey = "ios" | "ipad" | "android" | "desktop" | "unknown";
+  const devEvents: Record<DevKey, number> = { ios: 0, ipad: 0, android: 0, desktop: 0, unknown: 0 };
+  const devUsers: Record<DevKey, Map<string, number>> = {
+    ios: new Map(), ipad: new Map(), android: new Map(), desktop: new Map(), unknown: new Map(),
+  };
+  let inLineEvents = 0;
+  let deviceTotal = 0;
+  for (const g of uaGroups) {
+    const d = parseDevice(g.actorUserAgent);
+    const n = g._count._all;
+    devEvents[d.kind] += n;
+    deviceTotal += n;
+    if (d.inLine) inLineEvents += n;
+    if (g.actorId) devUsers[d.kind].set(g.actorId, (devUsers[d.kind].get(g.actorId) ?? 0) + n);
+  }
+
   // 摘要名單要顯示的人，可能不在本頁 rows 裡 → 補撈名字
-  const sumIds = Array.from(new Set([...activeGroups, ...loginGroups, ...bookingGroups]
-    .map((g) => g.actorId).filter((x): x is string => !!x)))
-    .filter((id) => !userMap.has(id));
+  const sumIds = Array.from(new Set([
+    ...[...activeGroups, ...loginGroups, ...bookingGroups].map((g) => g.actorId).filter((x): x is string => !!x),
+    ...Object.values(devUsers).flatMap((m) => Array.from(m.keys())), // v1049：裝置卡也能點開看是誰
+  ])).filter((id) => !userMap.has(id));
   const sumUsers = sumIds.length > 0
     ? await prisma.user.findMany({
         where: { lineUserId: { in: sumIds } },
@@ -149,6 +174,11 @@ export async function GET(req: NextRequest) {
     if (!u) return id.slice(0, 12) + "…";
     return `${(u.nickname ?? "").trim() || "?"}（${u.realName ?? u.displayName}）`;
   };
+  // v1049：某個裝置類別底下有哪些人（次數多的排前面）
+  const devPeople = (k: DevKey) =>
+    Array.from(devUsers[k].entries())
+      .map(([userId, count]) => ({ userId, name: nameOf(userId), count }))
+      .sort((a, b) => b.count - a.count);
   const toPeople = (groups: { actorId: string | null; _count: { _all: number } }[]) =>
     groups
       .filter((g) => !!g.actorId)
@@ -166,11 +196,29 @@ export async function GET(req: NextRequest) {
       newMembers: newUsers.length, // v1037：一週內新註冊
 
       excludedStaff: !includeStaff && staffIds.length > 0 ? staffIds.length : 0,
+      // v1049：裝置分布（iPad 併入 iPhone 這一欄的「iOS」計算，但名單分開留著）
+      devices: {
+        total: deviceTotal,
+        inLineEvents,
+        inLinePct: deviceTotal > 0 ? Math.round((inLineEvents / deviceTotal) * 100) : 0,
+        items: (["ios", "ipad", "android", "desktop", "unknown"] as const).map((k) => ({
+          kind: k,
+          label: k === "ios" ? "iPhone" : k === "ipad" ? "iPad" : k === "android" ? "Android" : k === "desktop" ? "電腦" : "未知",
+          events: devEvents[k],
+          users: devUsers[k].size,
+          pct: deviceTotal > 0 ? Math.round((devEvents[k] / deviceTotal) * 100) : 0,
+        })).filter((d) => d.events > 0),
+      },
       // v1040：點卡片展開的名單
       people: {
         active: toPeople(activeGroups),
         login: toPeople(loginGroups),
         booking: toPeople(bookingGroups),
+        // v1049：各裝置的使用者名單
+        devIos: devPeople("ios"),
+        devIpad: devPeople("ipad"),
+        devAndroid: devPeople("android"),
+        devDesktop: devPeople("desktop"),
         newMembers: newUsers.map((u) => ({
           userId: u.lineUserId,
           name: `${(u.nickname ?? "").trim() || "?"}（${u.realName ?? u.displayName}）`,
@@ -194,6 +242,7 @@ export async function GET(req: NextRequest) {
       tankTotal: r.actorId ? (userMap.get(r.actorId)?.haiwangziLogCount ?? 0) : 0,
       actorIp: r.actorIp,
       actorUserAgent: r.actorUserAgent,
+      device: parseDevice(r.actorUserAgent), // v1049：在後端解析，前端只拿結果
       action: r.action,
       targetType: r.targetType,
       targetId: r.targetId,

@@ -19,10 +19,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 // v1036：摘要統計
 // v1040：摘要卡除了數字，還帶「是哪些人」的名單
 interface Person { userId: string; name: string; count: number; createdAt?: string }
+// v1049：裝置分布
+type DevKind = "ios" | "ipad" | "android" | "desktop" | "unknown";
+interface DevItem { kind: DevKind; label: string; events: number; users: number; pct: number }
 interface Summary {
   activeUsers: number; loginCount: number; bookingCount: number; excludedStaff: number; newMembers?: number;
-  people?: { active: Person[]; login: Person[]; booking: Person[]; newMembers: Person[] };
+  devices?: { total: number; inLineEvents: number; inLinePct: number; items: DevItem[] };
+  people?: {
+    active: Person[]; login: Person[]; booking: Person[]; newMembers: Person[];
+    devIos?: Person[]; devIpad?: Person[]; devAndroid?: Person[]; devDesktop?: Person[];
+  };
 }
+
+// v1049：裝置的視覺定義集中在這裡（晶片、長條、圖示共用同一組色）
+const DEV_STYLE: Record<DevKind, { icon: string; bg: string; fg: string; bar: string }> = {
+  ios:     { icon: "📱", bg: "#eef1f5", fg: "#25313f", bar: "#c9d3e0" },
+  ipad:    { icon: "📱", bg: "#eef1f5", fg: "#25313f", bar: "#aebbcc" },
+  android: { icon: "🤖", bg: "#e4f5ea", fg: "#1a7f43", bar: "#7fc99a" },
+  desktop: { icon: "💻", bg: "#eaeeff", fg: "#3f45b8", bar: "#a9aef0" },
+  unknown: { icon: "•",  bg: "var(--muted)", fg: "var(--muted-foreground)", bar: "#d7dde5" },
+};
 
 // v1048：活躍度欄的單一數字。標籤在上、數字在下，四個並排才不會糊成一長串
 function Metric({ label, value, unit, hot, accent }: { label: string; value: number; unit: string; hot?: boolean; accent?: boolean }) {
@@ -108,6 +124,8 @@ interface Row {
   // v1048：活躍度欄
   orderTotal?: number;
   tankTotal?: number;
+  // v1049：裝置欄（後端由 actorUserAgent 解析好才送過來）
+  device?: { kind: DevKind; label: string; detail: string; inLine: boolean };
 }
 
 // 動作 → 中文 + emoji
@@ -180,6 +198,19 @@ export default function CustomerActivityPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   // v1040：目前展開的是哪張摘要卡
   const [openCard, setOpenCard] = useState<CardKey | null>(null);
+  // v1049：裝置分布展開哪一類
+  const [openDev, setOpenDev] = useState<DevKind | null>(null);
+
+  // v1049：摘要卡上方要標明「算的是哪段時間」。與 load() 用同一套天數，改一邊要記得改另一邊。
+  const rangeLabel = () => {
+    if (filterDate === "all") return "全部時間";
+    const days = filterDate === "today" ? 0 : filterDate === "3days" ? 3 : filterDate === "7days" ? 7 : 30;
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    const md = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+    const name = DATE_CHIPS.find((c) => c.key === filterDate)?.label ?? "";
+    return days === 0 ? `今天（${md(new Date())}）` : `${name}（${md(from)} – ${md(new Date())}）`;
+  };
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Row | null>(null);
   const PAGE_SIZE = 50;
@@ -254,6 +285,20 @@ export default function CustomerActivityPage() {
       {/* v1036：摘要——一眼看出這段期間有多少「真實客戶」在動 */}
       {summary && (
         <div className="mb-3">
+          {/* v1049：把「這些數字算的是什麼」寫清楚——不然 42 位是哪段時間、有沒有含管理人員都得用猜的 */}
+          <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--muted-foreground)]">
+            <span className="rounded-full px-2 py-0.5 font-semibold" style={{ background: "var(--muted)", color: "var(--color-ocean-deep)" }}>
+              📅 {rangeLabel()}
+            </span>
+            <span className="rounded-full px-2 py-0.5" style={{ background: "var(--muted)" }}>
+              {includeStaff ? "含管理人員" : `已排除 ${summary.excludedStaff} 位管理人員`}
+            </span>
+            {search.trim() && (
+              <span className="rounded-full px-2 py-0.5" style={{ background: "var(--muted)" }}>搜尋「{search.trim()}」僅套用於下方清單</span>
+            )}
+            <span>· 摘要不受「動作」篩選影響</span>
+            <span>· 「本週新客戶」固定看 7 天，不隨時間篩選變動</span>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <SumCard label="活躍客戶" value={summary.activeUsers} unit="位" hint="這段期間有動作的人"
               people={summary.people?.active} open={openCard === "active"} onToggle={() => setOpenCard(openCard === "active" ? null : "active")} />
@@ -263,8 +308,69 @@ export default function CustomerActivityPage() {
               people={summary.people?.login} open={openCard === "login"} onToggle={() => setOpenCard(openCard === "login" ? null : "login")} />
             <SumCard label="建立預約" value={summary.bookingCount} unit="筆" accent
               people={summary.people?.booking} open={openCard === "booking"} onToggle={() => setOpenCard(openCard === "booking" ? null : "booking")} />
-            <SumCard label="總活動筆數" value={total} unit="筆" hint={summary.excludedStaff > 0 ? `已排除 ${summary.excludedStaff} 位管理人員` : undefined} />
+            {/* 這張跟其他四張不同：它是「下方清單的總筆數」，所以會跟著動作篩選一起變 */}
+            <SumCard label="總活動筆數" value={total} unit="筆" hint={filterGroup === "all" ? "下方清單的總筆數" : `僅「${FILTER_CHIPS.find((c) => c.key === filterGroup)?.label ?? filterGroup}」`} />
           </div>
+          {/* v1049：裝置分布——逐列看只能查個案，比例才決定前端要先為誰最佳化 */}
+          {summary.devices && summary.devices.total > 0 && (
+            <div className="mt-2 rounded-xl border bg-white px-3.5 py-3" style={{ borderColor: "var(--border)" }}>
+              <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="text-[11px] text-[var(--muted-foreground)]">裝置分布</span>
+                <span className="text-[11px] text-[var(--muted-foreground)]">
+                  其中 <b className="tabular" style={{ color: "#06C755" }}>{summary.devices.inLinePct}%</b> 是從 LINE 內建瀏覽器進來的
+                </span>
+              </div>
+              <div className="flex h-6 overflow-hidden rounded-lg">
+                {summary.devices.items.map((d) => (
+                  <div
+                    key={d.kind}
+                    className="flex items-center justify-center text-[10.5px] font-extrabold"
+                    style={{ flex: Math.max(d.pct, 1), background: DEV_STYLE[d.kind].bar, color: DEV_STYLE[d.kind].fg }}
+                    title={`${d.label}：${d.events} 次 · ${d.users} 位客戶`}
+                  >
+                    {d.pct >= 12 ? `${d.label} ${d.pct}%` : ""}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                {summary.devices.items.map((d) => {
+                  const key = d.kind === "ios" ? "devIos" : d.kind === "ipad" ? "devIpad" : d.kind === "android" ? "devAndroid" : d.kind === "desktop" ? "devDesktop" : null;
+                  const people = key ? summary.people?.[key] : undefined;
+                  const inner = (
+                    <>
+                      <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm align-[-1px]" style={{ background: DEV_STYLE[d.kind].bar }} />
+                      {DEV_STYLE[d.kind].icon} {d.label}
+                      <b className="ml-1 tabular">{d.pct}%</b>
+                      <span className="ml-1 tabular text-[var(--muted-foreground)]">({d.users} 位)</span>
+                    </>
+                  );
+                  return people && people.length > 0 ? (
+                    <button key={d.kind} type="button" onClick={() => setOpenDev(openDev === d.kind ? null : d.kind)}
+                      className="text-[11px] hover:underline" style={{ color: openDev === d.kind ? "var(--color-ocean-deep)" : undefined }}>
+                      {inner}
+                    </button>
+                  ) : (
+                    <span key={d.kind} className="text-[11px]">{inner}</span>
+                  );
+                })}
+              </div>
+              {openDev && (() => {
+                const key = openDev === "ios" ? "devIos" : openDev === "ipad" ? "devIpad" : openDev === "android" ? "devAndroid" : "devDesktop";
+                const people = summary.people?.[key] ?? [];
+                return (
+                  <div className="mt-2 flex flex-wrap gap-1.5 border-t pt-2" style={{ borderColor: "var(--border)" }}>
+                    {people.map((p) => (
+                      <button key={p.userId} type="button" onClick={() => setOpenCustomerId(p.userId)}
+                        className="rounded-full px-2.5 py-1 text-[11px] transition-colors hover:bg-[var(--border)]" style={{ background: "var(--muted)" }}>
+                        {p.name}<span className="ml-1 tabular text-[10px] font-bold" style={{ color: "var(--color-ocean-deep)" }}>{p.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* v1040：點卡片 → 在下面列出是哪些人；再點名字可開客戶詳情 */}
           {openCard && summary.people && (
             <div className="mt-2 rounded-xl border bg-white p-3" style={{ borderColor: "var(--color-ocean-deep)" }}>
@@ -377,6 +483,8 @@ export default function CustomerActivityPage() {
                 <SortTh k="user">客戶</SortTh>
                 {/* v1048：登入／訂單／氣瓶獨立成一欄，不再擠在客戶名字後面 */}
                 <th className="px-3 py-2.5 font-medium">活躍度</th>
+                {/* v1049：裝置（由 UA 解析，不是新增的追蹤） */}
+                <th className="px-3 py-2.5 font-medium">裝置</th>
                 <SortTh k="action">動作</SortTh>
                 <th className="px-3 py-2.5 font-medium">目標</th>
                 <th className="px-3 py-2.5 font-medium">IP</th>
@@ -385,9 +493,9 @@ export default function CustomerActivityPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</td></tr>
+                <tr><td colSpan={8} className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-sm text-[var(--muted-foreground)]">沒有符合條件的活動紀錄</td></tr>
+                <tr><td colSpan={8} className="py-12 text-center text-sm text-[var(--muted-foreground)]">沒有符合條件的活動紀錄</td></tr>
               ) : rows.map((r) => {
                 const meta = shortAction(r.action);
                 return (
@@ -427,6 +535,28 @@ export default function CustomerActivityPage() {
                           <Metric label="訂單" value={r.orderTotal ?? 0} unit="筆" accent={(r.orderTotal ?? 0) > 0} />
                           <Metric label="氣瓶" value={r.tankTotal ?? 0} unit="支" accent={(r.tankTotal ?? 0) > 0} />
                         </div>
+                      ) : (
+                        <span className="text-[10.5px] text-[var(--muted-foreground)]">—</span>
+                      )}
+                    </td>
+                    {/* v1049：裝置＝晶片（掃視用）＋版本小字（查問題用）。LINE 標綠色，因為 LINE WebView 較慢，是效能判斷關鍵 */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.device && r.device.kind !== "unknown" ? (
+                        <>
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                            style={{ background: DEV_STYLE[r.device.kind].bg, color: DEV_STYLE[r.device.kind].fg }}
+                          >
+                            {DEV_STYLE[r.device.kind].icon} {r.device.label}
+                          </span>
+                          {r.device.detail && (
+                            <div className="mt-0.5 text-[9.5px] text-[var(--muted-foreground)]">
+                              {r.device.inLine
+                                ? <>{r.device.detail.split(" · ")[0]} · <b style={{ color: "#06C755" }}>{r.device.detail.split(" · ").slice(1).join(" · ")}</b></>
+                                : r.device.detail}
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <span className="text-[10.5px] text-[var(--muted-foreground)]">—</span>
                       )}
