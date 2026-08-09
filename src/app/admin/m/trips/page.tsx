@@ -46,6 +46,7 @@ interface MTrip {
   status: string;
   notes: string | null;
   tankCount: number;
+  isNightDive?: boolean; // v1043：夜潛整列上淺灰底
 }
 interface Coach { id: string; realName: string }
 interface Resp {
@@ -238,10 +239,14 @@ export default function MobileTripsPage() {
                   {g.trips.map((t) => {
                     const isOpen = open.has(t.id);
                     return (
+                      /* v1043：夜潛整張卡上淺灰底，掃一眼就分得出日間／晚上場 */
                       <div
                         key={t.id}
                         className="rounded-xl border"
-                        style={{ borderColor: "rgba(0,0,0,0.08)", background: "var(--card, #fff)" }}
+                        style={{
+                          borderColor: t.isNightDive ? "rgba(0,0,0,0.14)" : "rgba(0,0,0,0.08)",
+                          background: t.isNightDive ? "#eceef2" : "var(--card, #fff)",
+                        }}
                       >
                         <button
                           type="button"
@@ -253,6 +258,12 @@ export default function MobileTripsPage() {
                             <div className="flex items-center gap-1 text-sm font-medium">
                               <MapPin className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--color-ocean-deep)" }} />
                               <span className="truncate">{t.sites.join("、") || "—"}</span>
+                              {/* v1043：夜潛標記（底色之外再給一個明確的字，避免只靠顏色判讀） */}
+                              {t.isNightDive && (
+                                <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-extrabold" style={{ background: "#dcdfe6", color: "#3f4757" }}>
+                                  🌙 夜潛
+                                </span>
+                              )}
                             </div>
                             <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: "var(--muted-foreground)" }}>
                               {/* v1025：顯示 人數/上限；超額不擋但標紅提醒老闆 */}

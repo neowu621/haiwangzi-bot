@@ -44,6 +44,7 @@ type MTrip = {
   status: string;
   notes: string | null;
   tankCount: number;
+  isNightDive: boolean; // v1043
 };
 
 const NOT_CANCELLED = ["cancelled_by_user", "cancelled_by_weather", "no_show"] as const;
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true, date: true, startTime: true, diveSiteIds: true, coachIds: true,
         capacity: true, status: true, notes: true, tankCount: true, // v1023：手機端編輯用
+        isNightDive: true, // v1043：夜潛在列表整列上底色區隔
       },
     });
 
@@ -182,6 +184,7 @@ export async function GET(req: NextRequest) {
         status: t.status,
         notes: t.notes,
         tankCount: t.tankCount,
+        isNightDive: t.isNightDive, // v1043
       };
     });
 
