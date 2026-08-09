@@ -72,10 +72,24 @@ export async function GET(req: NextRequest) {
   const users = userIds.length > 0
     ? await prisma.user.findMany({
         where: { lineUserId: { in: userIds } },
-        select: { lineUserId: true, displayName: true, realName: true, nickname: true, phone: true, createdAt: true },
+        // v1048：haiwangziLogCount = 海王子累積潛數（＝氣瓶支數），活躍度欄要顯示
+        select: { lineUserId: true, displayName: true, realName: true, nickname: true, phone: true, createdAt: true, haiwangziLogCount: true },
       })
     : [];
   const userMap = new Map(users.map((u) => [u.lineUserId, u]));
+
+  // v1048：每位客戶的成立訂單筆數（排除取消類，與其他頁面的「成立」口徑一致）
+  const orderGroups = userIds.length > 0
+    ? await prisma.booking.groupBy({
+        by: ["userId"],
+        where: {
+          userId: { in: userIds },
+          status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"] },
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const orderMap = new Map(orderGroups.map((g) => [g.userId, g._count._all]));
 
   // v1037：每位客戶的「累積登入次數 / 近 2 週登入次數 / 是否為一週內新客」
   //   登入事件本身已做節流(同人短時間只記一次)，所以次數≈實際造訪次數。
@@ -175,6 +189,9 @@ export async function GET(req: NextRequest) {
       loginTotal: r.actorId ? (allMap.get(r.actorId) ?? 0) : 0,
       login14d: r.actorId ? (m14.get(r.actorId) ?? 0) : 0,
       isNewMember: r.actorId ? (userMap.get(r.actorId)?.createdAt ?? null) !== null && (userMap.get(r.actorId)!.createdAt >= since7) : false,
+      // v1048：活躍度欄的另外兩個數字
+      orderTotal: r.actorId ? (orderMap.get(r.actorId) ?? 0) : 0,
+      tankTotal: r.actorId ? (userMap.get(r.actorId)?.haiwangziLogCount ?? 0) : 0,
       actorIp: r.actorIp,
       actorUserAgent: r.actorUserAgent,
       action: r.action,

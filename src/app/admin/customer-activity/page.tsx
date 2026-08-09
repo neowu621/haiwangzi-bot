@@ -24,6 +24,20 @@ interface Summary {
   people?: { active: Person[]; login: Person[]; booking: Person[]; newMembers: Person[] };
 }
 
+// v1048：活躍度欄的單一數字。標籤在上、數字在下，四個並排才不會糊成一長串
+function Metric({ label, value, unit, hot, accent }: { label: string; value: number; unit: string; hot?: boolean; accent?: boolean }) {
+  const on = value > 0 && (hot || accent);
+  return (
+    <span className="inline-flex flex-col items-center leading-tight">
+      <span className="text-[9px] opacity-70">{label}</span>
+      <span className="tabular text-[11.5px] font-bold" style={{ color: on ? (hot ? "#0a8f86" : "var(--color-ocean-deep)") : undefined }}>
+        {value}
+        <span className="ml-px text-[9px] font-normal opacity-70">{unit}</span>
+      </span>
+    </span>
+  );
+}
+
 type CardKey = "active" | "newMembers" | "login" | "booking";
 const CARD_TITLE: Record<CardKey, string> = {
   active: "這段期間有動作的客戶（數字＝活動筆數）",
@@ -91,6 +105,9 @@ interface Row {
   loginTotal?: number;
   login14d?: number;
   isNewMember?: boolean;
+  // v1048：活躍度欄
+  orderTotal?: number;
+  tankTotal?: number;
 }
 
 // 動作 → 中文 + emoji
@@ -358,6 +375,8 @@ export default function CustomerActivityPage() {
                 {/* v1040：時間 / 客戶 / 動作 可點欄名排序 */}
                 <SortTh k="time">時間</SortTh>
                 <SortTh k="user">客戶</SortTh>
+                {/* v1048：登入／訂單／氣瓶獨立成一欄，不再擠在客戶名字後面 */}
+                <th className="px-3 py-2.5 font-medium">活躍度</th>
                 <SortTh k="action">動作</SortTh>
                 <th className="px-3 py-2.5 font-medium">目標</th>
                 <th className="px-3 py-2.5 font-medium">IP</th>
@@ -366,9 +385,9 @@ export default function CustomerActivityPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-sm text-[var(--muted-foreground)]">載入中...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6} className="py-12 text-center text-sm text-[var(--muted-foreground)]">沒有符合條件的活動紀錄</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-sm text-[var(--muted-foreground)]">沒有符合條件的活動紀錄</td></tr>
               ) : rows.map((r) => {
                 const meta = shortAction(r.action);
                 return (
@@ -397,15 +416,20 @@ export default function CustomerActivityPage() {
                             🆕 新客戶
                           </span>
                         )}
-                        {/* v1037：登入概況（累積 / 近兩週） */}
-                        {r.loginTotal !== undefined && r.loginTotal > 0 && (
-                          <span className="text-[10px] text-[var(--muted-foreground)]">
-                            近2週 <b className="tabular" style={{ color: (r.login14d ?? 0) > 0 ? "#0a8f86" : undefined }}>{r.login14d ?? 0}</b> 次
-                            <span className="mx-1">/</span>
-                            總登入 <b className="tabular">{r.loginTotal}</b> 次
-                          </span>
-                        )}
                       </div>
+                    </td>
+                    {/* v1048：活躍度＝近2週登入 / 總登入 / 訂單 / 氣瓶，四個數字獨立一欄 */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {r.user ? (
+                        <div className="flex items-center gap-x-2.5 text-[10.5px] text-[var(--muted-foreground)]">
+                          <Metric label="近2週" value={r.login14d ?? 0} unit="次" hot={(r.login14d ?? 0) > 0} />
+                          <Metric label="總登入" value={r.loginTotal ?? 0} unit="次" />
+                          <Metric label="訂單" value={r.orderTotal ?? 0} unit="筆" accent={(r.orderTotal ?? 0) > 0} />
+                          <Metric label="氣瓶" value={r.tankTotal ?? 0} unit="支" accent={(r.tankTotal ?? 0) > 0} />
+                        </div>
+                      ) : (
+                        <span className="text-[10.5px] text-[var(--muted-foreground)]">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <Badge variant="muted" className="text-[10px]">
