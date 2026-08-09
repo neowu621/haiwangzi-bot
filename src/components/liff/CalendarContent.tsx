@@ -20,10 +20,21 @@ function fmtISODate(d: Date) {
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function startOfWeek(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
 
-// v1045：列表右側熱度標籤的門檻（看「已報人數」，與場次上限無關）。
-//   兩者都只是給客戶的提示——標「已滿」仍然可以下單，超額由教練那邊收警示。
-const ALMOST_FULL_AT = 4; // 已報 ≥ 4 → 即將額滿
-const FULL_AT = 8;        // 已報 ≥ 8 → 已滿
+// v1047：列表右側熱度標籤的門檻，改成「依場次上限按比例」——
+//   已報 ≥ 上限一半 → 即將額滿；已報 ≥ 上限 → 已滿。
+//   上限 8 人時剛好落在 4 / 8（與 v1045 的絕對值一致），但上限 20 人的船潛不會報到 8 人就說已滿。
+//   沒設上限(capacity=null)的場次沒有比例可算，退回絕對值。
+//   兩者都只是提示——標「已滿」仍然可以下單，超額由教練那邊收警示。
+const ALMOST_FULL_AT = 4; // fallback：無上限時 已報 ≥ 4 → 即將額滿
+const FULL_AT = 8;        // fallback：無上限時 已報 ≥ 8 → 已滿
+
+function heatOf(booked: number, capacity: number | null): "full" | "almost" | "open" {
+  const fullAt = capacity ?? FULL_AT;
+  const almostAt = capacity != null ? Math.ceil(capacity / 2) : ALMOST_FULL_AT;
+  if (booked >= fullAt) return "full";
+  if (booked >= almostAt) return "almost";
+  return "open";
+}
 
 export function CalendarContent() {
   const today = useMemo(() => new Date(), []);
@@ -150,14 +161,14 @@ export function CalendarContent() {
                       {t.sites.filter((s) => s).map((s) => s!.name).join(" · ") || "東北角"}
                     </div>
                   </div>
-                  {/* v1045：報名/剩餘人數不顯示，只留熱度狀態。門檻改看「已報人數」：
-                      4 人以上＝即將額滿、8 人以上＝已滿。兩者都只是提示，不擋預約
-                      （下單 API 本來就不擋，超額只標 overCapacity 通知教練）。 */}
+                  {/* v1047：報名/剩餘人數不顯示，只留熱度狀態（門檻見 heatOf）。
+                      三種狀態都只是提示，不擋預約——下單 API 本來就不擋容量，超額只標 overCapacity 通知教練。 */}
                   {(() => {
-                    if (t.booked >= FULL_AT) {
+                    const heat = heatOf(t.booked, t.capacity);
+                    if (heat === "full") {
                       return <Badge variant="coral" className="tabular whitespace-nowrap">已滿</Badge>;
                     }
-                    if (t.booked >= ALMOST_FULL_AT) {
+                    if (heat === "almost") {
                       // v1046：即將額滿＝淺紫。與「已滿」的珊瑚紅分開，才看得出是兩種不同的急迫度
                       return (
                         <Badge className="tabular whitespace-nowrap border-transparent bg-[#ede9fe] text-[#6d28d9]">
