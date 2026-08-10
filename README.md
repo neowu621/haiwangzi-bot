@@ -586,7 +586,58 @@ git add .
 git commit -m "feat: ..."
 git push origin master
 # → Zeabur 自動偵測 + redeploy
+
+# 4. 確認上線（一定要做，push 成功 ≠ 已部署）
+curl -s https://haiwangzi.xyz/api/healthz
+# → {"ok":true,"version":"20260709_NNNN","env":"production"}
 ```
+
+> ⚠️ 正式網域是 **`haiwangzi.xyz`**，不是 `haiwangzi.zeabur.app`（後者回 Not Found）。
+
+### 部署卡住怎麼查（v1050 事件記錄）
+
+**症狀**：push 成功，但 `healthz` 的版本號過了 10 分鐘還沒變。
+
+平常從 push 到上線約 **4–9 分鐘**。超過 15 分鐘還沒動，**先查、不要重推** ——
+盲目再推只會往塞住的佇列裡再丟東西，不會加快。
+
+**依序排查：**
+
+```bash
+# ① 確認不是快取 —— 加隨機參數，讓伺服器自己報版本
+curl -s "https://haiwangzi.xyz/api/healthz?cb=$RANDOM"
+
+# ② 確認 GitHub 真的收到（remote SHA 要等於本機 HEAD）
+git rev-parse HEAD
+git ls-remote origin master
+
+# ③ 用 Zeabur CLI 查佇列狀態（不必開瀏覽器）
+zeabur auth status
+zeabur service list --project-id 6a01ded58e8e49b9247928c8 --json -i=false
+zeabur deployment list --service-id 6a022340dd502f86055afac5 --env-id <ENV_ID> --json -i=false
+```
+
+固定 ID（Zeabur 專案 `Haiwangzi-Diving`）：
+
+| 資源 | ID |
+|---|---|
+| Project | `6a01ded58e8e49b9247928c8` |
+| Service `haiwangzi-bot` | `6a022340dd502f86055afac5` |
+| Service `postgresql` | `6a01dedf8e8e49b9247928cd` |
+
+> `deployment list` 需要 `--env-id`，該值無法從 `project get` 取得，要到主控台 URL 或互動模式（拿掉 `-i=false`）拿。
+
+**判讀：**
+
+| 觀察到 | 意思 | 處理 |
+|---|---|---|
+| 佇列有排隊中的建置 | **只是塞住**（v1050 就是這種，等了 100 分鐘）| 等，不要重推 |
+| 沒有新的 Deployment | webhook 沒觸發 | 推一筆空 commit 或主控台 Redeploy |
+| Deployment 是 Failed | 建置失敗 | 看日誌；本機過但雲端掛通常是記憶體不足 |
+
+**怎麼分辨「塞住」和「漏接」**：等最後真的上線時看版本號有沒有跳號。
+v1050 → v1051 依序上線，代表兩筆都在佇列裡等（塞住）；
+若 v1050 被跳過只有 v1051 上線，才是 webhook 漏接。
 
 ---
 
