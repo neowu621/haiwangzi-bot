@@ -241,7 +241,8 @@ export default function MessageLogPage() {
                         </td>
                         <td style={tdStyle}>
                           {g.refLabel ? (
-                            <Link href={`/admin/bookings?q=${encodeURIComponent(g.refLabel)}`} onClick={(e) => e.stopPropagation()}
+                            /* v1054：帶 ?code= 直接鎖定該筆訂單（訂單頁會略過狀態/場次篩選，才不會變空清單） */
+                            <Link href={`/admin/bookings?code=${encodeURIComponent(g.refLabel)}`} onClick={(e) => e.stopPropagation()}
                               style={{ fontFamily: "Inter,ui-monospace,monospace", fontSize: 11, color: "#0a7c7c", background: "#e6f6f4", borderRadius: 5, padding: "1px 6px", textDecoration: "none", whiteSpace: "nowrap" }}>
                               {g.refLabel}
                             </Link>

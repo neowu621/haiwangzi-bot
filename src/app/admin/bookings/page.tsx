@@ -228,11 +228,16 @@ export default function AdminBookingsPage() {
   const [filterStatusSet, setFilterStatusSet] = useState<Set<string>>(
     () => new Set(DEFAULT_STATUS_FILTER),
   );
+  // v1054：?code= 從通訊紀錄的「對應訂單」點過來，鎖定單一訂單
+  const [codeFilter, setCodeFilter] = useState<string>("");
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const s = new URLSearchParams(window.location.search).get("status");
+    const sp = new URLSearchParams(window.location.search);
+    const s = sp.get("status");
     // 有帶 ?status= 才覆寫預設（含 ?status= 空字串 → 全部）
     if (s !== null) setFilterStatusSet(new Set(s.split(",").filter(Boolean)));
+    const c = sp.get("code");
+    if (c) setCodeFilter(c.trim());
   }, []);
   function toggleStatusFilter(key: string) {
     setFilterStatusSet((prev) => {
@@ -565,6 +570,9 @@ export default function AdminBookingsPage() {
   const needsReviewInvite = (b: AdminBooking) => b.status === "completed" && !b.reviewSentAt;
   const reviewPendingCount = bookings.filter(needsReviewInvite).length;
   const filteredBookings = bookings.filter((b) => {
+    // v1054：?code=O20260811-O9 直接鎖定單一訂單（從通訊紀錄的「對應訂單」點過來）。
+    //   刻意略過所有其他篩選 —— 那筆單可能已取消或場次已過期，套用預設篩選會變成空清單，看起來像壞掉。
+    if (codeFilter) return (b.code ?? "") === codeFilter;
     // v757：「待退款」模式 → 只看需退款的單，略過狀態/付款/場次/期間篩選
     if (filterNeedRefund) return bookingNeedsRefund(b);
     // v833：「未邀請評價」模式 → 只看已完成且未發過邀請的單
@@ -936,6 +944,19 @@ export default function AdminBookingsPage() {
 
   return (
     <AdminShell title="訂單管理">
+      {/* v1054：從通訊紀錄點「對應訂單」進來 —— 明講現在只看這一筆，否則老闆會以為訂單不見了 */}
+      {codeFilter && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-sm"
+          style={{ background: "#e6f6f4", border: "1px solid #bde5e0", color: "#0a6b68" }}>
+          <span>🔍 只顯示訂單</span>
+          <b className="font-mono">{codeFilter}</b>
+          <span className="text-xs opacity-75">（已略過狀態與場次篩選）</span>
+          <button type="button" onClick={() => { setCodeFilter(""); setPage(1); }}
+            className="ml-auto text-xs font-semibold underline hover:no-underline">
+            顯示全部訂單
+          </button>
+        </div>
+      )}
       {/* v183/v338: 「活動時間範圍」filter 已移除（場次搜尋 + 狀態 filter + 老闆結帳已覆蓋） */}
       <div className="mb-4 flex items-center justify-end">
         <span className="text-xs text-[var(--muted-foreground)]">
