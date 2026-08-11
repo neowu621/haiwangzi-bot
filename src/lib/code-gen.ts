@@ -67,6 +67,18 @@ export async function genBookingCode(): Promise<string> {
   return genCode("O", async (code) => !!(await prisma.booking.findUnique({ where: { code } })));
 }
 
+/**
+ * v1055：重複下單判定視窗（毫秒）。日潛與潛旅共用同一個值，別各自寫死免得日後漂移。
+ *
+ * 為什麼需要：前端 POST 逾時會 abort 並顯示錯誤，但伺服器不會因此停止——訂單照建、
+ * 通知照發，客戶看到錯誤再按一次就多一筆。同客戶＋同場次在這個視窗內重複下單，
+ * 一律視為「同一次操作的重送」，回傳既有訂單。
+ *
+ * 為什麼是 90 秒：足以涵蓋逾時(30s)＋客戶看到錯誤再按一次的來回；又短到不會擋掉
+ * 「隔幾分鐘真的想再訂同場次」（例如幫朋友加訂）。
+ */
+export const DUP_WINDOW_MS = 90_000;
+
 // v225：抵用金編碼 C20260601-XX
 export async function genCreditCode(): Promise<string> {
   return genCode("C", async (code) => !!(await prisma.creditTx.findUnique({ where: { code } })));

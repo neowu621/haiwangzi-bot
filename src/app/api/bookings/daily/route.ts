@@ -7,7 +7,7 @@ import { buildFlexByKeyAsync } from "@/lib/flex";
 import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
 import { notifyCustomer } from "@/lib/notify-template";
 import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
-import { genBookingCode } from "@/lib/code-gen";
+import { genBookingCode, DUP_WINDOW_MS } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
@@ -390,6 +390,25 @@ export async function POST(req: NextRequest) {
     creditUsed,
     payable: Math.max(0, totalAmount - creditUsed),
   };
+
+  // v1055：重複下單保護（冪等）
+  //   前端 POST 逾時會 abort 並顯示錯誤，但伺服器不會因此停止 —— 訂單照建、通知照發，
+  //   客戶看到錯誤再按一次就多一筆。這裡在「真正寫入之前」擋下來（此前都只是讀取與計算，沒有寫入）。
+  //   只擋 90 秒：隔幾分鐘後真的想再訂同場次（例如幫朋友加訂）完全不受影響。
+  const recentSame = await prisma.booking.findFirst({
+    where: {
+      userId: auth.user.lineUserId,
+      type: "daily",
+      refId: data.tripId,
+      status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"] },
+      createdAt: { gte: new Date(Date.now() - DUP_WINDOW_MS) },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (recentSame) {
+    console.warn("[booking dedup] daily 重複下單，回傳既有訂單", recentSame.code);
+    return NextResponse.json({ ok: true, booking: recentSame, overCapacity: recentSame.overCapacity, deduped: true });
+  }
 
   const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({

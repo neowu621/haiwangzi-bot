@@ -5,7 +5,7 @@ import { authFromRequest } from "@/lib/auth";
 import { spendCreditFIFO } from "@/lib/credit-fifo"; // v969：改用 FIFO 扣抵(記錄用了哪幾筆批次)
 import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
 import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
-import { genBookingCode } from "@/lib/code-gen";
+import { genBookingCode, DUP_WINDOW_MS } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
@@ -149,6 +149,22 @@ export async function POST(req: NextRequest) {
     creditUsed,
     payable: Math.max(0, totalAmount - creditUsed),
   };
+
+  // v1055：重複下單保護（冪等）—— 與日潛同一套理由，見 bookings/daily 的註解
+  const recentSame = await prisma.booking.findFirst({
+    where: {
+      userId: auth.user.lineUserId,
+      type: "tour",
+      refId: data.tourId,
+      status: { notIn: ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"] },
+      createdAt: { gte: new Date(Date.now() - DUP_WINDOW_MS) },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (recentSame) {
+    console.warn("[booking dedup] tour 重複下單，回傳既有訂單", recentSame.code);
+    return NextResponse.json({ ok: true, booking: recentSame, deduped: true });
+  }
 
   const bookingCode = await genBookingCode();
   const booking = await prisma.booking.create({

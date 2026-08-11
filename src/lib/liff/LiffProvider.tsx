@@ -394,15 +394,25 @@ export function LiffProvider({ children }: { children: React.ReactNode }) {
             clearTimeout(timer);
           }
         };
+        // v1055：有 body 的請求（下單、上傳簽名）不能自動重試，逾時等於「叫使用者自己再按一次」，
+        //   而伺服器端其實還在跑 —— 所以給它 30 秒，別在還會成功的時候先放棄。
+        //   唯讀 GET 維持 12 秒，逾時後自動換新連線重試（那條路重試是安全的）。
+        const firstTimeout = init?.body ? 30_000 : 12_000;
         let res: Response;
         try {
-          res = await doFetch(12_000);
+          res = await doFetch(firstTimeout);
         } catch (e) {
           const transient = (e instanceof DOMException && e.name === "AbortError") || e instanceof TypeError;
           if (canRetry && transient) {
             res = await doFetch(25_000); // 全新連線再試一次（把「關App重開」自動化）
           } else if (e instanceof DOMException && e.name === "AbortError") {
-            throw new Error("連線逾時，請重試（網路較慢，稍後再開一次）");
+            // v1055：不要再叫使用者「請重試」—— 逾時只代表我們沒等到回應，
+            //   伺服器很可能已經處理完成。引導去確認結果，比引導重按安全。
+            throw new Error(
+              init?.body
+                ? "連線逾時。您的操作可能已經完成，請先到「我的預約」確認，不要直接重送以免重複。"
+                : "連線逾時，請重試（網路較慢，稍後再開一次）",
+            );
           } else {
             throw e;
           }
