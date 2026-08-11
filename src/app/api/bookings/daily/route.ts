@@ -554,6 +554,7 @@ async function sendBookingConfirmNotify(args: {
   notifyCustomer({
     userId: args.userId,
     templateKey: "booking_confirm",
+    ref: { type: "booking", id: booking.id, label: booking.code },
     params: {
       name: booking.user.realName ?? booking.user.displayName,
       date: trip.date.toISOString().slice(0, 10),

@@ -19,7 +19,7 @@ import {
   type MarineFields,
   type MarineReading,
 } from "./marine";
-import { buildForecastDays } from "./forecast";
+import { buildForecastDays, type ForecastRow } from "./forecast";
 
 interface CWAStation {
   StationId: string;
@@ -94,7 +94,8 @@ export interface ReportMarineRow {
 }
 export interface ReportData {
   trips: ReportTripRow[];
-  forecast: string[];
+  forecast: string[];        // 純文字摘要（LINE/純文字版）
+  forecastRows: ForecastRow[]; // 結構化列（Email 表格）
   overall: string | null;
   windStatus: string;
   stations: ReportStationRow[];
@@ -118,6 +119,21 @@ function emailHtml(dateStr: string, d: ReportData): string {
         </tr>`).join(""),
       )
     : `<div style="font-size:13px;color:#6b7280;">（今明無場次）</div>`;
+
+  // 天氣預報（每列一天一區，改為表格；無結構化列則退回文字）
+  const forecastHtml = d.forecastRows.length
+    ? tbl(
+        `<tr><th style="${TH}">時段</th><th style="${TH}">地區</th><th style="${TH}">天氣</th><th style="${TH}">降雨</th><th style="${TH}">氣溫</th><th style="${TH}">風</th></tr>` +
+        d.forecastRows.map((f) => `<tr>
+          <td style="${TD}white-space:nowrap;font-weight:700;">${esc(f.dayLabel)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(f.region)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(f.wx)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(f.pop)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(f.temp)}</td>
+          <td style="${TD}white-space:nowrap;">${esc(f.wind)}</td>
+        </tr>`).join(""),
+      )
+    : (d.forecast.length ? `<div style="font-size:13px;line-height:1.8;color:#33464e;white-space:pre-wrap;">${esc(d.forecast.join("\n"))}</div>` : "");
 
   // 測站
   const stationsHtml = d.stations.length
@@ -161,8 +177,8 @@ function emailHtml(dateStr: string, d: ReportData): string {
   <div style="${SEC}">🔱 今明場次</div>
   ${tripsHtml}
 
-  ${d.forecast.length ? `<div style="${SEC}">🌤 天氣預報</div>
-  <div style="font-size:13px;line-height:1.8;color:#33464e;white-space:pre-wrap;">${esc(d.forecast.join("\n"))}</div>` : ""}
+  ${forecastHtml ? `<div style="${SEC}">🌤 天氣預報（潛水時段 06–12 時）</div>
+  ${forecastHtml}` : ""}
 
   ${d.windStatus ? `<div style="${SEC}">💨 海況</div>
   <div style="font-size:13px;margin-bottom:7px;">今日風速：${esc(d.windStatus)}</div>` : ""}
@@ -272,7 +288,7 @@ export async function runDailyWeatherReport(opts?: {
 
   // ── 1c. 天氣預報（F-D0047 鄉鎮 3 天，潛水時段 06–12）v456/v457 ──
   // 今日/明日分開回傳，直接接在各日場次摘要後面。循序抓避免對 CWA 併發（marine 限流教訓）。
-  let forecast: { today: string | null; tomorrow: string | null } = { today: null, tomorrow: null };
+  let forecast: { today: string | null; tomorrow: string | null; rows: ForecastRow[] } = { today: null, tomorrow: null, rows: [] };
   if (content.forecast) {
     forecast = await buildForecastDays(process.env.CWA_API_KEY);
   }
@@ -421,6 +437,7 @@ export async function runDailyWeatherReport(opts?: {
   const reportData: ReportData = {
     trips: content.sessions ? [...tripRows("今日", todayTrips), ...tripRows("明日", tomorrowTrips)] : [],
     forecast: fcParts,
+    forecastRows: forecast.rows,
     overall: marineBlock
       ? `綜合海況：${marineBlock.light} ${
           marineBlock.light === "🔴" ? "部分海域不建議下水"

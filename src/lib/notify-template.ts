@@ -26,7 +26,7 @@ import {
   MSG_EDITABLE_FIELDS, // v862：判斷模板有沒有「按鈕文字」欄位
 } from "./message-content";
 import { sendEmail } from "./email/send";
-import { logMessage } from "./message-log"; // v473：發送紀錄
+import { logMessage, type MsgRef } from "./message-log"; // v473：發送紀錄 / v1053：訂單關聯
 
 // v600：Email 按鈕一律導小編 LINE 官方帳號 —— LIFF 連結被 Zeabur/SES awstrack 點擊追蹤
 //   包成 awstrack.me 轉址後,LINE 深層連結會打不開;line.me/R/ti/p 通用連結較耐包裝。
@@ -45,6 +45,8 @@ export function notifyCustomer(opts: {
   inApp?: false;
   /** true = LINE 已由呼叫端自行發送（例如 webhook reply），這裡只發 Email + 站內 */
   skipLine?: boolean;
+  /** v1053：這則通知對應哪一筆訂單/場次 —— 三個通道的發送紀錄都會帶上，後台才查得到來源 */
+  ref?: MsgRef | null;
 }): void {
   void (async () => {
     try {
@@ -95,9 +97,9 @@ export function notifyCustomer(opts: {
           try {
             const flex = buildFlexWithOverride(key, opts.params, altText, tpl);
             await lineClient.pushMessage({ to: opts.userId, messages: [flex] });
-            logMessage({ channel: "line", templateKey: key, recipientId: opts.userId, recipient: who, title: altText, status: "sent", source: "notify" });
+            logMessage({ channel: "line", templateKey: key, recipientId: opts.userId, recipient: who, title: altText, status: "sent", source: "notify", ref: opts.ref ?? null });
           } catch (e) {
-            logMessage({ channel: "line", templateKey: key, recipientId: opts.userId, recipient: who, title: altText, status: "failed", error: e instanceof Error ? e.message : String(e), source: "notify" });
+            logMessage({ channel: "line", templateKey: key, recipientId: opts.userId, recipient: who, title: altText, status: "failed", error: e instanceof Error ? e.message : String(e), source: "notify", ref: opts.ref ?? null });
           }
         }
       }
@@ -108,7 +110,7 @@ export function notifyCustomer(opts: {
         const params = { ...opts.params, url: EMAIL_LINK };
         const content = composeEmail(key, params, tpl);
         const r = await sendEmail({ to: user.email, subject: content.subject, text: content.text, html: content.html });
-        logMessage({ channel: "email", templateKey: key, recipientId: opts.userId, recipient: user.email, title: content.subject, status: r.ok ? "sent" : r.skipped ? "skipped" : "failed", error: r.error ?? null, source: "notify" });
+        logMessage({ channel: "email", templateKey: key, recipientId: opts.userId, recipient: user.email, title: content.subject, status: r.ok ? "sent" : r.skipped ? "skipped" : "failed", error: r.error ?? null, source: "notify", ref: opts.ref ?? null });
       }
 
       // ── 站內訊息通知（標題＝後台「標題」欄位；內文＝完整組稿）──
@@ -148,7 +150,7 @@ export function notifyCustomer(opts: {
               icon,
             },
           });
-          logMessage({ channel: "inapp", templateKey: key, recipientId: opts.userId, recipient: who, title, status: "sent", source: "notify" });
+          logMessage({ channel: "inapp", templateKey: key, recipientId: opts.userId, recipient: who, title, status: "sent", source: "notify", ref: opts.ref ?? null });
         } catch (e) {
           // 站內通知寫入失敗不應影響 LINE/Email；獨立 try/catch
           console.error(`[notifyCustomer inApp ${key}]`, e);

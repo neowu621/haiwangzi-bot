@@ -187,6 +187,7 @@ async function sendPaymentReceivedEmail(args: {
       notifyCustomer({
         userId: booking.userId,
         templateKey: "deposit_confirm",
+        ref: { type: "booking", id: booking.id, label: booking.code },
         params: {
           tourTitle: tour.title,
           paid: args.newPaid,

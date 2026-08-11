@@ -8,6 +8,14 @@ export type MsgStatus = "sent" | "failed" | "skipped";
  * 記一筆對外訊息發送紀錄（fire-and-forget，永不 throw、永不阻塞主流程）。
  * 任何發送點（notifyCustomer / 試送 / 群發 / 日報…）都可呼叫。
  */
+/** v1053：這則訊息是為哪一筆訂單/場次發的（後台通訊紀錄的「對應訂單」欄）。選填，沒帶就顯示「—」。 */
+export interface MsgRef {
+  type: "booking" | "trip" | "tour";
+  id: string;
+  /** 顯示用短標，如訂單編號 O20260809-V5；沒有就退回 id 前 8 碼 */
+  label?: string | null;
+}
+
 export function logMessage(entry: {
   channel: MsgChannel;
   templateKey: string;
@@ -17,6 +25,7 @@ export function logMessage(entry: {
   status: MsgStatus;
   error?: string | null;
   source?: string;
+  ref?: MsgRef | null;
 }): void {
   void prisma.messageLog
     .create({
@@ -29,6 +38,9 @@ export function logMessage(entry: {
         status: entry.status,
         error: entry.error ? String(entry.error).slice(0, 2000) : null,
         source: entry.source ?? "system",
+        refType: entry.ref?.type ?? null,
+        refId: entry.ref?.id ?? null,
+        refLabel: entry.ref ? (entry.ref.label || entry.ref.id.slice(0, 8)).slice(0, 128) : null,
       },
     })
     .catch((e) => console.error("[logMessage]", e));

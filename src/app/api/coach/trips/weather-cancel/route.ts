@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
     notifyCustomer({
       userId: b.userId,
       templateKey: "weather_cancel",
+      ref: { type: "booking", id: b.id, label: b.code },
       params: {
         date: dateStr,
         time: trip.startTime,

@@ -60,8 +60,18 @@ async function fetchTownElements(apiKey: string, p: ForecastPoint): Promise<Map<
   return map;
 }
 
-/** 從單一鄉鎮的預報元素，組出目標日 06–12 時的一行摘要 */
-function summarizeWindow(els: Map<string, FcTime[]>, targetDay: string): string | null {
+/** 單一鄉鎮某日 06–12 時的結構化預報（供文字摘要與表格共用） */
+interface FcParts {
+  wx: string | null;      // 天氣現象
+  pop: number | null;     // 降雨機率 %
+  tMin: number | null;
+  tMax: number | null;
+  wind: number | null;    // 風速 m/s
+  windDir: string | null; // 風向
+}
+
+/** 從單一鄉鎮的預報元素，取出目標日 06–12 時的結構化欄位（全空回 null） */
+function extractWindow(els: Map<string, FcTime[]>, targetDay: string): FcParts | null {
   // 天氣現象：取 09–12 區段，缺則 06–09
   const wxTimes = els.get("天氣現象") ?? [];
   let wx: string | null = null;
@@ -107,11 +117,24 @@ function summarizeWindow(els: Map<string, FcTime[]>, targetDay: string): string 
     if (typeof d === "string" && d) { wDir = d; break; }
   }
 
+  const any = wx || pop !== null || (tMin !== null && tMax !== null) || wMax !== null;
+  return any ? { wx, pop, tMin, tMax, wind: wMax, windDir: wDir } : null;
+}
+
+/** 氣溫顯示：27–33°C / 27°C */
+function fmtTemp(p: FcParts): string | null {
+  if (p.tMin === null || p.tMax === null) return null;
+  return p.tMin === p.tMax ? `${p.tMin}°C` : `${p.tMin}–${p.tMax}°C`;
+}
+
+/** 結構化 → 原本的一行文字摘要（LINE/純文字用，維持原樣） */
+function fmtSummary(p: FcParts): string | null {
   const segs: string[] = [];
-  if (wx) segs.push(wx);
-  if (pop !== null) segs.push(`☔ ${pop}%`);
-  if (tMin !== null && tMax !== null) segs.push(tMin === tMax ? `${tMin}°C` : `${tMin}–${tMax}°C`);
-  if (wMax !== null) segs.push(`風 ${wMax} m/s${wDir ? ` ${wDir}` : ""}`);
+  if (p.wx) segs.push(p.wx);
+  if (p.pop !== null) segs.push(`☔ ${p.pop}%`);
+  const t = fmtTemp(p);
+  if (t) segs.push(t);
+  if (p.wind !== null) segs.push(`風 ${p.wind} m/s${p.windDir ? ` ${p.windDir}` : ""}`);
   return segs.length > 0 ? segs.join("　") : null;
 }
 
@@ -120,11 +143,35 @@ function summarizeWindow(els: Map<string, FcTime[]>, targetDay: string): string 
  * 目標日：台灣時間 09:00 前（05:00 當日寄送）→ 今日；之後（22:00 前一晚寄送/白天手動測試）→ 明日。
  * （CWA 只給未來區段；過了上午，今日 06–12 已從 feed 消失，必須看明日）
  */
+/** 表格用：一列 = 一天一區的 06–12 時預報 */
+export interface ForecastRow {
+  dayLabel: string; // 今日 / 明日
+  region: string;   // 龍洞・萊萊（貢寮區）
+  wx: string;       // 天氣現象（無則 —）
+  pop: string;      // 降雨機率（30% / —）
+  temp: string;     // 氣溫（27–33°C / —）
+  wind: string;     // 風（4 m/s 西北風 / —）
+}
+
 export interface ForecastDays {
   /** 今日 06–12 時預報（過了台灣時間 09:00 即 null，CWA 不留過去區段） */
   today: string | null;
   /** 明日 06–12 時預報 */
   tomorrow: string | null;
+  /** 表格用結構化列（今日在前、明日在後） */
+  rows: ForecastRow[];
+}
+
+const DASH = "—";
+function toRow(dayLabel: string, region: string, p: FcParts): ForecastRow {
+  return {
+    dayLabel,
+    region,
+    wx: p.wx ?? DASH,
+    pop: p.pop !== null ? `${p.pop}%` : DASH,
+    temp: fmtTemp(p) ?? DASH,
+    wind: p.wind !== null ? `${p.wind} m/s${p.windDir ? ` ${p.windDir}` : ""}` : DASH,
+  };
 }
 
 /**
@@ -133,7 +180,7 @@ export interface ForecastDays {
  * 一個鄉鎮只抓一次（3 天 feed 同時涵蓋今明兩日）；循序抓避免 CWA 併發限流。
  */
 export async function buildForecastDays(apiKey: string | undefined): Promise<ForecastDays> {
-  if (!apiKey) return { today: null, tomorrow: null };
+  if (!apiKey) return { today: null, tomorrow: null, rows: [] };
   const tw = new Date(Date.now() + 8 * 3600_000); // 以 UTC getter 讀台灣時間
   const dayStr = (offset: number) => {
     const t = new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate() + offset));
@@ -150,20 +197,24 @@ export async function buildForecastDays(apiKey: string | undefined): Promise<For
       console.error("[forecast] fetch failed", p.town, e);
     }
   }
-  if (per.length === 0) return { today: null, tomorrow: null };
+  if (per.length === 0) return { today: null, tomorrow: null, rows: [] };
 
-  const render = (targetDay: string, dayLabel: string): string | null => {
-    const lines = per
-      .map(({ label, els }) => {
-        const s = summarizeWindow(els, targetDay);
-        return s ? `${label}：${s}` : null;
-      })
-      .filter((x): x is string => x !== null);
-    return lines.length > 0 ? [`【⛅ 天氣預報（${dayLabel} 06–12 時）】`, ...lines].join("\n") : null;
+  // 同時產出「文字摘要」（LINE/純文字）與「結構化列」（Email 表格）
+  const build = (targetDay: string, dayLabel: string): { str: string | null; rows: ForecastRow[] } => {
+    const lines: string[] = [];
+    const rows: ForecastRow[] = [];
+    for (const { label, els } of per) {
+      const parts = extractWindow(els, targetDay);
+      if (!parts) continue;
+      const text = fmtSummary(parts);
+      if (text) lines.push(`${label}：${text}`);
+      rows.push(toRow(dayLabel, label, parts));
+    }
+    const str = lines.length > 0 ? [`【⛅ 天氣預報（${dayLabel} 06–12 時）】`, ...lines].join("\n") : null;
+    return { str, rows };
   };
 
-  return {
-    today: includeToday ? render(dayStr(0), "今日") : null,
-    tomorrow: render(dayStr(1), "明日"),
-  };
+  const t = includeToday ? build(dayStr(0), "今日") : { str: null, rows: [] };
+  const m = build(dayStr(1), "明日");
+  return { today: t.str, tomorrow: m.str, rows: [...t.rows, ...m.rows] };
 }

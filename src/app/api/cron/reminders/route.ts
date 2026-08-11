@@ -136,6 +136,7 @@ async function handle(req: NextRequest) {
       notifyCustomer({
         userId: b.userId,
         templateKey: "d1_reminder",
+        ref: { type: "booking", id: b.id, label: b.code },
         params: {
           date: dateStr,
           time: trip.startTime,
@@ -207,6 +208,7 @@ async function handle(req: NextRequest) {
       notifyCustomer({
         userId: b.userId,
         templateKey: "deposit_notice",
+        ref: { type: "booking", id: b.id, label: b.code },
         params: {
           tourTitle: tour.title,
           deposit: depositAmt,
@@ -256,6 +258,7 @@ async function handle(req: NextRequest) {
         notifyCustomer({
           userId: b.userId,
           templateKey: "final_reminder",
+          ref: { type: "booking", id: b.id, label: b.code },
           params: {
             tourTitle: tour.title,
             remaining,
@@ -312,6 +315,7 @@ async function handle(req: NextRequest) {
       notifyCustomer({
         userId: b.userId,
         templateKey: "final_reminder",
+        ref: { type: "booking", id: b.id, label: b.code },
         params: {
           tourTitle: tour.title,
           remaining,

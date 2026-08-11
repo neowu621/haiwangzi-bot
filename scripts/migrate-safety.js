@@ -699,6 +699,10 @@ const PATCHES = [
   `ALTER TABLE credit_txs ADD COLUMN IF NOT EXISTS forfeited_amount INT NOT NULL DEFAULT 0`,
   // v1039：通知點擊追蹤（訊息成效的點擊率）
   `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMPTZ`,
+  // v1053：通訊紀錄「對應訂單」——這則訊息是為哪一筆訂單/場次發的
+  `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_type VARCHAR(16)`,
+  `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_id VARCHAR(64)`,
+  `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_label VARCHAR(128)`,
   // v677：會員模糊搜尋加速（後台會員/抵用金 ?q= ILIKE） — pg_trgm GIN 索引
   `CREATE EXTENSION IF NOT EXISTS pg_trgm`,
   `CREATE INDEX IF NOT EXISTS users_real_name_trgm_idx ON users USING gin (real_name gin_trgm_ops)`,

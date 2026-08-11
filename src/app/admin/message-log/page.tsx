@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { adminFetch } from "@/lib/admin-web-auth";
@@ -18,6 +18,47 @@ interface UItem {
   createdAt: string;
 }
 interface Stats { waiting: number; weekInbound: number; sent: number; failed: number; openRate: number | null }
+
+// v1053：一則通知（三個通道合併後）
+interface UGroup {
+  key: string;
+  createdAt: string;
+  direction: "in" | "out";
+  who: string;
+  recipientId: string | null;
+  recipients: string[];
+  module: string;
+  moduleLabel: string;
+  action: string;
+  title: string;
+  refType: string | null;
+  refId: string | null;
+  refLabel: string | null;
+  threadId: string | null;
+  channels: { channel: string; status: string; error: string | null; recipient: string; id: string }[];
+}
+
+// 模組晶片配色：同一組色也用在篩選 chip 上
+const MODULE_STYLE: Record<string, { bg: string; c: string }> = {
+  notify:          { bg: "#e7f2fb", c: "#1d6ba6" },
+  broadcast:       { bg: "#fdf0d5", c: "#9a6212" },
+  weather:         { bg: "#e0f2fe", c: "#0369a1" },
+  coach:           { bg: "#e4f5ea", c: "#1a7f43" },
+  contact:         { bg: "#f3e8ff", c: "#6d28d9" },
+  "custom-order":  { bg: "#e6f6f4", c: "#0a7c7c" },
+  "admin-notify":  { bg: "#eaeeff", c: "#3f45b8" },
+  assistant:       { bg: "#f0f2f5", c: "#5a6b72" },
+  test:            { bg: "#f0f2f5", c: "#7c8a96" },
+  system:          { bg: "#f0f2f5", c: "#7c8a96" },
+};
+const modStyle = (m: string) => MODULE_STYLE[m] ?? MODULE_STYLE.system;
+
+/** 通道點：綠＝送出、紅＝失敗、灰＝沒發（客戶關掉該通道，是 skipped 不是失敗） */
+function chDot(status: string): { bg: string; op: number; title: string } {
+  if (["sent", "delivered", "opened", "received"].includes(status)) return { bg: "#e6f7f1", op: 1, title: "已送出" };
+  if (["failed", "bounced"].includes(status)) return { bg: "#fdecea", op: 1, title: "失敗" };
+  return { bg: "#f0f2f5", op: 0.45, title: "沒發（略過）" };
+}
 
 const DIR: Record<string, { arrow: string; color: string; label: string }> = {
   in: { arrow: "↙", color: "#2563eb", label: "收到" },
@@ -39,17 +80,22 @@ const STATUS: Record<string, { t: string; bg: string; c: string }> = {
   bounced: { t: "退信", bg: "#fdecea", c: "#c0392b" },
 };
 
-function fmtTime(iso: string): string {
+// v1053：一律顯示日期 —— 只有時間會分不出是今天還是上週的同一則通知
+const WD = ["日", "一", "二", "三", "四", "五", "六"];
+function fmtDate(iso: string): string {
   const d = new Date(iso);
-  const diff = (Date.now() - d.getTime()) / 1000;
-  if (diff < 60) return "剛剛";
-  if (diff < 3600) return `${Math.floor(diff / 60)} 分鐘前`;
-  if (d.toDateString() === new Date().toDateString()) return d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
-  return d.toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const y = d.getFullYear() === new Date().getFullYear() ? "" : `${d.getFullYear()}/`;
+  return `${y}${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}（${WD[d.getDay()]}）`;
+}
+function fmtClock(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function MessageLogPage() {
   const [items, setItems] = useState<UItem[]>([]);
+  const [groups, setGroups] = useState<UGroup[]>([]);
+  const [openKey, setOpenKey] = useState<string | null>(null); // v1053：展開哪一列看通道細節
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [direction, setDirection] = useState("");
@@ -68,8 +114,9 @@ export default function MessageLogPage() {
       if (channel) qs.set("channel", channel);
       if (status) qs.set("status", status);
       if (!reset && nextCursor) qs.set("cursor", nextCursor);
-      const d = await adminFetch<{ items: UItem[]; nextCursor: string | null; stats: Stats }>(`/api/admin/message-log?${qs}`);
+      const d = await adminFetch<{ items: UItem[]; groups: UGroup[]; nextCursor: string | null; stats: Stats }>(`/api/admin/message-log?${qs}`);
       setItems((prev) => (reset ? d.items : [...prev, ...d.items]));
+      setGroups((prev) => (reset ? (d.groups ?? []) : [...prev, ...(d.groups ?? [])]));
       setNextCursor(d.nextCursor);
       setStats(d.stats);
     } catch (e) {
@@ -97,7 +144,9 @@ export default function MessageLogPage() {
     <AdminShell title="通訊紀錄">
       <div style={{ padding: 16, maxWidth: 1000, margin: "0 auto" }}>
         <p style={{ fontSize: 12.5, color: "#5a6b72", marginBottom: 12 }}>
-          客戶詢問 · 客服回覆 · 系統通知 —— 所有對內/對外訊息一覽。<span style={{ color: "#185fa5" }}>↙ 收到</span> · <span style={{ color: "#0a8f6a" }}>↗ 寄出</span>;可點的列會開到客服信箱對話。
+          客戶詢問 · 客服回覆 · 系統通知 —— 所有對內/對外訊息一覽。<span style={{ color: "#185fa5" }}>↙ 收到</span> · <span style={{ color: "#0a8f6a" }}>↗ 寄出</span>。
+          一則通知會同時走 LINE／Email／站內，這裡<b>合併成一列</b>；點任一列可展開看各通道的送達狀況。
+          <span style={{ color: "#9aabae" }}>（「對應訂單」自 v1053 起才有紀錄，之前發出的訊息一律顯示「—」。）</span>
         </p>
 
         {stats && (
@@ -137,43 +186,118 @@ export default function MessageLogPage() {
         {err && <div style={{ background: "#fdecea", color: "#c0392b", borderRadius: 8, padding: "10px 12px", fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
         {loading ? (
           <p style={{ fontSize: 13, color: "#7c8a96" }}>載入中…</p>
-        ) : items.length === 0 ? (
+        ) : groups.length === 0 ? (
           <p style={{ fontSize: 13, color: "#7c8a96", padding: "20px 0", textAlign: "center" }}>
             {hasFilter ? "這個條件下沒有紀錄,調整篩選試試。" : "目前沒有任何通訊紀錄。"}
           </p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {items.map((m) => {
-              const dir = DIR[m.direction], ch = CHANNEL[m.channel] ?? CHANNEL.inapp, st = STATUS[m.status] ?? STATUS.sent;
-              const inner = (
-                <>
-                  <span style={{ flex: "0 0 auto", width: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
-                    <span style={{ fontSize: 17, fontWeight: 800, color: dir.color }}>{dir.arrow}</span>
-                    <span style={{ fontSize: 15 }}>{ch.icon}</span>
-                  </span>
-                  <span style={{ flex: 1, minWidth: 150, overflow: "hidden" }}>
-                    <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#1a2330", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title}</span>
-                    <span style={{ display: "block", fontSize: 11, color: "#7c8a96", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {m.direction === "in" ? "來自 " : "給 "}{m.recipient}
-                      <span style={{ marginLeft: 6, padding: "1px 7px", borderRadius: 20, background: "#f0f2f5", color: "#7c8a96", fontSize: 10 }}>{m.category}</span>
-                    </span>
-                    {m.error && <span style={{ display: "block", fontSize: 11, color: "#c0392b" }}>⚠ {m.error}</span>}
-                  </span>
-                  <span style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: st.c, background: st.bg, padding: "2px 9px", borderRadius: 20 }}>{st.t}</span>
-                    <span style={{ fontSize: 10.5, color: "#9aabae" }}>{fmtTime(m.createdAt)}{m.threadId ? " ›" : ""}</span>
-                  </span>
-                </>
-              );
-              const rowStyle: React.CSSProperties = { background: "#fff", border: "1px solid #e3e9ec", borderRadius: 10, padding: "10px 13px", display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "inherit" };
-              return m.threadId ? (
-                <Link key={m.id} href={`/admin/email?thread=${m.threadId}`} style={{ ...rowStyle, cursor: "pointer" }}>{inner}</Link>
-              ) : (
-                <div key={m.id} style={rowStyle}>{inner}</div>
-              );
-            })}
+          /* v1053：六欄表格。一則通知一列，三個通道收成三顆點；點列展開看各通道細節 */
+          <div style={{ background: "#fff", border: "1px solid #e3e9ec", borderRadius: 12, overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 880 }}>
+              <thead>
+                <tr style={{ background: "#f6f8fa", color: "#7c8a96", fontSize: 11, textAlign: "left" }}>
+                  <th style={thStyle}>時間</th>
+                  <th style={thStyle}>給誰</th>
+                  <th style={thStyle}>模組</th>
+                  <th style={thStyle}>動作</th>
+                  <th style={thStyle}>對應訂單</th>
+                  <th style={{ ...thStyle, width: 130 }}>通道 · 結果</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => {
+                  const dir = DIR[g.direction];
+                  const bad = g.channels.filter((c) => ["failed", "bounced"].includes(c.status)).length;
+                  const ok = g.channels.filter((c) => ["sent", "delivered", "opened", "received"].includes(c.status)).length;
+                  const open = openKey === g.key;
+                  return (
+                    <Fragment key={g.key}>
+                      <tr
+                        onClick={() => setOpenKey(open ? null : g.key)}
+                        style={{ borderTop: "1px solid #eef2f4", cursor: "pointer", background: open ? "#f8fbfd" : undefined }}
+                      >
+                        <td style={tdStyle}>
+                          <div style={{ fontWeight: 600, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtDate(g.createdAt)}</div>
+                          <div style={{ fontSize: 11, color: "#7c8a96", fontVariantNumeric: "tabular-nums" }}>
+                            <span style={{ color: dir.color, fontWeight: 800 }}>{dir.arrow}</span> {fmtClock(g.createdAt)}
+                          </div>
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{g.who}</div>
+                          {g.recipients.length > 0 && (
+                            <div style={{ fontSize: 10.5, color: "#9aabae", maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {g.recipients.filter((r) => r !== g.who).join(" · ") || "—"}
+                            </div>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          <span style={{ display: "inline-block", padding: "2px 9px", borderRadius: 20, fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap", ...modStyle(g.module) }}>
+                            {g.moduleLabel}
+                          </span>
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ fontWeight: 600 }}>{g.action}</div>
+                          <div style={{ fontSize: 10.5, color: "#7c8a96", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
+                        </td>
+                        <td style={tdStyle}>
+                          {g.refLabel ? (
+                            <Link href={`/admin/bookings?q=${encodeURIComponent(g.refLabel)}`} onClick={(e) => e.stopPropagation()}
+                              style={{ fontFamily: "Inter,ui-monospace,monospace", fontSize: 11, color: "#0a7c7c", background: "#e6f6f4", borderRadius: 5, padding: "1px 6px", textDecoration: "none", whiteSpace: "nowrap" }}>
+                              {g.refLabel}
+                            </Link>
+                          ) : (
+                            <span style={{ color: "#c3ccd2" }}>—</span>
+                          )}
+                        </td>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", gap: 3 }}>
+                            {g.channels.map((c) => {
+                              const d = chDot(c.status);
+                              return (
+                                <span key={c.id} title={`${(CHANNEL[c.channel] ?? CHANNEL.inapp).label}：${d.title}`}
+                                  style={{ width: 20, height: 20, borderRadius: 6, background: d.bg, opacity: d.op, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
+                                  {(CHANNEL[c.channel] ?? CHANNEL.inapp).icon}
+                                </span>
+                              );
+                            })}
+                          </div>
+                          <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2, color: bad > 0 ? "#c0392b" : "#0a8f6a" }}>
+                            {open ? "▴ 收起" : bad > 0 ? `▾ ${bad} 個失敗` : `▾ ${ok} 個送達`}
+                          </div>
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr style={{ background: "#f8fbfd" }}>
+                          <td colSpan={6} style={{ padding: "8px 12px 12px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                              {g.channels.map((c) => {
+                                const st = STATUS[c.status] ?? STATUS.sent;
+                                const ch = CHANNEL[c.channel] ?? CHANNEL.inapp;
+                                return (
+                                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                                    <span style={{ width: 62, color: "#5a6b72" }}>{ch.icon} {ch.label}</span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: st.c, background: st.bg, padding: "1px 8px", borderRadius: 20 }}>{st.t}</span>
+                                    <span style={{ color: "#7c8a96", fontSize: 11 }}>{c.recipient}</span>
+                                    {c.error && <span style={{ color: "#c0392b", fontSize: 11 }}>⚠ {c.error}</span>}
+                                  </div>
+                                );
+                              })}
+                              {g.threadId && (
+                                <Link href={`/admin/email?thread=${g.threadId}`} style={{ fontSize: 11.5, color: "#185fa5", marginTop: 2 }}>
+                                  開啟客服信箱對話 ›
+                                </Link>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
             {nextCursor && (
-              <button onClick={() => load(false)} disabled={loadingMore} style={{ marginTop: 8, padding: "9px", borderRadius: 8, border: "1px solid #cdd9de", background: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => load(false)} disabled={loadingMore} style={{ width: "100%", padding: "10px", border: 0, borderTop: "1px solid #eef2f4", background: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
                 {loadingMore ? "載入中…" : "載入更多"}
               </button>
             )}
@@ -185,3 +309,5 @@ export default function MessageLogPage() {
 }
 
 const selStyle: React.CSSProperties = { fontSize: 12.5, padding: "6px 10px", borderRadius: 8, border: "1px solid #cdd9de", background: "#fff" };
+const thStyle: React.CSSProperties = { padding: "9px 12px", fontWeight: 600, whiteSpace: "nowrap" };
+const tdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };

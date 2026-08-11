@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
     notifyCustomer({
       userId: b.userId,
       templateKey: "attendance_confirmed",
+      ref: { type: "booking", id: b.id, label: null },
       params: {
         bookingTitle,
         addLogs,

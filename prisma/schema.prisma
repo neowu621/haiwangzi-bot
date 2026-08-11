@@ -244,6 +244,12 @@ model MessageLog {
   status       String   @db.VarChar(12) // sent / failed / skipped
   error        String?  @db.Text
   source       String   @default("system") @db.VarChar(32) // notify / test / broadcast / weather / orders ...
+  // v1053：這則訊息對應到哪一筆訂單/場次（後台通訊紀錄的「對應訂單」欄）。
+  //   舊資料一律 null 且無法回填（title 只有「預約成功…」，沒有訂單編號可反推）；
+  //   新發送逐步補齊，沒帶到的顯示「—」，不影響任何功能。
+  refType      String?  @map("ref_type") @db.VarChar(16)   // booking / trip / tour
+  refId        String?  @map("ref_id") @db.VarChar(64)
+  refLabel     String?  @map("ref_label") @db.VarChar(128) // 顯示用：O20260809-V5
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([createdAt(sort: Desc)])

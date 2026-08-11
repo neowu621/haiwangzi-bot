@@ -214,6 +214,7 @@ export async function POST(
           notifyCustomer({
             userId: booking.userId,
             templateKey: "attendance_confirmed",
+            ref: { type: "booking", id: booking.id, label: booking.code },
             params: {
               bookingTitle,
               addLogs,

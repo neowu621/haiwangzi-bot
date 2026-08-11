@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { FLEX_TEMPLATE_LABELS } from "@/lib/flex"; // v1053：模板 key → 中文動作名
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,50 @@ interface UItem {
   error: string | null;
   threadId: string | null;
   createdAt: string;
+  // v1053：新欄位
+  recipientId?: string | null;
+  who?: string;                 // 暱稱（姓名），join User 後才有
+  module?: string;              // 模組 key（notify/broadcast/weather/coach/contact/...）
+  moduleLabel?: string;         // 模組中文
+  action?: string;              // 模板中文名（預約確認 / D-1 提醒…）
+  refType?: string | null;
+  refId?: string | null;
+  refLabel?: string | null;
 }
+
+// v1053：一則通知會拆成 LINE/Email/站內三筆紀錄；合併後同一列顯示三顆通道點。
+interface UGroup {
+  key: string;
+  createdAt: string;
+  direction: Dir;
+  who: string;
+  recipientId: string | null;
+  recipients: string[];         // 各通道的收件位址（email / 姓名）
+  module: string;
+  moduleLabel: string;
+  action: string;
+  title: string;
+  refType: string | null;
+  refId: string | null;
+  refLabel: string | null;
+  threadId: string | null;
+  channels: { channel: string; status: string; error: string | null; recipient: string; id: string }[];
+}
+
+// 模組：用 source（7 種）而不是 templateKey（20 種太細）——這是老闆會問的粒度：
+//   「這是系統自動發的，還是誰手動發的？」
+const MODULE_LABEL: Record<string, string> = {
+  notify: "🔔 自動通知",
+  broadcast: "📣 群發通知",
+  weather: "🌊 天氣通知",
+  coach: "🤿 教練訊息",
+  contact: "💬 客服對話",
+  "custom-order": "🧾 客製訂單",
+  "admin-notify": "🛎 內部通知",
+  assistant: "🤖 AI 客服",
+  test: "🧪 測試",
+  system: "⚙️ 系統",
+};
 
 const TEMPLATE_LABEL: Record<string, string> = {
   birthday_credit: "生日祝福",
@@ -107,6 +151,12 @@ export async function GET(req: NextRequest) {
       status: m.status, recipient: m.recipient, title: m.title,
       category: logCategory(m.templateKey, m.source), error: m.error, threadId: null,
       createdAt: m.createdAt.toISOString(),
+      // v1053
+      recipientId: m.recipientId,
+      module: m.source,
+      moduleLabel: MODULE_LABEL[m.source] ?? `⚙️ ${m.source}`,
+      action: FLEX_TEMPLATE_LABELS[m.templateKey as keyof typeof FLEX_TEMPLATE_LABELS] ?? TEMPLATE_LABEL[m.templateKey] ?? m.templateKey,
+      refType: m.refType, refId: m.refId, refLabel: m.refLabel,
     });
   }
   for (const e of emails) {
@@ -125,12 +175,64 @@ export async function GET(req: NextRequest) {
       recipient: who, title: em.subject,
       category: cat, error: null, threadId: em.thread?.id ?? em.threadId,
       createdAt: em.createdAt.toISOString(),
+      // v1053：客服信箱沒有 source/模板，模組固定歸「客服對話」
+      recipientId: null,
+      module: "contact",
+      moduleLabel: MODULE_LABEL.contact,
+      action: cat,
+      refType: null, refId: null, refLabel: null,
     });
   }
   merged.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   const hasMore = merged.length > limit;
   const page = merged.slice(0, limit);
   const nextCursor = hasMore ? page[page.length - 1]?.createdAt ?? null : null;
+
+  // ── v1053：把同一則通知的三個通道併成一列 ──────────────────────────────
+  //   MessageLog 沒有「同一次發送」的識別碼，所以用
+  //   收件人 + 模板動作 + 模組 + 同一分鐘 當分組鍵（對舊資料也有效）。
+  //   代價：同一分鐘內對同一人發兩則相同通知會被併成一列——極罕見，可接受。
+  //   另外分組在「取完這一頁之後」才做，跨頁邊界的群組可能被切成兩列。
+  const bucket = (iso: string) => Math.floor(new Date(iso).getTime() / 60000);
+  const groups: UGroup[] = [];
+  const byKey = new Map<string, UGroup>();
+  for (const it of page) {
+    // 客服信箱（email kind）本來就是一封一列，不合併
+    const gk = it.kind === "email"
+      ? `E:${it.id}`
+      : `${it.recipientId ?? it.recipient}|${it.action}|${it.module}|${bucket(it.createdAt)}`;
+    let g = byKey.get(gk);
+    if (!g) {
+      g = {
+        key: gk, createdAt: it.createdAt, direction: it.direction,
+        who: it.recipient, recipientId: it.recipientId ?? null, recipients: [],
+        module: it.module ?? "system", moduleLabel: it.moduleLabel ?? "⚙️ 系統",
+        action: it.action ?? it.category, title: it.title,
+        refType: it.refType ?? null, refId: it.refId ?? null, refLabel: it.refLabel ?? null,
+        threadId: it.threadId, channels: [],
+      };
+      byKey.set(gk, g);
+      groups.push(g);
+    }
+    // 群組裡任一筆有帶訂單關聯就採用（三通道理論上一致，防呆用）
+    if (!g.refId && it.refId) { g.refType = it.refType ?? null; g.refId = it.refId; g.refLabel = it.refLabel ?? null; }
+    if (!g.recipients.includes(it.recipient)) g.recipients.push(it.recipient);
+    g.channels.push({ channel: it.channel, status: it.status, error: it.error, recipient: it.recipient, id: it.id });
+  }
+
+  // 收件人顯示成「暱稱（姓名）」——只有 MessageLog 存得到 lineUserId
+  const uids = Array.from(new Set(groups.map((g) => g.recipientId).filter((x): x is string => !!x)));
+  if (uids.length > 0) {
+    const users = await prisma.user.findMany({
+      where: { lineUserId: { in: uids } },
+      select: { lineUserId: true, displayName: true, realName: true, nickname: true },
+    });
+    const uMap = new Map(users.map((u) => [u.lineUserId, u]));
+    for (const g of groups) {
+      const u = g.recipientId ? uMap.get(g.recipientId) : null;
+      if (u) g.who = `${(u.nickname ?? "").trim() || "?"}（${u.realName ?? u.displayName}）`;
+    }
+  }
 
   // 行動型統計(近 7 天 + 目前待回覆)
   const since = new Date(Date.now() - 7 * 86400_000);
@@ -152,5 +254,6 @@ export async function GET(req: NextRequest) {
     openRate: deliveredEmail > 0 ? Math.round((openedEmail / deliveredEmail) * 100) : null,
   };
 
-  return NextResponse.json({ items: page, nextCursor, stats });
+  // items 保留（相容舊呼叫端）；groups 是 v1053 新版表格用的
+  return NextResponse.json({ items: page, groups, nextCursor, stats });
 }
