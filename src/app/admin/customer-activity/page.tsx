@@ -135,6 +135,8 @@ const ACTION_LABELS: Record<string, { label: string; emoji: string; group: strin
   "customer.booking.create":         { label: "建立預約",       emoji: "📋", group: "booking" },
   "customer.booking.update":         { label: "修改預約",       emoji: "📋", group: "booking" },
   "customer.booking.cancel":         { label: "取消預約",       emoji: "📋", group: "booking" },
+  // v1057：重複下單被系統擋下（沒有建新單）—— 用來分辨「客戶真的訂兩筆」與「按了兩次被擋掉一筆」
+  "customer.booking.duplicate_blocked": { label: "重複送出(已擋)", emoji: "🛡", group: "booking" },
   "customer.payment_proof.upload":   { label: "上傳付款證明",   emoji: "💰", group: "payment" },
   "customer.pay_link.open":          { label: "開啟付款連結",   emoji: "💰", group: "payment" },
   "customer.refund.request":         { label: "申請退款",       emoji: "💸", group: "refund" },

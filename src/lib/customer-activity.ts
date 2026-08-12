@@ -60,6 +60,33 @@ export function extractUserAgent(req: NextRequest | Request): string | null {
   return req.headers.get("user-agent") ?? null;
 }
 
+/**
+ * v1057：記一筆「重複下單被擋下」。
+ *
+ * 為什麼要記：重複保護是提早 return 的，走不到後面的 customer.booking.create，
+ * 等於「被擋下的重送」完全不留痕跡 —— 後台就無法分辨
+ *   「客戶真的訂了兩筆」與「客戶按了兩次但系統擋掉一筆」。
+ * 這一筆讓前台活動看得到，which 也是判斷「是系統行為還是使用者行為」的依據。
+ *
+ * guard：key = 冪等鍵（同一次表單開啟）／window = 90 秒時間窗／race = DB unique 競態
+ */
+export function logDuplicateBlocked(
+  req: NextRequest | Request,
+  user: { lineUserId: string; realName?: string | null; displayName?: string | null },
+  booking: { id: string; code: string | null },
+  guard: "key" | "window" | "race",
+): void {
+  void logCustomerActivity({
+    req,
+    user,
+    action: "customer.booking.duplicate_blocked",
+    targetType: "booking",
+    targetId: booking.id,
+    targetLabel: booking.code ?? undefined,
+    metadata: { guard },
+  });
+}
+
 export async function logCustomerActivity(params: CustomerActivityParams): Promise<void> {
   try {
     // v644：節流。同一 actor + action 在 throttleMinutes 內已記過 → 跳過，避免高頻動作（如登入）灌爆 audit_log。

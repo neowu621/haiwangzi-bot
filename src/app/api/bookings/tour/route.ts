@@ -7,7 +7,7 @@ import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
 import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
 import { genBookingCode, DUP_WINDOW_MS, isUniqueViolation } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
-import { logCustomerActivity } from "@/lib/customer-activity"; // v334
+import { logCustomerActivity, logDuplicateBlocked } from "@/lib/customer-activity"; // v334 / v1057
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -158,6 +158,7 @@ export async function POST(req: NextRequest) {
     const dup = await prisma.booking.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
     if (dup) {
       console.warn("[booking dedup] tour 冪等鍵命中，回傳既有訂單", dup.code);
+      logDuplicateBlocked(req, auth.user, dup, "key");
       return NextResponse.json({ ok: true, booking: dup, deduped: "key" });
     }
   }
@@ -174,6 +175,7 @@ export async function POST(req: NextRequest) {
   });
   if (recentSame) {
     console.warn("[booking dedup] tour 重複下單，回傳既有訂單", recentSame.code);
+    logDuplicateBlocked(req, auth.user, recentSame, "window");
     return NextResponse.json({ ok: true, booking: recentSame, deduped: true });
   }
 
@@ -210,6 +212,7 @@ export async function POST(req: NextRequest) {
       const dup = await prisma.booking.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
       if (dup) {
         console.warn("[booking dedup] tour 併發競態，回傳既有訂單", dup.code);
+        logDuplicateBlocked(req, auth.user, dup, "race");
         return NextResponse.json({ ok: true, booking: dup, deduped: "race" });
       }
     }
