@@ -242,6 +242,19 @@ export default function TripBookingPage({
   const [notesOpen, setNotesOpen] = useState(false); // v957：備註預設收合
 
   const [submitting, setSubmitting] = useState(false);
+  // v1058：送出過程的誠實回饋 —— 不假裝進度（前端看不到伺服器做到第幾步），
+  //   只說實話：現在在做什麼、已經等了幾秒。倒數計時是一種承諾，跳票比沒承諾更糟。
+  const [submitPhase, setSubmitPhase] = useState<"sending" | "verifying" | null>(null);
+  const [submitSeconds, setSubmitSeconds] = useState(0);
+  // v1058：真的失敗時給客戶一個出口 —— 把預約內容整理好送進站內客服
+  const [helpState, setHelpState] = useState<"idle" | "offer" | "sending" | "sent" | "failed">("idle");
+
+  // 送出中每秒 +1；結束就歸零
+  useEffect(() => {
+    if (!submitting) return;
+    const t = setInterval(() => setSubmitSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [submitting]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -551,6 +564,9 @@ export default function TripBookingPage({
       return;
     }
     setSubmitting(true);
+    setSubmitPhase("sending");
+    setSubmitSeconds(0);
+    setHelpState("idle");
     setError(null);
     try {
       const parseWb = (v: string | undefined) => {
@@ -630,9 +646,80 @@ export default function TripBookingPage({
       try { sessionStorage.removeItem(bookingKeyStorage); } catch { /* ignore */ }
       router.push(`/liff/my?just=${res.booking.id}`);
     } catch (e) {
+      // v1058：逾時不等於失敗 —— 伺服器很可能已經建好單了，先自己去確認再說。
+      //   （沒有這一步，客戶會看到錯誤然後再按一次；雖然 v1056 冪等鍵擋得住，
+      //     但讓客戶白白經歷一次「失敗」本來就該避免。）
+      setSubmitPhase("verifying");
+      const found = await findMyBookingForThisTrip();
+      if (found) {
+        try { sessionStorage.removeItem(bookingKeyStorage); } catch { /* ignore */ }
+        router.push(`/liff/my?just=${found}`);
+        return;
+      }
+      // 真的沒建成 → 顯示錯誤，並給「請小編協助」的出口
       setError(e instanceof Error ? e.message : String(e));
+      setHelpState("offer");
     } finally {
       setSubmitting(false);
+      setSubmitPhase(null);
+    }
+  }
+
+  /**
+   * v1058：送出後回頭確認「這個場次剛剛有沒有建成訂單」。
+   *   逾時只代表我們沒等到回應，伺服器那邊可能已經完成。找到就當成功。
+   *   時間窗抓 5 分鐘，足以涵蓋 30 秒逾時 + 查詢往返，又不會撈到更早的舊單。
+   */
+  async function findMyBookingForThisTrip(): Promise<string | null> {
+    try {
+      const d = await liff.fetchWithAuth<{
+        bookings?: Array<{ id: string; refId: string; type: string; status: string; createdAt: string }>;
+      }>("/api/bookings/my");
+      const since = Date.now() - 5 * 60_000;
+      const hit = (d.bookings ?? []).find(
+        (b) =>
+          b.type === "daily" &&
+          b.refId === tripId &&
+          !b.status.startsWith("cancelled") &&
+          new Date(b.createdAt).getTime() >= since,
+      );
+      return hit?.id ?? null;
+    } catch {
+      return null; // 連確認都失敗 → 當作沒建成，走求助流程
+    }
+  }
+
+  /** v1058：下單真的失敗時，把這次的預約內容整理好直接送進站內客服，小編可以馬上接手。 */
+  async function askStaffForHelp() {
+    if (!trip || helpState === "sending" || helpState === "sent") return;
+    setHelpState("sending");
+    try {
+      const sites = trip.sites.filter((s) => s).map((s) => s!.name).join("、") || "東北角";
+      const gearText =
+        Object.entries(gearQty)
+          .filter(([, q]) => q > 0)
+          .map(([itemType, q]) => `${gearOptions.find((g) => g.itemType === itemType)?.label ?? itemType}×${q}`)
+          .join("、") || "無";
+      const lines = [
+        "🆘 我剛才下單一直沒有成功，請小編協助確認",
+        "",
+        `場次：${trip.date} ${trip.startTime} ${sites}`,
+        `潛次：${tankCount} 支 ／ 人數：${participants} 人`,
+        `裝備租借：${gearText}`,
+        `付款方式：${paymentMethod ? PAY_LABEL[paymentMethod] : "未選"}`,
+        `應付金額：NT$ ${payable.toLocaleString()}`,
+        notes.trim() ? `備註：${notes.trim()}` : "",
+        "",
+        `（系統參考碼：${bookingKey.slice(0, 8)}）`,
+      ].filter(Boolean);
+      await liff.fetchWithAuth("/api/me/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: lines.join("\n"), kind: "booking_help" }),
+      });
+      setHelpState("sent");
+    } catch {
+      setHelpState("failed");
     }
   }
 
@@ -1510,8 +1597,14 @@ export default function TripBookingPage({
             {submitting && (
               <DiverLoader
                 overlay
-                label="送出預約中，請稍候…"
-                subLabel="正在上傳簽名與建立訂單；請勿關閉或重複送出"
+                label={submitPhase === "verifying" ? "正在確認訂單狀態…" : "送出預約中，請稍候…"}
+                subLabel={
+                  submitPhase === "verifying"
+                    ? "剛才連線較慢，正在查詢這筆預約是否已經建立"
+                    : submitSeconds >= 10
+                      ? `已等候 ${submitSeconds} 秒 · 網路較慢，仍在處理中，請勿關閉或重按`
+                      : "正在上傳簽名與建立訂單；請勿關閉或重複送出"
+                }
               />
             )}
             {/* v703：未填完時提示還差哪些必填，按鈕才不會「無聲變灰」 */}
@@ -1534,6 +1627,49 @@ export default function TripBookingPage({
         {error && (
           <div className="rounded-lg bg-[var(--color-coral)]/15 p-3 text-sm text-[var(--color-coral)]">
             {error}
+          </div>
+        )}
+
+        {/* v1058：已經確認過訂單真的沒建成，才走到這裡 —— 給客戶一個不用自己打字的出口。
+            送出的是整理好的預約內容，小編收到就能直接接手，不必來回問「你要訂哪一場」。 */}
+        {helpState !== "idle" && (
+          <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--border)", background: "var(--muted)" }}>
+            {helpState === "sent" ? (
+              <div className="leading-relaxed">
+                <div className="font-bold text-[var(--color-ocean-deep)]">✅ 已通知小編</div>
+                <div className="mt-1 text-[var(--muted-foreground)]">
+                  你的預約內容已經送到客服，小編會盡快幫你確認並回覆。
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/liff/messages")}
+                  className="mt-2 inline-block font-semibold text-[var(--color-ocean-deep)] underline"
+                >
+                  查看客服訊息 ›
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="leading-relaxed text-[var(--muted-foreground)]">
+                  已確認這筆預約<b className="text-[var(--foreground)]">沒有建立成功</b>。
+                  可以直接請小編協助 —— 系統會把你填的場次、潛次、裝備與金額一起送過去，不用重打。
+                </div>
+                {helpState === "failed" && (
+                  <div className="mt-1.5 text-xs text-[var(--color-coral)]">
+                    送出失敗，請再試一次；或直接到「站內訊息」找小編。
+                  </div>
+                )}
+                <Button
+                  variant="ocean"
+                  size="sm"
+                  className="mt-2.5 w-full"
+                  disabled={helpState === "sending"}
+                  onClick={() => void askStaffForHelp()}
+                >
+                  {helpState === "sending" ? "傳送中…" : "🆘 請小編協助（附上預約內容）"}
+                </Button>
+              </>
+            )}
           </div>
         )}
 

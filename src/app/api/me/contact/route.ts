@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest } from "@/lib/auth";
 import { notifyBossNewInquiry } from "@/lib/notify-boss";
+import { logMessage } from "@/lib/message-log"; // v1058：自動回覆也記進通訊紀錄
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,9 +50,12 @@ export async function POST(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
 
-  const body = (await req.json().catch(() => ({}))) as { message?: string };
+  // v1058：kind="booking_help" = 下單失敗的求助。這種訊息客戶正處在「剛失敗、很焦慮」的狀態，
+  //   一定要立刻有人回應，所以系統先自動回一句收到，讓對話框當下就有回覆。
+  const body = (await req.json().catch(() => ({}))) as { message?: string; kind?: string };
   const message = (body.message ?? "").trim().slice(0, 2000);
   if (!message) return NextResponse.json({ error: "請輸入訊息內容" }, { status: 400 });
+  const isBookingHelp = body.kind === "booking_help";
 
   const name = auth.user.realName ?? auth.user.displayName ?? "會員";
   const email = auth.user.email ?? "";
@@ -93,12 +97,55 @@ export async function POST(req: NextRequest) {
         status: "RECEIVED",
       },
     });
+    // v1058：下單求助 → 立刻自動回一句，讓客戶當下就看到有人接手（而不是丟進黑洞等）。
+    //   文案刻意誠懇：先道歉、明確承諾會處理、告訴他不用再按、也不會被重複收費。
+    if (isBookingHelp) {
+      const ack = [
+        `${name} 您好，我們已經收到您的通知了 🙏`,
+        "",
+        "很抱歉讓您在下單時遇到問題，造成您的不便真的很不好意思。",
+        "小編已經收到您剛才填寫的完整預約內容，會立刻為您確認場次名額並手動幫您完成預約。",
+        "",
+        "在我們回覆之前，請您不用再重複送出，也不會有重複扣款或重複訂位的情況，這邊都會幫您確認清楚。",
+        "稍後就會在這個對話回覆您，謝謝您的耐心與體諒 🤿",
+      ].join("\n");
+      await prisma.emailMessage.create({
+        data: {
+          threadId: thread.id,
+          direction: "OUTBOUND",
+          channel: "web",
+          fromAddr: "service@haiwangzi.xyz",
+          toAddr: email || auth.user.lineUserId,
+          subject,
+          bodyText: ack,
+          messageId: `<web-ack-${Date.now()}-${Math.random().toString(36).slice(2, 9)}@haiwangzi.xyz>`,
+          status: "SENT",
+        },
+      });
+      // 記進通訊紀錄，後台看得到這句是系統自動回的
+      logMessage({
+        channel: "inapp",
+        templateKey: "booking_help_ack",
+        recipientId: auth.user.lineUserId,
+        recipient: name,
+        title: "已收到下單求助通知（自動回覆）",
+        status: "sent",
+        source: "contact",
+      });
+    }
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 
   // 通知老闆(best-effort)
-  void notifyBossNewInquiry({ type: "question", subject, name, email, bodyText: message }).catch((e) => console.error("[me/contact notify]", e));
+  void notifyBossNewInquiry({
+    // v1058：下單求助標成 urgent，老闆那端一眼看得出這筆要優先處理
+    type: "question",
+    subject: isBookingHelp ? `🆘 下單失敗求助：${name}` : subject,
+    name,
+    email,
+    bodyText: message,
+  }).catch((e) => console.error("[me/contact notify]", e));
 
   return NextResponse.json({ ok: true });
 }
