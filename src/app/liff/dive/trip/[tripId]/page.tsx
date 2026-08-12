@@ -248,6 +248,9 @@ export default function TripBookingPage({
   const [submitSeconds, setSubmitSeconds] = useState(0);
   // v1058：真的失敗時給客戶一個出口 —— 把預約內容整理好送進站內客服
   const [helpState, setHelpState] = useState<"idle" | "offer" | "sending" | "sent" | "failed">("idle");
+  // v1059：連續失敗次數 —— 決定「當下唯一的主要動作」是再試一次還是找小編。
+  //   一個畫面同時給兩個平等的選擇，客戶只會更慌。
+  const [failCount, setFailCount] = useState(0);
 
   // 送出中每秒 +1；結束就歸零
   useEffect(() => {
@@ -656,8 +659,12 @@ export default function TripBookingPage({
         router.push(`/liff/my?just=${found}`);
         return;
       }
-      // 真的沒建成 → 顯示錯誤，並給「請小編協助」的出口
-      setError(e instanceof Error ? e.message : String(e));
+      // v1059：已經查過、確定沒建成 —— 這時候「可能已經完成，請去確認」那句就過時了，
+      //   留著會跟下面「已確認沒有建立成功」互相矛盾，客戶不知道該信哪一個。
+      //   所以不顯示原始錯誤，改由下方區塊給「一個當下唯一該做的動作」。
+      console.error("[booking submit]", e);
+      setError(null);
+      setFailCount((n) => n + 1);
       setHelpState("offer");
     } finally {
       setSubmitting(false);
@@ -1650,24 +1657,48 @@ export default function TripBookingPage({
               </div>
             ) : (
               <>
-                <div className="leading-relaxed text-[var(--muted-foreground)]">
-                  已確認這筆預約<b className="text-[var(--foreground)]">沒有建立成功</b>。
-                  可以直接請小編協助 —— 系統會把你填的場次、潛次、裝備與金額一起送過去，不用重打。
+                {/* v1059：一個畫面只給「一個當下該做的動作」。
+                    第 1 次失敗 → 主動作是「再試一次」（表單內容都還在，冪等鍵也還在，重送絕對安全）；
+                    連續 2 次以上 → 主動作才升級成「請小編協助」。 */}
+                <div className="font-bold text-[var(--foreground)]">
+                  {failCount >= 2 ? "⚠️ 連續兩次都沒有成功" : "⚠️ 這次沒有送出成功"}
+                </div>
+                <div className="mt-1 leading-relaxed text-[var(--muted-foreground)]">
+                  {failCount >= 2 ? (
+                    <>建議直接讓小編幫你處理。系統會把你填的場次、潛次、裝備與金額一起送過去，<b className="text-[var(--foreground)]">不用重打</b>。</>
+                  ) : (
+                    <>已經幫你確認過，這筆預約<b className="text-[var(--foreground)]">沒有建立</b>，也不會重複扣款。
+                      你填的內容都還在，<b className="text-[var(--foreground)]">直接再送一次就好</b>。</>
+                  )}
                 </div>
                 {helpState === "failed" && (
                   <div className="mt-1.5 text-xs text-[var(--color-coral)]">
-                    送出失敗，請再試一次；或直接到「站內訊息」找小編。
+                    通知小編失敗，請再試一次；或直接到「站內訊息」找小編。
                   </div>
                 )}
-                <Button
-                  variant="ocean"
-                  size="sm"
-                  className="mt-2.5 w-full"
-                  disabled={helpState === "sending"}
-                  onClick={() => void askStaffForHelp()}
-                >
-                  {helpState === "sending" ? "傳送中…" : "🆘 請小編協助（附上預約內容）"}
-                </Button>
+
+                {failCount >= 2 ? (
+                  <>
+                    <Button variant="ocean" size="sm" className="mt-2.5 w-full"
+                      disabled={helpState === "sending"} onClick={() => void askStaffForHelp()}>
+                      {helpState === "sending" ? "傳送中…" : "🆘 請小編協助（附上預約內容）"}
+                    </Button>
+                    <button type="button" onClick={() => void submit()}
+                      className="mt-2 w-full text-xs text-[var(--muted-foreground)] underline">
+                      或再試一次
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ocean" size="sm" className="mt-2.5 w-full" onClick={() => void submit()}>
+                      🔄 再試一次
+                    </Button>
+                    <button type="button" onClick={() => void askStaffForHelp()}
+                      className="mt-2 w-full text-xs text-[var(--muted-foreground)] underline">
+                      還是不行？請小編協助
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
