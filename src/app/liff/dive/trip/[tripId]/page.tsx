@@ -211,6 +211,24 @@ export default function TripBookingPage({
   //   signatureDataUrl: data:image/png;base64,xxx — 送出 booking 時帶上
   //   signedHasInk: canvas 上至少畫了一筆才算 valid
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+
+  // v1056：冪等鍵 —— 開啟這個場次的下單表單時產生一把，整個表單生命週期固定不變。
+  //   逾時重送帶的是同一把，後端用它擋重複建單（一次表單開啟 = 最多一筆訂單）。
+  //   存 sessionStorage：LINE WebView 會因記憶體壓力重載頁面，重載後要拿回同一把才有意義；
+  //   下單成功會清掉，之後重新進來就是新的一次、新的一把。
+  const bookingKeyStorage = `bookingKey:${tripId}`;
+  const [bookingKey] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = sessionStorage.getItem(bookingKeyStorage);
+      if (saved) return saved;
+      const fresh = crypto.randomUUID();
+      sessionStorage.setItem(bookingKeyStorage, fresh);
+      return fresh;
+    } catch {
+      return crypto.randomUUID(); // sessionStorage 不可用（無痕等）→ 至少本次 render 內固定
+    }
+  });
   const [signedHasInk, setSignedHasInk] = useState(false);
 
   // 折疊狀態：個人資料、緊急聯絡人預設折疊；缺資料時自動展開
@@ -586,6 +604,8 @@ export default function TripBookingPage({
         // v828：共乘車資（自填，後端加進總額）
         carpoolFee: carpoolFeeEff,
         agreedToTerms: true as const,
+        // v1056：冪等鍵 —— 這次表單開啟固定的一把。逾時重送帶同一把，後端靠它擋重複建單。
+        idempotencyKey: bookingKey,
         // v260：手寫簽名 PNG data URL（後端解 base64 → 上 R2）
         signatureDataUrl: signatureDataUrl ?? undefined,
         realName,
@@ -606,6 +626,8 @@ export default function TripBookingPage({
         "/api/bookings/daily",
         { method: "POST", body: JSON.stringify(body) },
       );
+      // v1056：下單成功 → 清掉這次的冪等鍵，下次重新進來是全新的一次
+      try { sessionStorage.removeItem(bookingKeyStorage); } catch { /* ignore */ }
       router.push(`/liff/my?just=${res.booking.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

@@ -699,6 +699,11 @@ const PATCHES = [
   `ALTER TABLE credit_txs ADD COLUMN IF NOT EXISTS forfeited_amount INT NOT NULL DEFAULT 0`,
   // v1039：通知點擊追蹤（訊息成效的點擊率）
   `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMPTZ`,
+  // v1056：下單冪等鍵 + 確認訊息已發時間戳
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(64)`,
+  `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS confirm_sent_at TIMESTAMPTZ`,
+  // unique 索引是這道保護的核心：兩個併發請求帶同一把 key，只有一個能建單成功
+  `CREATE UNIQUE INDEX IF NOT EXISTS bookings_idempotency_key_key ON bookings (idempotency_key)`,
   // v1053：通訊紀錄「對應訂單」——這則訊息是為哪一筆訂單/場次發的
   `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_type VARCHAR(16)`,
   `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_id VARCHAR(64)`,

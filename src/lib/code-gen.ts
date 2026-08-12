@@ -79,6 +79,11 @@ export async function genBookingCode(): Promise<string> {
  */
 export const DUP_WINDOW_MS = 90_000;
 
+/** v1056：Prisma 唯一鍵衝突（P2002）。冪等鍵的併發競態靠這個判斷。 */
+export function isUniqueViolation(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
+}
+
 // v225：抵用金編碼 C20260601-XX
 export async function genCreditCode(): Promise<string> {
   return genCode("C", async (code) => !!(await prisma.creditTx.findUnique({ where: { code } })));

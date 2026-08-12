@@ -5,7 +5,7 @@ import { authFromRequest } from "@/lib/auth";
 import { spendCreditFIFO } from "@/lib/credit-fifo"; // v969：改用 FIFO 扣抵(記錄用了哪幾筆批次)
 import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
 import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
-import { genBookingCode, DUP_WINDOW_MS } from "@/lib/code-gen";
+import { genBookingCode, DUP_WINDOW_MS, isUniqueViolation } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
 
@@ -22,6 +22,8 @@ const BodySchema = z.object({
   paymentNote: z.string().max(200).optional(), // 客戶選「其他」時填寫的說明
   creditUsed: z.number().int().min(0).optional().default(0),
   agreedToTerms: z.literal(true),
+  // v1056：冪等鍵 —— 前端開啟表單時產生，逾時重送會帶同一把，用來擋重複建單。舊版 App 不帶。
+  idempotencyKey: z.string().min(8).max(64).optional(),
   // v260：手寫簽名 PNG data URL
   signatureDataUrl: z.string().optional(),
   realName: z.string().min(1),
@@ -150,7 +152,16 @@ export async function POST(req: NextRequest) {
     payable: Math.max(0, totalAmount - creditUsed),
   };
 
-  // v1055：重複下單保護（冪等）—— 與日潛同一套理由，見 bookings/daily 的註解
+  // ── 重複下單保護（三道）—— 完整理由見 bookings/daily 的註解 ──
+  // ① v1056：冪等鍵（同一次表單開啟送幾次都只有一筆，不受間隔多久影響）
+  if (data.idempotencyKey) {
+    const dup = await prisma.booking.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+    if (dup) {
+      console.warn("[booking dedup] tour 冪等鍵命中，回傳既有訂單", dup.code);
+      return NextResponse.json({ ok: true, booking: dup, deduped: "key" });
+    }
+  }
+  // ② v1055：時間窗（給沒帶 key 的舊版 App 用的保險）
   const recentSame = await prisma.booking.findFirst({
     where: {
       userId: auth.user.lineUserId,
@@ -167,8 +178,10 @@ export async function POST(req: NextRequest) {
   }
 
   const bookingCode = await genBookingCode();
-  const booking = await prisma.booking.create({
-    data: {
+  let booking;
+  try {
+    booking = await prisma.booking.create({
+      data: {
       code: bookingCode,
       userId: auth.user.lineUserId,
       type: "tour",
@@ -188,8 +201,20 @@ export async function POST(req: NextRequest) {
       creditUsed,
       status,
       agreedToTermsAt: new Date(),
-    },
-  });
+      idempotencyKey: data.idempotencyKey ?? null, // v1056
+      },
+    });
+  } catch (e) {
+    // ③ v1056：併發競態 —— 靠 DB unique 擋掉後到的那個（見 bookings/daily 註解）
+    if (data.idempotencyKey && isUniqueViolation(e)) {
+      const dup = await prisma.booking.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+      if (dup) {
+        console.warn("[booking dedup] tour 併發競態，回傳既有訂單", dup.code);
+        return NextResponse.json({ ok: true, booking: dup, deduped: "race" });
+      }
+    }
+    throw e;
+  }
 
   // v278：記錄初始狀態
   void import("@/lib/booking-status-log").then((m) =>

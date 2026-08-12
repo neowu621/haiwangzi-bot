@@ -496,6 +496,15 @@ model Booking {
   overCapacity        Boolean        @default(false) @map("over_capacity")
   // v782：到場確認/五星好評 訊息已推送時間（防一鍵補推重複發；到場點名發送時也蓋章）
   reviewSentAt        DateTime?      @map("review_sent_at") @db.Timestamptz
+  // v1056：冪等鍵 —— 前端在「開啟下單表單」時產生一個 UUID 帶著走。
+  //   一次表單開啟 = 一個 key = 最多一筆訂單。逾時重送帶的是同一個 key，
+  //   靠 DB unique 直接擋下（比「90 秒內同場次」的時間窗精準，且不受間隔多久影響）。
+  //   舊版 App 不會帶 → null；null 不受 unique 限制（Postgres 允許多筆 NULL），相容無虞。
+  idempotencyKey      String?        @unique @map("idempotency_key") @db.VarChar(64)
+  // v1056：下單確認訊息已發送時間。發送前用「條件更新」原子搶佔，搶到才發 ——
+  //   一筆訂單只會有一封確認，就算日後有其他路徑再呼叫一次也不會重發。
+  //   （與 reviewSentAt 同一套模式。）
+  confirmSentAt       DateTime?      @map("confirm_sent_at") @db.Timestamptz
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

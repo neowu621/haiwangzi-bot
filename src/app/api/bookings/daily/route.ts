@@ -7,7 +7,7 @@ import { buildFlexByKeyAsync } from "@/lib/flex";
 import { paymentStatusZh } from "@/lib/booking-status"; // v944：note 中文付款狀態
 import { notifyCustomer } from "@/lib/notify-template";
 import { notifyStaffCustomerNote } from "@/lib/notify-staff-note"; // v837
-import { genBookingCode, DUP_WINDOW_MS } from "@/lib/code-gen";
+import { genBookingCode, DUP_WINDOW_MS, isUniqueViolation } from "@/lib/code-gen";
 import { generatePayLinkToken } from "@/lib/pay-link";
 import { checkRateLimit, RATE_LIMIT } from "@/lib/rate-limit";
 import { logCustomerActivity } from "@/lib/customer-activity"; // v334
@@ -50,6 +50,8 @@ const BodySchema = z.object({
   // v828：共乘車資（客戶自填，需與教練確認；加進總額，不參與折扣）
   carpoolFee: z.number().int().min(0).max(50000).optional().default(0),
   agreedToTerms: z.literal(true),
+  // v1056：冪等鍵 —— 前端開啟表單時產生，逾時重送會帶同一把，用來擋重複建單。舊版 App 不帶。
+  idempotencyKey: z.string().min(8).max(64).optional(),
   // v260：手寫簽名 PNG data URL（後端解 base64 上傳 R2 後存 key 到 Booking）
   signatureDataUrl: z.string().optional(),
   // 客戶資料補完
@@ -391,10 +393,23 @@ export async function POST(req: NextRequest) {
     payable: Math.max(0, totalAmount - creditUsed),
   };
 
-  // v1055：重複下單保護（冪等）
-  //   前端 POST 逾時會 abort 並顯示錯誤，但伺服器不會因此停止 —— 訂單照建、通知照發，
-  //   客戶看到錯誤再按一次就多一筆。這裡在「真正寫入之前」擋下來（此前都只是讀取與計算，沒有寫入）。
-  //   只擋 90 秒：隔幾分鐘後真的想再訂同場次（例如幫朋友加訂）完全不受影響。
+  // ── 重複下單保護（三道，由強到弱）─────────────────────────────────────
+  //   起因：前端 POST 逾時會 abort 並顯示錯誤，但伺服器不會因此停止 —— 訂單照建、
+  //   通知照發，客戶看到錯誤再按一次就多一筆。
+  //   此處之前都只是讀取與計算（唯一寫入是同步客戶個資，重跑寫回相同值無害），
+  //   所以擋在 create 正前方是安全的。
+
+  // ① v1056：冪等鍵 —— 同一次表單開啟送幾次都只會有一筆。不受間隔多久影響。
+  if (data.idempotencyKey) {
+    const dup = await prisma.booking.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+    if (dup) {
+      console.warn("[booking dedup] daily 冪等鍵命中，回傳既有訂單", dup.code);
+      return NextResponse.json({ ok: true, booking: dup, overCapacity: dup.overCapacity, deduped: "key" });
+    }
+  }
+
+  // ② v1055：時間窗 —— 給沒帶 key 的舊版 App 用的保險（同客戶同場次 90 秒內）。
+  //   隔幾分鐘後真的想再訂同場次（例如幫朋友加訂）完全不受影響。
   const recentSame = await prisma.booking.findFirst({
     where: {
       userId: auth.user.lineUserId,
@@ -406,13 +421,16 @@ export async function POST(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
   if (recentSame) {
-    console.warn("[booking dedup] daily 重複下單，回傳既有訂單", recentSame.code);
-    return NextResponse.json({ ok: true, booking: recentSame, overCapacity: recentSame.overCapacity, deduped: true });
+    console.warn("[booking dedup] daily 時間窗命中，回傳既有訂單", recentSame.code);
+    return NextResponse.json({ ok: true, booking: recentSame, overCapacity: recentSame.overCapacity, deduped: "window" });
   }
 
   const bookingCode = await genBookingCode();
-  const booking = await prisma.booking.create({
-    data: {
+  let booking;
+  try {
+    booking = await prisma.booking.create({
+      data: {
+      idempotencyKey: data.idempotencyKey ?? null, // v1056
       code: bookingCode,
       userId: auth.user.lineUserId,
       type: "daily",
@@ -440,8 +458,20 @@ export async function POST(req: NextRequest) {
       status,
       agreedToTermsAt: new Date(),
       overCapacity,
-    },
-  });
+      },
+    });
+  } catch (e) {
+    // ③ v1056：併發競態 —— 兩個請求同時通過上面的檢查時，靠 DB 的 unique 擋掉後到的那個。
+    //   「先查再寫」中間一定有空隙，只有資料庫層的唯一限制能真正保證唯一。
+    if (data.idempotencyKey && isUniqueViolation(e)) {
+      const dup = await prisma.booking.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+      if (dup) {
+        console.warn("[booking dedup] daily 併發競態，回傳既有訂單", dup.code);
+        return NextResponse.json({ ok: true, booking: dup, overCapacity: dup.overCapacity, deduped: "race" });
+      }
+    }
+    throw e;
+  }
 
   // v278：記錄初始狀態
   void import("@/lib/booking-status-log").then((m) =>
@@ -549,6 +579,18 @@ async function sendBookingConfirmNotify(args: {
   bookingId: string;
   userId: string;
 }) {
+  // v1056：一筆訂單只發一封確認。用「條件更新」原子搶佔 —— 只有把 confirmSentAt
+  //   從 null 改成現在時間的那一次會拿到 count>0，其餘（重試、其他路徑再呼叫）直接跳過。
+  //   與 Booking.reviewSentAt（到場確認防重發）同一套模式。
+  const claim = await prisma.booking.updateMany({
+    where: { id: args.bookingId, confirmSentAt: null },
+    data: { confirmSentAt: new Date() },
+  });
+  if (claim.count === 0) {
+    console.warn("[booking confirm] 已發送過，跳過", args.bookingId);
+    return;
+  }
+
   const booking = await prisma.booking.findUnique({
     where: { id: args.bookingId },
     include: { user: true },
