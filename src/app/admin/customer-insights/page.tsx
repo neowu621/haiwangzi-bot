@@ -207,14 +207,14 @@ export default function CustomerInsightsPage() {
                   ? `曾經下過單，但超過 ${data.sleepDays} 天沒有再來。最久沒來的排前面。`
                   : data.season?.peak
                     ? `現在是潛水旺季（清明 ${data.season.start} ～ 中秋 ${data.season.end}），旺季客人本來就常下水，所以門檻抓 ${data.sleepDays} 天 —— 超過就值得關心。最久沒來的排前面。`
-                    : `現在是淡季，隔一陣子才來很正常，門檻放寬到 ${data.sleepDays} 天（旺季會自動縮成 30 天）。最久沒來的排前面。`
+                    : `現在是淡季，隔一陣子才來很正常，門檻放寬到 ${data.sleepDays} 天（旺季會自動縮成 21 天）。最久沒來的排前面。`
               }
             >
               {/* v1060：門檻自動跟著季節走，但老闆想用另一套標準看時可以直接切 */}
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
                 {([
-                  { d: 0, label: data.season?.peak ? "自動（旺季 30 天）" : "自動（淡季 90 天）" },
-                  { d: 30, label: "旺季標準 30 天" },
+                  { d: 0, label: data.season?.peak ? "自動（旺季 21 天）" : "自動（淡季 90 天）" },
+                  { d: 21, label: "旺季標準 21 天" },
                   { d: 90, label: "全年 90 天" },
                 ] as const).map(({ d, label }) => {
                   const on = d === 0 ? !sleepOverride : sleepOverride === d;
