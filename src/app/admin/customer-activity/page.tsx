@@ -63,13 +63,16 @@ const CARD_TITLE: Record<CardKey, string> = {
 };
 
 function SumCard({
-  label, value, unit, hint, accent, newAccent, people, open, onToggle,
+  label, value, unit, hint, accent, newAccent, people, open, onToggle, avg, avgCount,
 }: {
   label: string; value: number; unit: string; hint?: string; accent?: boolean; newAccent?: boolean;
   people?: Person[]; open?: boolean; onToggle?: () => void;
+  /** avg：顯示「N 位 · 平均 M/人」。分母優先取 people.length，否則 avgCount。 */
+  avg?: boolean; avgCount?: number;
 }) {
   const hot = newAccent && value > 0;
   const clickable = !!people && people.length > 0;
+  const n = people?.length ?? avgCount ?? 0;
   return (
     /* v1040：滑過先偷看名字，點下去在卡片下方展開完整名單 */
     <div className="group relative">
@@ -83,6 +86,11 @@ function SumCard({
         <div className="font-mono text-[21px] font-extrabold leading-tight tabular-nums" style={{ color: hot ? "#b3562c" : accent ? "var(--color-ocean-deep)" : undefined }}>
           {value.toLocaleString()}<span className="ml-0.5 text-[11px] font-normal text-[var(--muted-foreground)]">{unit}</span>
         </div>
+        {avg && n > 0 && (
+          <div className="text-[10px] text-[var(--muted-foreground)]">
+            {n.toLocaleString()} 位 · 平均 <b className="tabular-nums" style={{ color: "var(--foreground)" }}>{(value / n).toFixed(1)}</b> {unit}/人
+          </div>
+        )}
         {hint && <div className="text-[10px] text-[var(--muted-foreground)]">{hint}</div>}
         {clickable && (
           <div className="mt-0.5 text-[10px] font-medium" style={{ color: "var(--color-ocean-deep)" }}>
@@ -307,12 +315,12 @@ export default function CustomerActivityPage() {
               people={summary.people?.active} open={openCard === "active"} onToggle={() => setOpenCard(openCard === "active" ? null : "active")} />
             <SumCard label="🆕 本週新客戶" value={summary.newMembers ?? 0} unit="位" hint="7 天內註冊，記得關心" newAccent
               people={summary.people?.newMembers} open={openCard === "newMembers"} onToggle={() => setOpenCard(openCard === "newMembers" ? null : "newMembers")} />
-            <SumCard label="登入次數" value={summary.loginCount} unit="次"
+            <SumCard label="登入次數" value={summary.loginCount} unit="次" avg
               people={summary.people?.login} open={openCard === "login"} onToggle={() => setOpenCard(openCard === "login" ? null : "login")} />
-            <SumCard label="建立預約" value={summary.bookingCount} unit="筆" accent
+            <SumCard label="建立預約" value={summary.bookingCount} unit="筆" accent avg
               people={summary.people?.booking} open={openCard === "booking"} onToggle={() => setOpenCard(openCard === "booking" ? null : "booking")} />
             {/* 這張跟其他四張不同：它是「下方清單的總筆數」，所以會跟著動作篩選一起變 */}
-            <SumCard label="總活動筆數" value={total} unit="筆" hint={filterGroup === "all" ? "下方清單的總筆數" : `僅「${FILTER_CHIPS.find((c) => c.key === filterGroup)?.label ?? filterGroup}」`} />
+            <SumCard label="總活動筆數" value={total} unit="筆" avg avgCount={summary.activeUsers} hint={filterGroup === "all" ? "下方清單的總筆數" : `僅「${FILTER_CHIPS.find((c) => c.key === filterGroup)?.label ?? filterGroup}」`} />
 
             {/* v1050：裝置分布——逐列看只能查個案，比例才決定前端要先為誰最佳化 */}
             {summary.devices && summary.devices.total > 0 && (

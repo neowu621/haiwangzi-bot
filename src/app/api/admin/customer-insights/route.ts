@@ -15,6 +15,30 @@ import { authFromRequest, requireRole } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// v1060：潛水旺季 = 清明節 ～ 中秋節。旺季客人本來就常下水，一個月沒動靜就值得關心；
+//   淡季隔兩三個月才來很正常，用同一個門檻會把整份名單洗成雜訊。
+const PEAK_SLEEP_DAYS = 30;
+const OFF_SLEEP_DAYS = 90;
+// 清明是節氣，年年落在 4/4–4/6，取 4/4 當起點即可。
+// 中秋是農曆，逐年查表最準（範圍外退回 9/30 的近似值）。
+const MID_AUTUMN: Record<number, [number, number]> = {
+  2026: [9, 25], 2027: [9, 15], 2028: [10, 3], 2029: [9, 22], 2030: [9, 12],
+  2031: [10, 1], 2032: [9, 19], 2033: [9, 8], 2034: [9, 27], 2035: [9, 16],
+};
+
+function diveSeason(now: Date): { peak: boolean; start: string; end: string } {
+  const y = now.getFullYear();
+  const [em, ed] = MID_AUTUMN[y] ?? [9, 30];
+  const start = new Date(y, 3, 4);          // 4/4 清明
+  const end = new Date(y, em - 1, ed, 23, 59, 59);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    peak: now >= start && now <= end,
+    start: `04/04`,
+    end: `${pad(em)}/${pad(ed)}`,
+  };
+}
+
 const STAFF_ROLES = ["boss", "admin", "it", "coach", "assistant"] as const;
 const DEAD = ["cancelled_by_user", "cancelled_by_weather", "cancelled_unpaid"] as const;
 const WEEKDAY = ["日", "一", "二", "三", "四", "五", "六"];
@@ -31,7 +55,12 @@ export async function GET(req: NextRequest) {
 
   const sp = new URL(req.url).searchParams;
   const days = Math.min(365, Math.max(7, Number(sp.get("days") ?? "90")));
-  const sleepDays = Math.min(365, Math.max(30, Number(sp.get("sleep") ?? "90")));
+  // v1060：沉睡門檻分旺淡季 —— 淡季兩三個月不下水很正常，旺季一個月沒動靜就該關心了。
+  //   ?sleep=<天> 可手動指定；不帶就依當下日期自動判定。
+  const season = diveSeason(new Date());
+  const sleepDays = sp.get("sleep")
+    ? Math.min(365, Math.max(7, Number(sp.get("sleep"))))
+    : season.peak ? PEAK_SLEEP_DAYS : OFF_SLEEP_DAYS;
   const since = new Date(Date.now() - days * 86400_000);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -199,6 +228,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     days,
     sleepDays,
+    // v1060：讓前端說得出「為什麼是 30 天」
+    season: { peak: season.peak, start: season.start, end: season.end, manual: !!sp.get("sleep") },
     summary: {
       orders: custBookings.length,
       people: custBookings.reduce((s, b) => s + (b.participants || 1), 0),

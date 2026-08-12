@@ -17,7 +17,10 @@ interface SlotRow { slot: string; people: number; orders: number; night: boolean
 interface DowRow { dow: string; people: number }
 interface Sleep { userId: string; name: string; phone: string | null; lastOrderAt: string | null; totalOrders: number; quietDays: number | null }
 interface TopCust { userId: string; name: string; orders: number; people: number; amount: number; favSite: string | null; favSiteCount: number; favSlot: string | null; favSlotCount: number; avgTank: number | null }
+// v1060：沉睡門檻分旺淡季
+interface Season { peak: boolean; start: string; end: string; manual: boolean }
 interface Data {
+  season?: Season;
   days: number;
   sleepDays: number;
   summary: { orders: number; people: number; watchers: number; sleeping: number; avgTank: number | null; excludedStaff: number };
@@ -47,14 +50,17 @@ export default function CustomerInsightsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null);
+  // v1060：null = 依季節自動；有值 = 老闆手動指定門檻天數
+  const [sleepOverride, setSleepOverride] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true); setErr(null);
-    adminFetch<Data>(`/api/admin/customer-insights?days=${days}`)
+    const qs = `days=${days}${sleepOverride ? `&sleep=${sleepOverride}` : ""}`;
+    adminFetch<Data>(`/api/admin/customer-insights?${qs}`)
       .then(setData)
       .catch((e) => setErr(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [days, sleepOverride]);
 
   return (
     <AdminShell title="客戶偏好分析">
@@ -81,7 +87,8 @@ export default function CustomerInsightsPage() {
               <Stat label="成立訂單" value={data.summary.orders} unit="筆" />
               <Stat label="報名人次" value={data.summary.people} unit="人次" accent />
               <Stat label="🔍 猶豫中" value={data.summary.watchers} unit="人次" hint="看過但沒下單" hot={data.summary.watchers > 0} />
-              <Stat label="💤 沉睡客戶" value={data.summary.sleeping} unit="位" hint={`超過 ${data.sleepDays} 天沒下單`} />
+              <Stat label="💤 沉睡客戶" value={data.summary.sleeping} unit="位"
+                hint={`超過 ${data.sleepDays} 天沒下單${data.season && !data.season.manual ? (data.season.peak ? "（旺季標準）" : "（淡季標準）") : ""}`} />
               <Stat label="平均下水" value={data.summary.avgTank ?? 0} unit="支/人" hint="日潛平均選幾支" />
             </div>
 
@@ -193,7 +200,32 @@ export default function CustomerInsightsPage() {
             )}
 
             {/* ── 沉睡客戶 */}
-            <Card title="💤 沉睡客戶" desc={`曾經下過單，但超過 ${data.sleepDays} 天沒有再來。最久沒來的排前面。`}>
+            <Card
+              title="💤 沉睡客戶"
+              desc={
+                data.season?.manual
+                  ? `曾經下過單，但超過 ${data.sleepDays} 天沒有再來。最久沒來的排前面。`
+                  : data.season?.peak
+                    ? `現在是潛水旺季（清明 ${data.season.start} ～ 中秋 ${data.season.end}），旺季客人本來就常下水，所以門檻抓 ${data.sleepDays} 天 —— 超過就值得關心。最久沒來的排前面。`
+                    : `現在是淡季，隔一陣子才來很正常，門檻放寬到 ${data.sleepDays} 天（旺季會自動縮成 30 天）。最久沒來的排前面。`
+              }
+            >
+              {/* v1060：門檻自動跟著季節走，但老闆想用另一套標準看時可以直接切 */}
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                {([
+                  { d: 0, label: data.season?.peak ? "自動（旺季 30 天）" : "自動（淡季 90 天）" },
+                  { d: 30, label: "旺季標準 30 天" },
+                  { d: 90, label: "全年 90 天" },
+                ] as const).map(({ d, label }) => {
+                  const on = d === 0 ? !sleepOverride : sleepOverride === d;
+                  return (
+                    <button key={d} type="button" onClick={() => setSleepOverride(d === 0 ? null : d)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${on ? "bg-[var(--color-ocean-deep)] text-white" : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]"}`}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
               {data.sleeping.length === 0 ? (
                 <Empty text="沒有沉睡客戶，大家都還在。" />
               ) : (
