@@ -111,6 +111,9 @@ export async function GET(req: NextRequest) {
     phone: u.phone,
     email: u.email,
     emailVerifiedAt: u.emailVerifiedAt, // v258：給 profile 頁顯示「已驗證 ✓」徽章用
+    // v1063：首潛獎勵一個帳號只發一次（見 first-order-reward.ts）。前端要據此分流文案 ——
+    //   已領過的人再看到「驗證得 100 元」是個他永遠拿不到的承諾。
+    firstOrderRewardGrantedAt: u.firstOrderRewardGrantedAt,
     onboardingCompletedAt: u.onboardingCompletedAt, // v311：給 LiffShell 判斷是否需強制 Onboarding
     notifyByLine: u.notifyByLine,
     notifyByEmail: u.notifyByEmail,
