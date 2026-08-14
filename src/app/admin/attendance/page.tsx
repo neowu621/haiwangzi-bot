@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
+import { AttendanceOrderDialog } from "@/components/admin-web/AttendanceOrderDialog"; // v1062
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun } from "lucide-react";
 
@@ -20,6 +21,12 @@ interface AttBooking {
   totalAmount: number; // v755
   paidAmount: number;  // v755：剩餘 = totalAmount - paidAmount
   notes?: string | null; // v850：訂單備註
+  code?: string | null;      // v1062：訂單編號
+  tankCount?: number | null;
+  rentalGear?: unknown;
+  paymentMethod?: string | null;
+  creditUsed?: number;
+  createdAt?: string;
 }
 interface Session {
   key: string;
@@ -52,6 +59,7 @@ export default function AttendancePage() {
   const [acting, setActing] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [order, setOrder] = useState<AttBooking | null>(null); // v1062：點訂單編號看明細
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -183,6 +191,14 @@ export default function AttendancePage() {
                               <span style={{ color: "#7c3aed", fontWeight: 800 }}>{b.nickname?.trim() || "?"}</span>
                               （{b.name}）
                             </span>
+                            {/* v1062：訂單編號 —— 點開看這筆的完整明細（教練也看得到，不必進訂單管理） */}
+                            {b.code && (
+                              <button type="button" onClick={() => setOrder(b)}
+                                className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold underline decoration-dotted underline-offset-2 hover:no-underline"
+                                style={{ background: "#e6f6f4", color: "#0a7c7c" }}>
+                                {b.code}
+                              </button>
+                            )}
                             <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px]">{b.participants}人</span>
                             {b.paymentStatus === "fully_paid" ? (
                               <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">付清</span>
@@ -219,6 +235,8 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
+      {/* v1062 */}
+      <AttendanceOrderDialog order={order} onClose={() => setOrder(null)} />
     </AdminShell>
   );
 }

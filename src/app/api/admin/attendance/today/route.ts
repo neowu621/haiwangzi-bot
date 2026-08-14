@@ -56,6 +56,8 @@ export async function GET(req: NextRequest) {
       id: true, refId: true, type: true, participants: true, status: true,
       paymentStatus: true, signatureImageKey: true, notes: true, // v850：訂單備註
       totalAmount: true, paidAmount: true, // v755：點名確認框要顯示剩餘款／判斷有無付款
+      // v1062：點名頁要顯示訂單編號並可點開明細
+      code: true, tankCount: true, rentalGear: true, paymentMethod: true, creditUsed: true, createdAt: true,
       user: { select: { displayName: true, realName: true, nickname: true, phone: true } }, // v1042：+暱稱（教練現場好稱呼）
     },
     orderBy: { createdAt: "asc" },
@@ -80,6 +82,13 @@ export async function GET(req: NextRequest) {
     totalAmount: b.totalAmount, // v755
     paidAmount: b.paidAmount,   // v755：剩餘 = totalAmount - paidAmount
     notes: b.notes,             // v850：訂單備註
+    // v1062：訂單編號 + 明細（教練現場常要對「這個人訂了幾支、租什麼裝備」）
+    code: b.code,
+    tankCount: b.tankCount,
+    rentalGear: b.rentalGear,
+    paymentMethod: b.paymentMethod,
+    creditUsed: b.creditUsed,
+    createdAt: b.createdAt,
   });
 
   const sessions = [

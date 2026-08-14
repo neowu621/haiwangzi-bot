@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MobileAdminShell } from "@/components/admin-web/MobileAdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
 import { useAdminAuth, adminFetch } from "@/lib/admin-web-auth";
+import { AttendanceOrderDialog } from "@/components/admin-web/AttendanceOrderDialog"; // v1062
 import { Check, X, RefreshCw } from "lucide-react";
 
 interface AttBooking {
@@ -19,6 +20,12 @@ interface AttBooking {
   totalAmount: number; // v755
   paidAmount: number;  // v755：剩餘 = totalAmount - paidAmount
   notes?: string | null; // v850：訂單備註
+  code?: string | null;      // v1062：訂單編號
+  tankCount?: number | null;
+  rentalGear?: unknown;
+  paymentMethod?: string | null;
+  creditUsed?: number;
+  createdAt?: string;
 }
 interface Session {
   key: string;
@@ -45,6 +52,7 @@ export default function MobileAttendancePage() {
   const [acting, setActing] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [order, setOrder] = useState<AttBooking | null>(null); // v1062：點訂單編號看明細
 
   const load = useCallback(() => {
     if (!ready) return;
@@ -179,6 +187,14 @@ export default function MobileAttendancePage() {
                             <span style={{ color: "#7c3aed", fontWeight: 800 }}>{b.nickname?.trim() || "?"}</span>
                             （{b.name}）
                           </span>
+                          {/* v1062：訂單編號 —— 點開看這筆的完整明細 */}
+                          {b.code && (
+                            <button type="button" onClick={() => setOrder(b)}
+                              className="flex-shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold"
+                              style={{ background: "#e6f6f4", color: "#0a7c7c" }}>
+                              {b.code}
+                            </button>
+                          )}
                           <span className="flex-shrink-0 rounded bg-[var(--muted)] px-1 py-0.5 text-[10px]">{b.participants}人</span>
                           {b.paymentStatus === "fully_paid"
                             ? <span className="flex-shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">付清</span>
@@ -212,6 +228,8 @@ export default function MobileAttendancePage() {
           ))}
         </div>
       )}
+      {/* v1062 */}
+      <AttendanceOrderDialog order={order} onClose={() => setOrder(null)} />
     </MobileAdminShell>
   );
 }
