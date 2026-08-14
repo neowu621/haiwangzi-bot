@@ -98,9 +98,12 @@ export function AttendanceOrderDialog({ order, onClose }: { order: AttOrder | nu
           <Row k="付款狀態" v={PAY_STATUS[order.paymentStatus] ?? order.paymentStatus} />
           <Row k="簽名" v={order.signed ? "✍️ 已簽" : "未簽"} />
 
+          {/* v1065：上半＝這筆訂單「要多少錢」，下半＝「收了多少、還差多少」。
+              兩件事混在一起看很容易誤讀（抵用金既出現在折抵、也算在已付款裡），中間拉一條線分開。 */}
           <div className="!mt-3 rounded-lg px-3 py-2" style={{ background: "var(--muted)" }}>
             <Row k="總金額" v={`NT$ ${order.totalAmount.toLocaleString()}`} />
             {(order.creditUsed ?? 0) > 0 && <Row k="抵用金折抵" v={`− NT$ ${(order.creditUsed ?? 0).toLocaleString()}`} />}
+            <div className="my-1.5 border-t" style={{ borderColor: "rgba(10,35,66,0.14)" }} />
             <Row k="已付款" v={`NT$ ${order.paidAmount.toLocaleString()}`} />
             <Row
               k="剩餘應付"
