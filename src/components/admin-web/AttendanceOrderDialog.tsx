@@ -29,6 +29,8 @@ export interface AttOrder {
   rentalGear?: unknown;
   paymentMethod?: string | null;
   createdAt?: string;
+  /** v1064：場次／行程一行字。點名頁在場次底下不需要，前台活動點進來才要知道是哪一場。 */
+  session?: string | null;
 }
 
 const PAY_METHOD: Record<string, string> = {
@@ -87,6 +89,7 @@ export function AttendanceOrderDialog({ order, onClose }: { order: AttOrder | nu
         </div>
 
         <div className="space-y-1.5 p-4 text-[13px]">
+          {order.session && <Row k="場次" v={order.session} />}
           <Row k="人數" v={`${order.participants} 人`} />
           {order.tankCount != null && <Row k="潛次" v={`${order.tankCount} 支／人`} />}
           <Row k="裝備租借" v={gearText(order.rentalGear)} />

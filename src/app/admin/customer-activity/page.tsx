@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { memberName } from "@/lib/member-name"; // v1038：暱稱（姓名）
 import { CustomerDetailDialog } from "@/components/admin-web/CustomerDetailDialog";
+import { AttendanceOrderDialog, type AttOrder } from "@/components/admin-web/AttendanceOrderDialog"; // v1064：點訂單編號看明細
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // v1036：摘要統計
@@ -210,6 +211,47 @@ export default function CustomerActivityPage() {
   const [openCard, setOpenCard] = useState<CardKey | null>(null);
   // v1049：裝置分布展開哪一類
   const [openDev, setOpenDev] = useState<DevKind | null>(null);
+  // v1064：點「目標」的訂單編號 → 撈那一筆並開明細彈窗
+  const [order, setOrder] = useState<AttOrder | null>(null);
+  const [orderLoading, setOrderLoading] = useState<string | null>(null);
+
+  async function openOrder(bookingId: string) {
+    setOrderLoading(bookingId);
+    try {
+      const d = await adminFetch<{ bookings: Array<Record<string, unknown>> }>(`/api/admin/bookings?id=${encodeURIComponent(bookingId)}`);
+      const b = d.bookings?.[0];
+      if (!b) { alert("找不到這筆訂單（可能已被刪除）"); return; }
+      const u = (b.user ?? {}) as { realName?: string | null; displayName?: string; nickname?: string | null; phone?: string | null };
+      const ref = (b.ref ?? {}) as { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string };
+      const session = ref.title
+        ? `${ref.title}${ref.dateStart ? ` ${ref.dateStart}` : ""}`
+        : [ref.date, ref.startTime, (ref.sites ?? []).join("、")].filter(Boolean).join(" ") || null;
+      setOrder({
+        id: String(b.id),
+        code: (b.code as string | null) ?? null,
+        name: u.realName ?? u.displayName ?? "（未命名）",
+        nickname: u.nickname ?? null,
+        phone: u.phone ?? null,
+        participants: Number(b.participants ?? 1),
+        status: String(b.status ?? ""),
+        paymentStatus: String(b.paymentStatus ?? ""),
+        signed: !!(b.signedAt ?? b.signatureImageUrl),
+        totalAmount: Number(b.totalAmount ?? 0),
+        paidAmount: Number(b.paidAmount ?? 0),
+        creditUsed: Number(b.creditUsed ?? 0),
+        notes: (b.notes as string | null) ?? null,
+        tankCount: (b.tankCount as number | null) ?? null,
+        rentalGear: b.rentalGear,
+        paymentMethod: (b.paymentMethod as string | null) ?? null,
+        createdAt: b.createdAt ? String(b.createdAt) : undefined,
+        session,
+      });
+    } catch (e) {
+      alert("載入訂單失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setOrderLoading(null);
+    }
+  }
 
   // v1049：摘要卡上方要標明「算的是哪段時間」。與 load() 用同一套天數，改一邊要記得改另一邊。
   const rangeLabel = () => {
@@ -589,7 +631,17 @@ export default function CustomerActivityPage() {
                       </Badge>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs">
-                      {r.targetLabel ? (
+                      {/* v1064：訂單類目標 → 可點開明細；其他類型維持純標籤 */}
+                      {r.targetLabel && r.targetType === "booking" && r.targetId ? (
+                        <button
+                          type="button"
+                          onClick={() => void openOrder(r.targetId!)}
+                          disabled={orderLoading === r.targetId}
+                          className="font-mono rounded bg-teal-50 px-1.5 py-0.5 text-teal-800 text-[10px] underline decoration-dotted underline-offset-2 hover:no-underline disabled:opacity-50"
+                        >
+                          {orderLoading === r.targetId ? "載入中…" : r.targetLabel}
+                        </button>
+                      ) : r.targetLabel ? (
                         <span className="font-mono rounded bg-teal-50 px-1.5 py-0.5 text-teal-800 text-[10px]">
                           {r.targetLabel}
                         </span>
@@ -639,6 +691,8 @@ export default function CustomerActivityPage() {
 
       {/* 客戶詳情 modal (全站統一) */}
       <CustomerDetailDialog userId={openCustomerId} onClose={() => setOpenCustomerId(null)} />
+      {/* v1064 */}
+      <AttendanceOrderDialog order={order} onClose={() => setOrder(null)} />
 
       {/* 紀錄詳情 modal */}
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>

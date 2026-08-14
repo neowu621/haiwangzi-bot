@@ -21,16 +21,19 @@ export async function GET(req: NextRequest) {
     // v674：light=1 → 只回名單需要的核心欄位，跳過退款/狀態log/退抵用金/簽名presigned URL
     //   （給「潛旅→展開報名名單」用，避免一團多筆時逐筆 sign R2 → 載入很慢）
     const light = url.searchParams.get("light") === "1";
+    // v1064：單筆查詢 —— 前台活動的「目標」欄點訂單編號時，只要那一筆，不必撈整批
+    const filterId = url.searchParams.get("id") ?? undefined;
 
     const where: Prisma.BookingWhereInput =
-      filterUserId ? { userId: filterUserId }
+      filterId ? { id: filterId }
+      : filterUserId ? { userId: filterUserId }
       : filterRefId ? { refId: filterRefId }
       : {};
 
     const bookings = await prisma.booking.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: filterUserId || filterRefId ? 500 : 200,
+      take: filterId ? 1 : filterUserId || filterRefId ? 500 : 200,
       include: { user: { select: { displayName: true, realName: true, nickname: true, phone: true, email: true, lineUserId: true, notes: true } } }, // v1015：+暱稱
     });
 
