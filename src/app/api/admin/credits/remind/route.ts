@@ -63,7 +63,12 @@ export async function POST(req: NextRequest) {
   let inappN = 0, emailN = 0, lineN = 0;
   const client = wantLine ? getLineClient() : null;
 
-  for (const u of targets) {
+  // v1066：原本是「一位一位 await」——17 位會員光 Email 就可能跑掉數十秒，前端 12 秒逾時直接掛掉。
+  //   改成分批平行（每批 5 位）：牆鐘時間降到約 1/5，又不會一次打爆 LINE / SES 的速率限制。
+  //   刻意不改成 fire-and-forget —— 老闆需要看到「實際發了幾封」，非同步就回不了準確數字。
+  const CONCURRENCY = 5;
+
+  async function sendOne(u: typeof targets[number]) {
     const exp = earliestByUser.get(u.lineUserId);
     const bal = u.creditBalance ?? 0;
     const bodyText = [
@@ -104,6 +109,10 @@ export async function POST(req: NextRequest) {
         lineN++;
       } catch (e) { console.error("[credit remind line]", e); }
     }
+  }
+
+  for (let i = 0; i < targets.length; i += CONCURRENCY) {
+    await Promise.all(targets.slice(i, i + CONCURRENCY).map(sendOne));
   }
 
   await logAudit({

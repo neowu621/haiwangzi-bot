@@ -66,8 +66,12 @@ async function rawAdminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   //   而 Ctrl+F5 因重開連線就正常。自動重試 = 把 Ctrl+F5 的效果自動化，使用者不用手動硬重整。
   //   只對「沒帶外部 signal、且非寫入帶 body」的請求重試，避免重送造成重複副作用。
   const canRetry = !init?.signal && !init?.body;
+  // v1066：帶 body 的請求（批次發送提醒、補發優惠…）不能自動重試，逾時等於要人再按一次，
+  //   但伺服器可能已經發了一半 —— 再按就是重複發。所以給它 60 秒，別在還會成功時先放棄。
+  //   唯讀 GET 維持 12 秒，逾時後自動換新連線重試（那條路重試是安全的）。
+  const firstTimeout = init?.body ? 60_000 : 12_000;
   try {
-    return await attemptAdminFetch<T>(path, init, 12_000);
+    return await attemptAdminFetch<T>(path, init, firstTimeout);
   } catch (e) {
     // v731：用 name 判斷 AbortError，不限 DOMException 實例 —— LINE WebView 內 abort
     //   有時不是 DOMException，會漏接導致原始訊息「signal is aborted without reason」外洩。
