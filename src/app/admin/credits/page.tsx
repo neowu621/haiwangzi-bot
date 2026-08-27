@@ -233,12 +233,14 @@ export default function CreditsPage() {
     if (!confirm(`確定對「${window} 天內到期且仍有餘額」的會員發送到期提醒？\n通道：${ch}`)) return;
     setRemindBusy(true);
     try {
-      const r = await adminFetch<{ targets: number; inapp: number; email: number; line: number; note?: string }>("/api/admin/credits/remind", {
+      const r = await adminFetch<{ targets: number; skipped?: number; inapp: number; email: number; line: number; note?: string }>("/api/admin/credits/remind", {
         method: "POST",
         body: JSON.stringify({ window, channels: notify }),
       });
-      if (r.targets === 0) alert(r.note ?? "沒有符合條件的會員");
-      else alert(`✓ 已對 ${r.targets} 位會員發送提醒\n站內 ${r.inapp}、Email ${r.email}、LINE ${r.line}`);
+      // v1067：略過的是「7 天內已經提醒過」的人 —— 要講出來，不然老闆會以為漏發了
+      const skippedNote = r.skipped ? `\n（另有 ${r.skipped} 位在 7 天內已提醒過，這次略過）` : "";
+      if (r.targets === 0) alert((r.note ?? "沒有符合條件的會員") + skippedNote);
+      else alert(`✓ 已對 ${r.targets} 位會員發送提醒\n站內 ${r.inapp}、Email ${r.email}、LINE ${r.line}${skippedNote}`);
     } catch (e) {
       alert("發送失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {

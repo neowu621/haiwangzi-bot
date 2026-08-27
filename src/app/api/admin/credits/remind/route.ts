@@ -7,6 +7,7 @@ import { authFromRequest, requireRole } from "@/lib/auth";
 import { getLineClient } from "@/lib/line";
 import { sendEmail } from "@/lib/email/send";
 import { logAudit } from "@/lib/audit";
+import { logMessage } from "@/lib/message-log"; // v1067：寫進通訊紀錄 + 拿來做去重依據
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,8 @@ const Body = z.object({
   window: z.union([z.literal(7), z.literal(30)]).default(30),
   channels: z.object({ line: z.boolean(), email: z.boolean(), inapp: z.boolean() }).default({ line: false, email: true, inapp: true }),
   preview: z.boolean().optional(), // 只估人數、不發送
+  // v1067：同一個到期批次 N 天內不重複提醒（0 = 不去重，強制全發）
+  dedupDays: z.number().int().min(0).max(90).optional().default(7),
 });
 
 function fmtDate(d: Date): string {
@@ -54,8 +57,36 @@ export async function POST(req: NextRequest) {
     select: { lineUserId: true, displayName: true, realName: true, email: true, creditBalance: true, notifyByLine: true, notifyByEmail: true },
   });
 
+  // v1067：去重 —— 逾時重按、或老闆隔天又按一次，都不該讓同一位會員再收一次同樣的提醒。
+  //   依據是 MessageLog：source 帶 window（credit-remind-7 / -30），所以
+  //   「30 天提醒發過 → 之後進入 7 天更急迫」仍然發得出去，只有「同一個 window 重複按」才擋。
+  const source = `credit-remind-${data.window}`;
+  let recentIds = new Set<string>();
+  if (data.dedupDays > 0) {
+    const since = new Date(now.getTime() - data.dedupDays * 86400000);
+    const recent = await prisma.messageLog.findMany({
+      where: {
+        source,
+        status: "sent",
+        createdAt: { gte: since },
+        recipientId: { in: targets.map((t) => t.lineUserId) },
+      },
+      select: { recipientId: true },
+      distinct: ["recipientId"],
+    });
+    recentIds = new Set(recent.map((r) => r.recipientId).filter((x): x is string => !!x));
+  }
+  const pending = targets.filter((t) => !recentIds.has(t.lineUserId));
+  const skipped = targets.length - pending.length;
+
   if (data.preview) {
-    return NextResponse.json({ ok: true, targets: targets.length, inapp: 0, email: 0, line: 0, preview: true });
+    return NextResponse.json({ ok: true, targets: pending.length, skipped, inapp: 0, email: 0, line: 0, preview: true });
+  }
+  if (pending.length === 0) {
+    return NextResponse.json({
+      ok: true, targets: 0, skipped, inapp: 0, email: 0, line: 0,
+      note: `這 ${targets.length} 位在 ${data.dedupDays} 天內都已經提醒過了，這次沒有再發`,
+    });
   }
 
   const wantLine = data.channels.line, wantEmail = data.channels.email, wantInApp = data.channels.inapp;
@@ -71,6 +102,7 @@ export async function POST(req: NextRequest) {
   async function sendOne(u: typeof targets[number]) {
     const exp = earliestByUser.get(u.lineUserId);
     const bal = u.creditBalance ?? 0;
+    const who = u.realName ?? u.displayName ?? "會員";
     const bodyText = [
       `您有抵用金即將到期${exp ? `（最近到期日 ${fmtDate(exp)}）` : ""}。`,
       `目前抵用金餘額：NT$${bal.toLocaleString()}`,
@@ -83,11 +115,11 @@ export async function POST(req: NextRequest) {
           data: { userId: u.lineUserId, templateKey: "credit_expiring", title, body: bodyText, linkUrl: "/liff/booking", buttonLabel: "去預約使用", icon: "⏰" },
         });
         inappN++;
+        logMessage({ channel: "inapp", templateKey: "credit_expiring", recipientId: u.lineUserId, recipient: who, title, status: "sent", source });
       } catch (e) { console.error("[credit remind inApp]", e); }
     }
     if (wantEmail && (u.notifyByEmail ?? true) && u.email) {
       try {
-        const who = u.realName ?? u.displayName ?? "會員";
         const html = `
 <div style="font-family:-apple-system,'Noto Sans TC',sans-serif;max-width:480px;margin:0 auto;color:#0A2342">
   <h2 style="color:#0A2342;font-size:18px;margin:0 0 4px">${title}</h2>
@@ -101,26 +133,28 @@ export async function POST(req: NextRequest) {
 </div>`;
         await sendEmail({ to: u.email, subject: `${title} — 東北角海王子潛水`, text: bodyText, html });
         emailN++;
+        logMessage({ channel: "email", templateKey: "credit_expiring", recipientId: u.lineUserId, recipient: u.email, title, status: "sent", source });
       } catch (e) { console.error("[credit remind email]", e); }
     }
     if (wantLine && client && (u.notifyByLine ?? true)) {
       try {
         await client.pushMessage({ to: u.lineUserId, messages: [{ type: "text", text: `${title}\n\n${bodyText}` }] });
         lineN++;
+        logMessage({ channel: "line", templateKey: "credit_expiring", recipientId: u.lineUserId, recipient: who, title, status: "sent", source });
       } catch (e) { console.error("[credit remind line]", e); }
     }
   }
 
-  for (let i = 0; i < targets.length; i += CONCURRENCY) {
-    await Promise.all(targets.slice(i, i + CONCURRENCY).map(sendOne));
+  for (let i = 0; i < pending.length; i += CONCURRENCY) {
+    await Promise.all(pending.slice(i, i + CONCURRENCY).map(sendOne));
   }
 
   await logAudit({
     actorId: auth.user.lineUserId,
     action: "credit.remind_expiring",
     targetType: "credit",
-    metadata: { window: data.window, targets: targets.length, inapp: inappN, email: emailN, line: lineN },
+    metadata: { window: data.window, targets: pending.length, skipped, inapp: inappN, email: emailN, line: lineN },
   }).catch(() => {});
 
-  return NextResponse.json({ ok: true, targets: targets.length, inapp: inappN, email: emailN, line: lineN });
+  return NextResponse.json({ ok: true, targets: pending.length, skipped, inapp: inappN, email: emailN, line: lineN });
 }
