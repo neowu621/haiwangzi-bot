@@ -68,7 +68,10 @@ export async function GET(req: NextRequest) {
       ? await prisma.refundRequest.findMany({
           where: {
             bookingId: { in: bookings.map((b) => b.id) },
-            status: { in: ["pending_customer", "questioning", "accepted"] },
+            // v1068：漏了 pending_admin —— 客戶自己申請退款時就是這個狀態，
+            //   結果 refundRequest 根本沒被帶回前端，訂單列表那顆「🔔 客戶申請退款待審核」
+            //   badge 永遠不會亮，老闆完全看不到有人在等他審。
+            status: { in: ["pending_admin", "pending_customer", "questioning", "accepted"] },
           },
           orderBy: { createdAt: "desc" },
         })

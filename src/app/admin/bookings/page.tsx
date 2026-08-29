@@ -220,6 +220,8 @@ export default function AdminBookingsPage() {
   const [contactResult, setContactResult] = useState<string | null>(null);
   const [filterPayStatus, setFilterPayStatus] = useState<string>("all");
   const [filterNeedRefund, setFilterNeedRefund] = useState(false); // v757：只看「待退款」
+  // v1068：只看「客戶申請退款、等老闆審核」的單。這是客戶在等回覆的事，優先度比「待退款」高。
+  const [filterRefundReview, setFilterRefundReview] = useState(false);
   const [filterNeedReview, setFilterNeedReview] = useState(false); // v833：只看「已完成 × 未邀請評價」
   // v294/v329：依 URL ?status= 讀預設值，支援多選（逗號分隔）
   //   filterStatusSet 為 empty Set = "全部"；有東西在 set 內 = 只顯示這些
@@ -566,6 +568,8 @@ export default function AdminBookingsPage() {
   }
 
   const refundPendingCount = bookings.filter(bookingNeedsRefund).length; // v757
+  // v1068：客戶送出、等老闆審的退款申請數
+  const refundReviewCount = bookings.filter((b) => b.refundRequest?.status === "pending_admin").length;
   // v833：已完成但尚未發過評價邀請
   const needsReviewInvite = (b: AdminBooking) => b.status === "completed" && !b.reviewSentAt;
   const reviewPendingCount = bookings.filter(needsReviewInvite).length;
@@ -573,6 +577,8 @@ export default function AdminBookingsPage() {
     // v1054：?code=O20260811-O9 直接鎖定單一訂單（從通訊紀錄的「對應訂單」點過來）。
     //   刻意略過所有其他篩選 —— 那筆單可能已取消或場次已過期，套用預設篩選會變成空清單，看起來像壞掉。
     if (codeFilter) return (b.code ?? "") === codeFilter;
+    // v1068：「待審核退款」模式 → 只看客戶送出、等老闆決定的申請
+    if (filterRefundReview) return b.refundRequest?.status === "pending_admin";
     // v757：「待退款」模式 → 只看需退款的單，略過狀態/付款/場次/期間篩選
     if (filterNeedRefund) return bookingNeedsRefund(b);
     // v833：「未邀請評價」模式 → 只看已完成且未發過邀請的單
@@ -1049,10 +1055,26 @@ export default function AdminBookingsPage() {
                 >
                   全部
                 </button>
+                {/* v1068：客戶申請退款待審核 —— 客戶正在等回覆，排在「待退款」前面 */}
+                <button
+                  type="button"
+                  onClick={() => { setFilterRefundReview((v) => !v); setFilterNeedRefund(false); setPage(1); }}
+                  title="客戶自己送出的退款申請，等老闆決定同意或拒絕"
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1",
+                    filterRefundReview
+                      ? "bg-red-600 text-white"
+                      : refundReviewCount > 0
+                        ? "bg-red-100 text-red-700 hover:bg-red-200 animate-pulse"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                  )}
+                >
+                  🔔 待審核退款{refundReviewCount > 0 ? ` ${refundReviewCount}` : ""}
+                </button>
                 {/* v757：待退款 — 取消/未到仍有現金未退 */}
                 <button
                   type="button"
-                  onClick={() => setFilterNeedRefund((v) => !v)}
+                  onClick={() => { setFilterNeedRefund((v) => !v); setFilterRefundReview(false); setPage(1); }}
                   title="取消/未到但仍有現金未退的訂單，提醒別漏退"
                   className={cn(
                     "rounded-full px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1",
