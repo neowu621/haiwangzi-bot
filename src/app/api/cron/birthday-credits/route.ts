@@ -133,6 +133,7 @@ export async function GET(req: NextRequest) {
       notifyCustomer({
         userId: u.line_user_id,
         templateKey: "birthday_credit",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
         params: { amount, expiryDays, liffUrl: `${liffUrl}/booking` },
       });
     } catch (e) {

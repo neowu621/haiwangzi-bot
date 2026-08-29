@@ -294,6 +294,7 @@ async function handle(req: NextRequest) {
           notifyCustomer({
             userId: b.userId,
             templateKey: "weather_cancel",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
             ref: { type: "booking", id: b.id, label: b.code },
             params: {
               date: dateStr,

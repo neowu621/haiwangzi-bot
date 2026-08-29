@@ -85,19 +85,20 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(0);
   const [verifyMsg, setVerifyMsg] = useState("");
   // v844：老闆待處理數量（現場報到 / 老闆結帳 / 客服信箱）— v853：僅老闆/IT 才抓
-  const [adminTodo, setAdminTodo] = useState<{ attendance: number; settle: number; inbox: number; wishes: number } | null>(null);
+  const [adminTodo, setAdminTodo] = useState<{ attendance: number; settle: number; inbox: number; wishes: number; refunds: number } | null>(null);
   useEffect(() => {
     if (!me) return;
     const roles = me.roles ?? [me.role ?? ""];
     if (!roles.some((r) => ["it", "boss"].includes(r))) return;
     liff
-      .fetchWithAuth<{ tonight?: { proofs?: number; attendance?: number; pendingOrders?: number }; pendingEmails?: number; pendingWishes?: number }>("/api/admin/stats/lite")
+      .fetchWithAuth<{ tonight?: { proofs?: number; attendance?: number; pendingOrders?: number }; pendingEmails?: number; pendingWishes?: number; pendingRefunds?: number }>("/api/admin/stats/lite")
       .then((d) => setAdminTodo({
         attendance: d.tonight?.attendance ?? 0,
         // v898：願望單獨立成一項，不再併進「老闆結帳」badge
         settle: (d.tonight?.proofs ?? 0) + (d.tonight?.pendingOrders ?? 0),
         inbox: d.pendingEmails ?? 0,
         wishes: d.pendingWishes ?? 0,
+        refunds: d.pendingRefunds ?? 0, // v1069：客戶申請退款待審
       }))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -340,6 +341,7 @@ export default function ProfilePage() {
     // v1030：最常用的兩項移到最上面
     { emoji: "📋", label: "Dump 潛水資訊", path: "/admin/m/dump" },
     { emoji: "🌊", label: "日潛場次", path: "/admin/m/trips" },
+    { emoji: "↩️", label: "退款申請", path: "/liff/admin-go?to=/admin/m/bookings", badge: adminTodo?.refunds },
     { emoji: "🧾", label: "老闆結帳", path: "/admin/m/tonight", badge: adminTodo?.settle },
     { emoji: "📧", label: "客服信箱", path: "/admin/m/email", badge: adminTodo?.inbox },
     { emoji: "📝", label: "願望單", path: "/admin/m/dive-wishes", badge: adminTodo?.wishes },

@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 //   todayTrips         — 今日場次數 + 人數
 //   tomorrowTrips      — 明日場次數 + 人數
 //   pendingWishes      — 待回覆願望單（dive_wish.status = pending）
+//   pendingRefunds     — v1069：客戶自己申請、等老闆審的退款（refund_request.status = pending_admin）
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
     attendanceTours,
     pendingEmails,
     pendingOrders,
+    pendingRefunds,
   ] = await Promise.all([
     // 待確認匯款：未審核 + booking 仍存在（DISTINCT booking_id，與完整 stats 一致）
     prisma.$queryRaw<Array<{ count: bigint }>>`
@@ -107,6 +109,8 @@ export async function GET(req: NextRequest) {
     prisma.emailThread.count({ where: { status: "WAITING" } }),
     // v683b：已下單·待匯款（status=pending，還沒上傳付款證明）— 老闆結帳卡片要算進去
     prisma.booking.count({ where: { status: "pending" } }),
+    // v1069：客戶申請退款、等老闆決定 —— 客戶正在等回覆，是最該優先處理的待辦
+    prisma.refundRequest.count({ where: { status: "pending_admin" } }),
   ]);
 
   const attTripIds = attendanceTrips.map((t) => t.id);
@@ -133,5 +137,6 @@ export async function GET(req: NextRequest) {
     tomorrowTrips: { count: tomorrowTripIds.length, people: tomorrowPeopleAgg?._sum.participants ?? 0 },
     pendingWishes,
     pendingEmails,
+    pendingRefunds, // v1069
   });
 }

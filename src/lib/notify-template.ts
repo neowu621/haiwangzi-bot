@@ -27,6 +27,7 @@ import {
 } from "./message-content";
 import { sendEmail } from "./email/send";
 import { logMessage, type MsgRef } from "./message-log"; // v473：發送紀錄 / v1053：訂單關聯
+import { isQuietHours, quietHoursNote } from "./quiet-hours"; // v1069：安靜時段不推 LINE
 
 // v600：Email 按鈕一律導小編 LINE 官方帳號 —— LIFF 連結被 Zeabur/SES awstrack 點擊追蹤
 //   包成 awstrack.me 轉址後,LINE 深層連結會打不開;line.me/R/ti/p 通用連結較耐包裝。
@@ -47,6 +48,12 @@ export function notifyCustomer(opts: {
   skipLine?: boolean;
   /** v1053：這則通知對應哪一筆訂單/場次 —— 三個通道的發送紀錄都會帶上，後台才查得到來源 */
   ref?: MsgRef | null;
+  /**
+   * v1069：true = 這是「系統自動發」的（cron 提醒、天氣取消、生日禮金…），
+   * 安靜時段（09:00–22:00 以外）不推 LINE，改只走 Email + 站內。
+   * 客戶自己剛做完動作而產生的回覆不要帶這個 —— 他正在等，該立刻收到。
+   */
+  respectQuietHours?: boolean;
 }): void {
   void (async () => {
     try {
@@ -91,7 +98,12 @@ export function notifyCustomer(opts: {
       };
 
       // ── LINE flex ──
-      if (!opts.skipLine && lineOn && (user.notifyByLine ?? true)) {
+      // v1069：系統自動發送在安靜時段跳過 LINE（Email/站內照發，隔天看得到）
+      const quiet = !!opts.respectQuietHours && isQuietHours();
+      if (quiet) {
+        logMessage({ channel: "line", templateKey: key, recipientId: opts.userId, recipient: who, title: altText, status: "skipped", error: quietHoursNote(), source: "notify", ref: opts.ref ?? null });
+      }
+      if (!quiet && !opts.skipLine && lineOn && (user.notifyByLine ?? true)) {
         const lineClient = getLineClient();
         if (lineClient) {
           try {

@@ -74,6 +74,7 @@ async function run(req: NextRequest) {
       notifyCustomer({
         userId: tx.userId,
         templateKey: "credit_expiry",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
         params: { amount: balance, expireDate, liffUrl: `${liffUrl}/booking` },
       });
       notified++;

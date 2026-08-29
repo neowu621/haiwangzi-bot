@@ -136,6 +136,7 @@ async function handle(req: NextRequest) {
       notifyCustomer({
         userId: b.userId,
         templateKey: "d1_reminder",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
         ref: { type: "booking", id: b.id, label: b.code },
         params: {
           date: dateStr,
@@ -208,6 +209,7 @@ async function handle(req: NextRequest) {
       notifyCustomer({
         userId: b.userId,
         templateKey: "deposit_notice",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
         ref: { type: "booking", id: b.id, label: b.code },
         params: {
           tourTitle: tour.title,
@@ -258,6 +260,7 @@ async function handle(req: NextRequest) {
         notifyCustomer({
           userId: b.userId,
           templateKey: "final_reminder",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
           ref: { type: "booking", id: b.id, label: b.code },
           params: {
             tourTitle: tour.title,
@@ -315,6 +318,7 @@ async function handle(req: NextRequest) {
       notifyCustomer({
         userId: b.userId,
         templateKey: "final_reminder",
+        respectQuietHours: true, // v1069：系統自動發，半夜不推 LINE
         ref: { type: "booking", id: b.id, label: b.code },
         params: {
           tourTitle: tour.title,

@@ -157,6 +157,9 @@ export async function POST(req: NextRequest) {
     body: `客戶申請退款 NT$${data.amount}（${data.method}），原因：${data.reason ?? "未填"}。請進後台審核。`,
     linkUrl: "/liff/admin-go?to=/admin/m/bookings", // v859：走 LIFF 橋接換後台 token
     icon: "↩️",
+    // v1069：客戶在等回覆，只靠站內通知老闆可能隔天才發現 → 加 LINE 推播。
+    //   安靜時段（09:00–22:00 以外）會自動略過，改由待辦徽章在早上提醒。
+    line: true,
   });
   return NextResponse.json({ ok: true, refundRequest: rr });
 }
