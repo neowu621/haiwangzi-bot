@@ -115,7 +115,6 @@ Copy-Item .env.example .env
 | 變數 | 說明 | 從哪拿 |
 |---|---|---|
 | `DATABASE_URL` | 本機 DB 連線（`.env.example` 已預填 localhost 那條，配合 §5 即可） | 已預設 |
-| `OPENROUTER_API_KEY` | AI 客服要用；不填則客服停用回 503 | Zeabur Variables，或 openrouter.ai 重新產 |
 | `JWT_SECRET` / `ADMIN_WEB_SECRET` | 後台登入 | Zeabur Variables，或 `openssl rand -hex 32` 自產 |
 
 **要完整功能才需要**（LINE / R2 / Email / 金流 / 氣象…）：`LINE_*`、`R2_*`、`GMAIL_*`、`ZSEND_*`、`CWA_API_KEY` 等 → 全部從 **Zeabur Variables 複製**。`.env.example` 每一段都有註解說明用途與申請網址。
@@ -194,7 +193,7 @@ npx tsc --noEmit   # 型別檢查（push 前必過）
 - [ ] `git --version` / `node --version` / `npm --version` / `gh --version` / `docker --version` 都有輸出
 - [ ] `claude --version` 有輸出且已登入 Anthropic
 - [ ] 已 `git clone` 且 `npm install` 成功
-- [ ] `.env` 已從 `.env.example` 複製並補上 `OPENROUTER_API_KEY` 等
+- [ ] `.env` 已從 `.env.example` 複製並補上 `DATABASE_URL` / `JWT_SECRET` 等
 - [ ] `docker compose up -d` 起了 postgres、`npm run db:push` 成功
 - [ ] `git config user.email` == `neowu62@gmail.com`、`gh auth status` 已登入
 - [ ] `npm run dev` 能開 `http://localhost:3000`
