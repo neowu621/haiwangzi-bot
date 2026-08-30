@@ -3,7 +3,7 @@ import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-web/AdminShell";
 import { DiverLoader } from "@/components/ui/DiverLoader";
-import { adminFetch } from "@/lib/admin-web-auth";
+import { adminFetch, useAdminAuth } from "@/lib/admin-web-auth";
 import { memberName } from "@/lib/member-name"; // v1015：暱稱（姓名）
 import { Button } from "@/components/ui/button";
 import { Check, X, RefreshCw, Sun, Moon, ImageIcon, ImageOff } from "lucide-react";
@@ -79,6 +79,35 @@ interface BookingRow {
   signatureImageUrl?: string | null;
 }
 
+// v1070：到場點名的資料型別（沿用 /api/admin/attendance/today）
+interface AttBk {
+  id: string; name: string; nickname?: string | null; phone: string | null;
+  participants: number; status: string; paymentStatus: string; signed: boolean;
+  totalAmount: number; paidAmount: number; notes?: string | null; code?: string | null;
+}
+interface AttSession {
+  key: string; type: "daily" | "tour"; label: string; time: string; date: string; bookings: AttBk[];
+}
+
+// v1070：待退款判定 —— 與訂單管理同一條規則（取消/未到且仍有現金未退；抵用金會自動退，不算）
+const REFUND_PENDING_STATUSES = ["no_show", "cancelled_by_user", "cancelled_by_weather"];
+function bookingNeedsRefund(b: { status: string; paymentStatus: string; paidAmount: number; creditUsed?: number }): boolean {
+  const cash = b.paidAmount - (b.creditUsed ?? 0);
+  return cash > 0
+    && b.paymentStatus !== "refunded" && b.paymentStatus !== "refunding"
+    && REFUND_PENDING_STATUSES.includes(b.status);
+}
+
+// v1070：段落標題 —— 讓「先做什麼」在視覺上有層次，不然十幾個區塊會糊成一片
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-2 mb-1 flex items-center gap-2 text-[11px] font-extrabold tracking-wider text-[var(--muted-foreground)]">
+      {children}
+      <span className="h-px flex-1" style={{ background: "var(--border)" }} />
+    </div>
+  );
+}
+
 export default function TonightPage() {
   const [proofs, setProofs] = React.useState<ProofRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -113,6 +142,16 @@ export default function TonightPage() {
     }
   }, []);
   const [openDetail, setOpenDetail] = React.useState<Set<string>>(new Set()); // v712：展開金額明細的卡片
+  // ── v1070：合併「到場點名」與其他待辦，這頁改名「老闆處理」 ──
+  const { adminUser } = useAdminAuth();
+  const isBoss = (adminUser?.effectiveRoles ?? []).some((r) => ["boss", "admin", "it"].includes(r));
+  const [attSessions, setAttSessions] = React.useState<AttSession[]>([]);
+  const [attDate, setAttDate] = React.useState("");
+  const [refundReview, setRefundReview] = React.useState<BookingRow[]>([]);   // 客戶申請、待老闆審
+  const [refundQuestion, setRefundQuestion] = React.useState<BookingRow[]>([]); // 客戶有疑問
+  const [refundAccepted, setRefundAccepted] = React.useState<BookingRow[]>([]); // 已同意、待實際退款
+  const [needRefund, setNeedRefund] = React.useState<BookingRow[]>([]);        // 取消/未到仍有現金未退
+  const [replyCounts, setReplyCounts] = React.useState<{ wishes: number; emails: number }>({ wishes: 0, emails: 0 });
   const toggleDetail = (key: string) => setOpenDetail((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
   const reload = React.useCallback(async () => {
@@ -120,10 +159,16 @@ export default function TonightPage() {
     setMsg(null);
     try {
       // v400：待確認匯款 + 完整 booking list 改「並行」拉（原本序列，少等一趟）
-      const [proofData, bookingData] = await Promise.all([
+      // v1070：一次把這頁需要的都拉回來（併行，不多等來回）
+      const [proofData, bookingData, attData, liteData] = await Promise.all([
         adminFetch<{ proofs: ProofRow[] }>(`/api/admin/payment-proofs?status=pending`),
         adminFetch<{ bookings: BookingRow[] }>(`/api/admin/bookings`),
+        adminFetch<{ date: string; sessions: AttSession[] }>(`/api/admin/attendance/today`).catch(() => ({ date: "", sessions: [] })),
+        adminFetch<{ pendingWishes?: number; pendingEmails?: number }>(`/api/admin/stats/lite`).catch(() => ({ pendingWishes: 0, pendingEmails: 0 })),
       ]);
+      setAttDate(attData.date ?? "");
+      setAttSessions(attData.sessions ?? []);
+      setReplyCounts({ wishes: liteData.pendingWishes ?? 0, emails: liteData.pendingEmails ?? 0 });
       setProofs(proofData.proofs ?? []);
       const allBookings = bookingData.bookings ?? [];
 
@@ -168,6 +213,13 @@ export default function TonightPage() {
           )
           .sort(byActivityDate),
       );
+
+      // v1070：退款三桶 —— 客戶在等的排最前面，已同意但錢還沒匯出去的最容易被忘記
+      const rrStatus = (b: BookingRow) => (b as { refundRequest?: { status?: string } }).refundRequest?.status;
+      setRefundReview(allBookings.filter((b) => rrStatus(b) === "pending_admin").sort(byActivityDate));
+      setRefundQuestion(allBookings.filter((b) => rrStatus(b) === "questioning").sort(byActivityDate));
+      setRefundAccepted(allBookings.filter((b) => rrStatus(b) === "accepted").sort(byActivityDate));
+      setNeedRefund(allBookings.filter(bookingNeedsRefund).sort(byActivityDate));
 
       setSelectedProofs(new Set());
     } catch (e) {
@@ -234,7 +286,12 @@ export default function TonightPage() {
     void reload();
   }
 
-  const allEmpty = !loading && proofs.length === 0 && orphanAwaitingVerify.length === 0 && pendingUnpaid.length === 0 && pendingOnsite.length === 0 && pendingCompleted.length === 0;
+  // v1070：新增的區塊也要納入判斷，否則有退款/點名待辦時仍會顯示「沒有待確認項目」
+  const allEmpty = !loading && proofs.length === 0 && orphanAwaitingVerify.length === 0
+    && pendingUnpaid.length === 0 && pendingOnsite.length === 0 && pendingCompleted.length === 0
+    && attSessions.length === 0 && refundReview.length === 0 && refundQuestion.length === 0
+    && refundAccepted.length === 0 && needRefund.length === 0
+    && replyCounts.wishes === 0 && replyCounts.emails === 0;
 
   // v776：待處理訂單卡片（待匯款 / 現場付款·逾期 共用）
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
@@ -276,6 +333,129 @@ export default function TonightPage() {
       setSettling(null);
     }
   };
+
+  // ── v1070：退款相關的列（四種情境共用一個外觀，只有右側動作與底色不同）──
+  //   刻意不在這裡重做同意/拒絕的表單：那是 150 行的金流決策 UI，複製兩份一定會漂移。
+  //   這裡把「決定所需的資訊」攤開，按鈕直接鎖定該筆訂單開既有介面。
+  const renderRefundRow = (b: BookingRow, variant: "review" | "question" | "accepted" | "need") => {
+    const rr = (b as { refundRequest?: { amount?: number; method?: string; reason?: string | null; customerNote?: string | null } }).refundRequest;
+    const refDate = b.ref?.date ?? b.ref?.dateStart;
+    const refLabel = b.ref?.title
+      ? b.ref.title
+      : `${refDate ?? ""} ${b.ref?.startTime ?? ""} ${b.ref?.sites?.join("/") ?? ""}`.trim();
+    const cash = b.paidAmount - (b.creditUsed ?? 0);
+    const amount = rr?.amount ?? cash;
+    const actionLabel = variant === "review" ? "審核" : variant === "question" ? "回覆客戶" : variant === "accepted" ? "去標記完成" : "去退款";
+    return (
+      <div key={b.id} className="px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+          <span className="rounded bg-[#e6f6f4] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#0a7c7c]">{b.code ?? b.id.slice(0, 8)}</span>
+          <button type="button" onClick={() => setOpenCustomerId(b.userId)}
+            className="font-semibold underline decoration-dotted underline-offset-2 hover:no-underline">
+            {memberName(b.user.nickname, b.user.realName ?? b.user.displayName)}
+          </button>
+          {b.user.phone && <span className="tabular text-[10px] text-[var(--muted-foreground)]">📞 {b.user.phone}</span>}
+          <span className="text-[var(--muted-foreground)]">{refLabel}</span>
+          <span className="ml-auto flex items-center gap-2">
+            <span className="text-[10.5px] text-[var(--muted-foreground)]">已付 {b.paidAmount.toLocaleString()}</span>
+            <span className="tabular-nums font-extrabold" style={{ color: "var(--color-coral)" }}>
+              退 {amount.toLocaleString()}{rr?.method === "credit" ? "（抵用金）" : ""}
+            </span>
+            <Link href={`/admin/bookings?code=${encodeURIComponent(b.code ?? "")}`}>
+              <Button size="sm" className="h-7 text-[11px]">{actionLabel}</Button>
+            </Link>
+          </span>
+        </div>
+        {/* 客戶為什麼要退 —— 這是決定同意與否的關鍵，攤開來不用點進去 */}
+        {(rr?.reason || rr?.customerNote) && (
+          <div className="mt-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] leading-relaxed"
+            style={{ background: "rgba(255,123,90,0.10)", color: "#b3462c" }}>
+            📝 {rr.reason}{rr.customerNote ? `　💬 ${rr.customerNote}` : ""}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── v1070：到場點名的列（動作沿用既有 attendance API）──
+  const renderAttRow = (bk: AttBk) => {
+    const done = bk.status === "completed";
+    const noShow = bk.status === "no_show";
+    const owed = Math.max(0, (bk.totalAmount ?? 0) - (bk.paidAmount ?? 0));
+    return (
+      <div key={bk.id} className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2.5 text-xs">
+        <span className="font-semibold whitespace-nowrap">
+          <span style={{ color: "#7c3aed", fontWeight: 800 }}>{bk.nickname?.trim() || "?"}</span>（{bk.name}）
+        </span>
+        {bk.code && <span className="rounded bg-[#e6f6f4] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#0a7c7c]">{bk.code}</span>}
+        <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px]">{bk.participants}人</span>
+        {owed > 0
+          ? <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] text-orange-700">未付清 {owed.toLocaleString()}</span>
+          : <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">付清</span>}
+        {bk.signed && <span className="text-[11px]" title="有簽名">✍️</span>}
+        <span className="ml-auto flex items-center gap-1.5">
+          {done ? (
+            <span className="rounded-full bg-green-100 px-3 py-1.5 text-[11px] font-bold text-green-700">✅ 已到場</span>
+          ) : noShow ? (
+            <button onClick={() => void markAttendance(bk, "completed")} disabled={acting === bk.id}
+              className="rounded-full bg-rose-100 px-3 py-1.5 text-[11px] font-bold text-rose-700 disabled:opacity-50">⚠ 未到（改為到場）</button>
+          ) : (
+            <>
+              <Button size="sm" className="h-7 text-[11px]" disabled={acting === bk.id}
+                onClick={() => void markAttendance(bk, "completed")}
+                style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}>
+                <Check className="mr-0.5 h-3 w-3" />到場
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={acting === bk.id}
+                onClick={() => void markAttendance(bk, "no_show")}
+                style={{ borderColor: "var(--color-coral)", color: "var(--color-coral)" }}>
+                <X className="mr-0.5 h-3 w-3" />未到
+              </Button>
+            </>
+          )}
+        </span>
+        {bk.notes && bk.notes.trim() && (
+          <div className="w-full rounded-md px-2.5 py-1.5 text-[13px] font-bold"
+            style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.35)" }}>
+            📝 訂單備註：{bk.notes}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // v1070：點名動作 —— 沿用既有 API；未付清且有記帳權限會先收現再標到場（與原點名頁同一套規則）
+  async function markAttendance(bk: AttBk, action: "completed" | "no_show") {
+    const owed = Math.max(0, (bk.totalAmount ?? 0) - (bk.paidAmount ?? 0));
+    const settle = action === "completed" && owed > 0 && isBoss;
+    const ok = action === "completed"
+      ? (owed > 0
+          ? confirm(`⚠️ ${bk.name} 尚未付清，剩餘 NT$${owed.toLocaleString()}。
+
+按「確定」＝現場收現並標記到場。
+若未收到現金請按「取消」。`)
+          : confirm(`確認 ${bk.name} 到場？`))
+      : confirm(`確認 ${bk.name} 未到？`);
+    if (!ok) return;
+    setActing(bk.id);
+    try {
+      if (settle) {
+        await adminFetch(`/api/admin/bookings/${bk.id}/payment-entry`, { method: "POST", body: JSON.stringify({ kind: "cash", amount: owed }) });
+      }
+      await adminFetch(`/api/coach/bookings/${bk.id}/attendance`, { method: "POST", body: JSON.stringify({ action }) });
+      setAttSessions((prev) => prev.map((sx) => ({
+        ...sx,
+        bookings: sx.bookings.map((x) => (x.id === bk.id
+          ? { ...x, status: action, ...(settle ? { paidAmount: x.totalAmount, paymentStatus: "fully_paid" } : {}) }
+          : x)),
+      })));
+      setMsg(action === "completed" ? `✓ ${bk.name} → 到場${settle ? `（現場收現 NT$${owed.toLocaleString()}）` : ""}` : `✓ ${bk.name} → 未到場`);
+    } catch (e) {
+      setMsg("失敗：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setActing(null);
+    }
+  }
 
   const renderPendingRow = (b: BookingRow, variant: "transfer" | "onsite" | "attended") => {
     const refDate = b.ref?.date ?? b.ref?.dateStart;
@@ -375,10 +555,13 @@ export default function TonightPage() {
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
               <Moon className="h-5 w-5" />
-              老闆結帳
+              {/* v1070：原「老闆結帳」——現在把所有需要處理的事都集中在這頁 */}
+              老闆處理
             </h1>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-              🧾 已下單·待匯款（未過期·非現場付款）＋ 💵 現場付款/逾期待結案 ＋ ✅ 已到場·未付清 ＋ 💰 待確認匯款（不限日期）。可批次處理。
+              {isBoss
+                ? "所有需要你決定或動手的事，集中在這一頁。由上而下＝該先處理的在前面。"
+                : "今日到場名單。點「到場 / 未到」即時記錄。"}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => void reload()} disabled={loading}>
@@ -446,7 +629,7 @@ export default function TonightPage() {
             <Sun className="mx-auto h-10 w-10 text-[var(--muted-foreground)] mb-3" />
             <p className="text-base font-medium">沒有待確認項目 🎉</p>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-              所有匯款都審完了、今日 / 昨日訂單都勾過到場。
+              退款、收款、點名、回覆都處理完了。
             </p>
             <Link href="/admin/bookings">
               <Button variant="outline" size="sm" className="mt-4">
@@ -456,6 +639,63 @@ export default function TonightPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* ===== v1070 ①：有人在等你 —— 客戶送出的退款申請 ===== */}
+            {isBoss && refundReview.length > 0 && (
+              <section>
+                <GroupLabel>① 有人在等你</GroupLabel>
+                <div className="overflow-hidden rounded-xl border-2 bg-white" style={{ borderColor: "rgba(192,57,43,.35)" }}>
+                  <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold" style={{ background: "#fdecea", color: "#c0392b" }}>
+                    🔔 客戶申請退款・待審核
+                    <span className="ml-auto text-[11.5px] font-semibold">{refundReview.length} 筆</span>
+                  </div>
+                  <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                    {refundReview.map((b) => renderRefundRow(b, "review"))}
+                  </div>
+                </div>
+              </section>
+            )}
+            {isBoss && refundQuestion.length > 0 && (
+              <section>
+                <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
+                  <div className="flex items-center gap-2 border-b px-4 py-2.5 text-sm font-bold" style={{ borderColor: "var(--border)" }}>
+                    ⚠️ 退款方案・客戶有疑問
+                    <span className="ml-auto text-[11.5px] font-semibold text-[var(--muted-foreground)]">{refundQuestion.length} 筆</span>
+                  </div>
+                  <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                    {refundQuestion.map((b) => renderRefundRow(b, "question"))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ===== v1070 ②：今天現場要用 —— 到場點名（教練/助教也看得到）===== */}
+            {attSessions.length > 0 && (
+              <section>
+                <GroupLabel>② 今天現場要用</GroupLabel>
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-base font-bold flex items-center gap-1.5">🐠 到場點名（{attDate || "今日"}）</h2>
+                  <span className="text-[11px] text-[var(--muted-foreground)]">
+                    待點 {attSessions.reduce((n, x) => n + x.bookings.filter((k) => k.status === "confirmed").length, 0)}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {attSessions.map((sess) => (
+                    <div key={sess.key} className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
+                      <div className="border-b px-4 py-2" style={{ borderColor: "var(--border)" }}>
+                        <div className="text-[11px] font-semibold" style={{ color: "var(--color-ocean-deep)" }}>📅 {sess.date}</div>
+                        <div className="text-sm font-bold">{sess.type === "daily" ? "🔱" : "✈️"} {sess.label}</div>
+                      </div>
+                      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                        {sess.bookings.map((bk) => renderAttRow(bk))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {isBoss && <GroupLabel>③ 錢還沒收</GroupLabel>}
+
             {/* ===== Section 0: 已下單·待匯款（v667；v776 排除現場付款/逾期）===== */}
             {pendingUnpaid.length > 0 && (
               <section>
@@ -669,11 +909,73 @@ export default function TonightPage() {
               </section>
             )}
 
+            {/* ===== v1070 ④：錢還沒退 ===== */}
+            {isBoss && (refundAccepted.length > 0 || needRefund.length > 0) && (
+              <>
+                <GroupLabel>④ 錢還沒退</GroupLabel>
+                {refundAccepted.length > 0 && (
+                  <section>
+                    <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-2 border-b px-4 py-2.5 text-sm font-bold" style={{ borderColor: "var(--border)" }}>
+                        💸 已同意・待實際退款
+                        <span className="ml-auto text-[11.5px] font-semibold text-[var(--muted-foreground)]">{refundAccepted.length} 筆</span>
+                      </div>
+                      <div className="px-4 py-2 text-[11px] text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
+                        線上已按同意，但現金還沒實際匯出去 —— 退完記得回訂單標記完成。
+                      </div>
+                      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                        {refundAccepted.map((b) => renderRefundRow(b, "accepted"))}
+                      </div>
+                    </div>
+                  </section>
+                )}
+                {needRefund.length > 0 && (
+                  <section>
+                    <div className="overflow-hidden rounded-xl border bg-white" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-2 border-b px-4 py-2.5 text-sm font-bold" style={{ borderColor: "var(--border)" }}>
+                        ⏳ 待退款
+                        <span className="ml-auto text-[11.5px] font-semibold text-[var(--muted-foreground)]">{needRefund.length} 筆</span>
+                      </div>
+                      <div className="px-4 py-2 text-[11px] text-[var(--muted-foreground)]" style={{ background: "var(--muted)" }}>
+                        訂單已取消或未到場，但客戶付的現金還沒退（抵用金會自動退，不列在這）。
+                      </div>
+                      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                        {needRefund.map((b) => renderRefundRow(b, "need"))}
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+
+            {/* ===== v1070 ⑤：等你回覆 ===== */}
+            {isBoss && (replyCounts.wishes > 0 || replyCounts.emails > 0) && (
+              <>
+                <GroupLabel>⑤ 等你回覆</GroupLabel>
+                <section className="grid gap-3 sm:grid-cols-2">
+                  {replyCounts.wishes > 0 && (
+                    <Link href="/admin/dive-wishes" className="rounded-xl border bg-white p-4 transition-colors hover:border-[var(--color-ocean-deep)]" style={{ borderColor: "var(--border)" }}>
+                      <div className="text-sm font-bold">📝 待回覆願望單</div>
+                      <div className="mt-1 font-mono text-[21px] font-extrabold tabular-nums" style={{ color: "var(--color-ocean-deep)" }}>{replyCounts.wishes}</div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">客戶想開的團，點進去回覆 →</div>
+                    </Link>
+                  )}
+                  {replyCounts.emails > 0 && (
+                    <Link href="/admin/email" className="rounded-xl border bg-white p-4 transition-colors hover:border-[var(--color-ocean-deep)]" style={{ borderColor: "var(--border)" }}>
+                      <div className="text-sm font-bold">📧 客服信箱待回覆</div>
+                      <div className="mt-1 font-mono text-[21px] font-extrabold tabular-nums" style={{ color: "var(--color-ocean-deep)" }}>{replyCounts.emails}</div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">有客戶在等回信，點進去處理 →</div>
+                    </Link>
+                  )}
+                </section>
+              </>
+            )}
+
           </div>
         )}
 
         <p className="mt-6 text-center text-[10px] text-[var(--muted-foreground)]">
-          🌊 海王子潛水 · 老闆結帳介面
+          🌊 海王子潛水 · 老闆處理
         </p>
       </div>
 

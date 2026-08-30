@@ -43,8 +43,7 @@ const NAV_GROUPS = [
     roles: ["admin", "boss", "it"],
     items: [
       { href: "/admin", icon: LayoutDashboard, label: "總覽", exact: true },
-      { href: "/admin/attendance", icon: ClipboardCheck, label: "🐠 到場點名" }, // v677b：老闆/管理者/IT 也看得到
-      { href: "/admin/tonight", icon: ClipboardCheck, label: "老闆結帳" },
+      { href: "/admin/tonight", icon: ClipboardCheck, label: "🗂 老闆處理" }, // v1070：原「老闆結帳」，已併入點名與退款待辦
       { href: "/admin/reports", icon: BarChart2, label: "報表" },
       { href: "/admin/customer-activity", icon: ClipboardCheck, label: "📊 前台活動" },
       { href: "/admin/customer-insights", icon: BarChart2, label: "🔍 客戶偏好分析" }, // v1038
@@ -173,13 +172,16 @@ export function AdminShell({
   useEffect(() => {
     if (!ready) return;
     let alive = true;
-    adminFetch<{ tonight: { proofs: number; attendance: number; pendingOrders?: number }; pendingProofs: number; pendingWishes: number; pendingEmails: number }>(
+    adminFetch<{ tonight: { proofs: number; attendance: number; pendingOrders?: number }; pendingProofs: number; pendingWishes: number; pendingEmails: number; pendingRefunds?: number }>(
       "/api/admin/stats/lite",
     )
       .then((d) => {
         if (alive) setCounts({
-          // v683b：老闆結帳=收款相關（待確認憑證+已下單待匯款）；到場另算給「到場點名」
-          tonight: (d.tonight?.proofs ?? 0) + (d.tonight?.pendingOrders ?? 0),
+          // v1070：「老闆處理」已把點名、退款、回覆都併進同一頁 → 徽章改為全部加總，
+          //   不然頁面上有 3 件事待辦、側欄卻只顯示 1，老闆會漏看。
+          tonight: (d.tonight?.proofs ?? 0) + (d.tonight?.pendingOrders ?? 0)
+            + (d.tonight?.attendance ?? 0) + (d.pendingRefunds ?? 0)
+            + (d.pendingWishes ?? 0) + (d.pendingEmails ?? 0),
           attendance: d.tonight?.attendance ?? 0,
           bookings: d.pendingProofs ?? 0, wishes: d.pendingWishes ?? 0, emails: d.pendingEmails ?? 0,
         });
