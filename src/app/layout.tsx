@@ -3,6 +3,7 @@ import { Noto_Sans_TC, Outfit } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@/components/Analytics";
 import { VisitCounter } from "@/components/VisitCounter";
+import FaqLauncher from "@/components/faq/FaqLauncher";
 
 // v428：載入優化 — 移除「Noto Serif TC（CJK 明體，render-blocking 字體 CSS 大宗）」與
 //   全站未使用的 Inter；Noto Sans TC 字重 6→4（砍 300/600，faux 合成可接受）。
@@ -65,6 +66,8 @@ export default function RootLayout({
         <Analytics />
         {/* v577：自建每日訪客計數 beacon（背景送，不擋載入；/admin 不計）*/}
         <VisitCounter />
+        {/* v1074：點選式 FAQ 浮動鈕（只在公開行銷頁；面板點下去才動態載入）*/}
+        <FaqLauncher />
       </body>
     </html>
   );
