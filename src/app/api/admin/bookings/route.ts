@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       }),
       tourIds.length === 0 ? Promise.resolve([]) : prisma.tourPackage.findMany({
         where: { id: { in: tourIds } },
-        select: { id: true, title: true, dateStart: true, dateEnd: true },
+        select: { id: true, title: true, dateStart: true, dateEnd: true, finalDeadline: true },
       }),
     ]);
     const tripMap = new Map(trips.map((t) => [t.id, t]));
@@ -150,6 +150,9 @@ export async function GET(req: NextRequest) {
               title: t.title,
               dateStart: t.dateStart.toISOString().slice(0, 10),
               dateEnd: t.dateEnd.toISOString().slice(0, 10),
+              // v1076：尾款繳費期限 —— 老闆處理頁的「尾款待繳」要顯示，
+              //   沒設就由前端退回「出發前 30 天」（與 cron/reminders 同一套規則）。
+              finalDeadline: t.finalDeadline ? t.finalDeadline.toISOString().slice(0, 10) : null,
             };
           }
         }

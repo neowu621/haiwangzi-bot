@@ -75,7 +75,7 @@ interface BookingRow {
   rentalGear?: GearItem[];
   tankCount?: number | null;
   user: { displayName: string; realName: string | null; nickname?: string | null; phone: string | null };
-  ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; tankCount?: number | null; extraTank?: number; baseTrip?: number; isBoat?: boolean };
+  ref: { date?: string; startTime?: string; sites?: string[]; title?: string; dateStart?: string; dateEnd?: string; finalDeadline?: string | null; tankCount?: number | null; extraTank?: number; baseTrip?: number; isBoat?: boolean };
   signatureImageUrl?: string | null;
 }
 
@@ -99,6 +99,20 @@ function bookingNeedsRefund(b: { status: string; paymentStatus: string; paidAmou
 }
 
 // v1070：段落標題 —— 讓「先做什麼」在視覺上有層次，不然十幾個區塊會糊成一片
+/**
+ * v1076：潛旅尾款繳費期限。後台有填 finalDeadline 就用它，
+ * 沒填就退回「出發前 30 天」—— 與 /api/cron/reminders 催尾款用的是同一套規則，
+ * 兩邊必須一致，否則畫面說的期限跟客戶收到的通知會對不上。
+ */
+function finalDueOf(b: { ref?: { finalDeadline?: string | null; dateStart?: string } }): string {
+  if (b.ref?.finalDeadline) return b.ref.finalDeadline;
+  const ds = b.ref?.dateStart;
+  if (!ds) return "";
+  const d = new Date(`${ds}T00:00:00+08:00`);
+  d.setDate(d.getDate() - 30);
+  return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+}
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-2 mb-1 flex items-center gap-2 text-[11px] font-extrabold tracking-wider text-[var(--muted-foreground)]">
@@ -151,6 +165,9 @@ export default function TonightPage() {
   const [refundQuestion, setRefundQuestion] = React.useState<BookingRow[]>([]); // 客戶有疑問
   const [refundAccepted, setRefundAccepted] = React.useState<BookingRow[]>([]); // 已同意、待實際退款
   const [needRefund, setNeedRefund] = React.useState<BookingRow[]>([]);        // 取消/未到仍有現金未退
+  // v1076：潛旅尾款待繳（已付訂金、尚欠尾款）—— 原本這頁只看 status=pending，
+  //   付完訂金的單 status 已變 confirmed，整批人在這頁完全看不到。
+  const [finalPending, setFinalPending] = React.useState<BookingRow[]>([]);
   const [replyCounts, setReplyCounts] = React.useState<{ wishes: number; emails: number }>({ wishes: 0, emails: 0 });
   const toggleDetail = (key: string) => setOpenDetail((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
@@ -200,6 +217,21 @@ export default function TonightPage() {
       };
       setPendingUnpaid(pendingAll.filter((b) => !isOnsiteOrOverdue(b)).sort(byActivityDate));
       setPendingOnsite(pendingAll.filter(isOnsiteOrOverdue).sort(byActivityDate));
+
+      // v1076：潛旅尾款待繳 —— status 已是 confirmed（訂金付了），所以不在 pendingAll 裡。
+      //   出發日已過的不列（那是結案問題，不是催繳問題）。
+      setFinalPending(
+        allBookings
+          .filter(
+            (b) =>
+              b.type === "tour" &&
+              b.status === "confirmed" &&
+              b.paymentStatus === "deposit_paid" &&
+              b.totalAmount - b.paidAmount > 0 &&
+              (b.ref?.dateStart ?? "") >= todayStr,
+          )
+          .sort((a, b) => (finalDueOf(a) < finalDueOf(b) ? -1 : 1)),
+      );
 
       // v776：已到場但未付清（教練標到場、款未收）→ 提醒老闆補收款。排除退款中/已退。
       setPendingCompleted(
@@ -291,7 +323,7 @@ export default function TonightPage() {
     && pendingUnpaid.length === 0 && pendingOnsite.length === 0 && pendingCompleted.length === 0
     && attSessions.length === 0 && refundReview.length === 0 && refundQuestion.length === 0
     && refundAccepted.length === 0 && needRefund.length === 0
-    && replyCounts.wishes === 0 && replyCounts.emails === 0;
+    && replyCounts.wishes === 0 && replyCounts.emails === 0 && finalPending.length === 0;
 
   // v776：待處理訂單卡片（待匯款 / 現場付款·逾期 共用）
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
@@ -556,7 +588,7 @@ export default function TonightPage() {
             <h1 className="text-xl font-bold flex items-center gap-2">
               <Moon className="h-5 w-5" />
               {/* v1070：原「老闆結帳」——現在把所有需要處理的事都集中在這頁 */}
-              老闆處理
+              老闆處理與通知
             </h1>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">
               {isBoss
@@ -971,11 +1003,80 @@ export default function TonightPage() {
               </>
             )}
 
+            {/* ===== v1076：⑥ 尾款待繳（潛旅：訂金已付、尾款未繳）=====
+                 系統會自動催（/api/cron/reminders），這裡是給老闆「看得到全貌」用的：
+                 誰還沒繳、期限哪天、逾期了沒。逾期才標紅 —— 未逾期的不需要老闆動作。 */}
+            {isBoss && finalPending.length > 0 && (
+              <>
+                <GroupLabel>⑥ 尾款待繳</GroupLabel>
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-base font-bold flex items-center gap-1.5">
+                      🛟 潛旅尾款未繳（{finalPending.length} 筆）
+                    </h2>
+                    <span className="text-[11px] text-[var(--muted-foreground)]">系統已自動催繳，這裡看全貌 · 逾期標紅</span>
+                  </div>
+                  <div className="rounded-xl border bg-white divide-y" style={{ borderColor: "var(--border)" }}>
+                    {finalPending.map((b) => {
+                      const due = finalDueOf(b);
+                      const overdue = due !== "" && due < todayStr;
+                      const owed = b.totalAmount - b.paidAmount;
+                      return (
+                        <div key={b.id} className="p-3">
+                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                            {b.code && (
+                              <span className="rounded px-1.5 py-0.5 font-mono text-[11px] font-bold" style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
+                                {b.code}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className="text-[13px] font-bold underline decoration-dotted underline-offset-2"
+                              onClick={() => setOpenCustomerId(b.userId)}
+                            >
+                              {b.user.realName ?? b.user.displayName}
+                              {b.user.nickname ? `（${b.user.nickname}）` : ""}
+                            </button>
+                            {b.user.phone && (
+                              <a href={`tel:${b.user.phone}`} className="text-[12px] text-[var(--muted-foreground)]">📞 {b.user.phone}</a>
+                            )}
+                            <span className="text-[12.5px]">{b.ref?.title ?? "潛旅"}</span>
+                            <span className="text-[11.5px] text-[var(--muted-foreground)]">出發 {b.ref?.dateStart ?? "—"}</span>
+                            <span className="ml-auto flex items-center gap-2 text-[12.5px]">
+                              <span className="text-[var(--muted-foreground)]">已付訂金 {b.paidAmount.toLocaleString()}</span>
+                              <span className="font-bold" style={{ color: "#b3261e" }}>尚欠 {owed.toLocaleString()}</span>
+                            </span>
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                            <span
+                              className="rounded-md px-2 py-0.5 text-[11.5px] font-bold"
+                              style={
+                                overdue
+                                  ? { background: "rgba(179,38,30,0.10)", color: "#b3261e", border: "1px solid rgba(179,38,30,0.30)" }
+                                  : { background: "var(--muted)", color: "var(--muted-foreground)" }
+                              }
+                            >
+                              {overdue ? "⚠️ 已逾期" : "繳費期限"} {due || "未設定"}
+                            </span>
+                            <Link href={`/admin/bookings?id=${b.id}`} className="ml-auto">
+                              <Button size="sm" variant="outline" className="h-7 text-[11px]">
+                                → 訂單管理
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </>
+            )}
+
           </div>
         )}
 
         <p className="mt-6 text-center text-[10px] text-[var(--muted-foreground)]">
-          🌊 海王子潛水 · 老闆處理
+          🌊 海王子潛水 · 老闆處理與通知
         </p>
       </div>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { safeEqual } from "@/lib/safe-compare";
 import { prisma } from "@/lib/prisma";
 import { notifyCustomer } from "@/lib/notify-template";
+import { notifyAdmins } from "@/lib/message-log"; // v1076：催繳結果一併通知老闆
 import { getTripMarine, DEFAULT_MARINE_POINTS, type MarinePoint } from "@/lib/marine"; // v975：D-1 帶即時海況
 
 export const runtime = "nodejs";
@@ -331,6 +332,39 @@ async function handle(req: NextRequest) {
       });
       await markSent(b.id, "final_reminder");
       sent.push({ type: "final_reminder", userId: b.userId, bookingId: b.id });
+    }
+  }
+
+  // ── v1076：催繳發出後，一併通知老闆 ────────────────────────────
+  //   原本這支 cron 只發給客戶（LINE/Email/站內），老闆完全不知道系統今天催了誰 ——
+  //   要知道就得自己去翻訂單管理。這裡把「這輪催了哪些人」彙總成一則站內通知 + LINE。
+  //   只彙總跟錢有關的（訂金/尾款）；D-1 行前提醒是例行的，不必打擾老闆。
+  const moneyTypes = new Set(["deposit_notice", "final_reminder_early", "final_reminder"]);
+  const moneySent = sent.filter((x) => moneyTypes.has(x.type));
+  if (moneySent.length > 0) {
+    try {
+      const users = await prisma.user.findMany({
+        where: { lineUserId: { in: [...new Set(moneySent.map((x) => x.userId))] } },
+        select: { lineUserId: true, displayName: true, realName: true },
+      });
+      const nameOf = new Map(users.map((u) => [u.lineUserId, u.realName ?? u.displayName ?? "—"]));
+      const TYPE_LABEL: Record<string, string> = {
+        deposit_notice: "訂金催繳",
+        final_reminder_early: "尾款預告",
+        final_reminder: "尾款催繳",
+      };
+      const lines = moneySent.map((x) => `・${TYPE_LABEL[x.type] ?? x.type}：${nameOf.get(x.userId) ?? x.userId}`);
+      notifyAdmins({
+        templateKey: "admin_payment_reminded",
+        title: `💳 系統已催繳 ${moneySent.length} 筆`,
+        body: `${lines.join("\n")}\n\n（客戶已收到 LINE／Email／站內通知；未繳清的可在「老闆處理與通知」查看全貌）`,
+        linkUrl: "/admin/tonight",
+        icon: "💳",
+        line: true, // 安靜時段會自動只留站內通知
+      });
+    } catch (e) {
+      // 通知老闆失敗不該影響催繳本身（客戶那邊已經發出去了）
+      console.error("[reminders: notifyAdmins]", e);
     }
   }
 

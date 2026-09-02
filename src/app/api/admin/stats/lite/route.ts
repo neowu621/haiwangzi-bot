@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
 //   tomorrowTrips      — 明日場次數 + 人數
 //   pendingWishes      — 待回覆願望單（dive_wish.status = pending）
 //   pendingRefunds     — v1069：客戶自己申請、等老闆審的退款（refund_request.status = pending_admin）
+//   overdueFinals      — v1076：潛旅尾款已逾期未繳（只算逾期，未逾期不進徽章）
 export async function GET(req: NextRequest) {
   const auth = await authFromRequest(req);
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
@@ -70,6 +71,7 @@ export async function GET(req: NextRequest) {
     pendingEmails,
     pendingOrders,
     pendingRefunds,
+    finalCandidates,
   ] = await Promise.all([
     // 待確認匯款：未審核 + booking 仍存在（DISTINCT booking_id，與完整 stats 一致）
     prisma.$queryRaw<Array<{ count: bigint }>>`
@@ -111,6 +113,18 @@ export async function GET(req: NextRequest) {
     prisma.booking.count({ where: { status: "pending" } }),
     // v1069：客戶申請退款、等老闆決定 —— 客戶正在等回覆，是最該優先處理的待辦
     prisma.refundRequest.count({ where: { status: "pending_admin" } }),
+    // v1076：潛旅尾款候選（已付訂金、還欠錢）。逾期與否在下面用 TS 算 ——
+    //   期限規則是「後台填的 finalDeadline，沒填就退回出發前 30 天」，跨兩張表且有預設值，
+    //   寫成 raw SQL 型別檢查不到、又沒有本機 DB 可驗；用 Prisma 撈候選再過濾比較安全。
+    //   候選集本來就很小（只有在跑的團、且欠尾款的人）。
+    prisma.booking.findMany({
+      where: {
+        type: "tour",
+        status: "confirmed",
+        paymentStatus: "deposit_paid",
+      },
+      select: { id: true, refId: true, totalAmount: true, paidAmount: true },
+    }),
   ]);
 
   const attTripIds = attendanceTrips.map((t) => t.id);
@@ -128,6 +142,35 @@ export async function GET(req: NextRequest) {
           },
         });
 
+  // v1076：算「尾款已逾期」筆數。
+  //   ⚠️ 刻意只算逾期的 —— 把所有未繳尾款都算進徽章，只要有團在跑徽章就永遠不會歸零，
+  //      老闆會學會忽略它。未逾期的仍列在「老闆處理與通知」頁上，只是不催。
+  const owing = finalCandidates.filter((b) => b.totalAmount > b.paidAmount);
+  let overdueFinals = 0;
+  if (owing.length > 0) {
+    const tourRows = await prisma.tourPackage.findMany({
+      where: { id: { in: [...new Set(owing.map((b) => b.refId))] } },
+      select: { id: true, dateStart: true, finalDeadline: true },
+    });
+    const twDate = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+    const todayTw = twDate(new Date());
+    const dueByTour = new Map(
+      tourRows.map((t) => {
+        // 與 /api/cron/reminders 及老闆處理頁的 finalDueOf 同一套規則：
+        // 有填 finalDeadline 就用它，沒填退回「出發前 30 天」
+        if (t.finalDeadline) return [t.id, { due: twDate(t.finalDeadline), start: twDate(t.dateStart) }] as const;
+        const d = new Date(t.dateStart);
+        d.setDate(d.getDate() - 30);
+        return [t.id, { due: twDate(d), start: twDate(t.dateStart) }] as const;
+      }),
+    );
+    overdueFinals = owing.filter((b) => {
+      const x = dueByTour.get(b.refId);
+      // 已出發的不算（那是結案問題，不是催繳問題）
+      return !!x && x.start >= todayTw && x.due < todayTw;
+    }).length;
+  }
+
   const proofs = Number(pendingProofsResult[0]?.count ?? BigInt(0));
 
   return NextResponse.json({
@@ -138,5 +181,6 @@ export async function GET(req: NextRequest) {
     pendingWishes,
     pendingEmails,
     pendingRefunds, // v1069
+    overdueFinals, // v1076：尾款已逾期未繳（只算逾期）
   });
 }
