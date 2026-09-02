@@ -159,6 +159,15 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   refunded: "已退款",
 };
 
+// v1077：退款方式 —— 資料早就存在 booking.refundMethod（退款流程與客戶申請流程都會寫），
+//   但畫面上從來沒顯示過，導致「已退款」看不出是退抵用金還是退現金。
+const REFUND_METHOD_LABEL: Record<string, string> = {
+  credit: "🎁 抵用金",
+  cash: "💵 現金",
+};
+const refundMethodText = (m?: string | null) =>
+  m ? (REFUND_METHOD_LABEL[m] ?? m) : "未記錄";
+
 const BOOKING_STATUS_LABEL: Record<string, string> = {
   pending: "待確認",
   awaiting_verify: "待確認匯款",  // v276
@@ -656,6 +665,7 @@ export default function AdminBookingsPage() {
       { key: "paidAmount", label: "已付", format: (v) => `NT$ ${Number(v ?? 0).toLocaleString()}` },
       { key: "paymentStatus", label: "付款狀態", format: (v) => PAYMENT_STATUS_LABEL[String(v)] ?? String(v) },
       { key: "paymentMethod", label: "付款方式", format: (v) => PAYMENT_METHOD_LABEL[String(v ?? "")] ?? String(v ?? "—") },
+      { key: "refundMethod", label: "退款方式", format: (v) => refundMethodText(v as string | null) },
       { key: "status", label: "訂單狀態", format: (v) => BOOKING_STATUS_LABEL[String(v)] ?? String(v) },
       { key: "notes", label: "客戶備註", format: (v) => String(v ?? "（空）") },
       { key: "siteNotes", label: "給客戶的提醒", format: (v) => String(v ?? "（空）") },
@@ -1562,7 +1572,7 @@ export default function AdminBookingsPage() {
                     {locked && (
                       <div className="rounded-md border-2 px-3 py-2 text-xs font-semibold"
                         style={{ borderColor: "rgba(255,123,90,0.5)", background: "rgba(255,123,90,0.08)", color: "var(--color-coral)" }}>
-                        🔒 此訂單已退款 {editing.refundAmount?.toLocaleString() ?? "?"} — 僅可編輯「活動備註」
+                        🔒 此訂單已退款 {editing.refundAmount?.toLocaleString() ?? "?"}、方式 {refundMethodText(editing.refundMethod)} — 僅可編輯「活動備註」
                       </div>
                     )}
                     {/* v743：參加人數移除（左欄「下單明細」已顯示 × N 人，這裡不再重複可編輯欄） */}
@@ -2281,6 +2291,34 @@ export default function AdminBookingsPage() {
                   </div>
                 ))}
               </div>
+
+              {/* v1077：改成「已退款」時，一定要把退款方式講清楚 ——
+                  原本只寫「已付訂金 → 已退款」，看不出這筆是退抵用金還是退現金，
+                  兩者對帳完全不同（抵用金留在站內、現金要真的匯出去）。 */}
+              {pendingDiff.some((d) => d.key === "paymentStatus" && d.to === PAYMENT_STATUS_LABEL.refunded) && (
+                editing?.refundMethod ? (
+                  <div className="rounded-md border px-3 py-2 text-xs"
+                    style={{ borderColor: "rgba(14,159,147,0.45)", background: "rgba(14,159,147,0.08)" }}>
+                    <span className="text-[var(--muted-foreground)]">退款方式：</span>
+                    <b style={{ color: "#0a6f68" }}>{refundMethodText(editing.refundMethod)}</b>
+                    {editing.refundAmount != null && (
+                      <span className="text-[var(--muted-foreground)]"> · 金額 NT$ {editing.refundAmount.toLocaleString()}</span>
+                    )}
+                    <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                      （由退款流程記錄，此處僅同步訂單狀態）
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border-2 px-3 py-2 text-xs"
+                    style={{ borderColor: "rgba(255,80,65,0.5)", background: "rgba(255,80,65,0.06)", color: "var(--color-coral)" }}>
+                    <b>⚠️ 這筆沒有退款方式紀錄</b>
+                    <div className="mt-1 font-normal" style={{ color: "var(--foreground)" }}>
+                      這裡只會改狀態文字 —— <b>不會發抵用金、不會通知客戶、不會留退款金額</b>。
+                      若客戶真的要拿到錢，請關掉這個視窗，改用訂單上的「退款」按鈕（可選抵用金／現金）。
+                    </div>
+                  </div>
+                )
+              )}
               <div className="flex gap-2 justify-end pt-2">
                 <Button variant="outline" size="sm" onClick={() => setPendingDiff(null)}>
                   取消
