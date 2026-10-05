@@ -115,11 +115,15 @@ export default function CreditsPage() {
     members?: string[];
     skipped?: boolean;
     reason?: string;
+    // v1080：首潛獎勵專用 —— 潛過水但 Email 沒驗證，這次發不出去（驗證後系統會自動補）
+    blockedByEmailCount?: number;
+    blockedByEmailMembers?: string[];
   } | null;
   const [bfOpen, setBfOpen] = useState(false);
   const [bfLoading, setBfLoading] = useState(false);
   const [bfSignup, setBfSignup] = useState<BackfillPreview>(null);
   const [bfBirthday, setBfBirthday] = useState<BackfillPreview>(null);
+  const [bfFirstDive, setBfFirstDive] = useState<BackfillPreview>(null); // v1080
   const [bfBusy, setBfBusy] = useState(false);
   const [bfResult, setBfResult] = useState<string | null>(null);
 
@@ -153,14 +157,17 @@ export default function CreditsPage() {
     setBfLoading(true);
     setBfSignup(null);
     setBfBirthday(null);
+    setBfFirstDive(null);
     setBfResult(null);
     try {
-      const [s, b] = await Promise.all([
+      const [s, b, f] = await Promise.all([
         adminFetch<BackfillPreview>("/api/admin/backfill-signup-reward"),
         adminFetch<BackfillPreview>("/api/admin/backfill-birthday-credits"),
+        adminFetch<BackfillPreview>("/api/admin/backfill-first-dive-reward"), // v1080
       ]);
       setBfSignup(s);
       setBfBirthday(b);
+      setBfFirstDive(f);
     } catch (e) {
       setBfResult("預覽失敗：" + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -171,8 +178,9 @@ export default function CreditsPage() {
   async function confirmBackfill() {
     const sCnt = bfSignup?.skipped ? 0 : bfSignup?.eligibleCount ?? 0;
     const bCnt = bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0;
-    if (sCnt + bCnt === 0) return;
-    if (!confirm(`確定發送？\n　註冊禮金 ${sCnt} 人\n　生日禮金 ${bCnt} 人\n發送後立即入帳，無法一鍵撤銷。`)) return;
+    const fCnt = bfFirstDive?.skipped ? 0 : bfFirstDive?.eligibleCount ?? 0;
+    if (sCnt + bCnt + fCnt === 0) return;
+    if (!confirm(`確定發送？\n　註冊禮金 ${sCnt} 人\n　生日禮金 ${bCnt} 人\n　首潛獎勵 ${fCnt} 人\n發送後立即入帳，無法一鍵撤銷。`)) return;
     setBfBusy(true);
     setBfResult(null);
     try {
@@ -191,9 +199,17 @@ export default function CreditsPage() {
         );
         out.push(`生日禮金：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
       }
+      if (fCnt > 0) {
+        const r = await adminFetch<{ grantedCount: number; totalCredit: number }>(
+          "/api/admin/backfill-first-dive-reward",
+          { method: "POST" },
+        );
+        out.push(`首潛獎勵：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
+      }
       setBfResult("✅ 已發送 — " + out.join("；"));
       setBfSignup(null);
       setBfBirthday(null);
+      setBfFirstDive(null);
       await load();
     } catch (e) {
       setBfResult("❌ 發送失敗：" + (e instanceof Error ? e.message : String(e)));
@@ -728,6 +744,13 @@ export default function CreditsPage() {
                   sub="生日月已到/當月、今年未領（一年一次；未來月份生日由月初自動發）"
                   data={bfBirthday}
                 />
+                {/* v1080：首潛獎勵 —— 觸發點是「教練勾到場」那一刻，當時若客戶還沒驗證 Email
+                    或發放出錯，之後沒有任何機制會再試一次，客戶就永遠拿不到。 */}
+                <BackfillRow
+                  title="🤿 首潛獎勵"
+                  sub="已完成首次潛水（教練勾到場）+ Email 已驗證、從未領過（一生一次）"
+                  data={bfFirstDive}
+                />
               </div>
             )}
 
@@ -748,7 +771,8 @@ export default function CreditsPage() {
                   bfBusy ||
                   bfLoading ||
                   ((bfSignup?.skipped ? 0 : bfSignup?.eligibleCount ?? 0) +
-                    (bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0) ===
+                    (bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0) +
+                    (bfFirstDive?.skipped ? 0 : bfFirstDive?.eligibleCount ?? 0) ===
                     0)
                 }
               >
@@ -848,7 +872,7 @@ function BackfillRow({
 }: {
   title: string;
   sub: string;
-  data: { eligibleCount: number; amount: number; totalCredit: number; members?: string[]; skipped?: boolean; reason?: string } | null;
+  data: { eligibleCount: number; amount: number; totalCredit: number; members?: string[]; skipped?: boolean; reason?: string; blockedByEmailCount?: number; blockedByEmailMembers?: string[] } | null;
 }) {
   return (
     <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
@@ -876,6 +900,17 @@ function BackfillRow({
       </div>
       {data?.skipped && (
         <div className="mt-1 text-[10px] text-amber-600">{data.reason}</div>
+      )}
+      {/* v1080：符合資格卻卡在「沒驗證 Email」—— 這次發不出去，但老闆值得知道有幾個人卡著，
+          可以去推一把（他們驗證完，系統會自動把獎勵補上，不必再按一次補發）。 */}
+      {data && !data.skipped && (data.blockedByEmailCount ?? 0) > 0 && (
+        <div className="mt-1.5 rounded bg-amber-50 px-2 py-1 text-[10px] text-amber-700">
+          另有 <b>{data.blockedByEmailCount} 人</b>已完成首潛但 Email 未驗證，這次發不出去
+          —— 他們驗證完系統會自動補發。
+          {(data.blockedByEmailMembers?.length ?? 0) > 0 && (
+            <span className="text-amber-600">（{data.blockedByEmailMembers!.join("、")}）</span>
+          )}
+        </div>
       )}
       {data && !data.skipped && (data.members?.length ?? 0) > 0 && (
         <div className="mt-2 max-h-28 overflow-y-auto rounded bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">

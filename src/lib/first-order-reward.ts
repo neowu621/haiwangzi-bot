@@ -152,6 +152,10 @@ export async function maybeGrantFirstOrderReward(
     notifyCustomer({
       userId,
       templateKey: "first_order_reward_grant",
+      // v1080：這是「系統自動發」—— 觸發點是教練勾到場，不是客戶自己剛做完動作，
+      //   所以套用安靜時段（09:00–22:00 以外不推 LINE，Email/站內照發）。
+      //   補發時特別重要：老闆半夜按一次「一鍵補發」會對一整批人同時推 LINE。
+      respectQuietHours: true,
       params: {
         amount,
         balance: newBalance,
