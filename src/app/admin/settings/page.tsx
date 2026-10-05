@@ -749,14 +749,20 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
               <CompactNum label="金額（NT$，0=停用）" labelW="w-32" value={cfg.firstOrderRewardAmount ?? 100}
                 onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardAmount: n } : c)} />
-              <CompactNum label="有效天數（0=永不過期）" labelW="w-32" max={3650} value={cfg.firstOrderRewardExpiryDays ?? 360}
-                onChange={(n) => setCfg(c => c ? { ...c, firstOrderRewardExpiryDays: n } : c)} />
+              {/* v1082：有效天數欄位移除 —— 首潛獎勵已改成業務規則「永不過期」，
+                  規則寫死在 src/lib/credit-expiry.ts 的 NEVER_EXPIRE，後台設什麼都沒用。
+                  留著一個設了不會生效的欄位，比沒有欄位更糟。 */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="w-32 text-[var(--muted-foreground)]">有效期限</span>
+                <span className="font-semibold" style={{ color: "#047857" }}>永不過期</span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">（只發一次的獎勵不設期限，不可調整）</span>
+              </div>
             </div>
             <div className="mt-3 flex justify-end">
               <Button size="sm" style={{ background: "var(--color-phosphor)", color: "var(--color-ocean-deep)" }}
                 onClick={() => save("LV1 新客禮", {
                   firstOrderRewardAmount: cfg.firstOrderRewardAmount ?? 100,
-                  firstOrderRewardExpiryDays: cfg.firstOrderRewardExpiryDays ?? 360,
+                  firstOrderRewardExpiryDays: 0, // v1082：永不過期（設定值保留 0，實際由 NEVER_EXPIRE 決定）
                 })}
                 disabled={saving === "LV1 新客禮"}>
                 <Save className="mr-1.5 h-4 w-4" />

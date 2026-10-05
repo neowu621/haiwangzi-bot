@@ -18,6 +18,7 @@
 import { prisma } from "./prisma";
 import { grantCredit } from "./credit";
 import { notifyCustomer } from "./notify-template";
+import { computeExpiry } from "./credit-expiry"; // v1082：到期規則集中在一處
 
 const LIFF_BASE = process.env.NEXT_PUBLIC_LIFF_URL ?? "https://liff.line.me/2010219428-E5frY7tm";
 
@@ -109,13 +110,10 @@ export async function maybeGrantFirstOrderReward(
       }
       return { granted: false, reason: "email not verified (reminded)" };
     }
-    const expiryDays =
-      (cfg as unknown as { firstOrderRewardExpiryDays?: number } | null)
-        ?.firstOrderRewardExpiryDays ?? 360;
-    const expiresAt =
-      expiryDays > 0
-        ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000)
-        : null;
+    // v1082：首潛獎勵永不過期 —— 這裡原本自己讀 firstOrderRewardExpiryDays 算到期日，
+    //   等於繞過了 credit-expiry 的規則。改走 computeExpiry 讓規則只有一處
+    //   （NEVER_EXPIRE 會直接回 null，後台設定蓋不過）。
+    const expiresAt = await computeExpiry("first_order_reward");
 
     const { tx, newBalance } = await grantCredit({ skipNotify: true,
       userId,

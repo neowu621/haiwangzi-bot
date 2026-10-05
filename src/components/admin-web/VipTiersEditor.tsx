@@ -163,10 +163,9 @@ export function VipTiersEditor() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {/* v1082：升等獎勵一律永不過期（NEVER_EXPIRE），不再顯示天數 */}
                     {tier.upgradeCredit > 0 ? (
-                      (tier.upgradeCreditExpiryDays ?? 30) > 0
-                        ? <span>{tier.upgradeCreditExpiryDays ?? 30} 天</span>
-                        : <span className="text-[var(--muted-foreground)]">永久</span>
+                      <span style={{ color: "#047857" }}>永久</span>
                     ) : (
                       <span className="text-[var(--muted-foreground)]">—</span>
                     )}
@@ -260,13 +259,14 @@ export function VipTiersEditor() {
                       updateDraft({ upgradeCredit: clean === "" ? 0 : parseInt(clean, 10) });
                     }} />
                 </div>
+                {/* v1082：期限欄位移除 —— 升等獎勵每級只發一次，已改成業務規則「永不過期」，
+                    這裡設什麼都不會生效（見 src/lib/credit-expiry.ts 的 NEVER_EXPIRE）。 */}
                 <div>
-                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">使用期限（天，0=永久）</Label>
-                  <Input type="text" inputMode="numeric" value={String(editDraft.upgradeCreditExpiryDays ?? 30)}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, "").replace(/^0+(\d)/, "$1");
-                      updateDraft({ upgradeCreditExpiryDays: clean === "" ? 0 : parseInt(clean, 10) });
-                    }} />
+                  <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">使用期限</Label>
+                  <div className="flex h-9 items-center text-xs">
+                    <span className="font-semibold" style={{ color: "#047857" }}>永不過期</span>
+                    <span className="ml-2 text-[10px] text-[var(--muted-foreground)]">（不可調整）</span>
+                  </div>
                 </div>
               </div>
               <p className="text-[10px] text-[var(--muted-foreground)]">
