@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
+import { parseExclusions, logExclusions } from "@/lib/backfill-exclude"; // v1081
 import { grantCredit } from "@/lib/credit";
 
 export const runtime = "nodejs";
@@ -68,7 +69,23 @@ async function run(req: NextRequest, dryRun: boolean) {
       year,
       eligibleCount: users.length,
       totalCredit: users.length * amount,
-      members: users.map((u) => `${u.name ?? "（未命名）"}（生日 ${bday(u.birthday)}）`),
+      // v1081：帶 userId —— 前端要能逐人排除
+      members: users.map((u) => ({ userId: u.line_user_id, name: `${u.name ?? "（未命名）"}（生日 ${bday(u.birthday)}）` })),
+    });
+  }
+
+  // v1081：老闆在預覽名單上按「刪」排除的人（附原因，寫進稽核紀錄）
+  const exclusions = parseExclusions(await req.json().catch(() => ({})));
+  const excluded = new Set(exclusions.map((e) => e.userId));
+  const targets = users.filter((u) => !excluded.has(u.line_user_id));
+  if (exclusions.length > 0) {
+    await logExclusions({
+      kind: "birthday",
+      kindLabel: "生日禮金",
+      exclusions,
+      nameOf: (id) => users.find((u) => u.line_user_id === id)?.name ?? undefined,
+      actorId: auth.user.lineUserId,
+      actorName: auth.user.realName ?? auth.user.displayName,
     });
   }
 
@@ -76,7 +93,7 @@ async function run(req: NextRequest, dryRun: boolean) {
     expiryDays > 0 ? new Date(Date.now() + expiryDays * 86400000) : null;
   const granted: string[] = [];
   const failed: Array<{ userId: string; error: string }> = [];
-  for (const u of users) {
+  for (const u of targets) {
     try {
       await grantCredit({ skipNotify: true,
         userId: u.line_user_id,
@@ -121,6 +138,7 @@ async function run(req: NextRequest, dryRun: boolean) {
     amount,
     year,
     grantedCount: granted.length,
+    excludedCount: exclusions.length, // v1081
     failedCount: failed.length,
     totalCredit: granted.length * amount,
     failed,

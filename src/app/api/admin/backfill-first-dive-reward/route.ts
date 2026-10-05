@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { maybeGrantFirstOrderReward } from "@/lib/first-order-reward";
+import { parseExclusions, logExclusions } from "@/lib/backfill-exclude"; // v1081
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,16 +83,36 @@ async function run(req: NextRequest, dryRun: boolean) {
       amount,
       eligibleCount: ready.length,
       totalCredit: ready.length * amount,
-      members: ready.map((c) => c.realName ?? c.displayName ?? "（未命名）"),
+      // v1081：帶 userId —— 前端要能逐人排除
+      members: ready.map((c) => ({ userId: c.lineUserId, name: c.realName ?? c.displayName ?? "（未命名）" })),
       // 額外資訊：潛過水但卡在沒驗證 Email 的人數（這次發不出去）
       blockedByEmailCount: blockedByEmail.length,
       blockedByEmailMembers: blockedByEmail.map((c) => c.realName ?? c.displayName ?? "（未命名）"),
+      // 這批不是「可發但被排除」，是硬性條件沒過，所以不給 userId（沒有排除的意義）
+    });
+  }
+
+  // v1081：老闆在預覽名單上按「刪」排除的人（附原因，寫進稽核紀錄）
+  const exclusions = parseExclusions(await req.json().catch(() => ({})));
+  const excluded = new Set(exclusions.map((e) => e.userId));
+  const targets = ready.filter((u) => !excluded.has(u.lineUserId));
+  if (exclusions.length > 0) {
+    await logExclusions({
+      kind: "first_order_reward",
+      kindLabel: "首潛獎勵",
+      exclusions,
+      nameOf: (id) => {
+        const u = ready.find((x) => x.lineUserId === id);
+        return u?.realName ?? u?.displayName ?? undefined;
+      },
+      actorId: auth.user.lineUserId,
+      actorName: auth.user.realName ?? auth.user.displayName,
     });
   }
 
   const granted: string[] = [];
   const failed: Array<{ userId: string; error: string }> = [];
-  for (const u of ready) {
+  for (const u of targets) {
     const bookingId = u.bookings[0]?.id;
     if (!bookingId) continue;
     try {
@@ -116,6 +137,7 @@ async function run(req: NextRequest, dryRun: boolean) {
     amount,
     grantedCount: granted.length,
     failedCount: failed.length,
+    excludedCount: exclusions.length, // v1081
     totalCredit: granted.length * amount,
     blockedByEmailCount: blockedByEmail.length,
     failed,

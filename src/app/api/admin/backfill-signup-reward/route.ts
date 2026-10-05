@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authFromRequest, requireRole } from "@/lib/auth";
 import { grantCredit } from "@/lib/credit";
+import { parseExclusions, logExclusions } from "@/lib/backfill-exclude"; // v1081
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,14 +57,30 @@ async function run(req: NextRequest, dryRun: boolean) {
       amount,
       eligibleCount: candidates.length,
       totalCredit: candidates.length * amount,
-      members: candidates.map((c) => c.realName ?? c.displayName ?? "（未命名）"),
+      // v1081：帶 userId —— 前端要能逐人排除，光有姓名會認錯人（同名同姓）
+      members: candidates.map((c) => ({ userId: c.lineUserId, name: c.realName ?? c.displayName ?? "（未命名）" })),
+    });
+  }
+
+  // v1081：老闆在預覽名單上按「刪」排除的人（附原因，寫進稽核紀錄）
+  const exclusions = parseExclusions(await req.json().catch(() => ({})));
+  const excluded = new Set(exclusions.map((e) => e.userId));
+  const targets = candidates.filter((c) => !excluded.has(c.lineUserId));
+  if (exclusions.length > 0) {
+    await logExclusions({
+      kind: "signup_reward",
+      kindLabel: "註冊禮金",
+      exclusions,
+      nameOf: (id) => candidates.find((c) => c.lineUserId === id)?.realName ?? candidates.find((c) => c.lineUserId === id)?.displayName ?? undefined,
+      actorId: auth.user.lineUserId,
+      actorName: auth.user.realName ?? auth.user.displayName,
     });
   }
 
   const expiresAt = days > 0 ? new Date(Date.now() + days * 86400000) : null;
   const granted: string[] = [];
   const failed: Array<{ userId: string; error: string }> = [];
-  for (const u of candidates) {
+  for (const u of targets) {
     try {
       await grantCredit({ skipNotify: true,
         userId: u.lineUserId,
@@ -91,6 +108,7 @@ async function run(req: NextRequest, dryRun: boolean) {
     amount,
     grantedCount: granted.length,
     failedCount: failed.length,
+    excludedCount: exclusions.length,
     totalCredit: granted.length * amount,
     failed,
   });

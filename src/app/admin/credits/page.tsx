@@ -112,7 +112,8 @@ export default function CreditsPage() {
     eligibleCount: number;
     amount: number;
     totalCredit: number;
-    members?: string[];
+    // v1081：帶 userId —— 名單上要能逐人排除（同名同姓光靠姓名會認錯人）
+    members?: { userId: string; name: string }[];
     skipped?: boolean;
     reason?: string;
     // v1080：首潛獎勵專用 —— 潛過水但 Email 沒驗證，這次發不出去（驗證後系統會自動補）
@@ -124,6 +125,38 @@ export default function CreditsPage() {
   const [bfSignup, setBfSignup] = useState<BackfillPreview>(null);
   const [bfBirthday, setBfBirthday] = useState<BackfillPreview>(null);
   const [bfFirstDive, setBfFirstDive] = useState<BackfillPreview>(null); // v1080
+  // v1081：這一批要排除的人 —— key = `${kind}:${userId}`，value = 老闆填的原因（必填）。
+  //   只影響「這一次」送出；下次打開對話框這些人會再出現（排除理由常常是暫時的）。
+  const [bfExcluded, setBfExcluded] = useState<Record<string, string>>({});
+  const excludeKey = (kind: string, userId: string) => `${kind}:${userId}`;
+  function toggleExclude(kind: string, userId: string, name: string) {
+    const key = excludeKey(kind, userId);
+    if (bfExcluded[key] !== undefined) {
+      // 已排除 → 復原
+      setBfExcluded((m) => { const n = { ...m }; delete n[key]; return n; });
+      return;
+    }
+    const reason = window.prompt(`不發給「${name}」的原因？（必填，會記進稽核紀錄）`, "");
+    if (reason === null) return;           // 按取消 → 什麼都不做
+    if (reason.trim() === "") {            // 空原因不接受 —— 日後查不到為什麼
+      alert("請填寫原因，不然日後查不到為什麼這個人沒拿到。");
+      return;
+    }
+    setBfExcluded((m) => ({ ...m, [key]: reason.trim() }));
+  }
+  /** 這一列實際會發給幾人（扣掉被排除的） */
+  function effectiveCount(kind: string, data: BackfillPreview) {
+    if (!data || data.skipped) return 0;
+    const total = data.eligibleCount ?? 0;
+    const ex = (data.members ?? []).filter((m) => bfExcluded[excludeKey(kind, m.userId)] !== undefined).length;
+    return Math.max(0, total - ex);
+  }
+  /** 組成送給 API 的排除清單 */
+  function exclusionsFor(kind: string, data: BackfillPreview) {
+    return (data?.members ?? [])
+      .map((m) => ({ userId: m.userId, reason: bfExcluded[excludeKey(kind, m.userId)] }))
+      .filter((x): x is { userId: string; reason: string } => typeof x.reason === "string");
+  }
   const [bfBusy, setBfBusy] = useState(false);
   const [bfResult, setBfResult] = useState<string | null>(null);
 
@@ -158,6 +191,7 @@ export default function CreditsPage() {
     setBfSignup(null);
     setBfBirthday(null);
     setBfFirstDive(null);
+    setBfExcluded({});
     setBfResult(null);
     try {
       const [s, b, f] = await Promise.all([
@@ -176,11 +210,13 @@ export default function CreditsPage() {
   }
 
   async function confirmBackfill() {
-    const sCnt = bfSignup?.skipped ? 0 : bfSignup?.eligibleCount ?? 0;
-    const bCnt = bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0;
-    const fCnt = bfFirstDive?.skipped ? 0 : bfFirstDive?.eligibleCount ?? 0;
+    // v1081：人數改用「扣掉被排除的」實際人數
+    const sCnt = effectiveCount("signup", bfSignup);
+    const bCnt = effectiveCount("birthday", bfBirthday);
+    const fCnt = effectiveCount("firstdive", bfFirstDive);
+    const exCount = Object.keys(bfExcluded).length;
     if (sCnt + bCnt + fCnt === 0) return;
-    if (!confirm(`確定發送？\n　註冊禮金 ${sCnt} 人\n　生日禮金 ${bCnt} 人\n　首潛獎勵 ${fCnt} 人\n發送後立即入帳，無法一鍵撤銷。`)) return;
+    if (!confirm(`確定發送？\n　註冊禮金 ${sCnt} 人\n　生日禮金 ${bCnt} 人\n　首潛獎勵 ${fCnt} 人\n${exCount > 0 ? `　（已排除 ${exCount} 人，原因會記進稽核紀錄）\n` : ""}發送後立即入帳，無法一鍵撤銷。`)) return;
     setBfBusy(true);
     setBfResult(null);
     try {
@@ -188,21 +224,21 @@ export default function CreditsPage() {
       if (sCnt > 0) {
         const r = await adminFetch<{ grantedCount: number; totalCredit: number }>(
           "/api/admin/backfill-signup-reward",
-          { method: "POST" },
+          { method: "POST", body: JSON.stringify({ exclude: exclusionsFor("signup", bfSignup) }) },
         );
         out.push(`註冊禮金：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
       }
       if (bCnt > 0) {
         const r = await adminFetch<{ grantedCount: number; totalCredit: number }>(
           "/api/admin/backfill-birthday-credits",
-          { method: "POST" },
+          { method: "POST", body: JSON.stringify({ exclude: exclusionsFor("birthday", bfBirthday) }) },
         );
         out.push(`生日禮金：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
       }
       if (fCnt > 0) {
         const r = await adminFetch<{ grantedCount: number; totalCredit: number }>(
           "/api/admin/backfill-first-dive-reward",
-          { method: "POST" },
+          { method: "POST", body: JSON.stringify({ exclude: exclusionsFor("firstdive", bfFirstDive) }) },
         );
         out.push(`首潛獎勵：發 ${r.grantedCount} 人、共 NT$${r.totalCredit.toLocaleString()}`);
       }
@@ -210,6 +246,7 @@ export default function CreditsPage() {
       setBfSignup(null);
       setBfBirthday(null);
       setBfFirstDive(null);
+      setBfExcluded({});
       await load();
     } catch (e) {
       setBfResult("❌ 發送失敗：" + (e instanceof Error ? e.message : String(e)));
@@ -738,11 +775,19 @@ export default function CreditsPage() {
                   title="🎁 註冊禮金"
                   sub="已驗證 Email、從未領過（一生一次）"
                   data={bfSignup}
+                  kind="signup"
+                  excluded={bfExcluded}
+                  onToggle={toggleExclude}
+                  effective={effectiveCount("signup", bfSignup)}
                 />
                 <BackfillRow
                   title="🎂 生日禮金"
                   sub="生日月已到/當月、今年未領（一年一次；未來月份生日由月初自動發）"
                   data={bfBirthday}
+                  kind="birthday"
+                  excluded={bfExcluded}
+                  onToggle={toggleExclude}
+                  effective={effectiveCount("birthday", bfBirthday)}
                 />
                 {/* v1080：首潛獎勵 —— 觸發點是「教練勾到場」那一刻，當時若客戶還沒驗證 Email
                     或發放出錯，之後沒有任何機制會再試一次，客戶就永遠拿不到。 */}
@@ -750,6 +795,10 @@ export default function CreditsPage() {
                   title="🤿 首潛獎勵"
                   sub="已完成首次潛水（教練勾到場）+ Email 已驗證、從未領過（一生一次）"
                   data={bfFirstDive}
+                  kind="firstdive"
+                  excluded={bfExcluded}
+                  onToggle={toggleExclude}
+                  effective={effectiveCount("firstdive", bfFirstDive)}
                 />
               </div>
             )}
@@ -770,9 +819,9 @@ export default function CreditsPage() {
                 disabled={
                   bfBusy ||
                   bfLoading ||
-                  ((bfSignup?.skipped ? 0 : bfSignup?.eligibleCount ?? 0) +
-                    (bfBirthday?.skipped ? 0 : bfBirthday?.eligibleCount ?? 0) +
-                    (bfFirstDive?.skipped ? 0 : bfFirstDive?.eligibleCount ?? 0) ===
+                  (effectiveCount("signup", bfSignup) +
+                    effectiveCount("birthday", bfBirthday) +
+                    effectiveCount("firstdive", bfFirstDive) ===
                     0)
                 }
               >
@@ -869,11 +918,23 @@ function BackfillRow({
   title,
   sub,
   data,
+  kind,
+  excluded,
+  onToggle,
+  effective,
 }: {
   title: string;
   sub: string;
-  data: { eligibleCount: number; amount: number; totalCredit: number; members?: string[]; skipped?: boolean; reason?: string; blockedByEmailCount?: number; blockedByEmailMembers?: string[] } | null;
+  data: { eligibleCount: number; amount: number; totalCredit: number; members?: { userId: string; name: string }[]; skipped?: boolean; reason?: string; blockedByEmailCount?: number; blockedByEmailMembers?: string[] } | null;
+  // v1081：逐人排除
+  kind: string;
+  excluded: Record<string, string>;
+  onToggle: (kind: string, userId: string, name: string) => void;
+  /** 扣掉排除後實際會發的人數 */
+  effective: number;
 }) {
+  const exReasonOf = (userId: string) => excluded[`${kind}:${userId}`];
+  const exCount = (data?.members ?? []).filter((m) => exReasonOf(m.userId) !== undefined).length;
   return (
     <div className="rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
       <div className="flex items-center justify-between">
@@ -888,12 +949,20 @@ function BackfillRow({
             <span className="text-[11px] text-amber-600">未設金額</span>
           ) : (
             <>
-              <div className="text-lg font-bold tabular-nums" style={{ color: data.eligibleCount > 0 ? "#16a34a" : "#94a3b8" }}>
-                {data.eligibleCount} 人
+              {/* v1081：顯示「實際會發」的人數；有排除時把原始人數劃掉並列在旁邊，
+                  避免老闆以為系統自己少算了人。 */}
+              <div className="text-lg font-bold tabular-nums" style={{ color: effective > 0 ? "#16a34a" : "#94a3b8" }}>
+                {exCount > 0 && (
+                  <span className="mr-1 text-[13px] font-normal text-slate-400 line-through">{data.eligibleCount}</span>
+                )}
+                {effective} 人
               </div>
               <div className="text-[11px] text-slate-500">
-                每人 NT${data.amount.toLocaleString()}・共 NT${data.totalCredit.toLocaleString()}
+                每人 NT${data.amount.toLocaleString()}・共 NT${(effective * data.amount).toLocaleString()}
               </div>
+              {exCount > 0 && (
+                <div className="text-[10px] text-rose-500">已排除 {exCount} 人</div>
+              )}
             </>
           )}
         </div>
@@ -912,13 +981,42 @@ function BackfillRow({
           )}
         </div>
       )}
+      {/* v1081：名單逐人可刪 —— 按「刪」要填原因（必填），該人就不在這次發送名單裡，
+          原因會寫進稽核紀錄。排除只影響這一次，下次打開還會再出現。 */}
       {data && !data.skipped && (data.members?.length ?? 0) > 0 && (
-        <div className="mt-2 max-h-28 overflow-y-auto rounded bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
-          {data.members!.map((n, i) => (
-            <span key={i} className="mr-1 inline-block">
-              {i + 1}.{n}{i < data.members!.length - 1 ? "、" : ""}
-            </span>
-          ))}
+        <div className="mt-2 max-h-36 overflow-y-auto rounded bg-slate-50 px-2 py-1.5">
+          <div className="flex flex-wrap gap-1">
+            {data.members!.map((m, i) => {
+              const reason = exReasonOf(m.userId);
+              const isEx = reason !== undefined;
+              return (
+                <span
+                  key={m.userId}
+                  className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] ${
+                    isEx ? "bg-rose-50 text-rose-400 line-through" : "bg-white text-slate-600"
+                  }`}
+                  title={isEx ? `已排除：${reason}` : undefined}
+                >
+                  <span>{i + 1}.{m.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onToggle(kind, m.userId, m.name)}
+                    className={`no-underline ${isEx ? "text-emerald-600" : "text-rose-400 hover:text-rose-600"}`}
+                    title={isEx ? "放回名單" : "不發給這個人（要填原因）"}
+                  >
+                    {isEx ? "復原" : "刪"}
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          {exCount > 0 && (
+            <div className="mt-1.5 border-t border-slate-200 pt-1.5 text-[10px] text-rose-600">
+              {data.members!.filter((m) => exReasonOf(m.userId) !== undefined).map((m) => (
+                <div key={m.userId}>✕ {m.name}：{exReasonOf(m.userId)}</div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
