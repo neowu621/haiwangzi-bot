@@ -109,6 +109,9 @@ interface Config {
   dailyBriefingEnabled?: boolean;
   dailyBriefingIncludeCoaches?: boolean;
   dailyBriefingRecipients?: string[]; // v855：收件人與管道（line:/inapp:/email:）
+  // v1083：訂單日報（含 Excel 附件）—— 與上面的「明日訂單預報」是兩支不同的信
+  dailyOrdersEmailEnabled?: boolean;
+  dailyOrdersEmailRecipients?: string[]; // lineUserId 陣列；空=自動抓 admin/boss/it
   // v391：場次 Dump 自動優惠開頭
   dumpPromoEnabled?: boolean;
   dumpPromoText?: string;
@@ -1551,6 +1554,36 @@ function AutoSendSection({
 
   // ── v855：訂單預報（每晚 21:00）收件人與管道 ──
   const briefRecipients = cfg.dailyBriefingRecipients ?? [];
+  // v1083：訂單日報收件人（只有 Email 一個管道 —— 這份帶 Excel 附件，LINE/站內送不了）
+  const ordersRecipients = cfg.dailyOrdersEmailRecipients ?? [];
+  const ordersSet = new Set(ordersRecipients);
+  async function toggleOrdersRecipient(lineUserId: string) {
+    const next = ordersSet.has(lineUserId)
+      ? ordersRecipients.filter((x) => x !== lineUserId)
+      : [...ordersRecipients, lineUserId];
+    setCfg((c) => (c ? { ...c, dailyOrdersEmailRecipients: next } : c));
+    try {
+      await adminFetch("/api/admin/site-config", {
+        method: "POST",
+        body: JSON.stringify({ dailyOrdersEmailRecipients: next }),
+      });
+    } catch (e) {
+      setCfg((c) => (c ? { ...c, dailyOrdersEmailRecipients: ordersRecipients } : c)); // 回滾
+      alert("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
+  async function toggleOrdersEnabled(on: boolean) {
+    setCfg((c) => (c ? { ...c, dailyOrdersEmailEnabled: on } : c));
+    try {
+      await adminFetch("/api/admin/site-config", {
+        method: "POST",
+        body: JSON.stringify({ dailyOrdersEmailEnabled: on }),
+      });
+    } catch (e) {
+      setCfg((c) => (c ? { ...c, dailyOrdersEmailEnabled: !on } : c)); // 回滾
+      alert("儲存失敗：" + (e instanceof Error ? e.message : String(e)));
+    }
+  }
   const briefSet = new Set(briefRecipients);
   async function persistBriefRecipients(next: string[]) {
     setCfg((c) => (c ? { ...c, dailyBriefingRecipients: next } : c));
@@ -1774,6 +1807,78 @@ function AutoSendSection({
               <span className="text-[var(--foreground)]">也發給教練（精簡版 LINE：只列明日場次＋客戶＋電話，不含金額）</span>
             </label>
           </>
+        )}
+      </div>
+
+      {/* v1083：訂單日報（含 Excel 附件）—— 與上面那封是兩封不同的信，名字很像，所以擺在一起對照。
+          這支原本完全沒有後台開關，只能去 Cronicle 停排程。 */}
+      <div className="mb-4 rounded-xl border-2 p-4" style={{ borderColor: "var(--border)", background: "rgba(16,185,129,0.06)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-[var(--foreground)]">📊 訂單日報（含 Excel 附件）</p>
+            <p className="mt-1 text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              <b className="text-[var(--foreground)]">訊息主題</b>：「📊 日期 訂單日報」——<b>只走 Email</b>（帶 Excel 附件，LINE／站內送不了）。<br/>
+              <b className="text-[var(--foreground)]">內容</b>：今日新增訂單＋付款核可＋退款＋待結算，附當日訂單明細 <span className="font-mono">orders-YYYYMMDD.xlsx</span>。<br/>
+              <b className="text-[var(--foreground)]">時間</b>：由 Cronicle 排程觸發（<span className="font-mono">/api/cron/daily-orders-email</span>）。<br/>
+              <span className="text-[10px]">※ 跟上面那封<b>藍色的「明日訂單預報」是兩封不同的信</b>，各自獨立開關。</span>
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <input
+              type="checkbox"
+              checked={cfg.dailyOrdersEmailEnabled ?? true}
+              onChange={(e) => void toggleOrdersEnabled(e.target.checked)}
+            />
+            <span className="text-[var(--foreground)]">啟用</span>
+          </label>
+        </div>
+
+        {cfg.dailyOrdersEmailEnabled !== false && (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+            <Label className="mb-1 block text-xs text-[var(--muted-foreground)]">
+              發送給誰（勾選即<b className="text-[var(--color-ocean-deep)]">自動儲存</b>）
+              <span className="ml-2 text-[10px]">
+                {ordersRecipients.length === 0
+                  ? "目前：全部沒勾 → 自動發給所有 老闆／管理／IT（且有 Email）"
+                  : `目前：指定 ${ordersRecipients.length} 人`}
+              </span>
+            </Label>
+            {usersLoading ? (
+              <p className="text-[11px] text-[var(--muted-foreground)]">載入用戶清單中...</p>
+            ) : users.length === 0 ? (
+              <p className="text-[11px] text-[var(--muted-foreground)]">（沒有職員帳號）</p>
+            ) : (
+              <div className="space-y-1 rounded-md border bg-white p-2 max-h-60 overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+                {users.map((u) => {
+                  const noEmail = !u.email;
+                  return (
+                    <label
+                      key={u.lineUserId}
+                      className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-1.5 text-[12px] ${noEmail ? "opacity-50" : "cursor-pointer hover:bg-[var(--muted)]/40"}`}
+                      title={noEmail ? "這個帳號沒有 Email，收不到這份報表" : undefined}
+                    >
+                      <input
+                        type="checkbox"
+                        disabled={noEmail}
+                        checked={ordersSet.has(u.lineUserId)}
+                        onChange={() => void toggleOrdersRecipient(u.lineUserId)}
+                      />
+                      <span className="flex-1 min-w-[160px]">
+                        <b>{u.realName ?? u.displayName}</b>
+                        <span className="ml-1.5 rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
+                          {u.roles && u.roles.length > 0 ? u.roles.join("/") : u.role}
+                        </span>
+                      </span>
+                      <span className="text-[10px] text-[var(--muted-foreground)]">{u.email ?? "（無 Email）"}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
+              ※ 有勾人時，會<b>照你勾的發</b> —— 不再受對方個人設定的「不收 Email」影響（這是內部營運報表，不是行銷信）。
+            </p>
+          </div>
         )}
       </div>
 

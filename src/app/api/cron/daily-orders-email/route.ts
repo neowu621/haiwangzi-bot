@@ -73,6 +73,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, note: "Email 未設定，skip" });
   }
 
+  // v1083：後台開關。原本這支完全沒有開關 —— 要停只能去 Cronicle 動排程，
+  //   老闆在後台既看不到也關不掉。比照 daily-briefing 改成 siteConfig 控制。
+  const cfg = await prisma.siteConfig.findUnique({ where: { id: "default" } }).catch(() => null);
+  if ((cfg as unknown as { dailyOrdersEmailEnabled?: boolean } | null)?.dailyOrdersEmailEnabled === false) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "disabled（後台已停用訂單日報）" });
+  }
+  const pickedRecipients =
+    ((cfg as unknown as { dailyOrdersEmailRecipients?: unknown } | null)?.dailyOrdersEmailRecipients as string[] | undefined) ?? [];
+
   // 取今日範圍（Asia/Taipei 00:00 ~ 23:59）
   // 用 ISO 字串轉換相對精確
   const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
@@ -166,19 +175,32 @@ export async function POST(req: NextRequest) {
       });
 
   // 撈所有 admin/boss
-  const admins = await prisma.user.findMany({
-    where: {
-      OR: [
-        { role: { in: ["admin", "boss", "it"] } },
-        { roles: { hasSome: ["admin", "boss", "it"] } },
-      ],
-      deletedAt: null,
-      email: { not: null },
-      notifyByEmail: true,
-    },
-  });
+  // v1083：後台有指定收件人就照指定的發；沒指定（空陣列）沿用舊行為。
+  //   指定模式刻意不看 notifyByEmail —— 老闆在後台明確勾了某個人，
+  //   就不該再被那個人自己的「不收 Email」偏好擋掉（這是內部營運報表，不是行銷信）。
+  const admins = pickedRecipients.length > 0
+    ? await prisma.user.findMany({
+        where: { lineUserId: { in: pickedRecipients }, deletedAt: null, email: { not: null } },
+      })
+    : await prisma.user.findMany({
+        where: {
+          OR: [
+            { role: { in: ["admin", "boss", "it"] } },
+            { roles: { hasSome: ["admin", "boss", "it"] } },
+          ],
+          deletedAt: null,
+          email: { not: null },
+          notifyByEmail: true,
+        },
+      });
   if (admins.length === 0) {
-    return NextResponse.json({ ok: true, sent: 0, note: "無 admin/boss 收件人" });
+    return NextResponse.json({
+      ok: true,
+      sent: 0,
+      note: pickedRecipients.length > 0
+        ? "後台指定的收件人都沒有 Email 可寄"
+        : "無 admin/boss 收件人",
+    });
   }
 
   // 組 HTML 摘要

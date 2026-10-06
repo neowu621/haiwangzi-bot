@@ -832,6 +832,13 @@ model SiteConfig {
   // v855：訂單預報收件人與管道 ["line:Uxxx","inapp:Uxxx","email:xx@yy.com"]；空=沿用舊行為(自動抓 boss/admin，LINE+Email)
   dailyBriefingRecipients     Json      @default("[]") @map("daily_briefing_recipients")
 
+  // v1083：訂單日報（含 Excel 附件，/api/cron/daily-orders-email）。
+  //   原本完全沒有開關，只能去 Cronicle 停排程 —— 老闆在後台看不到也關不掉。
+  dailyOrdersEmailEnabled     Boolean   @default(true) @map("daily_orders_email_enabled")
+  // 收件人 lineUserId 陣列；空=沿用舊行為（自動抓 admin/boss/it 且有 email、notifyByEmail 開著的人）。
+  //   這份報表帶 Excel 附件，只能走 Email，所以不像訂單預報那樣有三個管道。
+  dailyOrdersEmailRecipients  Json      @default("[]") @map("daily_orders_email_recipients")
+
   // v391：場次 Dump 自動優惠開頭（開關 + 可編輯文案）
   dumpPromoEnabled Boolean @default(false) @map("dump_promo_enabled")
   dumpPromoText    String  @default("") @map("dump_promo_text")

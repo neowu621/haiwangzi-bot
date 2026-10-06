@@ -51,6 +51,11 @@ export default function NotificationsPage() {
   const [selected, setSelected] = useState<NotificationItem | null>(null); // v467：點開看完整內容
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const readMarkedRef = useRef(false); // 確保「進頁標已讀」只打一次
+  // v1083：還剩幾筆未讀（含「還沒捲到」的舊通知）。
+  //   這頁是分頁載入，進頁只會把第一頁標已讀 —— 更舊的未讀會一直留著，
+  //   底部導覽的紅點數字也就一直清不掉。有這個數字才知道該不該顯示「全部已閱讀」。
+  const [restUnread, setRestUnread] = useState(0);
+  const [markingAll, setMarkingAll] = useState(false);
 
   // 首屏載入（取代任何 cache）
   const loadFirst = useCallback(() => {
@@ -72,13 +77,23 @@ export default function NotificationsPage() {
         if (!readMarkedRef.current) {
           const unreadIds = list.filter((n) => !n.isRead).map((n) => n.id);
           readMarkedRef.current = true;
+          // v1083：先標完這一頁，再問「還剩幾筆」——
+          //   順序反了會把這頁的也算進去，按鈕就會對著已經讀掉的東西顯示。
+          const askRest = () =>
+            liff
+              .fetchWithAuth<{ count: number }>("/api/me/notifications/unread-count")
+              .then((r) => setRestUnread(r.count ?? 0))
+              .catch(() => {});
           if (unreadIds.length > 0) {
             liff
               .fetchWithAuth("/api/me/notifications/read", {
                 method: "POST",
                 body: JSON.stringify({ ids: unreadIds }),
               })
+              .then(askRest)
               .catch(() => {});
+          } else {
+            void askRest();
           }
         }
       })
@@ -110,6 +125,28 @@ export default function NotificationsPage() {
     loadFirst();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // v1083：全部已閱讀 —— API 本來就支援 { all: true }，只是前端沒有入口。
+  //   一次把「還沒捲到的舊未讀」也清掉，底部導覽的紅點才會真的歸零。
+  const markAllRead = useCallback(() => {
+    if (markingAll) return;
+    setMarkingAll(true);
+    liff
+      .fetchWithAuth<{ updated: number }>("/api/me/notifications/read", {
+        method: "POST",
+        body: JSON.stringify({ all: true }),
+      })
+      .then(() => {
+        setRestUnread(0);
+        // 畫面上已載入的也一起改成已讀（不重抓，省一趟來回）
+        setItems((arr) => arr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
+      })
+      .catch(() => {
+        alert("標記失敗，請稍後再試");
+      })
+      .finally(() => setMarkingAll(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markingAll]);
 
   // 載入更多（滑到底）
   const loadMore = useCallback(() => {
@@ -150,6 +187,20 @@ export default function NotificationsPage() {
   return (
     <LiffShell title="通知中心" backHref="/liff/welcome" bottomNav={<BottomNav />}>
       <div className="px-4 pt-4 space-y-2">
+        {/* v1083：只有「真的還有未讀」才出現 —— 沒有未讀還擺一顆按鈕，
+            按下去什麼都不會發生，那是在騙人。 */}
+        {restUnread > 0 && (
+          <button
+            type="button"
+            onClick={markAllRead}
+            disabled={markingAll}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition active:scale-[.99] disabled:opacity-60"
+            style={{ borderColor: "rgba(14,159,147,.4)", background: "rgba(14,159,147,.08)", color: "#0a6f68" }}
+          >
+            {markingAll ? "處理中…" : <>✓ 全部已閱讀<span className="font-normal opacity-75">（還有 {restUnread} 則未讀）</span></>}
+          </button>
+        )}
+
         {hydrated && loading && items.length === 0 && (
           <LiffLoading variant="skeleton" count={4} label="正在載入通知..." />
         )}

@@ -708,6 +708,9 @@ const PATCHES = [
   `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_type VARCHAR(16)`,
   `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_id VARCHAR(64)`,
   `ALTER TABLE message_logs ADD COLUMN IF NOT EXISTS ref_label VARCHAR(128)`,
+  // v1083：訂單日報（含 Excel）開關與收件人
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_orders_email_enabled BOOLEAN NOT NULL DEFAULT true`,
+  `ALTER TABLE site_config ADD COLUMN IF NOT EXISTS daily_orders_email_recipients JSONB NOT NULL DEFAULT '[]'`,
   // v677：會員模糊搜尋加速（後台會員/抵用金 ?q= ILIKE） — pg_trgm GIN 索引
   `CREATE EXTENSION IF NOT EXISTS pg_trgm`,
   `CREATE INDEX IF NOT EXISTS users_real_name_trgm_idx ON users USING gin (real_name gin_trgm_ops)`,
